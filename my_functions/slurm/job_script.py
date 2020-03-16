@@ -16,6 +16,8 @@ class ScriptHandler:
             email: (str) Email address for info , default 'villa@mm.tu-darmstadt.de' \n
             nodes: (int) Number of nodes, default 4 \n
             cores_per_node: (int) Number of cores per node, default 24 \n
+            output_filename: (str) Filename of output file (default is 'out.%j')\n
+            error_filename: (str) Filename of error file (default is 'err.%j') \n
             timelimit: (int) Time limit in hours, default 24 \n
             memory_per_cpu:(int) Memory settings. Default is 2400
             processor: (str) CPU architecture, default is 'avx2'
@@ -35,6 +37,8 @@ class ScriptHandler:
                     'email':'villa@mm.tu-darmstadt.de',
                     'nodes': 4,
                     'cores_per_node': 24,
+                    'output_filename': 'out.%j',
+                    'error_filename':'err.%j',
                     'timelimit': '24:00:00',
                     'memory_per_cpu':2400,
                     'processor':'avx2',
@@ -75,6 +79,8 @@ class ScriptHandler:
         parser.add_argument('-e','--email',help='Email address for job notification',required=False,default=self.email,type=str,metavar='',dest='email')
         parser.add_argument('-N','--nodes',help='Number of nodes, default is 4',required=False,default=self.nodes,type=int,metavar='',dest='nodes')
         parser.add_argument('-c','--cores-per-node',help='Number of cores per node, default is 24',required=False,default=self.cores_per_node,type=int,metavar='',dest='cores_per_node')
+        parser.add_argument('-out','--output',help='Output filename',required=False,default=self.name,type=str,metavar='',dest='output_filename')
+        parser.add_argument('-err','--error',help='Error filename',required=False,default=self.name,type=str,metavar='',dest='error_filename')
         parser.add_argument('-t','--timelimit',help='Timelimit, default is 24:00:00',required=False,default=self.timelimit,type=str,metavar='',dest='timelimit')
         parser.add_argument('-M','--memory-per-cpu',help='Memory per cpu, default is 2400',required=False,default=self.memory_per_cpu,type=int,metavar='',dest='memory_per_cpu')
         parser.add_argument('-C','--processor',help='(avx or avx2, default is avx2)',required=False,default=self.processor,type=str,metavar='',dest='processor')
@@ -178,8 +184,8 @@ class ScriptHandler:
             f.write('#SBATCH --nodes=%i\n' %self.nodes)
             f.write('#SBATCH --ntasks-per-node=%i\n' %self.cores_per_node)
             f.write('#SBATCH --cpus-per-task=1\n')
-            f.write('#SBATCH --output=out.%j\n')
-            f.write('#SBATCH --error=err.%j\n')
+            f.write('#SBATCH --output=%s\n' %self.output_filename)
+            f.write('#SBATCH --error=%s\n' %self.error_filename)
             f.write('#SBATCH --time=%s\n' %self.timelimit)
             f.write('#SBATCH -p deflt\n')
             f.write('#SBATCH --exclusive\n')
