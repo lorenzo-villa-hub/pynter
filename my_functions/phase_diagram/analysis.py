@@ -1,6 +1,6 @@
 
 from pymatgen.core.composition import Composition
-from pymatgen.analysis.phase_diagram import PDEntry
+from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 
 
 class ChempotAnalysis:
@@ -29,18 +29,26 @@ class ChempotAnalysis:
         return self._chempots_reference
     
     
+    # def _get_chempots_reference(self):
+    #     # gets reference chempots from e.p.a of elemental compounds in self.computed_phases
+    #     chempots_ref = {}
+    #     for comp in self.computed_phases:
+    #             if comp.is_element:
+    #                 chempots_ref[comp.elements[0]] = self.computed_phases[comp]/comp.num_atoms            
+    #     return chempots_ref
+    
+
     def _get_chempots_reference(self):
-        # gets reference chempots from e.p.a of elemental compounds in self.computed_phases
+        # gets elemental reference compounds and respective e.p.a with Pymatgen el_ref attribute in PhaseDiagram class
         chempots_ref = {}
-        for comp in self.computed_phases:
-                if len(comp.elements)==1:
-                    chempots_ref[comp.elements[0]] = self.computed_phases[comp]/comp.num_atoms       
+        pd = PhaseDiagram(self.get_pd_entries())
+        for el in pd.el_refs:
+            chempots_ref[el] = pd.el_refs[el].energy_per_atom
         return chempots_ref
-    
-    
+   
     def get_pd_entries(self):
         """
-        Build list of PDEntry object used by Pymatgen to generate PhaseDiagram
+        Build list of PDEntry object used by Pymatgen to generate PhaseDiagram.
         Returns
         -------
         List of PDEntries
@@ -72,6 +80,8 @@ class ChempotAnalysis:
         return chempots_delta
                     
             
- #   def get_chempots_limit(self,comp1,comp2)                  
+  #  def get_chempots_limit(self,comp1,comp2):
+        
+                  
                     
         
