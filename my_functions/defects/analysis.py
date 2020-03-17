@@ -27,7 +27,7 @@ class SingleDefectData:
             charge: (int or float) defect charge
                     default is zero, meaning no change to NELECT after defect is created in the structure                         
             name (str): Name of the defect structure
-            defect_site (Site): site for defect within structure
+            defect_site (Pymatgen Site object): site for defect within structure
                                 must have same lattice as structure                
         """        
         self._bulk_structure = bulk_structure
@@ -68,6 +68,24 @@ class SingleDefectData:
     @property
     def defect_site(self):
         return self._defect_site
+
+
+    def as_dict(self):
+        """
+        Returns:
+            Json-serializable dict representation of SignleDefectData
+        """
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "bulk_structure": self.bulk_structure.as_dict(),
+             "delta_atoms": self.delta_atoms,
+             "energy_diff": self.energy_diff,
+             "corrections": self.corrections,
+             "name": self.name,
+             "defect_site":self.defect_site.as_dict() if self.defect_site else 'None'
+             }
+        return d        
+
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
         """
@@ -129,6 +147,20 @@ class DefectsAnalysis:
         self.vbm = vbm
         self.band_gap = band_gap
         
+
+    def as_dict(self):
+        """
+        Returns:
+            Json-serializable dict representation of SignleDefectData
+        """
+        d = {
+        "@module": self.__class__.__module__,
+        "@class": self.__class__.__name__,
+        "defect_entries": [entry.as_dict() for entry in self.defect_entries],
+        "vbm":self.vbm,
+        "band_gap":self.band_gap
+            }
+        return d
     
     def binding_energy(self,name,fermi_level=0):
         """
