@@ -2,10 +2,20 @@
 from pymatgen.core.composition import Composition
 from pymatgen.analysis.phase_diagram import PDEntry
 
+
 class ChempotAnalysis:
     
-    def __init__(self,computed_phases):       
-        self._computed_phases = computed_phases
+    def __init__(self,computed_phases):
+        """
+        Initializes class to analyse chemical potentials of a phase diagram generated with Pymatgen
+        
+        Parameters
+        ----------
+        computed_phases : (Dict)
+            Dictionary with strings with phase reduced formula as keys and energy per formula unit as values.
+            The strings with reduced formula are trasformed in Pymatgen Composition objects to be used in this class.
+        """
+        self._computed_phases = {Composition(phase):computed_phases[phase] for phase in computed_phases}
         self._chempots_reference = self._get_chempots_reference()
 
 
@@ -22,11 +32,9 @@ class ChempotAnalysis:
     def _get_chempots_reference(self):
         # gets reference chempots from e.p.a of elemental compounds in self.computed_phases
         chempots_ref = {}
-        for phase in self.computed_phases:
-                if len(Composition(phase).elements)==1:
-                    el_ref = phase
-                    comp_ref = Composition(el_ref)
-                    chempots_ref[comp_ref.elements[0]] = self.computed_phases[el_ref]/comp_ref.num_atoms       
+        for comp in self.computed_phases:
+                if len(comp.elements)==1:
+                    chempots_ref[comp.elements[0]] = self.computed_phases[comp]/comp.num_atoms       
         return chempots_ref
     
     
@@ -38,9 +46,8 @@ class ChempotAnalysis:
         List of PDEntries
         """  
         entries = []
-        for phase in self.computed_phases:
-            comp = Composition(phase)
-            entry = PDEntry(comp,self.computed_phases[phase])
+        for comp in self.computed_phases:
+            entry = PDEntry(comp,self.computed_phases[comp])
             entries.append(entry)           
         return entries
  
@@ -65,6 +72,6 @@ class ChempotAnalysis:
         return chempots_delta
                     
             
-                    
+ #   def get_chempots_limit(self,comp1,comp2)                  
                     
         
