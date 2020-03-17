@@ -78,14 +78,35 @@ class SingleDefectData:
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
              "bulk_structure": self.bulk_structure.as_dict(),
-             "delta_atoms": self.delta_atoms,
+             "delta_atoms": {e.symbol:self.delta_atoms[e] for e in self.delta_atoms},
              "energy_diff": self.energy_diff,
              "corrections": self.corrections,
+             "charge": self.charge,
              "name": self.name,
-             "defect_site":self.defect_site.as_dict() if self.defect_site else 'None'
+             "defect_site":self.defect_site.as_dict() if self.defect_site else None
              }
         return d        
 
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Reconstitute a SingleDefectData object from a dict representation created using
+        as_dict().
+
+        Args:
+            d (dict): dict representation of SingleDefectData.
+
+        Returns:
+            SingleDefectData object
+        """
+        bulk_structure = d['bulk_structure']
+        delta_atoms = {Element(e):d['delta_atoms'][e] for e in d['delta_atoms']}
+        energy_diff = d['energy_diff']
+        corrections = d['corrections']
+        charge = d['charge']
+        name = d['name']
+        defect_site = d['defect_site']
+        return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,name,defect_site)
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
         """
@@ -151,7 +172,7 @@ class DefectsAnalysis:
     def as_dict(self):
         """
         Returns:
-            Json-serializable dict representation of SignleDefectData
+            Json-serializable dict representation of DefectsAnalysis
         """
         d = {
         "@module": self.__class__.__module__,
@@ -161,6 +182,25 @@ class DefectsAnalysis:
         "band_gap":self.band_gap
             }
         return d
+
+
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Reconstitute a DefectsAnalysis object from a dict representation created using
+        as_dict().
+
+        Args:
+            d (dict): dict representation of DefectsAnalysis.
+
+        Returns:
+            DefectsAnalysis object
+        """
+        defect_entries = [SingleDefectData.from_dict(entry_dict) for entry_dict in d['defect_entries']]        
+        vbm = d['vbm']
+        band_gap = d['band_gap']
+        return cls(defect_entries,vbm,band_gap)
+    
     
     def binding_energy(self,name,fermi_level=0):
         """
