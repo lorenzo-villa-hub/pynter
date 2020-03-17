@@ -36,14 +36,12 @@ class ChempotAnalysis:
         Returns
         -------
         List of PDEntries
-
         """  
         entries = []
         for phase in self.computed_phases:
             comp = Composition(phase)
             entry = PDEntry(comp,self.computed_phases[phase])
-            entries.append(entry)
-            
+            entries.append(entry)           
         return entries
  
     
@@ -59,13 +57,11 @@ class ChempotAnalysis:
         -------
         chempots_delta : (Dict)
             Dictionary of chemical potentials relative to elemental phase, format ({Pymatgen Element object:chempot value}).
-
         """
         import copy
         chempots_delta = copy.deepcopy(chempots_abs)
         for el in chempots_abs:
-            chempots_delta[el] += (-1)*self.chempots_reference
-            
+            chempots_delta[el] += (-1)*self.chempots_reference[el]            
         return chempots_delta
                     
             
