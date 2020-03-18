@@ -25,7 +25,7 @@ class ChempotExperimental:
         self.partial_pressure = partial_pressure
 
 
-    def chempot_from_ideal_gas(self, mu0, temperature=None,partial_pressure=None):
+    def chempot_ideal_gas(self, mu0, temperature=None,partial_pressure=None):
         """
         Get chemical potential at a given temperature and partial pressure. The chemical potential in standard conditions (mu0)
         has to be know.
