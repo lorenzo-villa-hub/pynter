@@ -328,6 +328,37 @@ class DefectsAnalysis:
 
         return concentrations
     
+
+    def defect_concentrations_stable_charges(self, chemical_potentials, temperature=300, fermi_level=0.):
+        """
+        Give list of concentrations of defects in their stable charge state at a specified efermi.
+
+        Parameters
+        ----------
+        chemical_potentials : (Dict)
+            Dictionary of chemical potentials.
+        temperature : (float), optional
+            Temperature. The default is 300.
+        fermi_level : (float), optional
+            Position of the Fermi level. The default is 0 (vbm).
+
+        Returns
+        -------
+        conc_stable : (list)
+            List of dictionaries with concentrations of defects with stable charge states at a given efermi.
+        """
+        concentrations = self.defect_concentrations(chemical_potentials,temperature=temperature,fermi_level=fermi_level)
+        stable_charges = self.stable_charges(chemical_potentials,fermi_level=fermi_level)
+        conc_stable = []
+        for c in concentrations:
+            n = c['name']
+            q = c['charge']
+            for name in stable_charges:
+                charge = stable_charges[name][0]
+                if n == name and q == charge:
+                    conc_stable.append(c)
+        return conc_stable
+                    
    
     def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature = 300):
         """
@@ -674,7 +705,6 @@ class DefectsAnalysis:
         plt.ylabel('Energy(eV)',fontsize=20*size)  
         
         return plt
-
     
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
