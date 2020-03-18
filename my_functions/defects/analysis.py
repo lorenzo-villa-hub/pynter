@@ -99,13 +99,13 @@ class SingleDefectData:
         Returns:
             SingleDefectData object
         """
-        bulk_structure = d['bulk_structure']
+        bulk_structure = Structure.from_dict(d['bulk_structure'])
         delta_atoms = {Element(e):d['delta_atoms'][e] for e in d['delta_atoms']}
         energy_diff = d['energy_diff']
         corrections = d['corrections']
         charge = d['charge']
         name = d['name']
-        defect_site = d['defect_site']
+        defect_site = PeriodicSite.from_dict(d['defect_site']) if d['defect_site'] else None
         return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,name,defect_site)
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
