@@ -106,7 +106,7 @@ class ChempotAnalysis:
             if el != el_fixed:
                 chempots_boundary[el] = x[counter]
                 counter += 1
-                
+        chempots_boundary[el_fixed] = mu_fixed        
         return chempots_boundary
                   
     
@@ -191,7 +191,6 @@ class PDHandler:
     def get_entries_from_comp(self,comp):
        """
        Get a list of entries corrisponding to the target composition.
-       If single_entry is set to True the output a single entry instead of a list
        
        Parameters
        ----------
@@ -205,7 +204,7 @@ class PDHandler:
        for e in pd.all_entries:
            if e.composition.reduced_composition == comp:
                target_entries.append(e)
-       if target_entries is not []:
+       if target_entries != []:
            return target_entries
        else:
            raise ValueError('No entry has been found for target composition:%s' %comp.reduced_formula)
