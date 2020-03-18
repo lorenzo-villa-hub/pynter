@@ -17,7 +17,7 @@ class ChempotAnalysis:
             The strings with reduced formula are trasformed in Pymatgen Composition objects to be used in this class.
         """
         self._computed_phases = {Composition(phase):computed_phases[phase] for phase in computed_phases}
-        self._chempots_reference = self._get_chempots_reference()
+        self._chempots_reference = PDHandler(self._computed_phases).get_chempots_reference()
 
 
     @property
@@ -29,31 +29,7 @@ class ChempotAnalysis:
     def chempots_reference(self):
         return self._chempots_reference
     
-
-    def _get_chempots_reference(self):
-        # gets elemental reference compounds and respective e.p.a with Pymatgen el_ref attribute in PhaseDiagram class
-        # the difference with my version is that this considers having more than 1 calculation and takes the minimum e.p.a
-        chempots_ref = {}
-        pd = PhaseDiagram(self.get_pd_entries())
-        for el in pd.el_refs:
-            chempots_ref[el] = pd.el_refs[el].energy_per_atom
-        chempots_ref = {k: v for k, v in sorted(chempots_ref.items(), key=lambda item: item[0])}
-        return chempots_ref
-   
-    def get_pd_entries(self):
-        """
-        Build list of PDEntry object used by Pymatgen to generate PhaseDiagram.
-        Returns
-        -------
-        List of PDEntries
-        """  
-        entries = []
-        for comp in self.computed_phases:
-            entry = PDEntry(comp,self.computed_phases[comp])
-            entries.append(entry)           
-        return entries
- 
-    
+       
     def get_chempots_delta(self,chempots_abs):
         """
         Subtract energy per atom of elemental phases to dictionary of chemical potentials ({Element:chempot})
@@ -99,14 +75,9 @@ class ChempotAnalysis:
         chempots_boundary ={}
         for el,chempot in fixed_chempot.items():
             el_fixed, mu_fixed = el, chempot
-        pd = PhaseDiagram(self.get_pd_entries())
-        for e in pd.all_entries:
-            if e.composition == comp1:
-                entry1=e
-            if e.composition == comp2:
-                entry2=e    
-        e1 = pd.get_form_energy(entry1)
-        e2 = pd.get_form_energy(entry2)
+        pdhandler = PDHandler(self.computed_phases)
+        e1 = pdhandler.get_formation_energy_from_stable_comp(comp1)
+        e2 = pdhandler.get_formation_energy_from_stable_comp(comp2)
         
         coeff1 = []
         coeff2 = []
@@ -139,3 +110,138 @@ class ChempotAnalysis:
                   
                     
         
+class PDHandler:
+    
+    def __init__(self,computed_phases):
+        self._computed_phases = {Composition(phase):computed_phases[phase] for phase in computed_phases}
+
+        
+    @property
+    def computed_phases(self):
+        return self._computed_phases
+
+        
+    def get_chempots_reference(self):
+        """
+        Gets elemental reference compounds and respective e.p.a with Pymatgen el_ref attribute in PhaseDiagram class
+        the difference with my version is that this considers having more than 1 calculation and takes the minimum e.p.a
+        Returns
+        -------
+        chempot_ref: (Dict)
+            Dictionary of elemental chemical potentials 
+        """
+        
+        chempots_ref = {}
+        pd = PhaseDiagram(self.pd_entries())
+        for el in pd.el_refs:
+            chempots_ref[el] = pd.el_refs[el].energy_per_atom
+        chempots_ref = {k: v for k, v in sorted(chempots_ref.items(), key=lambda item: item[0])}
+        return chempots_ref
+       
+        
+    def get_entries_from_comp(self,comp):
+       """
+       Get a list of entries corrisponding to the target composition.
+       If single_entry is set to True the output a single entry instead of a list
+       
+       Parameters
+       ----------
+       comp : (Pymatgen Composition object)
+       Returns
+       -------
+       List of Pymatgen PDEntry objects
+       """
+       target_entries=[]
+       pd = self.phase_diagram()
+       for e in pd.all_entries:
+           if e.composition.reduced_composition == comp:
+               target_entries.append(e)
+       if target_entries is not []:
+           return target_entries
+       else:
+           raise ValueError('No entry has been found for target composition:%s' %comp.reduced_formula)
+               
+
+    def get_formation_energies_from_comp(self,comp):
+        """
+        Get dictionary of formation energies for all entries of a given reduced composition
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+        Returns
+        -------
+        from_energies : (Dict)
+            Dictionary with PDEntry objects as keys and formation energies as values.
+        """
+        pd = self.phase_diagram()
+        form_energies = {}
+        for e in self.get_entries_from_comp(comp):
+            form_energies[e] = pd.get_form_energy(e)
+        return form_energies
+            
+
+    def get_formation_energy_from_stable_comp(self,comp):
+        """
+        Get formation energy of a target stable composition
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+
+        Returns
+        -------
+        Formation energy (float)
+        """
+        pd = self.phase_diagram()
+        entry = self.get_stable_entry_from_comp(comp)
+        return pd.get_form_energy(entry)
+
+
+    def get_stable_entry_from_comp(self,comp):
+        """
+        Get the PDEntry of the stable entry of a target composition
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+        Returns
+        -------
+        Pymatgen PDEntry object
+        """
+        target_entry=None
+        pd = self.phase_diagram()
+        for e in pd.stable_entries:
+            if e.composition == comp:
+                target_entry = e
+                break
+        if target_entry is not None:
+            return target_entry
+        else:
+            raise ValueError('No stable entry has been found for target composition:%s' %comp.reduced_formula)
+        
+             
+    def pd_entries(self):
+        """
+        Build list of PDEntry object used by Pymatgen to generate PhaseDiagram.
+        Returns
+        -------
+        List of PDEntries
+        """  
+        entries = []
+        for comp in self.computed_phases:
+            entry = PDEntry(comp,self.computed_phases[comp])
+            entries.append(entry)           
+        return entries    
+    
+    
+    def phase_diagram(self):
+        """
+        Gets Pymatgen PhaseDiagram object 
+        Returns
+        -------
+        Pymatgen PhaseDiagram object
+        """
+        return PhaseDiagram(self.pd_entries())
+    
+    
