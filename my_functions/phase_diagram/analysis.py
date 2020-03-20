@@ -29,7 +29,76 @@ class ChempotAnalysis:
     def chempots_reference(self):
         return self._chempots_reference
     
-       
+
+    def boundary_analysis(self,comp,fixed_chempot_delta):
+        """
+        Given a composition and a fixed chemical potential, this function analises the composition of the boundary phases
+        and the associated chemical potentials at the boundaries. Only works for 3 component PD.
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+            Composition of the phase you want to get the chemical potentials at the boundary.
+        fixed_chempot : (Dict)
+            Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}).
+            The chemical potential here is the global value. 
+        Returns
+        -------
+        chempots : (Dict)
+            Dictionary with compositions at the boundaries as keys and delta chemical potentials as value.
+        """       
+        chempots = {}
+        fixed_chempot_abs = self.get_chempots_abs(fixed_chempot_delta)
+        comp1,comp2 = self.get_composition_boundaries(comp, fixed_chempot_abs)
+        boundary = '-'.join([comp1.reduced_formula,comp.reduced_formula])
+        chempots[boundary] = self.get_chempots_boundary(comp1, comp, fixed_chempot_delta)
+        boundary = '-'.join([comp.reduced_formula,comp2.reduced_formula])
+        chempots[boundary] = self.get_chempots_boundary(comp, comp2, fixed_chempot_delta)
+        return chempots        
+        
+
+    def calculate_single_chempot(self,comp,fixed_chempots_delta):
+        """
+        Calculate chemical potential in a given composition and given the chemical potentials of the other elements.
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+            Compositions of the phase.
+        fixed_chempot_delta : (Dict)
+            Dictionary with Element as keys and respective chemical potential as value ({Element:chempot}).
+            The chemical potentials used here are the ones relative to the reference (delta_mu)
+
+        Returns
+        -------
+        mu : (float)
+            Chemical potential.
+        """        
+        form_energy = PDHandler(self.computed_phases).get_formation_energy_from_stable_comp(comp)
+        mu = form_energy
+        for el,coeff in comp.items():
+            if el in fixed_chempots_delta:
+                mu += -1*coeff * fixed_chempots_delta[el]
+        return mu
+        
+
+    def get_chempots_abs(self,chempots_delta):
+        """
+        Add energy per atom of elemental phases to dictionary of relative chemical potentials ({Element:chempot}) 
+        to get the total chemical potentials.
+        The energy of the elemental phase is taken from self.computed_phases
+        Parameters
+        ----------
+        chempots_delta : (Dict)
+            Dictionary of relative (delta) chemical potentials, format ({Pymatgen Element object:chempot value}).
+        Returns
+        -------
+        chempots_abs : (Dict)
+            Dictionary of total chemical potentials, format ({Pymatgen Element object:chempot value}).
+        """
+        return {el:chempots_delta[el] + self.chempots_reference[el] for el in chempots_delta}
+        
+        
     def get_chempots_delta(self,chempots_abs):
         """
         Subtract energy per atom of elemental phases to dictionary of chemical potentials ({Element:chempot})
@@ -43,13 +112,9 @@ class ChempotAnalysis:
         chempots_delta : (Dict)
             Dictionary of chemical potentials relative to elemental phase, format ({Pymatgen Element object:chempot value}).
         """
-        import copy
-        chempots_delta = copy.deepcopy(chempots_abs)
-        for el in chempots_abs:
-            chempots_delta[el] += (-1)*self.chempots_reference[el]            
-        return chempots_delta
+        return {el:chempots_abs[el] - self.chempots_reference[el] for el in chempots_abs}
                     
-            
+
     def get_chempots_boundary(self,comp1,comp2,fixed_chempot_delta):
         """
         Given a fixed chemical potential, gets the values of the remaining two chemical potentials
@@ -292,4 +357,22 @@ class PDHandler:
         """
         return PhaseDiagram(self.pd_entries())
     
+
+
+class PlotCustomizer:
+    
+    def __init__(self,plt):
+        self.plt = plt
+        
+    
+    def add_points(self,points,size=1):
+        
+        for p in points:
+            plt = self.plt
+            plt.scatter(points[p][0],points[p][1], color='', edgecolor='k', linewidths=3, s=450*size)
+            plt.text(points[p][0]+0.1,points[p][1],p,size=30*size)
+        return plt
+    
+
+
     
