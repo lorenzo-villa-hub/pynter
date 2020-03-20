@@ -1,9 +1,59 @@
 
 import numpy as np
+from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram
 
 
+class Chempots:
+    
+    def __init__(self,chempots):
+        self.chempots = chempots
+
+        
+    def as_dict(self):
+        """
+        Json-serializable dict representation of dictionary in the format {Element:chempot}. The Pymatgen element 
+        is expressed with the symbol of the element.
+
+        Parameters
+        ----------
+        chempots : (dict)
+            Dictionary in the format {Element:chempot}.
+
+        Returns
+        -------
+        dict
+            Json-serializable dict in the format {'symbol':chempot}.
+        """
+        return {el.symbol:self.chempots[el] for el in self.chempots}
+
+
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Constructor of Chempots object from dictionary representation in the format {'symbol':chempot}
+        
+        Parameters
+        ----------
+        d : dict
+        
+        Returns
+        -------
+        Chempot object.
+        """
+        return cls({Element(s):d[s] for s in d})
+    
+    
+    @property
+    def elements(self):
+        return [el for el in self.chempots]
+        
+    @property
+    def chempot_values(self):
+        return [self.chempots[el] for el in self.chempots]
+ 
+       
 class ChempotAnalysis:
     
     def __init__(self,computed_phases):
@@ -80,7 +130,7 @@ class ChempotAnalysis:
             if el in fixed_chempots_delta:
                 mu += -1*coeff * fixed_chempots_delta[el]
         return mu
-        
+                
 
     def get_chempots_abs(self,chempots_delta):
         """
