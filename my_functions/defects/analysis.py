@@ -544,7 +544,7 @@ class DefectsAnalysis:
                     linewidth=2)
         
         if fermi_level:
-            plt.axvline(x=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='Fermi energy')        
+            plt.axvline(x=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')        
         
         # shaded areas
         plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
