@@ -387,6 +387,70 @@ class DefectsAnalysis:
 
         return bisect(_get_total_q, -1., self.band_gap + 1.)
     
+
+    def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, temperature=300):
+        """
+        Solve charge neutrality condition starting from frozen defect concentrations. Frozen defects can also be 
+        relative to another system and another temperature, but only the ones with names included in the defects 
+        of the current system will be computed. 
+        This function is designed to equilibrate the system with a fixed installed distribution of intrisic defects
+        that are allowed to change their charge state. One example would be to equilibrate the system with concentrations
+        of intrinsic defects installed in another phase at a higher temperature, that are considered constant 
+        (kinetically trapped) as the temperature lowers and the phases changes. The variation of the charge states is 
+        accounted for in the solution of the charge neutrality by defining a charge state distribution for every defect
+        specie, which depends of the fermi level.
+
+        Parameters
+        ----------
+        frozen_defect_concentrations : (list)
+            List of defect concentrations. Most likely generated with the defect_concentrations() method. It is not
+            recommended to generate this manually.
+        chemical_potentials : (Dict)
+            Dictionary of chemical potentials in the format {Element('el'):chempot}.
+        bulk_dos : (CompleteDos object)
+            Pymatgen CompleteDos object of the DOS of the bulk system.
+        temperature : (float), optional
+            Temperature to equilibrate the system to. The default is 300.
+
+        Returns
+        -------
+        (float)
+            Fermi level dictated by charge neutrality .
+
+        """
+        
+        fdos = FermiDos(bulk_dos, bandgap=self.band_gap)
+        _,fdos_vbm = fdos.get_cbm_vbm()
+        
+        c_tot_frozen = {}       
+        for name in self.names():
+            c_tot_frozen[name] = 0
+            for d in frozen_defect_concentrations:
+                if d['name'] == name:
+                    c_tot_frozen[name] += d['conc']
+        
+        def _get_total_q(ef):
+            
+            c_tot_specie = {}
+            for name in self.names():
+                c_tot_specie[name] = 0
+                for d in self.defect_concentrations(chemical_potentials=chemical_potentials
+                                                    ,temperature=temperature,fermi_level=ef):
+                    if d['name'] == name:
+                        c_tot_specie[name] += d['conc']
+            
+            qd_tot = sum([
+                d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']] 
+                for d in self.defect_concentrations(
+                    chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
+            ])
+            qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
+
+            return qd_tot
+                       
+        return bisect(_get_total_q, -1., self.band_gap + 1.)
+        
+
     
     def formation_energies(self,chemical_potentials,fermi_level=0):
         """
