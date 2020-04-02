@@ -484,12 +484,10 @@ class DefectsAnalysis:
         Returns a list with all the different names of defect entries
         """
         
-        previous_name = ''
         names = []
         for d in self.defect_entries:
-            if d.name != previous_name:
+            if d.name not in names:
                 names.append(d.name)
-                previous_name = d.name
         
         return names
             
