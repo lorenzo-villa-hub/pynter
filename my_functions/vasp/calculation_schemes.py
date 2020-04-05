@@ -18,12 +18,12 @@ class CalculationSchemes:
     Class to generate and write input files for different calculation schemes in VASP
     """
     
-    def __init__(self,structure,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
+    def __init__(self,structure=None,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
         """
         Parameters
         ----------
-        structure : (Pymatgen Structure object).
-            Pymatgen Structure object.
+        structure : (Pymatgen Structure object), optional
+            Pymatgen Structure object. If set to None no input parameters can be generated but only lists with step labels.
         incar_settings : (Dict), optional
             Dictionary with incar flags. The default is None. If None the default settings for PBE functional from the DefaultInputs class are used.
         kpoints : (Pymatgen Kpoints object), optional
@@ -38,61 +38,16 @@ class CalculationSchemes:
             Name for the system to set up scheme for. The default is None.
         """
         
-        self._structure = structure 
-        self._incar_settings = incar_settings if incar_settings else DefaultInputs(self.structure).get_incar_default()
-        self._kpoints = kpoints if kpoints else DefaultInputs(self.structure).get_kpoints_default()
-        self._potcar = potcar if potcar else DefaultInputs(self.structure).get_potcar()
-        self._job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
-        self._name = name if name else None
-        
-    @property
-    def structure(self):
-        return self._structure
-    
-    @property
-    def incar_settings(self):
-        ''''getter method'''
-        return self._incar_settings 
-    
-    @incar_settings.setter
-    def incar_settings(self,settings):
-        '''setter method'''
-        self._incar_settings = settings
-    
-    @property
-    def kpoints(self):
-        return self._kpoints
-    
-    @kpoints.setter
-    def kpoints(self,kpoints):
-        self._kpoints = kpoints
-        
-    @property
-    def potcar(self):
-        return self._potcar
-    
-    @potcar.setter
-    def potcar(self,potcar):
-        self._potcar = potcar
-    
-    @property
-    def job_settings(self):
-        return self._job_settings
-    
-    @job_settings.setter
-    def job_settings(self,job_settings):
-        self._job_settings = job_settings
-    
-    @property
-    def name(self):
-        return self._name
-    
-    @name.setter
-    def name(self,name):
-        self._name = name
-    
+        self.structure = structure if structure else None
+        if structure:
+            self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structure).get_incar_default()
+            self.kpoints = kpoints if kpoints else DefaultInputs(self.structure).get_kpoints_default()
+            self.potcar = potcar if potcar else DefaultInputs(self.structure).get_potcar()
+            self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
+            self.name = name if name else None
 
-    def dielectric_properties_electronic(self,scheme_name=None):
+       
+    def dielectric_properties_electronic(self,scheme_name=None,get_steps_only=False):
         """
         Set calculation for electronic contribution to the dielectric constant (and also dielectric function).
         Uses 'LOPTICS' method in VASP.
@@ -101,6 +56,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'eps-el'
         steps = ['eps-electronic']
+        if get_steps_only:
+            return steps
 
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()  
@@ -127,7 +84,7 @@ class CalculationSchemes:
         return Scheme(scheme)
         
 
-    def dielectric_properties_ionic_lcalceps(self,scheme_name=None):
+    def dielectric_properties_ionic_lcalceps(self,scheme_name=None,get_steps_only=False):
         """
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LCALCEPS' method in VASP, combined with 'IBRION=6'. Useful for Hybrid calculations where 'LEPSILON' method does not work.
@@ -136,6 +93,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'eps-ion-lcal'
         steps = ['eps-ionic-lcalceps']
+        if get_steps_only:
+            return steps
 
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()  
@@ -161,7 +120,7 @@ class CalculationSchemes:
         return Scheme(scheme)
 
 
-    def dielectric_properties_ionic_lepsilon(self,scheme_name=None):
+    def dielectric_properties_ionic_lepsilon(self,scheme_name=None,get_steps_only=False):
         """
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LEPSILON' method in VASP, combined with 'IBRION=8'. This method does not work with HSE functionals.
@@ -170,6 +129,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'eps-el-leps'
         steps = ['eps-ionic-lepsilon']
+        if get_steps_only:
+            return steps
 
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()  
@@ -195,7 +156,7 @@ class CalculationSchemes:
         return Scheme(scheme)
 
     
-    def hse_rel(self,scheme_name=None):
+    def hse_rel(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for ionic relaxation for HSE. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE \n
@@ -207,6 +168,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'HSE-rel'
         steps = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT']
+        if get_steps_only:
+            return steps
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -260,7 +223,7 @@ class CalculationSchemes:
         return Scheme(scheme)
     
     
-    def hse_rel_gamma(self,scheme_name=None):
+    def hse_rel_gamma(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -276,7 +239,8 @@ class CalculationSchemes:
         scheme_name = scheme_name if scheme_name else'HSE-rel-gamma'
         steps = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-HSE-SCF','7-HSE-OPT']
-    
+        if get_steps_only:
+            return steps
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -366,7 +330,7 @@ class CalculationSchemes:
         return Scheme(scheme)
     
     
-    def hse_rel_gamma_extended(self,scheme_name=None):
+    def hse_rel_gamma_extended(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -382,7 +346,9 @@ class CalculationSchemes:
         scheme_name = scheme_name if scheme_name else'HSE-rel-gamma-ext'
         steps = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-PBE-OPT','7-HSE-SCF','8-HSE-OPT']
-    
+        if get_steps_only:
+            return steps
+        
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -482,7 +448,7 @@ class CalculationSchemes:
         return Scheme(scheme)
                       
 
-    def hse_rel_short(self,scheme_name=None):
+    def hse_rel_short(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for ionic relaxation for HSE (short version i.e. no PBE preliminary calculation). Steps: \n
             '1-PBE-SCF': Electronic SCF with HSE \n
@@ -492,7 +458,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'HSE-rel-short'
         steps = ['1-HSE-SCF','2-HSE-OPT']        
-        
+        if get_steps_only:
+            return steps
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -529,7 +496,7 @@ class CalculationSchemes:
         return Scheme(scheme)  
 
     
-    def hse_vol_rel(self,scheme_name=None):
+    def hse_vol_rel(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for structure relaxations for HSE including cell volume relaxation. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE
@@ -542,6 +509,9 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'HSE-Vrel'
         steps = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT','5-HSE-VOPT']
+        if get_steps_only:
+            return steps
+        
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -655,7 +625,7 @@ class CalculationSchemes:
         return Scheme(scheme)
     
     
-    def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None):
+    def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for electronic structure calculations for PBE (in general non hybrid functionals) Steps: \n
             '1-PBE-SCF': Electronic SC \n
@@ -677,6 +647,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'PBE-el-str'
         steps = ['1-PBE-SCF','2-PBE-DOS','3-PBE-BS']
+        if get_steps_only:
+            return steps
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -726,7 +698,7 @@ class CalculationSchemes:
         return Scheme(scheme)
                  
     
-    def pbe_rel(self,scheme_name=None):
+    def pbe_rel(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for ionic relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SC \n
@@ -741,6 +713,9 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'PBE-rel'
         steps = ['1-PBE-SCF','2-PBE-OPT']
+        if get_steps_only:
+            return steps
+        
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -768,7 +743,7 @@ class CalculationSchemes:
         return Scheme(scheme)
     
     
-    def pbe_vol_rel(self,scheme_name=None):
+    def pbe_vol_rel(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for ionic and cell relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SC \n
@@ -784,6 +759,8 @@ class CalculationSchemes:
         scheme = {}
         scheme_name = scheme_name if scheme_name else 'PBE-Vrel'
         steps = ['1-PBE-SCF','2-PBE-OPT','3-PBE-VOPT']
+        if get_steps_only:
+            return steps
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -835,7 +812,19 @@ class Scheme:
             ( { step_name: (VaspInput object, job_settings dict) } ).
         """
         self.scheme = scheme
+    
+    @property
+    def steps(self):
+        """
+        List with steps in the calculation scheme.
 
+        Returns
+        -------
+        steps : List
+            List of steps.
+        """
+        steps = [s for s in self.scheme]
+        return steps
     
     def get_job_settings(self,step):
         """
@@ -871,22 +860,6 @@ class Scheme:
 
         """
         return self.scheme[step]
-
-    
-    def get_steps(self):
-        """
-        Get list with steps in the calculation scheme.
-
-        Returns
-        -------
-        steps : List
-            List of steps.
-
-        """
-        steps = []
-        for s in self.scheme:
-            steps.append(s)
-        return steps
 
     
     def get_vaspinput(self,step):
