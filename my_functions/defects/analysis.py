@@ -358,8 +358,39 @@ class DefectsAnalysis:
                 if n == name and q == charge:
                     conc_stable.append(c)
         return conc_stable
+
+
+    def defect_concentrations_total(self, chemical_potentials, temperature=300, fermi_level=0.):
+        """
+        Calculate the sum of the defect concentrations in every charge state for every defect specie.
+
+        Parameters
+        ----------
+        chemical_potentials : (Dict)
+            Dictionary of chemical potentials.
+        temperature : (float), optional
+            Temperature. The default is 300.
+        fermi_level : (float), optional
+            Position of the Fermi level. The default is 0 (vbm).
+
+        Returns
+        -------
+        total_concentrations : (Dict)
+            Dictionary with names of the defect species as keys and total concentrations as values.
+
+        """
+        
+        total_concentrations = {}
+        for name in self.names():
+            total_concentrations[name] = 0
+            for d in self.defect_concentrations(chemical_potentials=chemical_potentials,
+                                                temperature=temperature,fermi_level=fermi_level):
+                if d['name'] == name:
+                    total_concentrations[name] += d['conc']
+        
+        return total_concentrations
                     
-   
+            
     def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature = 300):
         """
         Solve for the Fermi energy self-consistently as a function of T
