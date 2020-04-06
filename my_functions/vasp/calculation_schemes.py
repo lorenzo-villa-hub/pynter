@@ -701,7 +701,7 @@ class CalculationSchemes:
     def pbe_rel(self,scheme_name=None,get_steps_only=False):
         """
         Generates calculation scheme for ionic relaxation with PBE functional. Steps: \n
-            '1-PBE-SCF': Electronic SC \n
+            '1-PBE-SCF': Electronic SCF \n
             '2-PBE-OPT': Ionic relaxation with maximum 100 ionic steps (NSW=100), Energy change between electronic steps of 1e-05 (EDIFF=1e-05), \n
                          Force convergence criterion of 0.05 eV/Amstrong (EDIFFG=-0.05).
 
@@ -934,7 +934,7 @@ class Scheme:
             Create directory from given path is not present. The default is True.
         """
         
-        for step in self.get_steps():
+        for step in self.steps:
             complete_path = os.path.join(path, step) if path else step
             vaspinput=self.get_vaspinput(step)
             vaspinput.write_input(complete_path,make_dir_if_not_present=make_dir_if_not_present)
