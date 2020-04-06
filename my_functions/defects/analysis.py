@@ -474,7 +474,9 @@ class DefectsAnalysis:
                 d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']] 
                 for d in self.defect_concentrations(
                     chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
+                    if c_tot_specie[d['name']] > 1e-250 #if smaller then 1e-300 you get division by zero Error
             ])
+            
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
 
             return qd_tot
@@ -525,7 +527,7 @@ class DefectsAnalysis:
     
     def plot(self,mu_elts=None,xlim=None, ylim=None, title=None, fermi_level=None, 
              plotsize=1, fontsize=1.2, show_legend=True, format_legend=False, 
-             get_subplot=False, subplot_settings=None):
+             order_legend=False, get_subplot=False, subplot_settings=None):
         """
         Produce defect Formation energy vs Fermi energy plot
         Args:
@@ -548,6 +550,8 @@ class DefectsAnalysis:
                 Bool for showing legend
             format_legend:
                 Bool for getting latex-like legend based on the name of defect entries
+            order_legend:
+                Bool for ordering legend by alphabetical order of names
             get_subplot:
                 Bool for getting subplot
             subplot_settings:
@@ -562,6 +566,9 @@ class DefectsAnalysis:
         # a list of tuples (charge,formation_energy) as values
         # Every defect name identifies a type of defect
         computed_charges = self.formation_energies(mu_elts,fermi_level=0)
+        # sort by alphabetical order of name for the plot
+        if order_legend:
+            computed_charges = {k: v for k, v in sorted(computed_charges.items(), key=lambda item: item[0])}
                 
         if xlim == None:
             xlim = (-0.5,self.band_gap+0.5)

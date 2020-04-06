@@ -426,7 +426,7 @@ class PDPlotterAdder:
         self.chempots_analysis = chempots_analysis if chempots_analysis else None
         self.size = size
     
-    def add_points(self,points,size=1,color='',edgecolor='k',linewidths=3,**kwargs):
+    def add_points(self,points,size=1,label_size=1,color='',edgecolor='k',linewidths=3,**kwargs):
         """
         Add points to plot.
 
@@ -434,11 +434,13 @@ class PDPlotterAdder:
         ----------
         points : (dict)
             Dictionary with points labels as keys and tuples with coordinates as values.
+        size : (float)
+            Float multiplier for points size. Default is 1, which would yield a default size of 450*self.size
+        label_size : (float)
+            Float multiplier for labels size. Default is 1, which would yield a default size of 30*self.size
         color : Color of filling of points
         edgecolor : Color of point edge
         linewidths : line width of point edge
-        size : (float)
-            Float multiplier for points size. Default is 1, which would yield a default size of 450*self.size
         kwargs: kwargs to pass to matplotlib
 
         Returns
@@ -447,7 +449,7 @@ class PDPlotterAdder:
         """
         for p in points:
             plt.scatter(points[p][0],points[p][1], color=color, edgecolor=edgecolor, linewidths=linewidths, s=450*self.size*size,**kwargs)
-            plt.text(points[p][0]+0.1,points[p][1],p,size=30*self.size)
+            plt.text(points[p][0]+(0.1/self.size*label_size),points[p][1],p,size=30*self.size*label_size)
         return plt
     
     
