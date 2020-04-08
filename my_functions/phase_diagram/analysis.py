@@ -3,12 +3,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
-from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram
+from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 
 
 class Chempots:
     
     def __init__(self,chempots):
+        """
+        Class to handle dictionaries of chemical potentials
+
+        Parameters
+        ----------
+        chempots : (dict)
+            Dictionary in the format {Element('el'):chempot_value}.
+        """
         self.chempots = chempots
 
         
@@ -278,6 +286,15 @@ class ChempotAnalysis:
 class PDHandler:
     
     def __init__(self,computed_phases):
+        """
+        Class to generate and handle Pymatgen phase diagram more easily, starting from a dictionary with
+        formulas as keys and energies per unit formula as values
+
+        Parameters
+        ----------
+        computed_phases : (dict)
+            dictionary with formulas as keys and energies per unit formula as values.
+        """
         self._computed_phases = {Composition(phase):computed_phases[phase] for phase in computed_phases}
 
         
@@ -362,6 +379,27 @@ class PDHandler:
         return pd.get_form_energy(entry)
 
 
+    def get_stability_diagram(self,elements):
+        """
+        Method to get stability diagram with 'get_chempot_range_map_plot' method in pymatgen
+
+        Parameters
+        ----------
+        elements : (list)
+            List with strings of the elements to be used as free variables.
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object
+        """
+        pd = self.phase_diagram()
+        elements = [Element(el) for el in elements]
+        PDPlotter(pd).get_chempot_range_map_plot(elements)
+        
+        return plt
+
+
     def get_stable_entry_from_comp(self,comp):
         """
         Get the PDEntry of the stable entry of a target composition
@@ -425,6 +463,8 @@ class PDPlotterAdder:
         """
         self.chempots_analysis = chempots_analysis if chempots_analysis else None
         self.size = size
+        
+        self.computed_phases = self.chempots_analysis.computed_phases if chempots_analysis else None
     
     def add_points(self,points,size=1,label_size=1,color='',edgecolor='k',linewidths=3,**kwargs):
         """
@@ -480,7 +520,50 @@ class PDPlotterAdder:
                  linewidth= 4.5*self.size , **kwargs)
         return plt
     
-    
+
+    def add_heatmap(self,comp,elements,color_label='',**kwargs):
+        """
+        Add heatmap that shows the value of the last chemical potential based on the values of the other two "free" 
+        chemical potentials and the composition of interest
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+            Composition of interest to compute the chemical potential.
+        elements : (list)
+            List of strings with elements with free chemical potentials. These will be converted in Element objects
+        color_label : (string), optional
+            String with label of the colormap. The default is ''.
+        **kwargs : (dict)
+            kwargs for "pcolormesh" function.
+
+        Returns
+        -------
+        Matplotlib object
+        """
+        
+        el1,el2 = elements  
+        
+        def f(mu1,mu2):            
+            return self.chempots_analysis.calculate_single_chempot(comp,{Element(el1):mu1,Element(el2):mu2})
+        
+        axes = plt.gca()
+        xlim , ylim = axes.get_xlim() , axes.get_ylim()
+        npoints = 100
+        x = np.arange(xlim[0],xlim[1]+0.1,abs(xlim[1]+0.1-xlim[0])/npoints)
+        y = np.arange(ylim[0],ylim[1]+0.1,abs(ylim[1]+0.1-ylim[0])/npoints)
+                        
+        X,Y = np.meshgrid(x,y)
+        Z = f(X,Y)
+        plt.pcolormesh(X,Y,Z,vmax=0,**kwargs)
+
+        cbar = plt.colorbar()
+        cbar.ax.tick_params(labelsize='xx-large')
+        cbar.ax.set_ylabel(color_label,fontsize='xx-large')
+        
+        return plt
+        
+            
     def constant_chempot_line(self, mu, comp, variable_element, fixed_chempots):
         """
         Function that expresses line of constant chemical potential of a given composition. Only works for 3-component PD.
@@ -502,6 +585,5 @@ class PDPlotterAdder:
         fixed_chempots[variable_element] = mu
         return self.chempots_analysis.calculate_single_chempot(comp,fixed_chempots)
     
-
 
     
