@@ -552,14 +552,17 @@ class PDPlotterAdder:
         xlim , ylim = axes.get_xlim() , axes.get_ylim()
         npoints = 100
         x = np.arange(xlim[0],xlim[1]+0.1,abs(xlim[1]+0.1-xlim[0])/npoints)
-        y = np.arange(ylim[0],ylim[1]+0.1,abs(ylim[1]+0.1-ylim[0])/npoints)
-                        
+        y = np.arange(ylim[0],ylim[1]+0.1,abs(ylim[1]+0.1-ylim[0])/npoints)   
+        
         X,Y = np.meshgrid(x,y)
         Z = f(X,Y)
+
         plt.pcolormesh(X,Y,Z,vmax=0,**kwargs)
 
         cbar = plt.colorbar()
         cbar.ax.tick_params(labelsize='xx-large')
+        cbar.set_ticks([]) # comment if you want ticks
+        cbar.ax.set_yticklabels('') # comment if you want tick labels
         cbar.ax.set_ylabel(color_label,fontsize='xx-large')
         
         return plt
