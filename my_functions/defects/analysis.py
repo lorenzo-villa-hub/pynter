@@ -714,13 +714,13 @@ class DefectsAnalysis:
     
     
     
-    def plot_ctl(self, ylim=None, size=1, format_legend=True):
+    def plot_ctl(self, ylim=None, size=1, fermi_level=None, format_legend=True):
         """
         Plotter for the charge transition levels
         Args:
-            mu_elts (dict) : a dictionnary of {Element:value} giving the chemical
-                potential of each element
-            size (Float) : Float multiplier for plot size
+            ylim (Tuple): y-axis limits
+            fermi_level (float) : float to plot Fermi energy position
+            size (float) : Float multiplier for plot size
             format_legend (bool): Bool for getting latex-like legend based on the name of defect entries 
                 
         """
@@ -793,6 +793,9 @@ class DefectsAnalysis:
             
                 x_ticks_labels[x_ticks_labels.index(name)] = base + sub_str
         
+        
+        if fermi_level:
+            plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
         
         plt.text(x[-1]+interval/8,-0.3,'VB',fontsize=25*size)
         plt.text(x[-1]+interval/8,self.band_gap+0.2,'CB',fontsize=25*size)
