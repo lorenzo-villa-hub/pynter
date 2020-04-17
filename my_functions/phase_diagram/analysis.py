@@ -234,12 +234,12 @@ class ChempotAnalysis:
         return chempots_boundary
                   
     
-    def get_composition_boundaries(self,comp,fixed_chempot):
+    def get_composition_boundaries(self,comp,fixed_chempot_delta):
         """
         Get compositions of phases in boundary of stability with a target composition given a fixed chemical potential 
         on one component. Currently only works for 3-component PD (to check). 
-        Used Pymatgen GrandPotentialPhaseDiagram class. Careful that the fixed chemical potential has to be the global value,
-        not the referenced (mu = mu_ref + delta_mu)
+        Used Pymatgen GrandPotentialPhaseDiagram class. The fixed chemical potential is the referenced value that is
+        converted in the global value for the analysis with the GrandPotentialPhaseDiagram class.
 
         Parameters
         ----------
@@ -247,13 +247,15 @@ class ChempotAnalysis:
             Target composition for which you want to get the bounday phases.
         fixed_chempot : (Dict)
             Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}).
-            The chemical potential here is the global value. 
+            The chemical potential is the referenced value
 
         Returns
         -------
         comp1,comp2 : (Pymatgen Composition object)
             Compositions of the boundary phases given a fixed chemical potential for one element.
         """
+        
+        fixed_chempot = self.get_chempots_abs(fixed_chempot_delta)
         
         entries = PDHandler(self.computed_phases).pd_entries()
         gpd = GrandPotentialPhaseDiagram(entries, fixed_chempot)
