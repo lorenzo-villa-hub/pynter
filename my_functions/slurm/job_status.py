@@ -47,11 +47,8 @@ def job_status(path=None,job_script_filename='job_vasp.sh'):
         if count > 1:
             print(f'\nWARNING: More than one job named "{job_name}" are simultaneously running\n')
         
-        if status_string:    
-            print(f'Job "{job_name}" status is: {status_string}')
-        else:
+        if not status_string:    
             status_string = 'NOT IN QUEUE'
-            print(f'no job named "{job_name}" has been found in queue')
 
     os.remove('job_list.txt') 
 	        

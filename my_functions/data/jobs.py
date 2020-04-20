@@ -24,9 +24,10 @@ class Job:
 
      
 class VaspJob(Job):
-       
+ 
+      
     @staticmethod
-    def from_directory(path):
+    def from_directory(path,job_script_filename='job.sh'):
                 
         inputs = VaspInput.from_directory(path)
         outputs = {}
@@ -37,13 +38,16 @@ class VaspJob(Job):
                 print('Warning: Reading of vasprun.xml in "%s" failed'%path)
                 outputs['vasprun'] = None
         
-        job_settings = None # here use from_file for job settings (still to write)
+        s = ScriptHandler.from_file(path,filename=job_script_filename)
+        job_settings =  s.settings
         
         return VaspJob(path,inputs,job_settings,outputs)
+
     
     @property
     def formula(self):
         return self.initial_structure.composition.formula
+
         
     @property
     def initial_structure(self):
@@ -94,7 +98,7 @@ class VaspJob(Job):
         else:
             final_structure = None
         return final_structure
-                
+                    
     
     def status(self):
         return job_status(path=self.path,job_script_filename=self.job_script_filename)
