@@ -52,16 +52,18 @@ class VaspJob(Job):
     
     @property
     def is_converged(self):
-        vasprun = self.outputs['vasprun']
-        conv_el, conv_ionic = False, False
-        if vasprun:
-            conv_el = vasprun.converged_electronic
-            conv_ionic = vasprun.converged_ionic
-        if conv_el and conv_ionic:
-            return True
+        if self.outputs['vasprun']:
+            vasprun = self.outputs['vasprun']
+            conv_el, conv_ionic = False, False
+            if vasprun:
+                conv_el = vasprun.converged_electronic
+                conv_ionic = vasprun.converged_ionic
+            if conv_el and conv_ionic:
+                return True
+            else:
+                return False
         else:
             return False
-    
     
     def charge(self):
         nelect = self.inputs['INCAR']['NELECT']

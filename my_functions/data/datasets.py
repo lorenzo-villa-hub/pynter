@@ -10,7 +10,7 @@ class Dataset:
     def __init__(self,path=None,name=None,jobs=None): 
         
         self.path = path if path else os.getcwd()
-        self.name = name if name else op.basename(self.path)
+        self.name = name if name else op.basename(op.abspath(self.path))
         self.jobs = jobs
         self.groupped_jobs = self.group_jobs()
 
