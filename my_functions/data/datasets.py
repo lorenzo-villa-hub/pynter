@@ -1,8 +1,9 @@
 
 import os
 import os.path as op
-from pymatgen.io.vasp.inputs import VaspInput, Poscar
-from pymatgen.io.vasp.outputs import Vasprun
+from my_functions.data.jobs import VaspJob
+import pandas as pd
+
 
 class Dataset:
     
@@ -11,6 +12,7 @@ class Dataset:
         self.path = path if path else os.getcwd()
         self.name = name if name else op.basename(self.path)
         self.jobs = jobs
+        self.groupped_jobs = self.group_jobs()
 
     @staticmethod
     def from_directory(path,job_script_filename='job_vasp.sh'): #to change job script filename in 'job.sh'
@@ -26,55 +28,48 @@ class Dataset:
     def groups(self):
         return next(os.walk(self.path))[1]
     
-
-                
-class Job:
+    def group_jobs(self):
+        gjobs = {}
+        groups = self.groups
+        for group in groups:
+            gjobs[group] = {}
+            group_path = op.join(self.path,group)
+            for job in self.jobs:
+                if group in job.path:
+                    node = job.path.replace(op.commonpath([group_path,job.path]),'')
+                    gjobs[group][node] = job
+                    job.group = group
+                    job.node = node                    
+        return gjobs
     
-    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None):
+    
+    def jobs_table(self,properties_to_display=[]):
         
-        self.path = path if path else os.getcwd()
-        self.inputs = inputs
-        self.job_settings = job_settings
-        self.outputs = outputs
-
-
-class VaspJob(Job):
-       
-    @staticmethod
-    def from_directory(path):
-                
-        inputs = VaspInput.from_directory(path)
-        outputs = {}
-        if op.isfile(op.join(path,'vasprun.xml')):
-            try:
-                outputs['vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
-            except:
-                print('Warning: Reading of vasprun.xml in "%s" failed'%path)
-                outputs['vasprun'] = None
-        
-        job_settings = None # here use from_file for job settings (still to write)
-        
-        return VaspJob(path,inputs,job_settings,outputs)
+        table = []
+        index = []
+        for j in self.jobs:
+            d = {}
+            index.append(j.name)
+            d['formula'] = j.formula
+            d['group'] = j.group
+            d['node'] = j.node
+            d['final_energy'] = j.final_energy()
+            for feature in properties_to_display:
+                d[feature] = getattr(j,feature) ()
+            table.append(d)
             
-    @property
-    def final_energy(self):
-        if self.outputs['vasprun']:
-            final_energy = self.outputs['vasprun'].final_energy
-        else:
-            final_energy = None
-        return final_energy
-     
-    @property 
-    def initial_structure(self):
-        return Poscar.from_file(op.join(self.path,'POSCAR')).structure
-    
-    @property
-    def final_structure(self):
-        if self.outputs['vasprun']:
-            final_structure = self.outputs['vasprun'].structures[-1]
-        else:
-            final_structure = None
-        return final_structure
+        df = pd.DataFrame(table,index=index)
+        
+        return df
+            
+            
+            
+
+            
+                
+        
+                
+
             
         
         

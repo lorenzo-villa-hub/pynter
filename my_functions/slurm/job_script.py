@@ -48,7 +48,7 @@ class ScriptHandler:
                     'add_automation':'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
                     'add_lines_header':None,
                     'add_lines_body':None,
-                    'filename':'job_vasp.sh'
+                    'filename':'job.sh'
                      }
         
         for key,value in default_settings.items():
@@ -65,7 +65,7 @@ class ScriptHandler:
     def settings(self):
         return self.__dict__
     
-    
+    # write here staticmethod from_file
     def args(self):
         """
         Add and parse arguments from command line
@@ -90,7 +90,7 @@ class ScriptHandler:
         parser.add_argument('-S','--automation',help='Script with automation to add',required=False,default=self.add_automation,type=str,metavar='',dest='add_automation')
         parser.add_argument('-H','--header',action='append',help='Add line to header part of script',required=False,default=self.add_lines_header,type=str,metavar='',dest='add_lines_header')
         parser.add_argument('-B','--body',action='append',help='Add line to body part of script',required=False,default=self.add_lines_body,type=str,metavar='',dest='add_lines_body')
-        parser.add_argument('-f','--filename',help='File name, default is "job_vasp.sh"',required=False,default=self.filename,type=str,metavar='',dest='filename')
+        parser.add_argument('-f','--filename',help='File name, default is "job.sh"',required=False,default=self.filename,type=str,metavar='',dest='filename')
         
         args = parser.parse_args()
         
