@@ -3,20 +3,24 @@ import os
 import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
+from my_functions.slurm.job_script import ScriptHandler
+from my_functions.slurm.job_status import job_status
 
 
 class Job:
     
-    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None):
+    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename='job.sh'):
         
         self.path = path if path else os.getcwd()
         self.inputs = inputs
         self.job_settings = job_settings
         self.outputs = outputs
+        self.job_script_filename = job_script_filename
 
     @property 
-    def name(self): # here use from_file method of ScriptHandler in job_script module
-         return 'test' # temporary name to test 
+    def name(self): 
+        s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
+        return s.settings['name'] 
 
      
 class VaspJob(Job):
@@ -46,6 +50,19 @@ class VaspJob(Job):
         return Poscar.from_file(op.join(self.path,'POSCAR')).structure
     
     
+    @property
+    def is_converged(self):
+        vasprun = self.outputs['vasprun']
+        conv_el, conv_ionic = False, False
+        if vasprun:
+            conv_el = vasprun.converged_electronic
+            conv_ionic = vasprun.converged_ionic
+        if conv_el and conv_ionic:
+            return True
+        else:
+            return False
+    
+    
     def charge(self):
         nelect = self.inputs['INCAR']['NELECT']
         val = {}
@@ -70,7 +87,7 @@ class VaspJob(Job):
         else:
             final_structure = None
         return final_structure
+                
     
-
-        
-    
+    def status(self):
+        return job_status(path=self.path,job_script_filename=self.job_script_filename)

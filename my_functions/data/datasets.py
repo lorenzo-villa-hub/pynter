@@ -15,12 +15,14 @@ class Dataset:
         self.groupped_jobs = self.group_jobs()
 
     @staticmethod
-    def from_directory(path,job_script_filename='job_vasp.sh'): #to change job script filename in 'job.sh'
+    def from_directory(path,job_script_filename='job.sh'): #to change job script filename in 'job.sh'
         jobs = []
         for root , dirs, files in os.walk(path):
             if files != [] and job_script_filename in files:
                 if ('INCAR' and 'KPOINTS' and 'POSCAR' and 'POTCAR') in files:
-                    jobs.append(VaspJob.from_directory(root))
+                    j = VaspJob.from_directory(root)
+                    j.job_script_filename = job_script_filename
+                    jobs.append(j)
      
         return  Dataset(path=path,jobs=jobs)
         
@@ -36,10 +38,10 @@ class Dataset:
             group_path = op.join(self.path,group)
             for job in self.jobs:
                 if group in job.path:
-                    node = job.path.replace(op.commonpath([group_path,job.path]),'')
-                    gjobs[group][node] = job
+                    nodes = job.path.replace(op.commonpath([group_path,job.path]),'')
+                    gjobs[group][nodes] = job
                     job.group = group
-                    job.node = node                    
+                    job.nodes = nodes                    
         return gjobs
     
     
@@ -52,8 +54,8 @@ class Dataset:
             index.append(j.name)
             d['formula'] = j.formula
             d['group'] = j.group
-            d['node'] = j.node
-            d['final_energy'] = j.final_energy()
+            d['nodes'] = j.nodes
+            d['is_converged'] = j.is_converged
             for feature in properties_to_display:
                 d[feature] = getattr(j,feature) ()
             table.append(d)

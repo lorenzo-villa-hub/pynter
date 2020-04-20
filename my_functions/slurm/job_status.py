@@ -6,15 +6,18 @@ Created on Tue Jan 14 12:56:45 2020
 @author: villa
 """
 
-def job_status(job_script_filename='job_vasp.sh'):
+def job_status(path=None,job_script_filename='job_vasp.sh'):
     
     import os
     import re
-
+    
+    if path == None:
+        path = os.getcwd()
     os.system('squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R" > job_list.txt')
 
-    if os.path.isfile(job_script_filename):
-        job_vasp = open(job_script_filename)
+    file = os.path.join(path,job_script_filename)
+    if os.path.isfile(file):
+        job_vasp = open(file)
        
     for line in job_vasp:
         # emulating 'grep' command
@@ -47,6 +50,7 @@ def job_status(job_script_filename='job_vasp.sh'):
         if status_string:    
             print(f'Job "{job_name}" status is: {status_string}')
         else:
+            status_string = 'NOT IN QUEUE'
             print(f'no job named "{job_name}" has been found in queue')
 
     os.remove('job_list.txt') 
