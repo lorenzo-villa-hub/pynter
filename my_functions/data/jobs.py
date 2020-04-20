@@ -52,34 +52,38 @@ class VaspJob(Job):
     
     @property
     def is_converged(self):
-        if self.outputs['vasprun']:
-            vasprun = self.outputs['vasprun']
-            conv_el, conv_ionic = False, False
-            if vasprun:
-                conv_el = vasprun.converged_electronic
-                conv_ionic = vasprun.converged_ionic
-            if conv_el and conv_ionic:
-                return True
-            else:
-                return False
-        else:
-            return False
+        is_converged = None
+        if 'vasprun' in self.outputs.keys():
+            is_converged = False
+            if self.outputs['vasprun']:
+                vasprun = self.outputs['vasprun']
+                conv_el, conv_ionic = False, False
+                if vasprun:
+                    conv_el = vasprun.converged_electronic
+                    conv_ionic = vasprun.converged_ionic
+                if conv_el and conv_ionic:
+                    is_converged = True
+                    
+        return is_converged
     
     def charge(self):
-        nelect = self.inputs['INCAR']['NELECT']
-        val = {}
-        for p in self.inputs['POTCAR']:
-            val[p.element] = p.nelectrons
-        neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
-                       for el in self.initial_structure.composition])
-        return neutral - nelect
+        charge = 0
+        if 'NELECT' in self.inputs['INCAR'].keys():
+            nelect = self.inputs['INCAR']['NELECT']
+            val = {}
+            for p in self.inputs['POTCAR']:
+                val[p.element] = p.nelectrons
+            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+            charge = neutral - nelect
+        return charge
     
       
     def final_energy(self):
-        if self.outputs['vasprun']:
-            final_energy = self.outputs['vasprun'].final_energy
-        else:
-            final_energy = None
+        final_energy = None
+        if 'vasprun' in self.outputs.keys():
+            if self.outputs['vasprun']:
+                final_energy = self.outputs['vasprun'].final_energy
         return final_energy
      
             
