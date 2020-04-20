@@ -47,22 +47,29 @@ class Dataset:
         return gjobs
     
     
-    def jobs_table(self,properties_to_display=[]):
+    def jobs_table(self,jobs=[],properties_to_display=[],common_node=None):
         
+        jobs = jobs if jobs else self.jobs
         table = []
         index = []
-        for j in self.jobs:
+        for j in jobs:
             d = {}
-            index.append(j.name)
             d['formula'] = j.formula
             d['group'] = j.group
             d['nodes'] = j.nodes
             d['is_converged'] = j.is_converged
             for feature in properties_to_display:
                 d[feature] = getattr(j,feature) ()
-            table.append(d)
+            if common_node:
+                if common_node in j.nodes:
+                    table.append(d)
+                    index.append(j.name)
+            else:
+                table.append(d)
+                index.append(j.name)
             
         df = pd.DataFrame(table,index=index)
+        df.index.name = 'job_name'
         
         return df
             
