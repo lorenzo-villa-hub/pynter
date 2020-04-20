@@ -31,14 +31,16 @@ class Dataset:
         return next(os.walk(self.path))[1]
     
     def group_jobs(self):
+        path = op.abspath(self.path)
         gjobs = {}
         groups = self.groups
         for group in groups:
             gjobs[group] = {}
-            group_path = op.join(self.path,group)
+            group_path = op.join(path,group)
             for job in self.jobs:
                 if group in job.path:
-                    nodes = job.path.replace(op.commonpath([group_path,job.path]),'')
+                    jpath = op.abspath(job.path)
+                    nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
                     gjobs[group][nodes] = job
                     job.group = group
                     job.nodes = nodes                    

@@ -66,6 +66,7 @@ class VaspJob(Job):
                     
         return is_converged
     
+    
     def charge(self):
         charge = 0
         if 'NELECT' in self.inputs['INCAR'].keys():
