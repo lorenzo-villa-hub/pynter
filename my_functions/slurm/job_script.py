@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 import os
+import os.path as op
 import argparse as ap
+from my_functions.tools.grep import grep
 
 class ScriptHandler:
     
@@ -48,7 +50,7 @@ class ScriptHandler:
                     'add_automation':'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
                     'add_lines_header':None,
                     'add_lines_body':None,
-                    'filename':'job_vasp.sh'
+                    'filename':'job.sh'
                      }
         
         for key,value in default_settings.items():
@@ -65,7 +67,115 @@ class ScriptHandler:
     def settings(self):
         return self.__dict__
     
+    @staticmethod
+    def from_file(path,filename='job.sh'):
+        
+        d = {}
+        file = op.join(path,filename)
+        
+        string = '#SBATCH -A project'
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['project_id'] = line.replace(string,'').replace('\n','')
+        
+        string = '#SBATCH --job-name='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['name'] = line.replace(string,'').replace('\n','')
+        
+        string = '#SBATCH --array=1-'
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['array_size'] = int(line.replace(string,'').replace('%%1\n',''))
+        
+        string = '#SBATCH --mail-user='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['email'] = line.replace(string,'').replace('\n','')
+        
+        string = '#SBATCH --nodes='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['nodes'] = int(line.replace(string,'').replace('\n',''))
+        
+        string = '#SBATCH --ntasks-per-node='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['cores_per_node'] = int(line.replace(string,'').replace('\n',''))
+        
+        string = '#SBATCH --output='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['output_filename'] = line.replace(string,'').replace('\n','')
+        
+        string = '#SBATCH --error='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['error_filename'] = line.replace(string,'').replace('\n','')
+        
+        string = '#SBATCH --time='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['timelimit'] = line.replace(string,'').replace('\n','')
+        
+        string = '#SBATCH --mem-per-cpu='
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['memory_per_cpu'] = int(line.replace(string,'').replace('\n',''))
+            
+        string = '#SBATCH -C '
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['processor'] = line.replace(string,'').replace('\n','')
+            
+        string = 'ml '
+        lines = grep(string,file)
+        if lines:
+            d['modules'] = []
+            for line in lines:
+                if list(line[-1])[0] != '#':
+                    d['modules'].append(line.replace(string,'').replace(' \n',''))
+                
+        string = 'srun '
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            if list(line)[0] != '#':
+                d['path_exe'] = line.replace(string,'').replace('\n','')
+        
+        string = "if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then"
+        line = grep(string,file)
+        if line:
+            if list(line)[0] != '#':
+                d['add_stop_array'] = True
+            
+        string = 'automation'
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            if list(line)[0] != '#':
+                d['add_automation'] = line.replace('\n','')
+            else:
+                d['add_automation'] = None
+            
+        d['filename'] = filename
+        
+        return ScriptHandler(**d)
+        
     
+    
+    # write here staticmethod from_file
     def args(self):
         """
         Add and parse arguments from command line
@@ -90,7 +200,7 @@ class ScriptHandler:
         parser.add_argument('-S','--automation',help='Script with automation to add',required=False,default=self.add_automation,type=str,metavar='',dest='add_automation')
         parser.add_argument('-H','--header',action='append',help='Add line to header part of script',required=False,default=self.add_lines_header,type=str,metavar='',dest='add_lines_header')
         parser.add_argument('-B','--body',action='append',help='Add line to body part of script',required=False,default=self.add_lines_body,type=str,metavar='',dest='add_lines_body')
-        parser.add_argument('-f','--filename',help='File name, default is "job_vasp.sh"',required=False,default=self.filename,type=str,metavar='',dest='filename')
+        parser.add_argument('-f','--filename',help='File name, default is "job.sh"',required=False,default=self.filename,type=str,metavar='',dest='filename')
         
         args = parser.parse_args()
         
