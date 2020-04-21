@@ -17,7 +17,10 @@ hostname = config['hostname']
 workdir = config['workdir']
 localdir = config['localdir']
 
-wdir = '/nfshome/villa/.sync_hpc'
+homedir = os.getenv("HOME")
+wdir = os.path.join(homedir,'.sync_hpc')
+if not os.path.exists():
+    os.makedirs(wdir)
 os.chdir(wdir)
 
 command = f"rsync -r -uavzh -e ssh {hostname}:{workdir}/*  {localdir}"
