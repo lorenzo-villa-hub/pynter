@@ -32,11 +32,6 @@ def job(command):
 	stdout = proc.stdout
 	stderr = proc.stderr 
 
-	files = glob('*.log')
-	files.sort(key=os.path.getmtime)
-	if len(files) > 2000:
-		os.remove(files[-1])
-
 	ctime = datetime.now().ctime().split()
 	ctime.pop(0)
 	ctime = ctime[-1:] + ctime[:-1]
