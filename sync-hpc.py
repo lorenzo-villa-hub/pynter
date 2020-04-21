@@ -19,7 +19,7 @@ localdir = config['localdir']
 
 homedir = os.getenv("HOME")
 wdir = os.path.join(homedir,'.sync_hpc')
-if not os.path.exists():
+if not os.path.exists(wdir):
     os.makedirs(wdir)
 os.chdir(wdir)
 
@@ -34,7 +34,7 @@ def job(command):
 
 	files = glob('*.log')
 	files.sort(key=os.path.getmtime)
-	if len(files) > 200:
+	if len(files) > 2000:
 		os.remove(files[-1])
 
 	ctime = datetime.now().ctime().split()
