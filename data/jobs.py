@@ -3,8 +3,8 @@ import os
 import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
-from my_functions.slurm.job_script import ScriptHandler
-from my_functions.slurm.job_status import job_status
+from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_status import job_status
 
 
 class Job:

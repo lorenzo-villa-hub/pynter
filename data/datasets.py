@@ -1,7 +1,7 @@
 
 import os
 import os.path as op
-from my_functions.data.jobs import VaspJob
+from pynter.data.jobs import VaspJob
 import pandas as pd
 
 

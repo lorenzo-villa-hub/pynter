@@ -8,7 +8,7 @@ Created on Tue Mar  3 19:25:00 2020
 import os
 from glob import glob
 from shutil import copyfile
-from my_functions.automations.core import CommandHandler, VaspAutomation
+from pynter.automations.core import CommandHandler, VaspAutomation
 
 class VaspSchemes:
     

@@ -10,8 +10,8 @@ from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints, Potcar
-from my_functions.vasp.default_inputs import DefaultInputs
-from my_functions.slurm.job_script import ScriptHandler
+from pynter.vasp.default_inputs import DefaultInputs
+from pynter.slurm.job_script import ScriptHandler
 
 class CalculationSchemes:
     """

@@ -3,7 +3,7 @@
 import os
 import os.path as op
 import argparse as ap
-from my_functions.tools.grep import grep
+from pynter.tools.grep import grep
 
 class ScriptHandler:
     
