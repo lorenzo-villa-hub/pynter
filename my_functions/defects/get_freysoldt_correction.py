@@ -32,9 +32,9 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
     from pymatgen.core.sites import PeriodicSite
     from pymatgen.io.vasp.inputs import Poscar
     from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData
-    from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial
+    from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, Substitution
     from pymatgen.analysis.defects.corrections import FreysoldtCorrection
-    from pymatgen.analysis.defects.generators import SubstitutionGenerator
+
 
     # acquiring data from LOCPOT files
     
@@ -67,7 +67,9 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
         defect = Vacancy(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
     if defect_type == 'interstitial':
         defect = Interstitial(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
-    
+    if defect_type == 'substitution':
+        defect = Substitution(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
+        
     defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
     
     freysoldt_class = FreysoldtCorrection(dielectric_constant,energy_cutoff=energy_cutoff)
