@@ -1,4 +1,4 @@
-# python-functions
+# pynter
 Set of useful python classes and functions. Uses pymatgen package (https://pymatgen.org).
 Includes:
   - Tools to create VASP calculation schemes and job automations
