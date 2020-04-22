@@ -1,0 +1,4 @@
+HPC:
+  hostname: lv51dypu@lcluster7.hrz.tu-darmstadt.de
+  localdir: /home/lorenzo/tests/project-test
+  workdir: /work/scratch/lv51dypu

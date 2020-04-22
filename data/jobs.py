@@ -22,6 +22,9 @@ class Job:
         s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
         return s.settings['name'] 
 
+    def status(self):
+        return job_status(path=self.path,job_script_filename=self.job_script_filename)
+
      
 class VaspJob(Job):
  
@@ -99,6 +102,3 @@ class VaspJob(Job):
             final_structure = None
         return final_structure
                     
-    
-    def status(self):
-        return job_status(path=self.path,job_script_filename=self.job_script_filename)
