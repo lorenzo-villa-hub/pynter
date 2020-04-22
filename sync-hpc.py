@@ -6,16 +6,13 @@ from glob import glob
 from datetime import datetime
 import subprocess
 import schedule
+from pynter.__init__ import load_config
 
-config = {
-	'hostname': 'lichtenberg',
-	'workdir': '/work/scratch/lv51dypu',
-	'localdir': '/nfshome/villa/local-data'
-	}
 
-hostname = config['hostname']
-workdir = config['workdir']
-localdir = config['localdir']
+config = load_config()
+hostname = config['HPC']['hostname']
+workdir = config['HPC']['workdir']
+localdir = config['HPC']['localdir']
 
 homedir = os.getenv("HOME")
 wdir = os.path.join(homedir,'.sync_hpc')
@@ -50,8 +47,8 @@ schedule.every(15).minutes.do(job,command)
 
 while True:
 
-	schedule.run_pending()
-	time.sleep(10)
+ 	schedule.run_pending()
+ 	time.sleep(10)
 
 
 

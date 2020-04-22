@@ -1,0 +1,4 @@
+HPC:
+  hostname: lichtenberg
+  localdir: /nfshome/villa/local-data
+  workdir: /work/scratch/lv51dypu
