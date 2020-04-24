@@ -25,6 +25,16 @@ def grep(search_string,file):
                 lines.append(line)
         return lines
          
+
+def grep_list(search_string,target_list):
+    
+    lines=[]
+    for l in target_list:
+        if search_string in l:
+            lines.append(l)
+            
+    return lines
+
             
 if __name__ == '__main__':
     

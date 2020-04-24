@@ -2,7 +2,9 @@
 import subprocess
 import os
 import os.path as op
+from glob import glob
 from pynter.__init__ import load_config, run_local
+
 
 class HPCInterface:
     
@@ -23,7 +25,7 @@ class HPCInterface:
         stdout,stderr = self.command(cmd)
 
             
-    def command(self,cmd):   
+    def command(self,cmd,printout=True):   
         
         cmd_split = cmd.split()
         arg = ''
@@ -31,15 +33,15 @@ class HPCInterface:
             arg += '"%s" ' %c
             
         command = 'sshpass ssh %s %s' %(self.hostname, arg)
-        
-        print(f'{self.hostname}: {cmd} \n')
-        stdout,stderr = run_local(command)
+        if printout:
+            print(f'{self.hostname}: {cmd} \n')
+        stdout,stderr = run_local(command,printout)
         return stdout,stderr
                 
     
-    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"'):
+    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True):
         
-        stdout,stderr = self.command(cmd)
+        stdout,stderr = self.command(cmd,printout)
         return stdout, stderr
     
 
@@ -58,10 +60,13 @@ class HPCInterface:
         
         localdir = localdir if localdir else self.localdir
         remotedir = remotedir if remotedir else self.workdir
-           
-        cmd = f"rsync -r -uavzh -e ssh  {localdir} {self.hostname}:{remotedir} "
         
-        stdout,stderr = run_local(cmd)
+        list_dir = glob(op.abspath(localdir)+'/*')
+        for dir in list_dir:
+         #   dirname = op.basename(dir)
+            cmd = f"rsync -r -uavzh -e ssh  {dir} {self.hostname}:{remotedir} "
+            stdout,stderr = run_local(cmd)
+
         return stdout,stderr
         
    

@@ -4,7 +4,9 @@ import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
 from pynter.slurm.job_script import ScriptHandler
-from pynter.slurm.job_status import job_status
+from pynter.slurm.interface import HPCInterface
+from pynter.tools.grep import grep_list
+from pynter.__init__ import load_config
 
 
 class Job:
@@ -16,15 +18,84 @@ class Job:
         self.job_settings = job_settings
         self.outputs = outputs
         self.job_script_filename = job_script_filename
-
+        
+        self.localdir = HPCInterface().localdir
+        self.workdir = HPCInterface().workdir
+        self.path_relative = op.abspath(self.path).replace(self.localdir,'')
+        
+        
     @property 
     def name(self): 
         s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
         return s.settings['name'] 
 
-    def status(self):
-        return job_status(path=self.path,job_script_filename=self.job_script_filename)
+        
 
+    def cancel_job(self):
+        
+        hpc = HPCInterface()
+        job_id = self.job_id()
+        hpc.cancel_jobs(job_id)
+        
+        return 
+
+
+    def job_id(self):
+        
+        hpc = HPCInterface()
+        stdout,stderr = hpc.qstat(printout=False)
+        queue = stdout.splitlines()
+        job_lines = grep_list(self.name,queue)
+        if job_lines == []:
+            raise ValueError (f'Job named "{self.name}" is not currently running or pending')
+        elif len(job_lines) > 1:
+            raise ValueError (f'More than one job named "{self.name}" has been found in queue:\n{stdout}')
+        else:
+            job_line = job_lines[0].split()
+            job_id = job_line[0]
+        
+        return job_id
+
+
+    def job_queue(self):
+        
+        hpc = HPCInterface()
+        stdout,stderr = hpc.qstat()
+        
+        return stdout,stderr
+        
+
+    def run_job(self):
+        
+        hpc = HPCInterface()
+        hpc.rsync_to_hpc()
+        hpc_path = self.workdir + self.path_relative
+        stdout,stderr = hpc.sbatch(path=hpc_path,job_script_filename=self.job_script_filename)
+        
+        return stdout,stderr
+    
+
+    def status(self):
+        
+        hpc = HPCInterface()
+        stdout,stderr = hpc.qstat(printout=False)
+        queue = stdout.splitlines()
+        job_lines = grep_list(self.name,queue)
+        if job_lines == []:
+            status = 'NOT IN QUEUE'
+        elif len(job_lines) > 1:
+            raise ValueError (f'More than one job named "{self.name}" has been found in queue:\n{stdout}')
+        else:
+            job_line = job_lines[0].split()
+            status = job_line[4]
+            if status == 'PD':
+                status = 'PENDING'
+            if status == 'R':
+                status = 'RUNNING'
+            
+        return status
+            
+        
      
 class VaspJob(Job):
  
