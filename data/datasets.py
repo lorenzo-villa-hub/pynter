@@ -2,6 +2,7 @@
 import os
 import os.path as op
 from pynter.data.jobs import VaspJob
+from pynter.slurm.interface import HPCInterface
 import pandas as pd
 
 
@@ -12,7 +13,7 @@ class Dataset:
         self.path = path if path else os.getcwd()
         self.name = name if name else op.basename(op.abspath(self.path))
         self.jobs = jobs
-        self.group_jobs()
+        self._group_jobs()
 
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'): 
@@ -29,9 +30,9 @@ class Dataset:
     @property
     def groups(self):
         return next(os.walk(self.path))[1]
- 
-    
-    def group_jobs(self):
+
+
+    def _group_jobs(self):
         path = op.abspath(self.path)
         gjobs = {}
         groups = self.groups
@@ -44,8 +45,13 @@ class Dataset:
                     nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
                     gjobs[group][nodes] = job
                     job.group = group
-                    job.nodes = nodes                    
-    
+                    job.nodes = nodes   
+ 
+
+    def get_jobs_outputs(self):
+        for j in self.jobs:
+            j.get_outputs()
+
     
     def jobs_table(self,jobs=[],properties_to_display=[]):
         
@@ -68,6 +74,16 @@ class Dataset:
         
         return df
             
+
+    def queue(self,stdouts=False):
+        
+        hpc = HPCInterface()
+        stdout,stderr = hpc.qstat()
+        if stdouts:
+            return stdout,stderr
+        else:
+            return
+
 
     def select_jobs(self,names=None,groups=None,common_node=None,**kwargs):
         
@@ -100,7 +116,9 @@ class Dataset:
         return sel_jobs
 
             
-                
+    def sync(self):
+        for j in self.jobs:
+            j.sync_job()
         
                 
 

@@ -236,8 +236,9 @@ class ScriptHandler:
         path : (str), optional
             Path to write job script to. The default is None. If None work dir is used.
         """
-        
-        complete_path = os.path.join(path,self.filename) if path else self.filename        
+        if not os.path.exists(path):
+            os.makedirs(path)        
+        complete_path = os.path.join(path,self.filename) if path else self.filename              
         with open(complete_path,'a') as f:
             
             if self.array_size:
@@ -280,8 +281,9 @@ class ScriptHandler:
         path : (str), optional
             Path to write job script to. The default is None. If None work dir is used.
         """
-        
-        complete_path = os.path.join(path,self.filename) if path else self.filename        
+        if not os.path.exists(path):
+            os.makedirs(path)
+        complete_path = os.path.join(path,self.filename) if path else self.filename      
         with open(complete_path,'w') as f:
             
             f.write('#!/bin/sh\n')

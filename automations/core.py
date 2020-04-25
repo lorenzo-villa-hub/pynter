@@ -5,24 +5,25 @@ from shutil import copyfile
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Vasprun
 import argparse as ap
+from pynter.slurm.job_script import ScriptHandler
 
 class Automation:
 
-    def __init__(self, job_script_filename = 'job_vasp.sh', status_filename='exit_status.txt', path=None):
+    def __init__(self, job_script_filename = None, status_filename='exit_status.txt', path=None):
         """
         Abstract class that contains methods useful to automize calculations
 
         Parameters
         ----------
         job_script_filename : (str), optional
-            Name of script for job submission. The default is 'job_vasp.sh'.
+            Name of script for job submission. The default is 'job.sh'.
         status_filename : (str), optional
             Name for status file written after job exit. The default is 'exit_status.txt'.
         path : (str), optional
             Path of calculation to automize. The default is None. If None current work dir is used
         """        
         
-        self.job_script_filename = job_script_filename
+        self.job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
         self.status_filename = status_filename
         self.path = path if path else os.getcwd()
 

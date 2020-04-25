@@ -45,6 +45,12 @@ class CalculationSchemes:
             self.potcar = potcar if potcar else DefaultInputs(self.structure).get_potcar()
             self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
             self.name = name if name else None
+            
+            if 'name' not in self.job_settings.keys():
+                self.job_settings['name'] = self.name
+            if 'name' in self.job_settings.keys() and self.name:
+                self.job_settings['name'] = self.name
+                
 
        
     def dielectric_properties_electronic(self,scheme_name=None,get_steps_only=False):
@@ -841,7 +847,8 @@ class Scheme:
             dictionary of job settings.
 
         """
-        return self.scheme[step][1]
+        script_handler = ScriptHandler(**self.scheme[step][1])
+        return script_handler.settings
 
         
     def get_parameters(self,step):

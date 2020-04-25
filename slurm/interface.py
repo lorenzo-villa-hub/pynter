@@ -31,7 +31,7 @@ class HPCInterface:
         arg = ''
         for c in cmd_split:
             arg += '"%s" ' %c
-            
+         
         command = 'sshpass ssh %s %s' %(self.hostname, arg)
         if printout:
             print(f'{self.hostname}: {cmd} \n')
@@ -73,10 +73,10 @@ class HPCInterface:
     def sbatch(self,path='',job_script_filename='job.sh'):
         
         path = op.join(self.workdir,path)
-        cmd = 'sbatch ' +  op.join(path,job_script_filename)
-        
-        stdout,stderr = self.command(cmd)
-        return stdout,stderr
+        cmd = f'cd {path} ; sbatch {job_script_filename}'
+        command = f'sshpass ssh {self.hostname} ' + cmd
+        stdout,stderr = run_local(command) # I've used the run local because there was a probelm with the multiple command given with ;
+        return stdout,stderr               # to check again if possible
         
         
         
