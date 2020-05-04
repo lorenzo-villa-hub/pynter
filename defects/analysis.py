@@ -9,6 +9,7 @@ from pymatgen.core.periodic_table import Element
 from pymatgen.electronic_structure.dos import FermiDos
 import matplotlib
 import matplotlib.pyplot as plt
+from pynter.defects.pmg_dos import FermiDosCarriersInfo
 
 class SingleDefectData:
     
@@ -239,6 +240,65 @@ class DefectsAnalysis:
                                     for el in defect_complex.delta_atoms])
     
         return binding_energy
+
+
+
+    def carrier_concentrations_intrinsic(self,bulk_dos,temperature=300,fermi_level=0.):
+        """
+        Get intrinsic carrier concentrations by integrating over the density of states
+        given a fixed Fermi level
+        Args:
+            bulk_dos: bulk system dos (pymatgen Dos object)
+            temperature: Temperature to equilibrate fermi energies for
+            fermi_level: (float) is fermi level relative to valence band maximum
+                Default efermi = 0 = VBM energy         
+        Returns:
+            h,n in absolute values
+        """
+        
+        fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
+        _,fdos_vbm = fdos.get_cbm_vbm()    
+        
+        h, n = fdos.get_doping(fermi_level=fermi_level + fdos_vbm, temperature=temperature)
+        
+        return abs(h) , abs(n)
+
+
+    def carrier_concentrations_total(self,chemical_potentials,bulk_dos,temperature=300,fermi_level=0.):
+        """
+        Get icarrier concentrations by summing charges coming from defects and intrinsic carriers
+        given a fixed Fermi level
+        Args:
+            chemical_potentials: dict of chemical potentials to use for calculation fermi level
+            bulk_dos: bulk system dos (pymatgen Dos object)
+            temperature: Temperature to equilibrate fermi energies for
+            fermi_level: (float) is fermi level relative to valence band maximum
+                Default efermi = 0 = VBM energy         
+        Returns:
+            total positive charge concentration ,total negative charge concentration in absolute values
+        """
+                
+        ef = fermi_level
+
+        qd_negative = sum([
+            d['charge'] * d['conc']
+            for d in self.defect_concentrations(
+                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
+            if d['charge'] < 0
+            ])
+        
+        qd_positive = sum([
+            d['charge'] * d['conc']
+            for d in self.defect_concentrations(
+                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
+            if d['charge'] > 0
+            ])
+        h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
+        
+        qtot_positive = qd_positive + h
+        qtot_negative = qd_negative + n
+
+        return abs(qtot_positive) , abs(qtot_negative)
     
     
     def charge_transition_level(self,name,q1,q2):
