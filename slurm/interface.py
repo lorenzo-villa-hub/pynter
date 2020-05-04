@@ -9,6 +9,9 @@ from pynter.__init__ import load_config, run_local
 class HPCInterface:
     
     def __init__(self):
+        """
+        Class to interface commands with HPC
+        """
         
         config = load_config()['HPC']
         
@@ -17,6 +20,14 @@ class HPCInterface:
 
 
     def cancel_jobs(self,*args):
+        """
+        Cancel jobs on HPC using scancel
+
+        Parameters
+        ----------
+        *args : (str)
+            Job-id.
+        """
         
         cmd = 'scancel '
         for arg in args:
@@ -26,6 +37,23 @@ class HPCInterface:
 
             
     def command(self,cmd,printout=True):   
+        """
+        Run command on HPC
+
+        Parameters
+        ----------
+        cmd : (str)
+            Command to run.
+        printout : (bool), optional
+            Write output on screen. The default is True.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
         
         cmd_split = cmd.split()
         arg = ''
@@ -40,13 +68,47 @@ class HPCInterface:
                 
     
     def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True):
+        """
+        Check queue status on HPC
+
+        Parameters
+        ----------
+        cmd : (str), optional
+            Command to run. The default is 'squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"'.
+        printout : (bool), optional
+            Write output on screen. The default is True.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
         
         stdout,stderr = self.command(cmd,printout)
         return stdout, stderr
     
 
     def rsync_from_hpc(self,remotedir=None,localdir=None):
-        
+        """
+        Sync folders from HPC to local machine. The command "rsync" is used. With this function all
+        the folders contained in the remote dir are synched to the local dir.
+
+        Parameters
+        ----------
+        remotedir : (str), optional
+            Remote directory. The default is None. If None the one in config.yml file is used.
+        localdir : (str), optional
+            Local directory. The default is None. If None the one in config.yml file is used.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """        
         remotedir = remotedir if remotedir else self.workdir
         localdir = localdir if localdir else self.localdir
         
@@ -57,7 +119,24 @@ class HPCInterface:
 
 
     def rsync_to_hpc(self,localdir=None,remotedir=None):
-        
+        """
+        Sync folders from local machine to HPC. The command "rsync" is used. With this function all
+        the folders contained in the local dir are synched to the remote dir.
+
+        Parameters
+        ----------
+        localdir : (str), optional
+            Local directory. The default is None. If None the one in config.yml file is used.
+        remotedir : (str), optional
+            Remote directory. The default is None. If None the one in config.yml file is used.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """        
         localdir = localdir if localdir else self.localdir
         remotedir = remotedir if remotedir else self.workdir
         
@@ -71,7 +150,23 @@ class HPCInterface:
         
    
     def sbatch(self,path='',job_script_filename='job.sh'):
-        
+        """
+        Execute "sbatch" command on HPC to run job.
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path where the job script is stored. The default is ''.
+        job_script_filename : (str), optional
+            Filename of the job script. The default is 'job.sh'.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """    
         path = op.join(self.workdir,path)
         cmd = f'cd {path} ; sbatch {job_script_filename}'
         command = f'sshpass ssh {self.hostname} ' + cmd

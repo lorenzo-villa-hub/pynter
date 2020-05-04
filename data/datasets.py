@@ -9,6 +9,18 @@ import pandas as pd
 class Dataset:
     
     def __init__(self,path=None,name=None,jobs=None): 
+        """
+        Class to store sets of calculations
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path of dataset directory. The default is None. If None the work dir is used.
+        name : (str), optional
+            Name to assign to dataset. The default is None. If None the folder name is used.
+        jobs : (list), optional
+            List of Job objects belonging to the dataset. The default is None.
+        """
         
         self.path = path if path else os.getcwd()
         self.name = name if name else op.basename(op.abspath(self.path))
@@ -17,6 +29,17 @@ class Dataset:
 
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'): 
+        """
+        Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
+        is present. VaspJobs are seected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
+
+        Parameters
+        ----------
+        path : (str)
+            Parent directory of the dataset.
+        job_script_filename : (str), optional
+            Filename of job bash script. The default is 'job.sh'.
+        """
         jobs = []
         for root , dirs, files in os.walk(path):
             if files != [] and job_script_filename in files:
@@ -29,10 +52,16 @@ class Dataset:
         
     @property
     def groups(self):
+        """Directory names of the first subdirectories in the dataset path."""
         return next(os.walk(self.path))[1]
 
 
     def _group_jobs(self):
+        """
+        Create "groups" and "nodes" attributes based on the common subpaths of the jobs.
+        The first subdirectories of the parent dataset dir will be the groups. All of the following
+        subpaths will be nodes
+        """
         path = op.abspath(self.path)
         gjobs = {}
         groups = self.groups
@@ -49,12 +78,28 @@ class Dataset:
  
 
     def get_jobs_outputs(self):
+        """Read output for all jobs from the data stored in respective directories"""
         for j in self.jobs:
             j.get_outputs()
 
     
     def jobs_table(self,jobs=[],properties_to_display=[]):
-        
+        """
+        Create a pandas DataFrame object to display the jobs in the dataset.
+
+        Parameters
+        ----------
+        jobs : (list), optional
+            List of jobs to display in the table. The default is []. If [] the attribute "jobs" is used.
+        properties_to_display : (list), optional
+            List of kwargs with methods in the Job class. The properties referred to these will be added
+            to the table. The default is [].
+
+        Returns
+        -------
+        df : (DataFrame object)
+
+        """
         jobs = jobs if jobs else self.jobs
         table = []
         index = []
@@ -76,7 +121,16 @@ class Dataset:
             
 
     def queue(self,stdouts=False):
+        """
+        Display queue from HPC. If stdouts is True returns out and err strings.
         
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
         hpc = HPCInterface()
         stdout,stderr = hpc.qstat()
         if stdouts:
@@ -86,7 +140,29 @@ class Dataset:
 
 
     def select_jobs(self,names=None,groups=None,common_node=None,**kwargs):
-        
+        """
+        Function to filter jobs based on different selection criteria.
+        The priority of the selection criterion follows the order of the input
+        parameters. When more than one criterion is present, all of them need to be 
+        satisfied for the job to be selected.
+
+        Parameters
+        ----------
+        names : (str), optional
+            Job name. The default is None.
+        groups : (list), optional
+            List of groups that jobs need to belong to. The default is None.
+        common_node : (str), optional
+            String that needs to be present in the node. The default is None.
+        **kwargs : (dict)
+            Properties that the jobs need to satisfy. Keys are referred to methods 
+            present in the relative Job class.
+
+        Returns
+        -------
+        sel_jobs : (list)
+            List with filtered jobs.
+        """
         sel_jobs = self.jobs.copy()
         jobs = sel_jobs.copy()
         for j in jobs:
@@ -117,6 +193,7 @@ class Dataset:
 
             
     def sync(self):
+        """Sync job data from HPC to local machine"""
         for j in self.jobs:
             j.sync_job()
         

@@ -13,6 +13,23 @@ from pynter.__init__ import load_config
 class Job:
     
     def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename='job.sh'):
+        """
+        Class to control and organize inputs and outputs of a generic job.
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path where job is stored. The default is None. If None the work dir is used.
+        inputs : (dict), optional
+            Dictionary with input data. The default is None.
+        job_settings : (dict), optional
+            Dictionary with job settings. The default is None. Documentation in ScriptHandler class in slurm.job_script module
+        outputs : (dict), optional
+            Dictionary with output data. The default is None.
+        job_script_filename : (str), optional
+            Filename of job script. The default is 'job.sh'.
+
+        """
         
         __metaclass__ = ABCMeta
         
@@ -31,12 +48,20 @@ class Job:
         
     @property 
     def name(self): 
+        """
+        Name of the job. Taken from the job name in the job settings.
+
+        Returns
+        -------
+        (str)
+            Job name.
+        """
         s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
         return s.settings['name'] 
 
         
     def cancel_job(self):
-        
+        """Cancel job on HPC"""
         hpc = HPCInterface()
         job_id = self.job_id()
         hpc.cancel_jobs(job_id)
@@ -50,7 +75,7 @@ class Job:
 
 
     def job_id(self):
-        
+        """Get job ID from the queue on HPC"""        
         hpc = HPCInterface()
         stdout,stderr = hpc.qstat(printout=False)
         queue = stdout.splitlines()
@@ -67,7 +92,16 @@ class Job:
 
 
     def job_queue(self):
+        """
+        Print job queue from HPC on screen
         
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
         hpc = HPCInterface()
         stdout,stderr = hpc.qstat()
         
@@ -75,7 +109,21 @@ class Job:
         
 
     def run_job(self,write_input=True):
-        
+        """
+        Run job on HPC
+
+        Parameters
+        ----------
+        write_input : (bool), optional
+            Write input file stored in "inputs" dictionary. The default is True.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
         if write_input:
             self.write_input()
         hpc = HPCInterface()
@@ -86,6 +134,22 @@ class Job:
     
 
     def sync_job(self,stdouts=False):
+        """
+        Sync job data from HPC to local machine
+
+        Parameters
+        ----------
+        stdouts : (bool), optional
+            Return output and error strings. The default is False.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+
+        """
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path #abs_path.replace(op.basename(abs_path),'')
@@ -98,7 +162,14 @@ class Job:
 
 
     def status(self):
-        
+        """
+        Get job status from HPC. 
+
+        Returns
+        -------
+        status : (str)
+            Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
+        """
         hpc = HPCInterface()
         stdout,stderr = hpc.qstat(printout=False)
         queue = stdout.splitlines()
@@ -128,6 +199,23 @@ class VaspJob(Job):
       
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'):
+        """
+        Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
+        Output files are read usign Pymatgen Vasprun class.
+        Job settings are read from the job script file.
+
+        Parameters
+        ----------
+        path : (str)
+            Path were job data is stored.
+        job_script_filename : (str), optional
+            Filename of job script. The default is 'job.sh'.
+
+        Returns
+        -------
+        VaspJob object.
+        
+        """
                 
         inputs = VaspInput.from_directory(path)
         outputs = {}
@@ -146,16 +234,22 @@ class VaspJob(Job):
     
     @property
     def formula(self):
+        """Complete formula from initial structure (read with Pymatgen)"""
         return self.initial_structure.composition.formula
 
         
     @property
     def initial_structure(self):
+        """Initial structure read from Poscar file with Pymatgen"""
         return Poscar.from_file(op.join(self.path,'POSCAR')).structure
     
     
     @property
     def is_converged(self):
+        """
+        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
         is_converged = None
         if self.outputs:
             if 'vasprun' in self.outputs.keys():
@@ -173,6 +267,11 @@ class VaspJob(Job):
     
     
     def charge(self):
+        """
+        Charge of the system calculated as the difference between the value of "NELECT"
+        in the INCAR and the number of electrons in POTCAR. If "NELECT" is not present 
+        charge is set to 0.
+        """
         charge = 0
         if 'NELECT' in self.inputs['INCAR'].keys():
             nelect = self.inputs['INCAR']['NELECT']
@@ -186,7 +285,10 @@ class VaspJob(Job):
  
     
     def get_outputs(self):
-        
+        """
+        Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
+        read with Pymatgen
+        """
         path = self.path
         outputs = {}
         if op.isfile(op.join(path,'vasprun.xml')):
@@ -200,6 +302,7 @@ class VaspJob(Job):
         
           
     def final_energy(self):
+        """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
         final_energy = None
         if 'vasprun' in self.outputs.keys():
             if self.outputs['vasprun']:
@@ -208,6 +311,7 @@ class VaspJob(Job):
      
             
     def final_structure(self):
+        """Final structure read from "vasprun.xml" with Pymatgen"""
         if self.outputs['vasprun']:
             final_structure = self.outputs['vasprun'].structures[-1]
         else:
@@ -216,7 +320,7 @@ class VaspJob(Job):
                     
     
     def write_input(self):
-        
+        """Write "inputs" dictionary to files. the VaspInput class from Pymatgen is used."""
         script_handler = ScriptHandler(**self.job_settings)
         script_handler.write_script(path=self.path)
         inputs = self.inputs
