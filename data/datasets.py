@@ -4,6 +4,7 @@ import os.path as op
 from pynter.data.jobs import VaspJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
+import importlib
 
 
 class Dataset:
@@ -31,7 +32,7 @@ class Dataset:
     def from_directory(path,job_script_filename='job.sh'): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
-        is present. VaspJobs are seected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
+        is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
 
         Parameters
         ----------
@@ -76,6 +77,45 @@ class Dataset:
                     job.group = group
                     job.nodes = nodes   
  
+
+    def create_job(self,job_class,group='',nodes='',inputs=None,job_settings=None,
+                   outputs=None,job_script_filename='job.sh',name=None):
+        """
+        Create Job object and add it to the dataset
+
+        Parameters
+        ----------
+        job_class : (str) 
+            Name of the job class. For now available only 'VaspJob'.
+        group : (str), optional
+            Name of the group to which the job belongs. The default is ''.
+        nodes : (str), optional
+            Name of the nodes of the job. The default is ''.
+        inputs : (dict), optional
+            Dictionary with input data. The default is None.
+        job_settings : (dict), optional
+            Dictionary with job settings. The default is None. Documentation in ScriptHandler class in slurm.job_script module
+        outputs : (dict), optional
+            Dictionary with output data. The default is None.
+        job_script_filename : (str), optional
+            Filename of job script. The default is 'job.sh'.
+        name : (str)
+            Name of the job. If None the name is searched in the job script.
+        """
+        
+        path = op.join(self.path,group,nodes)
+        module = importlib.import_module("pynter.data.jobs")
+        jobclass = getattr(module, job_class)
+        
+        job = jobclass(path=path,inputs=inputs,job_settings=job_settings,outputs=outputs,
+                       job_script_filename=job_script_filename,name=name)
+        job.group = group
+        job.nodes = nodes
+        self.jobs.append(job)
+        
+        return
+        
+        
 
     def get_jobs_outputs(self):
         """Read output for all jobs from the data stored in respective directories"""

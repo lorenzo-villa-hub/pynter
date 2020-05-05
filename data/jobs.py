@@ -12,7 +12,7 @@ from pynter.__init__ import load_config
 
 class Job:
     
-    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename='job.sh'):
+    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename='job.sh',name=None):
         """
         Class to control and organize inputs and outputs of a generic job.
 
@@ -28,6 +28,8 @@ class Job:
             Dictionary with output data. The default is None.
         job_script_filename : (str), optional
             Filename of job script. The default is 'job.sh'.
+        name : (str)
+            Name of the job. If none the name is searched in the job script.
 
         """
         
@@ -45,20 +47,16 @@ class Job:
         
         self.path_in_hpc = self._workdir + self._path_relative
         
+        if name:
+            self.name = name
+        else:
+            s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
+            self.name = s.settings['name']
+        if not self.job_settings:
+            self.job_settings = {}
+        self.job_settings['name'] = name
+
         
-    @property 
-    def name(self): 
-        """
-        Name of the job. Taken from the job name in the job settings.
-
-        Returns
-        -------
-        (str)
-            Job name.
-        """
-        s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
-        return s.settings['name'] 
-
         
     def cancel_job(self):
         """Cancel job on HPC"""
@@ -152,7 +150,7 @@ class Job:
         """
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
-        localdir = abs_path #abs_path.replace(op.basename(abs_path),'')
+        localdir = abs_path 
         stdout,stderr = hpc.rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir)
         if stdouts:
             return stdout,stderr
@@ -235,13 +233,20 @@ class VaspJob(Job):
     @property
     def formula(self):
         """Complete formula from initial structure (read with Pymatgen)"""
-        return self.initial_structure.composition.formula
+        if self.initial_structure:
+            return self.initial_structure.composition.formula
+        else:
+            return None
 
         
     @property
     def initial_structure(self):
         """Initial structure read from Poscar file with Pymatgen"""
-        return Poscar.from_file(op.join(self.path,'POSCAR')).structure
+        poscar_file = op.join(self.path,'POSCAR')
+        if op.isfile(poscar_file):
+            return Poscar.from_file(poscar_file).structure
+        else:
+            return None
     
     
     @property
@@ -304,9 +309,10 @@ class VaspJob(Job):
     def final_energy(self):
         """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
         final_energy = None
-        if 'vasprun' in self.outputs.keys():
-            if self.outputs['vasprun']:
-                final_energy = self.outputs['vasprun'].final_energy
+        if self.is_converged:
+            if 'vasprun' in self.outputs.keys():
+                if self.outputs['vasprun']:
+                    final_energy = self.outputs['vasprun'].final_energy
         return final_energy
      
             
