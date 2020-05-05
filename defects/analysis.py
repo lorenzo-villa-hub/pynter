@@ -242,7 +242,6 @@ class DefectsAnalysis:
         return binding_energy
 
 
-
     def carrier_concentrations_intrinsic(self,bulk_dos,temperature=300,fermi_level=0.):
         """
         Get intrinsic carrier concentrations by integrating over the density of states
@@ -266,7 +265,7 @@ class DefectsAnalysis:
 
     def carrier_concentrations_total(self,chemical_potentials,bulk_dos,temperature=300,fermi_level=0.):
         """
-        Get icarrier concentrations by summing charges coming from defects and intrinsic carriers
+        Get carrier concentrations by summing charges coming from defects and intrinsic carriers
         given a fixed Fermi level
         Args:
             chemical_potentials: dict of chemical potentials to use for calculation fermi level
@@ -295,12 +294,54 @@ class DefectsAnalysis:
             ])
         h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
         
-        qtot_positive = qd_positive + h
-        qtot_negative = qd_negative + n
+        qtot_positive = abs(qd_positive) + h
+        qtot_negative = abs(qd_negative) + n
 
-        return abs(qtot_positive) , abs(qtot_negative)
+        return qtot_positive , qtot_negative
     
+
+    def carrier_concentrations_total_non_eq(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, temperature=300, fermi_level=0.):
+
+        ef = fermi_level
+        
+        c_tot_frozen = {}       
+        for name in self.names():
+            c_tot_frozen[name] = 0
+            for d in frozen_defect_concentrations:
+                if d['name'] == name:
+                    c_tot_frozen[name] += d['conc']
+        
+            
+        c_tot_specie = {}
+        for name in self.names():
+            c_tot_specie[name] = 0
+            for d in self.defect_concentrations(chemical_potentials=chemical_potentials
+                                                ,temperature=temperature,fermi_level=ef):
+                if d['name'] == name:
+                    c_tot_specie[name] += d['conc']
+        
+        qd_positive = sum([
+            d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']] 
+            for d in self.defect_concentrations(
+                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
+                if (d['charge']>0 and c_tot_specie[d['name']] > 1e-250)#if smaller then 1e-300 you get division by zero Error
+        ])
+        
+        qd_negative = sum([
+            d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']] 
+            for d in self.defect_concentrations(
+                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
+                if (d['charge'] < 0 and c_tot_specie[d['name']] > 1e-250)#if smaller then 1e-300 you get division by zero Error
+        ])
+        
+        h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
+
+        qtot_positive = abs(qd_positive) + h
+        qtot_negative = abs(qd_negative) + n
+
+        return qtot_positive , qtot_negative
     
+           
     def charge_transition_level(self,name,q1,q2):
         """
         Args:
