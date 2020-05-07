@@ -690,6 +690,7 @@ class CalculationSchemes:
         # set BS calculation
         job_settings = self.job_settings.copy()
         incar_settings['ICHARG'] = 11
+        incar_settings['LORBIT'] = 11
         incar_settings['ISMEAR'] = 0
         if kpoints_bs:
             kpoints = kpoints_bs

@@ -26,7 +26,8 @@ class Dataset:
         self.path = path if path else os.getcwd()
         self.name = name if name else op.basename(op.abspath(self.path))
         self.jobs = jobs
-        self._group_jobs()
+        if jobs:
+            self._group_jobs()
 
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'): 
@@ -111,10 +112,12 @@ class Dataset:
                        job_script_filename=job_script_filename,name=name)
         job.group = group
         job.nodes = nodes
-        self.jobs.append(job)
+        if self.jobs:
+            self.jobs.append(job)
+        else:
+            self.jobs = [job]
         
         return
-        
         
 
     def get_jobs_outputs(self):

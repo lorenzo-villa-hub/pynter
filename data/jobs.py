@@ -49,6 +49,8 @@ class Job:
         
         if name:
             self.name = name
+        elif self.job_settings:
+            self.name = self.job_settings['name']
         else:
             s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
             self.name = s.settings['name']
@@ -183,6 +185,8 @@ class Job:
                 status = 'PENDING'
             if status == 'R':
                 status = 'RUNNING'
+            if status == 'CG':
+                status = 'COMPLETED'
             
         return status
  
@@ -289,11 +293,13 @@ class VaspJob(Job):
         return charge
  
     
-    def get_outputs(self):
+    def get_outputs(self,sync=False):
         """
         Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
         read with Pymatgen
         """
+        if sync:
+            self.sync_job()
         path = self.path
         outputs = {}
         if op.isfile(op.join(path,'vasprun.xml')):
