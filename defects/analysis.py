@@ -518,20 +518,31 @@ class DefectsAnalysis:
             return qd_tot
 
         return bisect(_get_total_q, -1., self.band_gap + 1.)
-    
+            
 
-    def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, temperature=300):
+
+    def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
+                                        external_defects=[], temperature=300):
         """
-        Solve charge neutrality condition starting from frozen defect concentrations. Frozen defects can also be 
-        relative to another system and another temperature, but only the ones with names included in the defects 
-        of the current system will be computed. 
-        This function is designed to equilibrate the system with a fixed installed distribution of intrisic defects
-        that are allowed to change their charge state. One example would be to equilibrate the system with concentrations
+        Solve charge neutrality in non-equilibrium conditions. The contribution to the total charge concentration
+        of the defects can arise from 3 different contributions (groups):
+            - D1 : frozen defects with defect specie present in defect entries
+            - D2 : normal defects with defect specie present in defect entries
+            - D3 : external defects not present in defect entries, with fixed concentration and charge
+            
+        The group D1 is the less straightforward. Frozen defects can also be relative to another system and another temperature,
+        but only the ones with names found in the defect entries will be computed. 
+        This part will account for a fixed installed distribution of intrisic defects that are allowed to 
+        change their charge state. One example would be to equilibrate the system with concentrations
         of intrinsic defects installed in another phase at a higher temperature, that are considered constant 
         (kinetically trapped) as the temperature lowers and the phases changes. The variation of the charge states is 
         accounted for in the solution of the charge neutrality by defining a charge state distribution for every defect
-        specie, which depends of the fermi level.
-
+        specie, which depends of the fermi level. 
+        If a defect entry is not found in group D1 is considered to belong to group D2. The number of elements of 
+        D1 U D2 will be equal to the muber of defect entries.
+        The charge concentration associated to group D2 is treated as in the "equilibrium_fermi_level" function.
+        The charge concentration associated to group D3 is a number and thus not Fermi level dependent.
+        
         Parameters
         ----------
         frozen_defect_concentrations : (list)
@@ -555,35 +566,52 @@ class DefectsAnalysis:
         _,fdos_vbm = fdos.get_cbm_vbm()
         
         c_tot_frozen = {}       
-        for name in self.names():
-            c_tot_frozen[name] = 0
-            for d in frozen_defect_concentrations:
-                if d['name'] == name:
+        for d in frozen_defect_concentrations:
+            name = d['name']
+            if name in self.names():           
+                if name not in c_tot_frozen:
+                    c_tot_frozen[name] = d['conc']
+                else:
                     c_tot_frozen[name] += d['conc']
+            else:
+                print(f'Warning: Frozen defect named "{name}" is not in the list of computed defects and will not contribute to the calculation')
         
+        for name in self.names():
+            if name not in c_tot_frozen:
+                c_tot_frozen[name] = 0 #if specie is not frozen its contribution in the sum with frozen defects is 0
+
         def _get_total_q(ef):
+            
+            # defect concentrations that depend on ef
+            conc_ef = self.defect_concentrations(chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
             
             c_tot_specie = {}
             for name in self.names():
                 c_tot_specie[name] = 0
-                for d in self.defect_concentrations(chemical_potentials=chemical_potentials
-                                                    ,temperature=temperature,fermi_level=ef):
+                for d in conc_ef:
                     if d['name'] == name:
                         c_tot_specie[name] += d['conc']
             
-            qd_tot = sum([
-                d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']] 
-                for d in self.defect_concentrations(
-                    chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-                    if c_tot_specie[d['name']] > 1e-250 #if smaller then 1e-300 you get division by zero Error
-            ])
+            qd_tot=0
+            #frozen defects - D1
+            for d in conc_ef:
+                if c_tot_frozen[d['name']] != 0 and c_tot_specie[d['name']] > 1e-250: #if smaller then 1e-300 you get division by zero Error
+                    qd_tot += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
             
+            # normal defects - D2
+            for d in conc_ef:
+                if c_tot_frozen[d['name']] == 0:
+                    qd_tot += d['charge']*d['conc']
+
+            #external fixed defects - D3
+            for d_ext in external_defects:
+                qd_tot += d['charge']*d['conc']
+                
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
 
             return qd_tot
                        
         return bisect(_get_total_q, -1., self.band_gap + 1.)
-        
 
     
     def formation_energies(self,chemical_potentials,fermi_level=0):
