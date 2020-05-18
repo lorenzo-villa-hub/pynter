@@ -29,6 +29,16 @@ class Dataset:
         if jobs:
             self._group_jobs()
 
+
+    def __str__(self):     
+        printout = f'Dataset {self.name}:\n'
+        for j in self.jobs:
+            printout += j.__str__() + '\n'
+        return printout
+            
+    def __repr__(self):
+        return self.__str__()
+
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'): 
         """
@@ -241,7 +251,10 @@ class Dataset:
             j.sync_job()
         
                 
-
+    def write_jobs_input(self):
+        """Write jobs inputs to files"""
+        for job in self.jobs:
+            job.write_input()
             
         
         

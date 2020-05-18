@@ -58,6 +58,13 @@ class Job:
             self.job_settings = {}
         self.job_settings['name'] = name
 
+
+    def __str__(self):
+        printout = 'Job "%s" of group "%s"' %(self.name, self.group)
+        return printout
+    
+    def __repr__(self):
+        return self.__str__()
         
         
     def cancel_job(self):
