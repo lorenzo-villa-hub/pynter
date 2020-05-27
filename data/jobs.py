@@ -4,6 +4,7 @@ import os
 import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
@@ -366,6 +367,24 @@ class VaspJob(Job):
             final_structure = None
         return final_structure
                     
+
+    def plot_dos_bs(self):
+        """
+        Plot DOS and BS from data in vasprun.xml with Pymatgen
+        """
+        wdir = os.getcwd()
+        os.chdir(self.path)
+        if self.is_converged:
+            vasprun = self.outputs['vasprun']
+            bs = vasprun.get_band_structure(line_mode=True)
+            dos = vasprun.complete_dos
+            plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)
+            os.chdir(wdir)
+        else:
+            raise ValueError(f'Job %s is not converged' %self.name)
+        
+        return plt
+            
     
     def write_input(self):
         """Write "inputs" dictionary to files. the VaspInput class from Pymatgen is used."""

@@ -37,7 +37,7 @@ class Dataset:
 
 
     def __str__(self):     
-        printout = f'Dataset {self.name}:\n'
+        printout = f'Dataset "{self.name}":\n'
         for j in self.jobs:
             printout += j.__str__() + '\n'
         return printout
@@ -309,6 +309,7 @@ class Dataset:
         """Sync job data from HPC to local machine"""
         for j in self.jobs:
             j.sync_from_hpc()
+        return
         
                 
     def write_jobs_input(self):
