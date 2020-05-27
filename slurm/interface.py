@@ -66,6 +66,31 @@ class HPCInterface:
         stdout,stderr = run_local(command,printout)
         return stdout,stderr
                 
+
+    def mkdir(self,path,printout=True):
+        """
+        Make new directory in HPC if doesn't exist
+
+        Parameters
+        ----------
+        path : (str)
+            Path of directory.
+        printout : (bool), optional
+            Write output on screen. The default is True.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
+        cmd = 'mkdir -p %s' %path
+        stdout,stderr = self.command(cmd,printout)
+        return stdout, stderr
+        
+        
+
     
     def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True):
         """
@@ -112,8 +137,11 @@ class HPCInterface:
         remotedir = remotedir if remotedir else self.workdir
         localdir = localdir if localdir else self.localdir
         
-        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir}/* {localdir} "
+        localcmd = 'mkdir -p %s' %localdir
+        run_local(localcmd)
         
+        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir}/* {localdir} "
+        print(cmd)
         stdout,stderr = run_local(cmd)
         return stdout,stderr
 
@@ -140,15 +168,18 @@ class HPCInterface:
         localdir = localdir if localdir else self.localdir
         remotedir = remotedir if remotedir else self.workdir
         
-        list_dir = glob(op.abspath(localdir)+'/*')
+        #the wildcard makes it sync all the contained folders/files and not the folder itself
+        localdir = op.abspath(localdir)
+        list_dir = glob(localdir+'/*')
+        print(f"rsync -r -uavzh -e ssh  {localdir}/* {self.hostname}:{remotedir} ")
         for dir in list_dir:
-         #   dirname = op.basename(dir)
+            self.mkdir(remotedir,printout=False)
             cmd = f"rsync -r -uavzh -e ssh  {dir} {self.hostname}:{remotedir} "
             stdout,stderr = run_local(cmd)
 
         return stdout,stderr
-        
-   
+    
+          
     def sbatch(self,path='',job_script_filename='job.sh'):
         """
         Execute "sbatch" command on HPC to run job.

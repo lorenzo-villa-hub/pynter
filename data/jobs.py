@@ -56,7 +56,7 @@ class Job:
             self.name = s.settings['name']
         if not self.job_settings:
             self.job_settings = {}
-        self.job_settings['name'] = name
+        self.job_settings['name'] = self.name
 
 
     def __str__(self):
@@ -117,7 +117,7 @@ class Job:
 
     def run_job(self,write_input=True):
         """
-        Run job on HPC
+        Run job on HPC. Input files are automatically written and sync to HPC is performed.
 
         Parameters
         ----------
@@ -134,13 +134,13 @@ class Job:
         if write_input:
             self.write_input()
         hpc = HPCInterface()
-        hpc.rsync_to_hpc()
+        self.sync_to_hpc()
         stdout,stderr = hpc.sbatch(path=self.path_in_hpc,job_script_filename=self.job_script_filename)
         
         return stdout,stderr
     
 
-    def sync_job(self,stdouts=False):
+    def sync_from_hpc(self,stdouts=False):
         """
         Sync job data from HPC to local machine
 
@@ -166,6 +166,32 @@ class Job:
         else:
             return
         
+        
+    def sync_to_hpc(self,stdouts=False):
+        """
+        Sync job data from local machine to HPC
+
+        Parameters
+        ----------
+        stdouts : (bool), optional
+            Return output and error strings. The default is False.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+
+        """
+        hpc = HPCInterface()
+        abs_path = op.abspath(self.path)
+        localdir = abs_path 
+        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc)
+        if stdouts:
+            return stdout,stderr
+        else:
+            return
 
 
     def status(self):

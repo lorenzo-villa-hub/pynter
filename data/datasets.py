@@ -29,6 +29,12 @@ class Dataset:
         if jobs:
             self._group_jobs()
 
+        self._localdir = HPCInterface().localdir
+        self._workdir = HPCInterface().workdir
+        self._path_relative = op.abspath(self.path).replace(self._localdir,'')
+        
+        self.path_in_hpc = self._workdir + self._path_relative
+
 
     def __str__(self):     
         printout = f'Dataset {self.name}:\n'
@@ -244,11 +250,65 @@ class Dataset:
                     
         return sel_jobs
 
-            
-    def sync(self):
+
+    def sync_dataset_from_hpc(self,stdouts=False):
+        """
+        Sync Dataset project folder from HPC to local machine
+
+        Parameters
+        ----------
+        stdouts : (bool), optional
+            Return output and error strings. The default is False.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
+        hpc = HPCInterface()
+        abs_path = op.abspath(self.path)
+        localdir = abs_path 
+        print(localdir,self.path_in_hpc)
+        stdout,stderr = hpc.rsync_from_hpc(localdir=localdir,remotedir=self.path_in_hpc)
+        if stdouts:
+            return stdout,stderr
+        else:
+            return
+
+
+    def sync_dataset_to_hpc(self,stdouts=False):
+        """
+        Sync Dataset project folder from local machine to HPC
+
+        Parameters
+        ----------
+        stdouts : (bool), optional
+            Return output and error strings. The default is False.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
+        hpc = HPCInterface()
+        abs_path = op.abspath(self.path)
+        localdir = abs_path 
+        print(localdir,self.path_in_hpc)
+        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc)
+        if stdouts:
+            return stdout,stderr
+        else:
+            return
+
+           
+    def sync_jobs(self):
         """Sync job data from HPC to local machine"""
         for j in self.jobs:
-            j.sync_job()
+            j.sync_from_hpc()
         
                 
     def write_jobs_input(self):
