@@ -115,7 +115,7 @@ class Job:
         return stdout,stderr
         
 
-    def run_job(self,write_input=True):
+    def run_job(self,write_input=True,sync=True):
         """
         Run job on HPC. Input files are automatically written and sync to HPC is performed.
 
@@ -123,6 +123,8 @@ class Job:
         ----------
         write_input : (bool), optional
             Write input file stored in "inputs" dictionary. The default is True.
+        sync : (bool), optional
+            Sync files to HPC before running. The default is True
 
         Returns
         -------
@@ -134,7 +136,8 @@ class Job:
         if write_input:
             self.write_input()
         hpc = HPCInterface()
-        self.sync_to_hpc()
+        if sync:
+            self.sync_to_hpc()
         stdout,stderr = hpc.sbatch(path=self.path_in_hpc,job_script_filename=self.job_script_filename)
         
         return stdout,stderr
