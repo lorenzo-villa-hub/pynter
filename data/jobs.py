@@ -378,11 +378,10 @@ class VaspJob(Job):
             vasprun = self.outputs['vasprun']
             bs = vasprun.get_band_structure(line_mode=True)
             dos = vasprun.complete_dos
-            plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)
-            os.chdir(wdir)
+            plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)           
         else:
             raise ValueError(f'Job %s is not converged' %self.name)
-        
+        os.chdir(wdir)
         return plt
             
     
