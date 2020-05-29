@@ -2,3 +2,29 @@ HPC:
   hostname: lv51dypu@lcluster7.hrz.tu-darmstadt.de
   localdir: /home/lorenzo/tests/project-test
   workdir: /work/scratch/lv51dypu
+
+API_KEY: DSR45TfHVuyuB1WvP1
+
+job_settings:
+    project_id: '01136'
+    name: no_name
+    array_size: 
+    email: villa@mm.tu-darmstadt.de
+    nodes: 4
+    cores_per_node: 24
+    output_filename: out.%j
+    error_filename: err.%j
+    timelimit: '24:00:00'
+    memory_per_cpu: 2400
+    processor: avx2
+    modules:
+    - intel/2019.2
+    - intel/2019.3
+    - intelmpi/2019.3
+    - fftw/3.3.8
+    path_exe: "/home/lv51dypu/vasp-5-3-3"
+    add_stop_array: true
+    add_automation: automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check
+    add_lines_header: 
+    add_lines_body: 
+    filename: job.sh

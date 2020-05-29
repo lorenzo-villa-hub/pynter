@@ -3,6 +3,7 @@
 import os
 import os.path as op
 import argparse as ap
+from pynter.__init__ import load_config
 from pynter.tools.grep import grep
 
 class ScriptHandler:
@@ -12,46 +13,28 @@ class ScriptHandler:
         Parameters
         ----------
         **kwargs : 
-            project_id: (str) Project ID, default '01136' \n
-            name: (str) Job name, default 'noname' \n
-            array_size: (int) Number of jobs for array, default None \n
-            email: (str) Email address for info , default 'villa@mm.tu-darmstadt.de' \n
-            nodes: (int) Number of nodes, default 4 \n
-            cores_per_node: (int) Number of cores per node, default 24 \n
-            output_filename: (str) Filename of output file (default is 'out.%j')\n
-            error_filename: (str) Filename of error file (default is 'err.%j') \n
-            timelimit: (int) Time limit in hours, default 24 \n
-            memory_per_cpu:(int) Memory settings. Default is 2400
-            processor: (str) CPU architecture, default is 'avx2'
+            project_id: (str) Project ID \n
+            name: (str) Job name \n
+            array_size: (int) Number of jobs for array \n
+            email: (str) Email address for info \n
+            nodes: (int) Number of nodes \n
+            cores_per_node: (int) Number of cores per node \n
+            output_filename: (str) Filename of output file \n
+            error_filename: (str) Filename of error file \n
+            timelimit: (int) Time limit in hours \n
+            memory_per_cpu:(int) Memory settings
+            processor: (str) CPU architecture
             modules: (list) List of modules to be loaded
-            path_exe: (str) Path to executable, default is'srun /home/lv51dypu/vasp-5-3-3' \n             
-            add_stop_array : (Bool), Add lines for stopping array jobs when calculation is converged. The default is True. \n                
+            path_exe: (str) Path to executable \n             
+            add_stop_array : (Bool), Add lines for stopping array jobs when calculation is converged. \n                
                 If True is effective only if key 'array_size' is not None
-            add_automation : (str) , Automation script to add to the file. The default is 'automized_next_step_error_check.py'.                
-            add_lines_header : (List) , Lines to add in the header part of the file. The default is None.
-            add_lines_body : (List) , Lines to add in the body part of the file. The default is None.
+            add_automation : (str) , Automation script to add to the file.                
+            add_lines_header : (List) , Lines to add in the header part of the file.
+            add_lines_body : (List) , Lines to add in the body part of the file.
         """
         
-        default_settings = {
-                    'project_id': '01136',
-                    'name': 'no_name',
-                    'array_size': None,
-                    'email':'villa@mm.tu-darmstadt.de',
-                    'nodes': 4,
-                    'cores_per_node': 24,
-                    'output_filename': 'out.%j',
-                    'error_filename':'err.%j',
-                    'timelimit': '24:00:00',
-                    'memory_per_cpu':2400,
-                    'processor':'avx2',
-                    'modules':['intel/2019.2','intel/2019.3','intelmpi/2019.3','fftw/3.3.8'],
-                    'path_exe':'/home/lv51dypu/vasp-5-3-3',
-                    'add_stop_array':True,
-                    'add_automation':'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
-                    'add_lines_header':None,
-                    'add_lines_body':None,
-                    'filename':'job.sh'
-                     }
+        config = load_config()
+        default_settings = config['job_settings']
         
         for key,value in default_settings.items():
             setattr(self,key,value)
