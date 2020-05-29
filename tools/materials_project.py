@@ -3,8 +3,9 @@
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.inputs import Poscar
 import argparse as ap
+from pynter.__init__ import load_config
 
-API_KEY = "DSR45TfHVuyuB1WvP1"
+API_KEY = load_config()['API_KEY']
 
 with MPRester(API_KEY) as mpr:
 
