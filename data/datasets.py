@@ -1,6 +1,7 @@
 
 import os
 import os.path as op
+import operator
 from pynter.data.jobs import VaspJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
@@ -9,7 +10,7 @@ import importlib
 
 class Dataset:
     
-    def __init__(self,path=None,name=None,jobs=None): 
+    def __init__(self,path=None,name=None,jobs=None,sort_by_name=True): 
         """
         Class to store sets of calculations
 
@@ -28,6 +29,8 @@ class Dataset:
         self.jobs = jobs
         if jobs:
             self._group_jobs()
+            if sort_by_name:
+                self.jobs = sorted(self.jobs, key=operator.attrgetter('name'))
 
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
@@ -46,7 +49,7 @@ class Dataset:
         return self.__str__()
 
     @staticmethod
-    def from_directory(path,job_script_filename='job.sh'): 
+    def from_directory(path,job_script_filename='job.sh',sort_by_name=True): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -66,7 +69,7 @@ class Dataset:
                     j.job_script_filename = job_script_filename
                     jobs.append(j)
      
-        return  Dataset(path=path,jobs=jobs)
+        return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
         
     @property
     def groups(self):
@@ -165,7 +168,7 @@ class Dataset:
         df : (DataFrame object)
 
         """
-        jobs = jobs if jobs else self.jobs
+        jobs = jobs if jobs else self.jobs                           
         table = []
         index = []
         for j in jobs:
