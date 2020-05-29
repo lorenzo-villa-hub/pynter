@@ -6,6 +6,7 @@ Created on Wed Feb 19 14:52:51 2020
 @author: villa
 """
 import os
+import numpy as np
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import Structure
 from pymatgen.symmetry.bandstructure import HighSymmKpath
@@ -52,7 +53,24 @@ class CalculationSchemes:
                 self.job_settings['name'] = self.name
                 
 
-       
+    def __str__(self):
+        printout = 'CalculationScheme object, system name:"%s" \n' %self.name
+        printout += 'STRUCTURE:\n'
+        printout += self.structure.__str__() + '\n'
+        printout += 'INCAR:\n'
+        printout += '%s \n' %str(self.incar_settings)
+        printout += 'KPOINTS:\n'
+        printout += self.kpoints.__str__() + '\n'
+        printout += 'POTCAR symbols:\n'
+        printout += '%s \n' %(', '.join(self.potcar.symbols))
+        printout += 'Job settings:\n'
+        printout += '%s' %(str(self.job_settings))
+        return printout
+    
+    def __repr__(self):
+        return self.__str__()
+        
+               
     def dielectric_properties_electronic(self,scheme_name=None,get_steps_only=False):
         """
         Set calculation for electronic contribution to the dielectric constant (and also dielectric function).
@@ -160,6 +178,41 @@ class CalculationSchemes:
         scheme[steps[0]] = (vaspinput,job_settings)
         
         return Scheme(scheme)
+
+
+    def fractional_charge_linearity(self,scheme_name=None):
+        """
+        Generate calculation scheme for occupation linearity test.
+        The number of electrons are scanned from NELECT to NELECT + 1 with interval of 0.2.
+        """
+        
+        scheme = {}
+        scheme_name = scheme_name if scheme_name else 'frac-charge'
+        
+        val = {}
+        for p in self.potcar:
+            val[p.element] = p.nelectrons        
+        nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
+        
+        for q in np.arange(0,1.2,0.2):
+            
+            incar_settings = self.incar_settings.copy()
+            job_settings = self.job_settings.copy()
+            
+            q = np.around(q,decimals=1)
+            incar_settings['NELECT'] = nelect + q
+            
+            incar = Incar(incar_settings)
+            kpoints = self.kpoints
+            poscar = Poscar(self.structure)
+            potcar = self.potcar
+            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+            job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'q_{q}'])
+            
+            scheme[f'q_{q}'] = (vaspinput,job_settings)
+            
+        return Scheme(scheme)
+        
 
     
     def hse_rel(self,scheme_name=None,get_steps_only=False):
@@ -819,6 +872,16 @@ class Scheme:
             ( { step_name: (VaspInput object, job_settings dict) } ).
         """
         self.scheme = scheme
+
+
+    def __str__(self):
+        printout = 'Scheme object \n'
+        printout = str(self.steps)
+        return printout
+    
+    def __repr__(self):
+        return self.__str__()
+
     
     @property
     def steps(self):
