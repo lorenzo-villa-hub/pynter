@@ -4,7 +4,7 @@ import os
 import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter
+from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
@@ -286,6 +286,9 @@ class VaspJob(Job):
         poscar_file = op.join(self.path,'POSCAR')
         if op.isfile(poscar_file):
             return Poscar.from_file(poscar_file).structure
+        elif self.inputs['POSCAR']:
+            poscar = self.inputs['POSCAR']
+            return poscar.structure            
         else:
             return None
     
@@ -329,6 +332,17 @@ class VaspJob(Job):
             charge = neutral - nelect
         return charge
  
+
+    def get_inputs(self,sync=False):
+        """
+        Read VaspInput from directory
+        """
+        if sync:
+            self.sync_from_hpc()
+        inputs = VaspInput.from_directory(self.path)
+        self.inputs = inputs
+        return
+    
     
     def get_outputs(self,sync=False):
         """
@@ -336,7 +350,7 @@ class VaspJob(Job):
         read with Pymatgen
         """
         if sync:
-            self.sync_job()
+            self.sync_from_hpc()
         path = self.path
         outputs = {}
         if op.isfile(op.join(path,'vasprun.xml')):
@@ -368,6 +382,27 @@ class VaspJob(Job):
         return final_structure
                     
 
+    def plot_dos(self):
+        """
+        Plot DOS from data in vasprun.xml with Pymatgen
+        """
+        wdir = os.getcwd()
+        os.chdir(self.path)
+        if self.is_converged:
+            vasprun = self.outputs['vasprun']       
+            complete_dos = vasprun.complete_dos
+            partial_dos = complete_dos.get_spd_dos()        
+            dos_plotter = DosPlotter(stack=True)
+            dos_plotter.add_dos('Total',complete_dos)
+            for orbital in partial_dos:
+                dos_plotter.add_dos(orbital,partial_dos[orbital])
+            plt = dos_plotter.get_plot(xlim=(-10,10))
+        else:
+            raise ValueError(f'Job %s is not converged' %self.name)
+        os.chdir(wdir)
+        return plt
+
+
     def plot_dos_bs(self):
         """
         Plot DOS and BS from data in vasprun.xml with Pymatgen
@@ -386,7 +421,7 @@ class VaspJob(Job):
             
     
     def write_input(self):
-        """Write "inputs" dictionary to files. the VaspInput class from Pymatgen is used."""
+        """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
         script_handler = ScriptHandler(**self.job_settings)
         script_handler.write_script(path=self.path)
         inputs = self.inputs

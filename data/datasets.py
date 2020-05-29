@@ -136,6 +136,12 @@ class Dataset:
         return
         
 
+    def get_jobs_inputs(self):
+        """Read inputs for all jobs from the data stored in the respective directories"""
+        for j in self.jobs:
+            j.get_inputs()
+
+
     def get_jobs_outputs(self):
         """Read output for all jobs from the data stored in respective directories"""
         for j in self.jobs:
@@ -220,7 +226,7 @@ class Dataset:
         Returns
         -------
         sel_jobs : (list)
-            List with filtered jobs.
+            List with filtered jobs. If list has one element only the element is returned.
         """
         sel_jobs = self.jobs.copy()
         jobs = sel_jobs.copy()
@@ -247,7 +253,10 @@ class Dataset:
                 job_feature = getattr(j,feature) ()
                 if job_feature != kwargs[feature]:
                     sel_jobs.remove(j)
-                    
+         
+        if len(sel_jobs) == 1:
+            sel_jobs = sel_jobs[0]
+            
         return sel_jobs
 
 
@@ -309,6 +318,7 @@ class Dataset:
         """Sync job data from HPC to local machine"""
         for j in self.jobs:
             j.sync_from_hpc()
+        self.get_jobs_outputs()
         return
         
                 
