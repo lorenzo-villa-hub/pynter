@@ -140,7 +140,7 @@ class HPCInterface:
         localcmd = 'mkdir -p %s' %localdir
         run_local(localcmd)
         
-        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir}/* {localdir} "
+        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir}/ {localdir}/ "
         print(cmd)
         stdout,stderr = run_local(cmd)
         return stdout,stderr
@@ -171,11 +171,10 @@ class HPCInterface:
         #the wildcard makes it sync all the contained folders/files and not the folder itself
         localdir = op.abspath(localdir)
         list_dir = glob(localdir+'/*')
-        print(f"rsync -r -uavzh -e ssh  {localdir}/* {self.hostname}:{remotedir} ")
-        for dir in list_dir:
-            self.mkdir(remotedir,printout=False)
-            cmd = f"rsync -r -uavzh -e ssh  {dir} {self.hostname}:{remotedir} "
-            stdout,stderr = run_local(cmd)
+        self.mkdir(remotedir,printout=False)
+        cmd = f"rsync -r -uavzh -e ssh  {localdir}/ {self.hostname}:{remotedir}/ "
+        print(cmd)
+        stdout,stderr = run_local(cmd)
 
         return stdout,stderr
     

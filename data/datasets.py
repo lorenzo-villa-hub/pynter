@@ -282,7 +282,6 @@ class Dataset:
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path 
-        print(localdir,self.path_in_hpc)
         stdout,stderr = hpc.rsync_from_hpc(localdir=localdir,remotedir=self.path_in_hpc)
         if stdouts:
             return stdout,stderr
@@ -309,7 +308,6 @@ class Dataset:
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path 
-        print(localdir,self.path_in_hpc)
         stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc)
         if stdouts:
             return stdout,stderr
