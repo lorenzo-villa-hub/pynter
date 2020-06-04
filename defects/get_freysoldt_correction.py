@@ -63,11 +63,11 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
     #setting defect site
     defect_site = PeriodicSite(defect_specie, coords=defect_site_coordinates, lattice = locpot_pure.structure.lattice)
     
-    if defect_type == 'vacancy':
+    if defect_type == 'Vacancy':
         defect = Vacancy(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
-    if defect_type == 'interstitial':
+    if defect_type == 'Interstitial':
         defect = Interstitial(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
-    if defect_type == 'substitution':
+    if defect_type == 'Substitution':
         defect = Substitution(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
         
     defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)

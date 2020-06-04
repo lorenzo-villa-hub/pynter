@@ -72,8 +72,8 @@ class ScriptHandler:
         line = grep(string,file)
         if line:
             line = line[-1]
-            d['array_size'] = int(line.replace(string,'').replace('%%1\n',''))
-        
+            d['array_size'] = int(line.replace(string,'').replace('%1\n',''))
+            
         string = '#SBATCH --mail-user='
         line = grep(string,file)
         if line:
