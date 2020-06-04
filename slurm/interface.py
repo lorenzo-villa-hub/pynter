@@ -170,7 +170,6 @@ class HPCInterface:
         
         #the wildcard makes it sync all the contained folders/files and not the folder itself
         localdir = op.abspath(localdir)
-        list_dir = glob(localdir+'/*')
         self.mkdir(remotedir,printout=False)
         cmd = f"rsync -r -uavzh -e ssh  {localdir}/ {self.hostname}:{remotedir}/ "
         print(cmd)
