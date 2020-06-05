@@ -8,6 +8,7 @@ from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlot
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
+import importlib
 
 
 class Job:
@@ -240,6 +241,49 @@ class Job:
      
 class VaspJob(Job):
  
+    
+    def as_dict(self):
+        """
+        Returns:
+            Json-serializable dict representation of VaspJob
+        """
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "path": self.path,
+             "inputs": self.inputs.as_dict(),
+             "job_settings": self.job_settings,
+             "outputs": {key: value.as_dict() for key,value in self.outputs.items()},
+             "job_script_filename":self.job_script_filename,
+             "name":self.name}
+        return d
+    
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Reconstitute a VaspJob object from a dict representation created using
+        as_dict().
+
+        Args:
+            d (dict): dict representation of VaspJob.
+
+        Returns:
+            VaspJob object
+        """
+        path = d['path']
+        inputs = VaspInput.from_dict(d['inputs'])
+        job_settings = d['job_settings']
+        outputs = {}
+        for key,value in d['outputs'].items():
+            print(key,value)
+            module = importlib.import_module(value['@module'])
+            classname = getattr(module,value['@class'])
+            outputs[key] = classname.from_dict(value)
+            
+        job_script_filename = d['job_script_filename']
+        name = d['name']
+        return cls(path,inputs,job_settings,outputs,job_script_filename,name)
+    
+    
       
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'):
@@ -265,10 +309,10 @@ class VaspJob(Job):
         outputs = {}
         if op.isfile(op.join(path,'vasprun.xml')):
             try:
-                outputs['vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
+                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
             except:
                 print('Warning: Reading of vasprun.xml in "%s" failed'%path)
-                outputs['vasprun'] = None
+                outputs['Vasprun'] = None
         
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
@@ -306,10 +350,10 @@ class VaspJob(Job):
         """
         is_converged = None
         if self.outputs:
-            if 'vasprun' in self.outputs.keys():
+            if 'Vasprun' in self.outputs.keys():
                 is_converged = False
-                if self.outputs['vasprun']:
-                    vasprun = self.outputs['vasprun']
+                if self.outputs['Vasprun']:
+                    vasprun = self.outputs['Vasprun']
                     conv_el, conv_ionic = False, False
                     if vasprun:
                         conv_el = vasprun.converged_electronic
@@ -360,10 +404,10 @@ class VaspJob(Job):
         outputs = {}
         if op.isfile(op.join(path,'vasprun.xml')):
             try:
-                outputs['vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
+                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
             except:
                 print('Warning: Reading of vasprun.xml in "%s" failed'%path)
-                outputs['vasprun'] = None
+                outputs['Vasprun'] = None
         self.outputs = outputs
         return
         
@@ -372,16 +416,16 @@ class VaspJob(Job):
         """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
         final_energy = None
         if self.is_converged:
-            if 'vasprun' in self.outputs.keys():
-                if self.outputs['vasprun']:
-                    final_energy = self.outputs['vasprun'].final_energy
+            if 'Vasprun' in self.outputs.keys():
+                if self.outputs['Vasprun']:
+                    final_energy = self.outputs['Vasprun'].final_energy
         return final_energy
      
             
     def final_structure(self):
         """Final structure read from "vasprun.xml" with Pymatgen"""
-        if self.outputs['vasprun']:
-            final_structure = self.outputs['vasprun'].structures[-1]
+        if self.outputs['Vasprun']:
+            final_structure = self.outputs['Vasprun'].structures[-1]
         else:
             final_structure = None
         return final_structure
@@ -394,7 +438,7 @@ class VaspJob(Job):
         wdir = os.getcwd()
         os.chdir(self.path)
         if self.is_converged:
-            vasprun = self.outputs['vasprun']       
+            vasprun = self.outputs['Vasprun']       
             complete_dos = vasprun.complete_dos
             partial_dos = complete_dos.get_spd_dos()        
             dos_plotter = DosPlotter(stack=True)
@@ -415,7 +459,7 @@ class VaspJob(Job):
         wdir = os.getcwd()
         os.chdir(self.path)
         if self.is_converged:
-            vasprun = self.outputs['vasprun']
+            vasprun = self.outputs['Vasprun']
             bs = vasprun.get_band_structure(line_mode=True)
             dos = vasprun.complete_dos
             plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)           

@@ -55,10 +55,13 @@ class Dataset:
             Name to assign to dataset. The default is None. If None the folder name is used.
         jobs : (list), optional
             List of Job objects belonging to the dataset. The default is None.
+        sort_by_name : (bool), optional
+            Sort list of jobs based on Job names. The default is True.
         """
         
         self.path = path if path else os.getcwd()
         self.name = name if name else op.basename(op.abspath(self.path))
+        self.sort_by_name = sort_by_name
         self.jobs = jobs
         if jobs:
             self._group_jobs()
@@ -82,6 +85,27 @@ class Dataset:
         return self.__str__()
 
 
+    def as_dict(self):
+        d = {"path":self.path,
+             "name":self.name,
+             "jobs":[j.as_dict() for j in self.jobs],
+             "sort_by_name":self.sort_by_name}
+        return d
+    
+    
+    @classmethod
+    def from_dict(cls,d):
+        path = d['path']
+        name = d['name']
+        jobs = []
+        for job_dict in d['jobs']:
+            module = importlib.import_module(job_dict['@module'])
+            jobclass = getattr(module,job_dict['@class'])
+            jobs.append(jobclass.from_dict(job_dict))
+        sort_by_name = d['sort_by_name']
+        return cls(path,name,jobs,sort_by_name)
+            
+            
     @staticmethod
     def from_directory(path,job_script_filename='job.sh',sort_by_name=True): 
         """
