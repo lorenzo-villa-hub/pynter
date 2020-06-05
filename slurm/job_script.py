@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import re
 import os
 import os.path as op
 import argparse as ap
@@ -72,7 +73,8 @@ class ScriptHandler:
         line = grep(string,file)
         if line:
             line = line[-1]
-            d['array_size'] = int(line.replace(string,'').replace('%1\n',''))
+            line = re.sub("[^2-9]", "", line)
+            d['array_size'] = int(line)
             
         string = '#SBATCH --mail-user='
         line = grep(string,file)
