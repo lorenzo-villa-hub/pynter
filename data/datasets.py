@@ -8,6 +8,39 @@ import pandas as pd
 import importlib
 
 
+def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
+    """
+    Find jobs in all folders and subfolders contained in path.
+    The folder contained jobs are selected based on the presence of the file job_script_filename
+
+    Parameters
+    ----------
+    path : (str)
+        Parent directory.
+    job_script_filename : (str), optional
+        Filename of job bash script. The default is 'job.sh'.
+    sort_by_name : (bool), optional
+        Sort list of jobs by attribute "name". The default is True.
+
+    Returns
+    -------
+    jobs : (list)
+        List of Job objects.
+
+    """
+    jobs = []
+    for root , dirs, files in os.walk(path):
+        if files != [] and job_script_filename in files:
+            if ('INCAR' and 'KPOINTS' and 'POSCAR' and 'POTCAR') in files:
+                j = VaspJob.from_directory(root,job_script_filename=job_script_filename)
+                j.job_script_filename = job_script_filename
+                jobs.append(j)
+    if sort_by_name:
+        jobs = sorted(jobs, key=operator.attrgetter('name'))
+                
+    return jobs
+
+
 class Dataset:
     
     def __init__(self,path=None,name=None,jobs=None,sort_by_name=True): 
@@ -60,14 +93,10 @@ class Dataset:
             Parent directory of the dataset.
         job_script_filename : (str), optional
             Filename of job bash script. The default is 'job.sh'.
+        sort_by_name : (bool), optional
+            Sort list of jobs by attribute "name". The default is True.
         """
-        jobs = []
-        for root , dirs, files in os.walk(path):
-            if files != [] and job_script_filename in files:
-                if ('INCAR' and 'KPOINTS' and 'POSCAR' and 'POTCAR') in files:
-                    j = VaspJob.from_directory(root,job_script_filename=job_script_filename)
-                    j.job_script_filename = job_script_filename
-                    jobs.append(j)
+        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False) # names are sorted in __init__ method
      
         return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
         
@@ -95,7 +124,42 @@ class Dataset:
                     nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
                     gjobs[group][nodes] = job
                     job.group = group
-                    job.nodes = nodes   
+                    job.nodes = nodes
+        return
+
+
+    def add_jobs(self,*args):
+        """
+        Add jobs to self.jobs list
+        """
+        for arg in args:
+            self.jobs.append(arg)  
+        return
+    
+    def add_jobs_from_directory(self,path,job_script_filename='job.sh',sort_by_name=True,regroup=True):
+        """
+        Add jobs to the Dataset searching all folders and subfolders contained in given path. 
+        Jobs are selected based on where the job bash script is present. 
+        VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
+
+        Parameters
+        ----------
+        path : (str)
+            Parent directory of the dataset.
+        job_script_filename : (str), optional
+            Filename of job bash script. The default is 'job.sh'.
+        sort_by_name : (bool), optional
+            Sort list of jobs by attribute "name". The default is True.
+        regroup : (bool), optional
+            Regroup jobs after adding new jobs list. The default is True.
+        """        
+        path = op.abspath(path)
+        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=sort_by_name)
+        self.add_jobs(*jobs)
+        if regroup:
+            commonpath = op.commonpath([path,self.path])
+            self.regroup_jobs(path=commonpath)
+        return
  
 
     def create_job(self,job_class,group='',nodes='',inputs=None,job_settings=None,
@@ -205,6 +269,29 @@ class Dataset:
             return stdout,stderr
         else:
             return
+
+
+    def regroup_jobs(self,path=None):
+        """
+        Regroup jobs from a given path. If path is None the current self.path is used.
+        This method is different from _group_jobs since it will reset the self.path 
+        attribute to the given path.
+        """
+        path = path if path else op.abspath(self.path)
+        self.path = path
+        gjobs = {}
+        groups = self.groups
+        for group in groups:
+            gjobs[group] = {}
+            group_path = op.join(path,group)
+            for job in self.jobs:
+                if group in job.path:
+                    jpath = op.abspath(job.path)
+                    nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
+                    gjobs[group][nodes] = job
+                    job.group = group
+                    job.nodes = nodes 
+        return
 
 
     def select_jobs(self,names=None,groups=None,common_node=None,**kwargs):

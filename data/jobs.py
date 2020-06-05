@@ -61,7 +61,13 @@ class Job:
 
 
     def __str__(self):
-        printout = 'Job "%s" of group "%s"' %(self.name, self.group)
+        if hasattr(self,'group'):
+            if self.group != '':
+                printout = 'Job "%s" of group "%s"' %(self.name, self.group)
+        else:
+            self.group = ''
+            printout = 'Job "%s"' %self.name
+        
         return printout
     
     def __repr__(self):
