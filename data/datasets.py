@@ -81,6 +81,7 @@ class Dataset:
     def __repr__(self):
         return self.__str__()
 
+
     @staticmethod
     def from_directory(path,job_script_filename='job.sh',sort_by_name=True): 
         """
@@ -99,6 +100,7 @@ class Dataset:
         jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False) # names are sorted in __init__ method
      
         return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
+
         
     @property
     def groups(self):
@@ -135,6 +137,7 @@ class Dataset:
         for arg in args:
             self.jobs.append(arg)  
         return
+
     
     def add_jobs_from_directory(self,path,job_script_filename='job.sh',sort_by_name=True,regroup=True):
         """

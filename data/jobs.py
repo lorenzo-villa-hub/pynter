@@ -8,7 +8,6 @@ from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlot
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
-from pynter.__init__ import load_config
 
 
 class Job:
