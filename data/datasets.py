@@ -86,26 +86,15 @@ class Dataset:
 
 
     def as_dict(self):
-        d = {"path":self.path,
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "path":self.path,
              "name":self.name,
              "jobs":[j.as_dict() for j in self.jobs],
              "sort_by_name":self.sort_by_name}
         return d
     
     
-    @classmethod
-    def from_dict(cls,d):
-        path = d['path']
-        name = d['name']
-        jobs = []
-        for job_dict in d['jobs']:
-            module = importlib.import_module(job_dict['@module'])
-            jobclass = getattr(module,job_dict['@class'])
-            jobs.append(jobclass.from_dict(job_dict))
-        sort_by_name = d['sort_by_name']
-        return cls(path,name,jobs,sort_by_name)
-            
-            
     @staticmethod
     def from_directory(path,job_script_filename='job.sh',sort_by_name=True): 
         """

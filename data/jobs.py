@@ -256,34 +256,7 @@ class VaspJob(Job):
              "job_script_filename":self.job_script_filename,
              "name":self.name}
         return d
-    
-    @classmethod
-    def from_dict(cls,d):
-        """
-        Reconstitute a VaspJob object from a dict representation created using
-        as_dict().
-
-        Args:
-            d (dict): dict representation of VaspJob.
-
-        Returns:
-            VaspJob object
-        """
-        path = d['path']
-        inputs = VaspInput.from_dict(d['inputs'])
-        job_settings = d['job_settings']
-        outputs = {}
-        for key,value in d['outputs'].items():
-            print(key,value)
-            module = importlib.import_module(value['@module'])
-            classname = getattr(module,value['@class'])
-            outputs[key] = classname.from_dict(value)
-            
-        job_script_filename = d['job_script_filename']
-        name = d['name']
-        return cls(path,inputs,job_settings,outputs,job_script_filename,name)
-    
-    
+        
       
     @staticmethod
     def from_directory(path,job_script_filename='job.sh'):
