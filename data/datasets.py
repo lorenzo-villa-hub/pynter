@@ -8,6 +8,7 @@ import pandas as pd
 import importlib
 
 
+
 def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
     """
     Find jobs in all folders and subfolders contained in path.
@@ -39,6 +40,7 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
         jobs = sorted(jobs, key=operator.attrgetter('name'))
                 
     return jobs
+
 
 
 class Dataset:

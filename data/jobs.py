@@ -353,7 +353,33 @@ class VaspJob(Job):
                            for el in self.initial_structure.composition])
             charge = neutral - nelect
         return charge
- 
+
+
+    def energy_gap(self):
+        """Energy gap read from vasprun.xml with Pymatgen"""
+        vasprun = self.outputs['Vasprun']
+        band_gap = vasprun.eigenvalue_band_properties[0]
+        return band_gap
+        
+          
+    def final_energy(self):
+        """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
+        final_energy = None
+        if self.is_converged:
+            if 'Vasprun' in self.outputs.keys():
+                if self.outputs['Vasprun']:
+                    final_energy = self.outputs['Vasprun'].final_energy
+        return final_energy
+     
+            
+    def final_structure(self):
+        """Final structure read from "vasprun.xml" with Pymatgen"""
+        if self.outputs['Vasprun']:
+            final_structure = self.outputs['Vasprun'].structures[-1]
+        else:
+            final_structure = None
+        return final_structure
+                    
 
     def get_inputs(self,sync=False):
         """
@@ -383,26 +409,29 @@ class VaspJob(Job):
                 outputs['Vasprun'] = None
         self.outputs = outputs
         return
-        
-          
-    def final_energy(self):
-        """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
-        final_energy = None
-        if self.is_converged:
-            if 'Vasprun' in self.outputs.keys():
-                if self.outputs['Vasprun']:
-                    final_energy = self.outputs['Vasprun'].final_energy
-        return final_energy
-     
-            
-    def final_structure(self):
-        """Final structure read from "vasprun.xml" with Pymatgen"""
-        if self.outputs['Vasprun']:
-            final_structure = self.outputs['Vasprun'].structures[-1]
+
+
+    def hubbard_correction(self):
+        """
+        Generate dictionary with U paramenters from LDAUU tag in INCAR file
+
+        Returns
+        -------
+        U_dict : (dict)
+            Dictionary with Elements as keys and U parameters as values.
+        """
+        U_dict = {}
+        incar = self.outputs['Vasprun'].incar
+        if incar['LDAUU']:
+            ldauu = incar['LDAUU']
+            elements = self.initial_structure.composition.elements
+            for i in range(0,len(ldauu)):
+                U_dict[elements[i]] = ldauu[i]
         else:
-            final_structure = None
-        return final_structure
-                    
+            print('No LDAUU tag present in INCAR')
+            
+        return U_dict
+        
 
     def plot_dos(self):
         """

@@ -2,8 +2,12 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from pymatgen.core.periodic_table import Element
+from pymatgen.io.vasp.outputs import Vasprun
 
 matplotlib.rcParams.update({'font.size': 15})
+
+
 
 class JobsAnalysis:
     
@@ -60,3 +64,53 @@ class JobsAnalysis:
             
         return plt
             
+    
+    def plot_U_dependency(self,element,lattice_parameter='a'):
+        """
+        Plot dependency of lattice parameter and energy gap on U parameter assigned
+        to a specific element
+
+        Parameters
+        ----------
+        element : (str)
+            String of element to which U parameter is applied.
+        lattice_parameter : (str), optional
+            Lattice parameter whose dependency is evaluated. The default is 'a'.
+
+        Returns
+        -------
+        plt :
+            Matplotlib object
+        """
+        el = Element(element)
+        plt.figure(figsize=(12,8))
+        U_list = []
+        lattice_params = []
+        band_gaps = []
+        for j in self.ds.jobs:
+            U_list.append(j.hubbard_correction()[el])
+            lattice = j.final_structure().lattice
+            lattice_params.append(getattr(lattice,lattice_parameter))
+            band_gaps.append(j.energy_gap())
+        
+        plt.subplot(1,2,1)
+        plt.xlabel('U on %s'%element)
+        plt.ylabel(lattice_parameter+' ($\AA$)')
+        plt.plot(U_list,lattice_params,'o--')
+        plt.grid()
+        
+        plt.subplot(1,2,2)
+        plt.xlabel('U on %s'%element)
+        plt.ylabel('Energy gap (eV)')
+        plt.plot(U_list,band_gaps,'o--')
+        plt.grid()
+        
+        return plt
+            
+                
+        
+        
+        
+        
+        
+        
