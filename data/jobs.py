@@ -4,7 +4,6 @@ import os
 import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
@@ -33,9 +32,7 @@ class Job:
             Name of the job. If none the name is searched in the job script.
 
         """
-        
-        __metaclass__ = ABCMeta
-        
+                
         self.path = path if path else os.getcwd()
         self.inputs = inputs
         self.job_settings = job_settings
@@ -431,44 +428,6 @@ class VaspJob(Job):
             print('No LDAUU tag present in INCAR')
             
         return U_dict
-        
-
-    def plot_dos(self):
-        """
-        Plot DOS from data in vasprun.xml with Pymatgen
-        """
-        wdir = os.getcwd()
-        os.chdir(self.path)
-        if self.is_converged:
-            vasprun = self.outputs['Vasprun']       
-            complete_dos = vasprun.complete_dos
-            partial_dos = complete_dos.get_spd_dos()        
-            dos_plotter = DosPlotter(stack=True)
-            dos_plotter.add_dos('Total',complete_dos)
-            for orbital in partial_dos:
-                dos_plotter.add_dos(orbital,partial_dos[orbital])
-            plt = dos_plotter.get_plot(xlim=(-10,10))
-        else:
-            raise ValueError(f'Job %s is not converged' %self.name)
-        os.chdir(wdir)
-        return plt
-
-
-    def plot_dos_bs(self):
-        """
-        Plot DOS and BS from data in vasprun.xml with Pymatgen
-        """
-        wdir = os.getcwd()
-        os.chdir(self.path)
-        if self.is_converged:
-            vasprun = self.outputs['Vasprun']
-            bs = vasprun.get_band_structure(line_mode=True)
-            dos = vasprun.complete_dos
-            plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)           
-        else:
-            raise ValueError(f'Job %s is not converged' %self.name)
-        os.chdir(wdir)
-        return plt
             
     
     def write_input(self):
