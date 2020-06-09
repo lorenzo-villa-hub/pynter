@@ -221,6 +221,16 @@ class Dataset:
         return
         
 
+    def delete_jobs(self,jobs,delete_files=True,safety=True):
+        
+        for j in jobs:
+            if delete_files:
+                j.delete_job_files(safety=safety)
+            self.jobs.remove(j)
+            print('Job "%s" removed from Dataset'%j.name)
+        return
+        
+
     def get_jobs_inputs(self):
         """Read inputs for all jobs from the data stored in the respective directories"""
         for j in self.jobs:

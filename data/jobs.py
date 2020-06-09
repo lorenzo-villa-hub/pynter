@@ -2,6 +2,7 @@
 from abc import ABCMeta, abstractmethod
 import os
 import os.path as op
+import shutil
 from pymatgen.io.vasp.inputs import VaspInput, Poscar
 from pymatgen.io.vasp.outputs import Vasprun
 from pynter.slurm.job_script import ScriptHandler
@@ -78,6 +79,28 @@ class Job:
         hpc.cancel_jobs(job_id)
         
         return 
+    
+    
+    def delete_job_files(self,safety=True):
+        """
+        Delete Job folder (self.path)
+
+        Parameters
+        ----------
+        safety : (bool), optional
+            Ask confirmation to delete job. The default is True.
+        """
+        if safety:
+            inp = input('Are you sure you want to delete Job %s ?: (y/n)' %self.name)
+            if inp in ('y','Y'):
+                shutil.rmtree(self.path)
+                print('Deleted Job %s'%self.name)
+            else:
+                print('Job %s is left unchanged'%self.name)
+        else:
+            shutil.rmtree(self.path)
+            print('Deleted Job %s'%self.name)
+        return
 
 
     @abstractmethod
@@ -408,7 +431,7 @@ class VaspJob(Job):
         return
 
 
-    def hubbard_correction(self):
+    def hubbard(self):
         """
         Generate dictionary with U paramenters from LDAUU tag in INCAR file
 
@@ -418,10 +441,12 @@ class VaspJob(Job):
             Dictionary with Elements as keys and U parameters as values.
         """
         U_dict = {}
-        incar = self.outputs['Vasprun'].incar
-        if incar['LDAUU']:
-            ldauu = incar['LDAUU']
+        incar = self.inputs['INCAR']
+        ldauu = incar['LDAUU']
+        if ldauu:
             elements = self.initial_structure.composition.elements
+            if isinstance(ldauu,str):
+                ldauu = ldauu.split()
             for i in range(0,len(ldauu)):
                 U_dict[elements[i]] = ldauu[i]
         else:
