@@ -144,19 +144,19 @@ class JobAnalysis:
 
 class DatasetAnalysis:
     
-    def __init__(self,dataset):
+    def __init__(self,jobs):
         """
-        Class to analyse multiple Jobs groupped in a Dataset
+        Class to analyse multiple Jobs
 
         Parameters
         ----------
-        dataset : 
-            Datset object
+        jobs : 
+            List of VaspJob objects
         """
-        self.ds = dataset
+        self.jobs = jobs
 
         
-    def plot_fractional_charge(self):
+    def plot_fractional_charge(self,name='',new_figure=True,legend_out=False):
         """
         Plot fractional charge study from data in Dataset
 
@@ -165,10 +165,11 @@ class DatasetAnalysis:
         plt : 
             Matplotlib object
         """
-        plt.figure(figsize=(8,6))     
+        if new_figure:
+            plt.figure(figsize=(8,6))     
         charges = []
         energies = []        
-        jobs = self.ds.jobs
+        jobs = self.jobs
         energy_dict = {}
         
         for j in jobs:
@@ -187,13 +188,19 @@ class DatasetAnalysis:
             e_rescaled = e - linear(n, e0, e1) 
             energies.append(e_rescaled)
 
-        plt.plot(charges,energies,'o--',label=self.ds.name)
-        plt.hlines(0,xmin=0,xmax=1,linestyles='dashed',label='Exact',color='k')
-        width = max([abs(e) for e in energies])
-        plt.ylim(-3*width,+3*width)
+        ax = plt.gca()
+        if not ax.lines:
+            plt.hlines(0,xmin=0,xmax=1,linestyles='dashed',label='Exact',color='k')
+        plt.plot(charges,energies,'o--',label=name)
+        if new_figure:
+            width = max([abs(e) for e in energies])
+            plt.ylim(-3*width,+3*width)
         plt.xlabel('Fractional charge')
         plt.ylabel('Energy (eV)')
-        plt.legend()
+        if legend_out:
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        else:
+            plt.legend()
         plt.grid()
             
         return plt
@@ -221,7 +228,7 @@ class DatasetAnalysis:
         U_list = []
         lattice_params = []
         band_gaps = []
-        for j in self.ds.jobs:
+        for j in self.jobs:
             U_list.append(j.hubbard()[el])
             lattice = j.final_structure().lattice
             lattice_params.append(getattr(lattice,lattice_parameter))

@@ -78,10 +78,7 @@ class Dataset:
 
 
     def __str__(self):     
-        printout = f'Dataset "{self.name}":\n'
-        for j in self.jobs:
-            printout += j.__str__() + '\n'
-        return printout
+        return self.jobs_table().__str__()
             
     def __repr__(self):
         return self.__str__()
