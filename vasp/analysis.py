@@ -31,12 +31,12 @@ class Vaspout: # in progress, will probably be eliminated because inefficient
         d = {}
         d["@module"] = self.__class__.__module__
         d["@class"] = self.__class__.__name__
-        d['structures'] = [s.as_dict() for s in self.structures]
+    #    d['structures'] = [s.as_dict() for s in self.structures]
         d['epsilon_static'] = self.epsilon_static
         d['epsilon_static_wolfe'] = self.epsilon_static_wolfe
         d['epsilon_ionic'] = self.epsilon_ionic
-        d['dielectric'] = self.dielectric if hasattr(self,'dielectric') else None
-        d['optical_absorption_coeff'] = self.optical_absorption_coeff if hasattr(self,'optical_absorption_coeff') else None
+ #       d['dielectric'] = self.dielectric if hasattr(self,'dielectric') else None
+ #       d['optical_absorption_coeff'] = self.optical_absorption_coeff if hasattr(self,'optical_absorption_coeff') else None
         d['converged_electronic'] = self.converged_electronic
         d['converged_ionic'] = self.converged_ionic
         d['converged'] = self.converged
@@ -119,7 +119,7 @@ class JobAnalysis:
             eg = job.energy_gap()
             plt = dos_plotter.get_plot(xlim=(-3,eg+3))
         else:
-            raise ValueError(f'Job %s is not converged' %self.name)
+            raise ValueError(f'Job %s is not converged' %self.job.name)
         os.chdir(wdir)
         return plt
 
@@ -158,7 +158,16 @@ class DatasetAnalysis:
         
     def plot_fractional_charge(self,name='',new_figure=True,legend_out=False):
         """
-        Plot fractional charge study from data in Dataset
+        Plot fractional charge study
+        
+        Parameters
+        ----------
+        name: (str)
+            Name to put in legend
+        new_figure: (bool)
+            If true initialize new matplotlib figure
+        legend_out: (bool)
+            If True place legend outside of the plot
 
         Returns
         -------
