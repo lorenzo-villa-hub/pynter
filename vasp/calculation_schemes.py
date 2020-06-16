@@ -207,9 +207,9 @@ class CalculationSchemes:
             poscar = Poscar(self.structure)
             potcar = self.potcar
             vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-            job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'q_{q}'])
+            job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'q{q}'])
             
-            scheme[f'q_{q}'] = (vaspinput,job_settings)
+            scheme[f'q{q}'] = (vaspinput,job_settings)
             
         return Scheme(scheme)
         
