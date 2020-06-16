@@ -930,6 +930,20 @@ class Scheme:
         script_handler = ScriptHandler(**step.job_settings)
         return script_handler.settings
 
+
+    def get_parameters(self,stepname):
+        """
+        Get tuple with Pymatgen VaspInput object and job settings dictionary of a given stepname.
+        Parameters
+        ----------
+        step : (str)
+            Step to get associated parameters.
+        Returns
+        -------
+            VaspInput object, job settings Dictionary.
+        """
+        return self.get_vaspinput(stepname) , self.get_job_settings(stepname)
+
     
     def get_vaspinput(self,stepname):
         """
