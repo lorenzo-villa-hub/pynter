@@ -71,17 +71,17 @@ class CalculationSchemes:
         return self.__str__()
         
                
-    def dielectric_properties_electronic(self,scheme_name=None,get_steps_only=False):
+    def dielectric_properties_electronic(self,scheme_name=None,get_stepnames_only=False):
         """
         Set calculation for electronic contribution to the dielectric constant (and also dielectric function).
         Uses 'LOPTICS' method in VASP.
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'eps-el'
-        steps = ['eps-electronic']
-        if get_steps_only:
-            return steps
+        stepnames = ['eps-electronic']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
 
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()  
@@ -103,22 +103,22 @@ class CalculationSchemes:
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name])
         job_settings['add_automation'] = None
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
         
 
-    def dielectric_properties_ionic_lcalceps(self,scheme_name=None,get_steps_only=False):
+    def dielectric_properties_ionic_lcalceps(self,scheme_name=None,get_stepnames_only=False):
         """
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LCALCEPS' method in VASP, combined with 'IBRION=6'. Useful for Hybrid calculations where 'LEPSILON' method does not work.
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'eps-ion-lcal'
-        steps = ['eps-ionic-lcalceps']
-        if get_steps_only:
-            return steps
+        stepnames = ['eps-ionic-lcalceps']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
 
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()  
@@ -139,22 +139,22 @@ class CalculationSchemes:
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name])
         job_settings['add_automation'] = None
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
 
 
-    def dielectric_properties_ionic_lepsilon(self,scheme_name=None,get_steps_only=False):
+    def dielectric_properties_ionic_lepsilon(self,scheme_name=None,get_stepnames_only=False):
         """
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LEPSILON' method in VASP, combined with 'IBRION=8'. This method does not work with HSE functionals.
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'eps-el-leps'
-        steps = ['eps-ionic-lepsilon']
-        if get_steps_only:
-            return steps
+        stepnames = ['eps-ionic-lepsilon']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
 
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()  
@@ -175,9 +175,9 @@ class CalculationSchemes:
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name])
         job_settings['add_automation'] = None
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
 
 
     def fractional_charge_linearity(self,scheme_name=None):
@@ -186,8 +186,8 @@ class CalculationSchemes:
         The number of electrons are scanned from NELECT to NELECT + 1 with interval of 0.2.
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'frac-charge'
+        steps = []
         
         val = {}
         for p in self.potcar:
@@ -209,13 +209,13 @@ class CalculationSchemes:
             vaspinput = VaspInput(incar,kpoints,poscar,potcar)
             job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'q{q}'])
             
-            scheme[f'q{q}'] = (vaspinput,job_settings)
+            steps.append(Step(f'q_{q}',vaspinput,job_settings))
             
-        return Scheme(scheme)
+        return Scheme(steps)
         
 
     
-    def hse_rel(self,scheme_name=None,get_steps_only=False):
+    def hse_rel(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for ionic relaxation for HSE. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE \n
@@ -224,11 +224,11 @@ class CalculationSchemes:
             '4-HSE-OPT-Gamma': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'HSE-rel'
-        steps = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT']
-        if get_steps_only:
-            return steps
+        stepnames = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -244,7 +244,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set step 2
         job_settings = self.job_settings.copy()
@@ -254,7 +254,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
         
         # set step 3
         job_settings = self.job_settings.copy()
@@ -266,7 +266,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'3'])
         
-        scheme[steps[2]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[2],vaspinput,job_settings))
         
         # set step 4
         job_settings = self.job_settings.copy()
@@ -277,12 +277,12 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'4'])
         
-        scheme[steps[3]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[3],vaspinput,job_settings))
     
-        return Scheme(scheme)
+        return Scheme(steps)
     
     
-    def hse_rel_gamma(self,scheme_name=None,get_steps_only=False):
+    def hse_rel_gamma(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -294,12 +294,12 @@ class CalculationSchemes:
             '7-HSE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE'''
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else'HSE-rel-gamma'
-        steps = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
+        stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-HSE-SCF','7-HSE-OPT']
-        if get_steps_only:
-            return steps
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -315,7 +315,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set step 2
         job_settings = self.job_settings.copy()
@@ -325,7 +325,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
         
         # set step 3
         job_settings = self.job_settings.copy()
@@ -337,7 +337,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'3'])
         
-        scheme[steps[2]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[2],vaspinput,job_settings))
         
         # set step 4
         job_settings = self.job_settings.copy()
@@ -348,7 +348,7 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'4'])
         
-        scheme[steps[3]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[3],vaspinput,job_settings))
     
         # set step 5
         job_settings = self.job_settings.copy()
@@ -361,7 +361,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'5'])
         
-        scheme[steps[4]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[4],vaspinput,job_settings))
         
         # set step 6
         job_settings = self.job_settings.copy()
@@ -373,7 +373,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'6'])
         
-        scheme[steps[5]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[5],vaspinput,job_settings))
         
         # set step 7
         job_settings = self.job_settings.copy()
@@ -384,12 +384,12 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'7'])
         
-        scheme[steps[6]] = (vaspinput,job_settings) 
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
     
     
-    def hse_rel_gamma_extended(self,scheme_name=None,get_steps_only=False):
+    def hse_rel_gamma_extended(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -401,12 +401,13 @@ class CalculationSchemes:
             '7-HSE-SCF': Electronic SCF with HSE \n
             '8-HSE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE'''
         """
-        scheme = {}
+
         scheme_name = scheme_name if scheme_name else'HSE-rel-gamma-ext'
-        steps = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
+        stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-PBE-OPT','7-HSE-SCF','8-HSE-OPT']
-        if get_steps_only:
-            return steps
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         
         incar_settings = self.incar_settings.copy()
@@ -423,7 +424,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set step 2
         job_settings = self.job_settings.copy()
@@ -433,7 +434,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
         
         # set step 3
         job_settings = self.job_settings.copy()
@@ -445,7 +446,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'3'])
         
-        scheme[steps[2]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[2],vaspinput,job_settings))
         
         # set step 4
         job_settings = self.job_settings.copy()
@@ -456,7 +457,7 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'4'])
         
-        scheme[steps[3]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[3],vaspinput,job_settings))
     
         # set step 5
         job_settings = self.job_settings.copy()
@@ -469,7 +470,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'5'])
         
-        scheme[steps[4]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[4],vaspinput,job_settings))
 
         # set step 6
         job_settings = self.job_settings.copy()
@@ -479,7 +480,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'6'])
         
-        scheme[steps[5]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[5],vaspinput,job_settings))
         
         # set step 7
         job_settings = self.job_settings.copy()
@@ -491,7 +492,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'7'])
         
-        scheme[steps[6]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[6],vaspinput,job_settings))
         
         # set step 8
         job_settings = self.job_settings.copy()
@@ -502,23 +503,23 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'8'])
         
-        scheme[steps[7]] = (vaspinput,job_settings) 
+        steps.append(Step(stepnames[7],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
                       
 
-    def hse_rel_short(self,scheme_name=None,get_steps_only=False):
+    def hse_rel_short(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for ionic relaxation for HSE (short version i.e. no PBE preliminary calculation). Steps: \n
             '1-PBE-SCF': Electronic SCF with HSE \n
             '2-PBE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE
         """
 
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'HSE-rel-short'
-        steps = ['1-HSE-SCF','2-HSE-OPT']        
-        if get_steps_only:
-            return steps
+        stepnames = ['1-HSE-SCF','2-HSE-OPT']        
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -538,7 +539,7 @@ class CalculationSchemes:
         job_settings['timelimit'] = '72:00:00'
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set step 2
         job_settings = self.job_settings.copy()
@@ -550,12 +551,12 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
     
-        return Scheme(scheme)  
+        return Scheme(steps)  
 
     
-    def hse_vol_rel(self,scheme_name=None,get_steps_only=False):
+    def hse_vol_rel(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for structure relaxations for HSE including cell volume relaxation. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE
@@ -565,11 +566,11 @@ class CalculationSchemes:
             '5-HSE-VOPT': Cell volume relaxation and ionic relaxation with HSE (ISIF=3)
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'HSE-Vrel'
-        steps = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT','5-HSE-VOPT']
-        if get_steps_only:
-            return steps
+        stepnames = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT','5-HSE-VOPT']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         
         incar_settings = self.incar_settings.copy()
@@ -586,7 +587,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set step 2
         job_settings = self.job_settings.copy()
@@ -596,7 +597,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
         
         # set step 3
         job_settings = self.job_settings.copy()
@@ -608,7 +609,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'3'])
         
-        scheme[steps[2]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[2],vaspinput,job_settings))
         
         # set step 4
         job_settings = self.job_settings.copy()
@@ -619,7 +620,7 @@ class CalculationSchemes:
         job_settings['array_size'] = 7
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'4'])
         
-        scheme[steps[3]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[3],vaspinput,job_settings))
         
         # set volume relaxation
         job_settings = self.job_settings.copy()
@@ -628,9 +629,9 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'5'])
         
-        scheme[steps[4]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[4],vaspinput,job_settings))
 
-        return Scheme(scheme)
+        return Scheme(steps)
     
     
     def hubbard_tuning(self,specie,ldauu_dict=None,u_range=(1,10),scheme_name=None):
@@ -653,8 +654,8 @@ class CalculationSchemes:
         Scheme object
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'U_tuning'
+        steps = []
         
         if ldauu_dict is None:
             ldauu_dict={}
@@ -679,12 +680,12 @@ class CalculationSchemes:
             vaspinput = VaspInput(incar,kpoints,poscar,potcar)
             job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'U_{u}'])
             
-            scheme[f'U_{u}'] = (vaspinput,job_settings)
+            steps.append(Step(f'U_{u}',vaspinput,job_settings))
             
-        return Scheme(scheme)
+        return Scheme(steps)
     
     
-    def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None,get_steps_only=False):
+    def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for electronic structure calculations for PBE (in general non hybrid functionals) Steps: \n
             '1-PBE-SCF': Electronic SC \n
@@ -703,11 +704,11 @@ class CalculationSchemes:
         Scheme object.
         """
      
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'PBE-el-str'
-        steps = ['1-PBE-SCF','2-PBE-DOS','3-PBE-BS']
-        if get_steps_only:
-            return steps
+        stepnames = ['1-PBE-SCF','2-PBE-DOS','3-PBE-BS']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -720,7 +721,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set DOS calculation
         job_settings = self.job_settings.copy()
@@ -738,7 +739,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
 
         # set BS calculation
         job_settings = self.job_settings.copy()
@@ -753,12 +754,12 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'3'])
         
-        scheme[steps[2]] = (vaspinput,job_settings)  
+        steps.append(Step(stepnames[2],vaspinput,job_settings)) 
         
-        return Scheme(scheme)
+        return Scheme(steps)
                  
     
-    def pbe_rel(self,scheme_name=None,get_steps_only=False):
+    def pbe_rel(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for ionic relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SCF \n
@@ -770,11 +771,11 @@ class CalculationSchemes:
         Scheme object
         """        
 
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'PBE-rel'
-        steps = ['1-PBE-SCF','2-PBE-OPT']
-        if get_steps_only:
-            return steps
+        stepnames = ['1-PBE-SCF','2-PBE-OPT']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         
         incar_settings = self.incar_settings.copy()
@@ -788,7 +789,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set ionic relaxation
         job_settings = self.job_settings.copy()
@@ -798,12 +799,12 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
     
     
-    def pbe_vol_rel(self,scheme_name=None,get_steps_only=False):
+    def pbe_vol_rel(self,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for ionic and cell relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SC \n
@@ -816,11 +817,11 @@ class CalculationSchemes:
         Scheme object
         """
         
-        scheme = {}
         scheme_name = scheme_name if scheme_name else 'PBE-Vrel'
-        steps = ['1-PBE-SCF','2-PBE-OPT','3-PBE-VOPT']
-        if get_steps_only:
-            return steps
+        stepnames = ['1-PBE-SCF','2-PBE-OPT','3-PBE-VOPT']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
         
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -833,7 +834,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'1'])
         
-        scheme[steps[0]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[0],vaspinput,job_settings))
         
         # set ionic relaxation
         job_settings = self.job_settings.copy()
@@ -843,7 +844,7 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'2'])
         
-        scheme[steps[1]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[1],vaspinput,job_settings))
         
         # set volume relaxation
         job_settings = self.job_settings.copy()
@@ -852,9 +853,9 @@ class CalculationSchemes:
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
         job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,'3'])
         
-        scheme[steps[2]] = (vaspinput,job_settings)
+        steps.append(Step(stepnames[2],vaspinput,job_settings))
         
-        return Scheme(scheme)
+        return Scheme(steps)
                  
         
         
@@ -863,20 +864,19 @@ class Scheme:
     Class to organize data for a calculation scheme. It is unlickely to generate this class manually.
     """
     
-    def __init__(self,scheme):
+    def __init__(self,steps):
         """
         Parameters
         ----------
-        scheme : (Dict)
-            Dictionary with step names as keys, and tuple with VaspInput objects (pymatgen.io.vasp.inputs) and dictionary with job settings as values. \n
-            ( { step_name: (VaspInput object, job_settings dict) } ).
+        steps : (list)
+            List of Step objects
         """
-        self.scheme = scheme
+        self._steps = steps
 
 
     def __str__(self):
-        printout = 'Scheme object \n'
-        printout = str(self.steps)
+        printout = 'Scheme object: \n'
+        printout += str(self.steps)
         return printout
     
     def __repr__(self):
@@ -893,16 +893,31 @@ class Scheme:
         steps : List
             List of steps.
         """
-        steps = [s for s in self.scheme]
-        return steps
+        return self._steps
     
-    def get_job_settings(self,step):
+
+
+    def get_step(self,stepname):
+        """Get Step object with given stepname"""
+        step = []
+        for s in self.steps:
+            if s.name == stepname:
+                step.append(s)
+        if len(step) > 1:
+            raise ValueError('More than one Step is named "%s"' %stepname)
+        else:
+            step = step[0]
+        
+        return step
+                
+
+    def get_job_settings(self,stepname):
         """
-        Get dictionary with job settings of a given step.
+        Get dictionary with job settings of a given stepname.
 
         Parameters
         ----------
-        step : (str)
+        stepname : (str)
             Step to get associated job settings.
 
         Returns
@@ -911,35 +926,18 @@ class Scheme:
             dictionary of job settings.
 
         """
-        script_handler = ScriptHandler(**self.scheme[step][1])
+        step = self.get_step(stepname)
+        script_handler = ScriptHandler(**step.job_settings)
         return script_handler.settings
 
-        
-    def get_parameters(self,step):
-        """
-        Get tuple with Pymatgen VaspInput object and job settings dictionary of a given step.
-
-        Parameters
-        ----------
-        step : (str)
-            Step to get associated parameters.
-
-        Returns
-        -------
-        Tuple
-            (VaspInput object, job settings Dictionary).
-
-        """
-        return self.scheme[step]
-
     
-    def get_vaspinput(self,step):
+    def get_vaspinput(self,stepname):
         """
-        Get Pymatgen VaspInput object of a given step.
+        Get Pymatgen VaspInput object of a given stepname.
 
         Parameters
         ----------
-        step : (str)
+        stepname : (str)
             Step to get associated VaspInput.
 
         Returns
@@ -947,48 +945,56 @@ class Scheme:
         Pymatgen VaspInput object (pymatgen.io.vasp.inputs)
 
         """
-        return self.scheme[step][0]
+        step = self.get_step(stepname)
+        return step.vaspinput
 
 
-    def set_job_settings(self,step,job_settings):
+    def set_job_settings(self,stepname,job_settings):
         """
-        Set job settings of a given step
+        Set job settings of a given stepname
 
         Parameters
         ----------
-        step : (str)
+        stepname : (str)
             Step name.
         job_settings : (Dict)
             Dictionary with job settings.
         """
-        self.scheme[step] = (self.get_vaspinput(step),job_settings)
+        step = self.get_step(stepname)
+        step.job_settings = job_settings
+        return
         
-    def set_parameters(self,step,vaspinput,job_settings):
+    def set_parameters(self,stepname,vaspinput,job_settings):
         """
-        Set both VaspInput and job settings of a given step
+        Set both VaspInput and job settings of a given stepname
 
         Parameters
         ----------
-        step : (str)
+        stepname : (str)
             Step name.
         vaspinput: (Pymatgen VaspInput object)
         
         job_settings : (Dict)
             Dictionary with job settings.
-        """        
-        self.scheme[step] = (vaspinput,job_settings)
+        """     
+        step = self.get_step(stepname)
+        step.vaspinput = vaspinput
+        step.job_settings = job_settings
+        return
 
-    def set_vaspinput(self,step,vaspinput):
+    def set_vaspinput(self,stepname,vaspinput):
         """
-        Set VaspInput of a given step
+        Set VaspInput of a given stepname
 
         Parameters
         ----------
-        step : (str)
+        stepname : (str)
             Step name.
         vaspinput: (Pymatgen VaspInput object)
         """         
-        self.scheme[step] = (vaspinput,self.get_job_settings(step))
+        step = self.get_step(stepname)
+        step.vaspinput = vaspinput
+        return
         
 
     def write_scheme(self, path=None, make_dir_if_not_present=True):
@@ -997,8 +1003,6 @@ class Scheme:
 
         Parameters
         ----------
-        scheme : (Scheme object)
-            Previously generated Scheme object. It is unlikely that you generate this object manually.
         path : (str), optional
             Path to save calculation inputs. The default is None. If None files are saved in work dir.
         make_dir_if_not_present : (Bool), optional
@@ -1006,10 +1010,71 @@ class Scheme:
         """
         
         for step in self.steps:
-            complete_path = os.path.join(path, step) if path else step
-            vaspinput=self.get_vaspinput(step)
+            complete_path = os.path.join(path,step.name) if path else step.name
+            vaspinput = step.vaspinput
             vaspinput.write_input(complete_path,make_dir_if_not_present=make_dir_if_not_present)
-            script_handler = ScriptHandler(**self.get_job_settings(step))
+            script_handler = ScriptHandler(**step.job_settings)
             script_handler.write_script(path=complete_path)
             
         return
+
+
+
+class Step:
+    
+    def __init__(self,name,vaspinput,job_settings):
+        
+        self.name = name
+        self.vaspinput = vaspinput
+        self.job_settings = job_settings
+        
+        self._incar = vaspinput['INCAR']
+        self._kpoints = vaspinput['KPOINTS']
+        self._poscar = vaspinput['POSCAR']
+        self._potcar = vaspinput['POTCAR']
+        
+    def __str__(self):
+        return 'Step %s' %self.name
+    
+    def __repr__(self):
+        return self.__str__()
+
+        
+    @property
+    def incar(self):
+        return self._incar
+    
+    @incar.setter
+    def incar(self,incar):
+        self.vaspinput['INCAR'] = incar
+        self._incar = incar
+                
+
+    @property
+    def kpoints(self):
+        return self._kpoints
+    
+    @kpoints.setter
+    def kpoints(self,kpoints):
+        self.vaspinput['KPOINTS'] = kpoints
+        self._kpoints = kpoints
+
+
+    @property
+    def poscar(self):
+        return self._poscar
+    
+    @poscar.setter
+    def poscar(self,poscar):
+        self.vaspinput['POSCAR'] = poscar
+        self._poscar = poscar
+
+
+    @property
+    def potcar(self):
+        return self._potcar
+    
+    @potcar.setter
+    def potcar(self,potcar):
+        self.vaspinput['POTCAR'] = potcar
+        self._potcar = potcar
