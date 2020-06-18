@@ -175,9 +175,7 @@ class DatasetAnalysis:
             Matplotlib object
         """
         if new_figure:
-            plt.figure(figsize=(8,6))     
-        charges = []
-        energies = []        
+            plt.figure(figsize=(8,6))            
         jobs = self.jobs
         energy_dict = {}
         
@@ -189,13 +187,16 @@ class DatasetAnalysis:
         def linear(x,E0,E1):
             return (E1-E0)*x + E0
         
+        e_rescaled = {}
+        e0 = float(energy_dict[0])
+        e1 = float(energy_dict[1])
         for n in energy_dict:
             e = float(energy_dict[n])
-            e0 = float(energy_dict[0])
-            e1 = float(energy_dict[1])
-            charges.append(n)
-            e_rescaled = e - linear(n, e0, e1) 
-            energies.append(e_rescaled)
+            e_resc= linear(n, e0, e1) - e # or e -linear?
+            e_rescaled[n] = e_resc
+
+        charges = list(e_rescaled.keys())
+        energies = list(e_rescaled.values())
 
         ax = plt.gca()
         if not ax.lines:
