@@ -605,7 +605,7 @@ class DefectsAnalysis:
 
             #external fixed defects - D3
             for d_ext in external_defects:
-                qd_tot += d['charge']*d['conc']
+                qd_tot += d_ext['charge']*d_ext['conc']
                 
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
 
