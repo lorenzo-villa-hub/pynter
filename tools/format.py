@@ -2,7 +2,7 @@
 
 
 
-def format_compositions(string,all_math=False):
+def format_composition(string,all_math=False):
     new_string = []
     if all_math:
         new_string.append('$')
