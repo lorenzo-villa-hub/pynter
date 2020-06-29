@@ -406,7 +406,7 @@ class PDHandler:
 
     def get_formation_energies_from_comp(self,comp):
         """
-        Get dictionary of formation energies for all entries of a given reduced composition
+        Get dictionary of formation energies p.f.u. for all entries of a given reduced composition
 
         Parameters
         ----------
@@ -419,13 +419,14 @@ class PDHandler:
         pd = self.pd
         form_energies = {}
         for e in self.get_entries_from_comp(comp):
-            form_energies[e] = pd.get_form_energy(e)
+            n_formula_units = e.compositions.get_reduced_composition_and_factor()[1]
+            form_energies[e] = pd.get_form_energy(e)/n_formula_units
         return form_energies
             
 
     def get_formation_energy_from_stable_comp(self,comp):
         """
-        Get formation energy of a target stable composition
+        Get formation energy p.f.u. of a target stable composition
 
         Parameters
         ----------
@@ -437,7 +438,8 @@ class PDHandler:
         """
         pd = self.pd
         entry = self.get_stable_entry_from_comp(comp)
-        return pd.get_form_energy(entry)
+        n_formula_units = entry.composition.get_reduced_composition_and_factor()[1]
+        return pd.get_form_energy(entry)/ n_formula_units
 
 
     def get_stability_diagram(self,elements):
@@ -475,7 +477,7 @@ class PDHandler:
         target_entry=None
         pd = self.pd
         for e in pd.stable_entries:
-            if e.composition == comp:
+            if e.composition.reduced_composition == comp:
                 target_entry = e
                 break
         if target_entry is not None:

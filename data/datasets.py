@@ -33,7 +33,8 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
     for root , dirs, files in os.walk(path):
         if files != [] and job_script_filename in files:
             if ('INCAR' and 'KPOINTS' and 'POSCAR' and 'POTCAR') in files:
-                j = VaspJob.from_directory(root,job_script_filename=job_script_filename)
+                path = op.abspath(root)
+                j = VaspJob.from_directory(path,job_script_filename=job_script_filename)
                 j.job_script_filename = job_script_filename
                 jobs.append(j)
     if sort_by_name:
@@ -61,8 +62,8 @@ class Dataset:
             Sort list of jobs based on Job names. The default is True.
         """
         
-        self.path = path if path else os.getcwd()
-        self.name = name if name else op.basename(op.abspath(self.path))
+        self.path = op.abspath(path) if path else os.getcwd()
+        self.name = name if name else op.basename(self.path)
         self.sort_by_name = sort_by_name
         self.jobs = jobs
         if jobs:
@@ -72,7 +73,7 @@ class Dataset:
 
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
-        self._path_relative = op.abspath(self.path).replace(self._localdir,'')
+        self._path_relative = self.path.replace(self._localdir,'')
         
         self.path_in_hpc = self._workdir + self._path_relative
 
@@ -117,7 +118,12 @@ class Dataset:
     @property
     def groups(self):
         """Directory names of the first subdirectories in the dataset path."""
-        return next(os.walk(self.path))[1]
+        groups = []
+        dirs = next(os.walk(self.path))[1]
+        for g in dirs:
+            if list(g)[0] != '.':
+                groups.append(g)
+        return groups
 
 
     def _group_jobs(self):
@@ -127,16 +133,13 @@ class Dataset:
         subpaths will be nodes
         """
         path = op.abspath(self.path)
-        gjobs = {}
         groups = self.groups
         for group in groups:
-            gjobs[group] = {}
             group_path = op.join(path,group)
             for job in self.jobs:
-                if group in job.path:
-                    jpath = op.abspath(job.path)
+                jpath = op.abspath(job.path)
+                if f'/{group}/' in jpath or op.basename(jpath) == group:
                     nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
-                    gjobs[group][nodes] = job
                     job.group = group
                     job.nodes = nodes
         return
