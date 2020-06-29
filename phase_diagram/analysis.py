@@ -10,7 +10,18 @@ from pynter.tools.format import format_composition
 class Reservoirs:
     
     def __init__(self,res_dict,phase_diagram=None,are_chempots_delta=False):
+        """
+        Class to handle dictionaries of chemical potentials
 
+        Parameters
+        ----------
+        res_dict : (dict)
+            Dictionary with reservoir names as key and dictionaries of chemical potentials as values.
+        phase_diagram : (PhaseDiagram object), optional
+            PhaseDiagram object (Pymatgen), useful to convert absolute chempots in referenced chempots. The default is None.
+        are_chempots_delta : (bool), optional
+            Set this variable to True if chempots in dictionary are referenced values. The default is False.
+        """
         self.res_dict = res_dict
         self.phase_diagram = phase_diagram if phase_diagram else None
         self.are_chempots_delta = are_chempots_delta
@@ -26,18 +37,13 @@ class Reservoirs:
         
     def as_dict(self):
         """
-        Json-serializable dict representation of dictionary in the format {Element:chempot}. The Pymatgen element 
+        Json-serializable dict representation of a Reservoirs object. The Pymatgen element 
         is expressed with the symbol of the element.
-
-        Parameters
-        ----------
-        chempots : (dict)
-            Dictionary in the format {Element:chempot}.
 
         Returns
         -------
         dict
-            Json-serializable dict in the format {'symbol':chempot}.
+            Json-serializable dict of a Reservoirs object.
         """
         d = {}
         d['@module'] = self.__class__.__module__
@@ -55,7 +61,7 @@ class Reservoirs:
     @classmethod
     def from_dict(cls,d):
         """
-        Constructor of Chempots object from dictionary representation in the format {'symbol':chempot}
+        Constructor of Reservoirs object from dictionary representation.
         
         Parameters
         ----------
@@ -63,7 +69,7 @@ class Reservoirs:
         
         Returns
         -------
-        Chempot object.
+        Reservoirs object.
         """
         res_dict = {}
         for res,chempots in d['res_dict'].items():
@@ -75,7 +81,10 @@ class Reservoirs:
 
 
     def get_referenced_chempots(self):
-        
+        """ 
+        Convert values of chempots from absolute to referenced 
+        based on the information in the PhaseDiagram
+        """
         chempots_delta = {}
         ca = ChempotAnalysis(self.phase_diagram)
         if self.are_chempots_delta:
@@ -87,7 +96,10 @@ class Reservoirs:
     
     
     def get_absolute_chempots(self):
-        
+        """ 
+        Convert values of chempots from referenced to absolute 
+        based on the information in the PhaseDiagram
+        """
         chempots_abs = {}
         ca = ChempotAnalysis(self.phase_diagram)
         if self.are_chempots_delta:
@@ -100,7 +112,21 @@ class Reservoirs:
 
     
     def get_dataframe(self,format_compositions=False,all_math=False):
-        
+        """
+        Get DataFrame object of the dictionary of reservoirs
+
+        Parameters
+        ----------
+        format_compositions : (bool), optional
+            Get Latex format of compositions. The default is False.
+        all_math : (bool), optional
+            Get all characters in composition written in Latex's math format. The default is False.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
         df = DataFrame(self.res_dict)
         df = df.transpose()
         if format_compositions:
@@ -115,18 +141,17 @@ class Reservoirs:
        
 class ChempotAnalysis:
     
-    def __init__(self,pd):
+    def __init__(self,phase_diagram):
         """
         Initializes class to analyse chemical potentials of a phase diagram generated with Pymatgen
         
         Parameters
         ----------
-        computed_phases : (Dict)
-            Dictionary with strings with phase reduced formula as keys and energy per formula unit as values.
-            The strings with reduced formula are trasformed in Pymatgen Composition objects to be used in this class.
+        phase_diagram : (PhaseDiagram)
+            Pymatgen PhaseDiagram object
         """
-        self.pd = pd
-        self.chempots_reference = PDHandler(pd).get_chempots_reference()
+        self.pd = phase_diagram
+        self.chempots_reference = PDHandler(phase_diagram).get_chempots_reference()
     
 
     def boundary_analysis(self,comp,fixed_chempot_delta):
@@ -185,7 +210,7 @@ class ChempotAnalysis:
         """
         Add energy per atom of elemental phases to dictionary of relative chemical potentials ({Element:chempot}) 
         to get the total chemical potentials.
-        The energy of the elemental phase is taken from self.computed_phases
+        The energy of the elemental phase is taken from the input PhaseDiagram 
         Parameters
         ----------
         chempots_delta : (Dict)
@@ -201,7 +226,7 @@ class ChempotAnalysis:
     def get_chempots_delta(self,chempots_abs):
         """
         Subtract energy per atom of elemental phases to dictionary of chemical potentials ({Element:chempot})
-        The energy of the elemental phase is taken from self.computed_phases
+        The energy of the elemental phase is taken from the input PhaseDiagram
         Parameters
         ----------
         chempots_abs : (Dict)
@@ -220,7 +245,7 @@ class ChempotAnalysis:
         in the boundary between two phases (region where the two phases coexist). Only works for 3-component PD (to check).
         Given a phase P1 (formula AxByOz) and a phase P2 (formula AiBjOk) the chemical potentials have to satisfy the conditions:
             form_energy(P1) = x*mu(A) + y*mu(B) +z*mu(O)
-            from_energy(P2) = i*mu(A) + j*mu(B) +k*mu(O)
+            form_energy(P2) = i*mu(A) + j*mu(B) +k*mu(O)
         From these conditions the values of mu(A) and mu(B) are determined given a fixed value of mu(O).
         All of the chemical potentials used here are delta_mu, i.e. relative to the elemental phase(delta_mu(O) = mu(O) - mu_ref(O))
 
@@ -327,23 +352,22 @@ class ChempotAnalysis:
         
 class PDHandler:
     
-    def __init__(self,pd):
+    def __init__(self,phase_diagram):
         """
-        Class to generate and handle Pymatgen phase diagram more easily, starting from a dictionary with
-        formulas as keys and energies per unit formula as values
+        Class to generate and handle Pymatgen phase diagram more rapidly.
 
         Parameters
         ----------
-        computed_phases : (dict)
-            dictionary with formulas as keys and energies per unit formula as values.
+        phase_diagram : (PhaseDiagram)
+            Pymatgen PhaseDiagram object
         """
-        self.pd = pd 
+        self.pd = phase_diagram 
 
         
     def get_chempots_reference(self):
         """
-        Gets elemental reference compounds and respective e.p.a with Pymatgen el_ref attribute in PhaseDiagram class
-        the difference with my version is that this considers having more than 1 calculation and takes the minimum e.p.a
+        Gets elemental reference compounds and respective e.p.a with Pymatgen el_ref attribute in PhaseDiagram class.
+
         Returns
         -------
         chempot_ref: (Dict)
@@ -463,19 +487,19 @@ class PDHandler:
 
 class PDPlotterAdder:
     
-    def __init__(self,pd=None,size=1):
+    def __init__(self,phase_diagram=None,size=1):
         """
         Class with tools to add features to default PD plots generated by Pymatgen.
 
         Parameters
         ----------
-        computed_phases : (Dict)
-            Dictionary with strings with phase reduced formula as keys and energy per formula unit as values.
+        phase_diagram : (PhaseDiagram)
+            Pymatgen PhaseDiagram object
         size : (float)
             Multiplier for the size of the objects added in the plot
         """
-        self.pd = pd if pd else None
-        self.chempots_analysis = ChempotAnalysis(pd) if pd else None
+        self.pd = phase_diagram if phase_diagram else None
+        self.chempots_analysis = ChempotAnalysis(phase_diagram) if phase_diagram else None
         self.size = size
         
     
@@ -595,8 +619,6 @@ class PDPlotterAdder:
             Element chosen as indipendent variable.
         fixed_chempots : (dict)
             Dictionary with fixed chemical potentials (values relative to reference phase). the format is {Element:chempot}
-        **kwargs : 
-            kwargs passed to Matplotlib plot function.
         """
 
         fixed_chempots[variable_element] = mu
