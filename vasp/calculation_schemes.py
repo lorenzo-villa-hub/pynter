@@ -19,10 +19,12 @@ class CalculationSchemes:
     Class to generate and write input files for different calculation schemes in VASP
     """
     
-    def __init__(self,structure=None,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
+    def __init__(self,vaspinput=None,structure=None,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
         """
         Parameters
         ----------
+        vaspinput : (Pymatgen VaspInput object), optional
+            Set of VASP inputs, the default is None. if provided the other inputs of the class (structure,incar_settings,kpoints,potcar) are not needed 
         structure : (Pymatgen Structure object), optional
             Pymatgen Structure object. If set to None no input parameters can be generated but only lists with step labels.
         incar_settings : (Dict), optional
@@ -38,7 +40,12 @@ class CalculationSchemes:
         name : (str), optional
             Name for the system to set up scheme for. The default is None.
         """
-        
+        if vaspinput:
+            structure = vaspinput['POSCAR'].structure
+            incar_settings = Incar(vaspinput['INCAR'].copy())
+            kpoints = vaspinput['KPOINTS']
+            potcar = vaspinput['POTCAR']
+
         self.structure = structure if structure else None
         if structure:
             self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structure).get_incar_default()
@@ -209,7 +216,7 @@ class CalculationSchemes:
             vaspinput = VaspInput(incar,kpoints,poscar,potcar)
             job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'q{q}'])
             
-            steps.append(Step(f'q_{q}',vaspinput,job_settings))
+            steps.append(Step(f'q{q}',vaspinput,job_settings))
             
         return Scheme(steps)
         
