@@ -327,7 +327,7 @@ class ChempotAnalysis:
         stable_entries = gpd.stable_entries
         comp_in_stable_entries = False
         for e in stable_entries:
-            if e.original_comp == comp:
+            if e.original_comp.reduced_composition == comp:
                 comp_in_stable_entries = True
         if comp_in_stable_entries == False:
             raise ValueError('Target composition %s is not a stable entry for fixed chemical potential: %s' %(comp.reduced_formula,fixed_chempot))
@@ -406,7 +406,7 @@ class PDHandler:
 
     def get_formation_energies_from_comp(self,comp):
         """
-        Get dictionary of formation energies p.f.u. for all entries of a given reduced composition
+        Get dictionary of formation energies for all entries of a given reduced composition
 
         Parameters
         ----------
@@ -419,14 +419,13 @@ class PDHandler:
         pd = self.pd
         form_energies = {}
         for e in self.get_entries_from_comp(comp):
-            n_formula_units = e.compositions.get_reduced_composition_and_factor()[1]
-            form_energies[e] = pd.get_form_energy(e)/n_formula_units
+            form_energies[e] = pd.get_form_energy(e)
         return form_energies
             
 
     def get_formation_energy_from_stable_comp(self,comp):
         """
-        Get formation energy p.f.u. of a target stable composition
+        Get formation energy of a target stable composition
 
         Parameters
         ----------
@@ -438,8 +437,7 @@ class PDHandler:
         """
         pd = self.pd
         entry = self.get_stable_entry_from_comp(comp)
-        n_formula_units = entry.composition.get_reduced_composition_and_factor()[1]
-        return pd.get_form_energy(entry)/ n_formula_units
+        return pd.get_form_energy(entry)
 
 
     def get_stability_diagram(self,elements):
