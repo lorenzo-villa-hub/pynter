@@ -192,7 +192,7 @@ class DatasetAnalysis:
         e1 = float(energy_dict[1])
         for n in energy_dict:
             e = float(energy_dict[n])
-            e_resc= linear(n, e0, e1) - e # or e -linear?
+            e_resc = e - linear(n, e0, e1)
             e_rescaled[n] = e_resc
 
         charges = list(e_rescaled.keys())
