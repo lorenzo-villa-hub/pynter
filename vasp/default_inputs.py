@@ -70,6 +70,7 @@ class DefaultInputs:
             Dictionary with default INCAR parameters.
 
         """
+        system = self.structure.composition.reduced_formula if self.structure else 'No system info'
           
         incar_default_flags = {               
                 "IBRION": 2,
@@ -80,23 +81,24 @@ class DefaultInputs:
                 "LWAVE": ".TRUE.",
                 "LCHARG": ".TRUE.",
                 "LORBIT":10,
-                "ENCUT": 500,
+                "ENCUT": 550,
                 "EDIFF": 1e-06,
                 "ISMEAR": 0,
                 "SIGMA": 0.05,
                 "ALGO": "Normal",
                 "AMIX": 0.2,
-                "LREAL": ".FALSE."                   
+                "LREAL": ".FALSE.",
+                "SYSTEM": system                   
                 }
         
         if xc == 'PBE':
             incar_default_flags.update({
-                    "#### Default PBE: system" : self.structure.composition.reduced_formula if self.structure else 'No system info' , 
+                    "#### Default PBE: system" : system , 
                     "ISYM":2})
             
         if xc == 'PBE+U':
             incar_default_flags.update({
-                    "#### Default PBE+U: system" : self.structure.composition.reduced_formula if self.structure else 'No system info',                 
+                    "#### Default PBE+U: system" : system,                 
                     "ISYM":2,
                     "LDAU" : ".TRUE.",
                     "LDAUTYPE": 2,
@@ -107,7 +109,7 @@ class DefaultInputs:
             
         if xc == 'HSE06':
             incar_default_flags.update({
-                    "#### Default HSE06: system" : self.structure.composition.reduced_formula if self.structure else 'No system info', 
+                    "#### Default HSE06: system" : system, 
                     "LHFCALC" : ".TRUE.",
                     "HFSCREEN": 0.2,
                     "PRECFOCK": "Fast",

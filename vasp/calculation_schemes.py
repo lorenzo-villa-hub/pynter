@@ -77,6 +77,47 @@ class CalculationSchemes:
     def __repr__(self):
         return self.__str__()
         
+
+    def charge_states(self,charges,locpot=True,scheme_name=None,get_stepnames_only=False):
+        """
+        Generate calculation schemes for calculations of different charge states.
+        Only the NELECT parameter in INCAR is varied.
+        A list of desired charges (float or int) is required.
+        """
+        
+        scheme_name = scheme_name if scheme_name else 'charge'
+        stepnames = ['eps-electronic']
+        if get_stepnames_only:
+            return stepnames
+        steps = []
+        
+        val = {}
+        for p in self.potcar:
+            val[p.element] = p.nelectrons        
+        nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
+        
+        for q in charges:
+            
+            incar_settings = self.incar_settings.copy()
+            job_settings = self.job_settings.copy()
+            
+            if isinstance(q,float) and not q.is_integer():
+                q = np.around(q,decimals=1)
+            incar_settings['NELECT'] = nelect - q 
+            
+            if locpot:
+                incar_settings['LOCPOT'] = '.TRUE.' #most likely needed for corrections in defect calculations
+            incar = Incar(incar_settings)
+            kpoints = self.kpoints
+            poscar = Poscar(self.structure)
+            potcar = self.potcar
+            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+            job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,f'q{q}'])
+            
+            steps.append(Step(f'q{q}',vaspinput,job_settings))
+            
+        return Scheme(steps)
+
                
     def dielectric_properties_electronic(self,scheme_name=None,get_stepnames_only=False):
         """
@@ -695,7 +736,7 @@ class CalculationSchemes:
     def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None,get_stepnames_only=False):
         """
         Generates calculation scheme for electronic structure calculations for PBE (in general non hybrid functionals) Steps: \n
-            '1-PBE-SCF': Electronic SC \n
+            '1-PBE-relax': Relaxation of atomic positions and cell volume \n
             '2-PBE-DOS': DOS calculation with 2000 number of gridpoints on which the DOS is evaluated (NEDOS=2000) and increased k-mesh, ISMEAR is set to -5.
             '3-PBE-BS': Bandstructure calculation
         Parameters
@@ -712,7 +753,7 @@ class CalculationSchemes:
         """
      
         scheme_name = scheme_name if scheme_name else 'PBE-el-str'
-        stepnames = ['1-PBE-SCF','2-PBE-DOS','3-PBE-BS']
+        stepnames = ['1-PBE-relax','2-PBE-DOS','3-PBE-BS']
         if get_stepnames_only:
             return stepnames
         steps = []
@@ -720,7 +761,8 @@ class CalculationSchemes:
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
         
-        incar_settings['NSW'] = 0
+        incar_settings['NSW'] = 100
+        incar_settings['ISIF'] = 3
         incar = Incar(incar_settings)
         kpoints = self.kpoints
         poscar = Poscar(self.structure)
@@ -732,6 +774,7 @@ class CalculationSchemes:
         
         # set DOS calculation
         job_settings = self.job_settings.copy()
+        incar_settings['NSW'] = 0
         incar_settings['ISTART'] = 1
         incar_settings['ICHARG'] = 1
         incar_settings['NEDOS'] = 2000
@@ -888,6 +931,15 @@ class Scheme:
     
     def __repr__(self):
         return self.__str__()
+
+    def __len__(self):
+        return len(self.steps)
+
+    def __iter__(self):
+        return self.steps.__iter__()
+
+    def __getitem__(self, ind):
+        return self.steps[ind]
 
     
     @property

@@ -11,7 +11,7 @@ class Reservoirs:
     
     def __init__(self,res_dict,phase_diagram=None,are_chempots_delta=False):
         """
-        Class to handle dictionaries of chemical potentials
+        Class to handle dictionaries of chemical potentials. Works almost completely like a python dictionary.
 
         Parameters
         ----------
@@ -34,7 +34,23 @@ class Reservoirs:
     def __repr__(self):
         return self.__str__()
 
-        
+    def __len__(self):
+        return len(self.res_dict)
+
+    def __iter__(self):
+        return self.res_dict.keys().__iter__()
+
+    def __getitem__(self,reskey):
+        return self.res_dict[reskey]
+
+    def __setitem__(self,reskey,chempots):
+        self.res_dict[reskey] = chempots
+        return
+
+    def items(self):
+        return self.res_dict.items()
+
+    
     def as_dict(self):
         """
         Json-serializable dict representation of a Reservoirs object. The Pymatgen element 
@@ -106,7 +122,7 @@ class Reservoirs:
             for res,chem in self.res_dict.items():
                 chempots_abs[res] = ca.get_chempots_abs(chem)
         else:
-            raise ValueError('Chemical potential values are already with not referenced')
+            raise ValueError('Chemical potential values are already absolute')
         return chempots_abs
                 
 
