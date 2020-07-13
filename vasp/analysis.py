@@ -8,6 +8,7 @@ from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.core.structure import Structure
 from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter
 from pymatgen.electronic_structure.bandstructure import BandStructure
+from pymatgen.analysis.eos import EOS
 
 matplotlib.rcParams.update({'font.size': 15})
 
@@ -154,6 +155,38 @@ class DatasetAnalysis:
             List of VaspJob objects
         """
         self.jobs = jobs
+
+
+    def birch_murnaghan(self,title=None):
+        """
+        Fit E,V data with Birch-Murnaghan EOS
+
+        Parameters
+        ----------
+        title : (str)
+            Plot title
+
+        Returns
+        -------
+        plt :
+            Matplotlib object.
+        eos_fit : 
+            Pymatgen EosBase object.
+        """
+        V,E = [],[]
+        V,E = [],[]
+        for j in self.jobs:
+            V.append(j.initial_structure.lattice.volume)
+            E.append(j.final_energy())
+        eos = EOS(eos_name='birch_murnaghan')
+        eos_fit = eos.fit(V, E)
+        eos_fit.plot(width = 10, height = 10 , text = '', markersize = 15,  label= 'Birch-Murnaghan fit')  
+        plt.legend(loc=2, prop={'size': 20})
+        if title:
+            plt.title(title,size=25)
+        plt.tight_layout()
+        
+        return plt, eos_fit
 
         
     def plot_fractional_charge(self,name='',new_figure=True,legend_out=False):

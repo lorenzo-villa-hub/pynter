@@ -732,6 +732,12 @@ class CalculationSchemes:
             
         return Scheme(steps)
     
+
+    def NEB_pbe(self,structure_reactant,structure_product,n_images=5,scheme_name=None):
+        
+        scheme_name = scheme_name if scheme_name else 'NEB'
+        # to continue
+
     
     def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None,get_stepnames_only=False):
         """

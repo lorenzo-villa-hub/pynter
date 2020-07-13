@@ -6,7 +6,7 @@ Created on Fri Feb 21 10:59:10 2020
 @author: villa
 """
 
-from pymatgen.io.vasp.inputs import Kpoints, Poscar, Potcar, VaspInput
+from pymatgen.io.vasp.inputs import Kpoints, Poscar, Potcar, VaspInput, Incar
 
 class DefaultInputs:
     """
@@ -86,6 +86,7 @@ class DefaultInputs:
                 "EDIFF": 1e-06,
                 "ISMEAR": 0,
                 "SIGMA": 0.05,
+                "NELM": 200,
                 "ALGO": "Normal",
                 "AMIX": 0.2,
                 "LREAL": ".FALSE.",
@@ -148,7 +149,7 @@ class DefaultInputs:
 
         """
         
-        incar = self.get_incar_default(xc=xc,ldauu=ldauu,aexx=aexx)
+        incar = Incar(self.get_incar_default(xc=xc,ldauu=ldauu,aexx=aexx))
         kpoints = self.get_kpoints_default(kppa=kppa)
         poscar = self.get_poscar()
         potcar = self.get_potcar(potcar_symbols=potcar_symbols,potcar_functional=potcar_functional)
