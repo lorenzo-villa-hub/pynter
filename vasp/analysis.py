@@ -101,7 +101,7 @@ class JobAnalysis:
         
         self.job = job
         
-    def plot_dos(self):
+    def plot_dos(self,xlim=(-3,3),stack=False):
         """
         Plot DOS from data in vasprun.xml with Pymatgen
         """
@@ -112,12 +112,12 @@ class JobAnalysis:
             vasprun = job.outputs['Vasprun']       
             complete_dos = vasprun.complete_dos
             partial_dos = complete_dos.get_spd_dos()        
-            dos_plotter = DosPlotter(stack=True)
+            dos_plotter = DosPlotter(stack=stack)
             dos_plotter.add_dos('Total',complete_dos)
             for orbital in partial_dos:
                 dos_plotter.add_dos(orbital,partial_dos[orbital])
             eg = job.energy_gap()
-            plt = dos_plotter.get_plot(xlim=(-3,eg+3))
+            plt = dos_plotter.get_plot(xlim=(xlim[0],eg+xlim[1]))
         else:
             raise ValueError(f'Job %s is not converged' %self.job.name)
         os.chdir(wdir)

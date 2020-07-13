@@ -81,6 +81,7 @@ class DefaultInputs:
                 "LWAVE": ".TRUE.",
                 "LCHARG": ".TRUE.",
                 "LORBIT":10,
+                "LVTOT":".TRUE.",
                 "ENCUT": 550,
                 "EDIFF": 1e-06,
                 "ISMEAR": 0,

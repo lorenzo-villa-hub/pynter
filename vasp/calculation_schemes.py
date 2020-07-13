@@ -106,7 +106,7 @@ class CalculationSchemes:
             incar_settings['NELECT'] = nelect - q 
             
             if locpot:
-                incar_settings['LOCPOT'] = '.TRUE.' #most likely needed for corrections in defect calculations
+                incar_settings['LVTOT'] = '.TRUE.' #most likely needed for corrections in defect calculations
             incar = Incar(incar_settings)
             kpoints = self.kpoints
             poscar = Poscar(self.structure)
