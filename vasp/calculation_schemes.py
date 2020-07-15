@@ -979,12 +979,17 @@ class NEBSchemes:
         return Scheme(steps)
 
             
+    def clean_dirs(self):
+        
+        pass
 
-    def write_input(self,path, make_dir_if_not_present=True):
+
+    def write_input(self,path, write_structures=True, make_dir_if_not_present=True):
         
         self.incar_settings.update({
             'ISYM': 0,
-            'EDIFF': 1e-04,    
+            'EDIFF': 1e-04,
+            'EDIFFG': -0.1,
             'NSW' : 25,
             'IMAGES' : self.images,
             'SPRING' : -5,
@@ -1002,19 +1007,14 @@ class NEBSchemes:
         self.job_settings['nodes'] = self.images
         if 'add_automation' not in self.job_settings:
             self.job_settings['add_automation'] = None
-
-        structures = self.structures                 
+               
         incar = Incar(self.incar_settings)
         kpoints = self.kpoints
         potcar = self.potcar
         job_settings = self.job_settings
 
-        for s in structures:
-            index = structures.index(s)
-            image_path = op.join(path,str(index).zfill(2))
-            if make_dir_if_not_present and not op.exists(image_path):
-                os.makedirs(image_path)
-            Poscar(s).write_file(op.join(image_path,'POSCAR'))
+        if write_structures:
+            self.write_structures(path,make_dir_if_not_present)
         
         incar.write_file(op.join(path,'INCAR'))
         kpoints.write_file(op.join(path,'KPOINTS'))
@@ -1023,6 +1023,17 @@ class NEBSchemes:
               
         return
             
+
+    def write_structures(self, path=None, make_dir_if_not_present=True):
+        path = path if path else os.getcwd()
+        structures = self.structures
+        for s in structures:
+            index = structures.index(s)
+            image_path = op.join(path,str(index).zfill(2)) #folders will be named 00,01,..,XX
+            if make_dir_if_not_present and not op.exists(image_path):
+                os.makedirs(image_path)
+            Poscar(s).write_file(op.join(image_path,'POSCAR'))
+        return
                 
         
 class Scheme:
