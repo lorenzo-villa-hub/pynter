@@ -322,7 +322,7 @@ class Dataset:
         return
 
 
-    def select_jobs(self,names=None,groups=None,common_node=None,**kwargs):
+    def select_jobs(self,jobs=None,names=None,groups=None,common_node=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
@@ -331,6 +331,8 @@ class Dataset:
 
         Parameters
         ----------
+        jobs : (list), optional
+            List of Jobs to search, if None the self.jobs is used. The default is None.
         names : (str), optional
             Job name. The default is None.
         groups : (list), optional
@@ -346,7 +348,7 @@ class Dataset:
         sel_jobs : (list)
             List with filtered jobs. If list has one element only the element is returned.
         """
-        sel_jobs = self.jobs.copy()
+        sel_jobs = jobs.copy() if jobs else self.jobs.copy() 
         jobs = sel_jobs.copy()
         for j in jobs:
             if names:

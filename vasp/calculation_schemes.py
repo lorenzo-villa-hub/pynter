@@ -6,6 +6,7 @@ Created on Wed Feb 19 14:52:51 2020
 @author: villa
 """
 import os
+import os.path as op
 import numpy as np
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.structure import Structure
@@ -731,12 +732,6 @@ class CalculationSchemes:
             steps.append(Step(f'U_{u}',vaspinput,job_settings))
             
         return Scheme(steps)
-    
-
-    def NEB_pbe(self,structure_reactant,structure_product,n_images=5,scheme_name=None):
-        
-        scheme_name = scheme_name if scheme_name else 'NEB'
-        # to continue
 
     
     def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None,get_stepnames_only=False):
@@ -914,6 +909,121 @@ class CalculationSchemes:
         return Scheme(steps)
                  
         
+class NEBSchemes:
+    
+    def __init__(self,structures,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
+        """
+        Parameters
+        ----------
+        structures : (list of Pymatgen Structure objects), optional
+            List of structures for reaction path.
+        incar_settings : (Dict), optional
+            Dictionary with incar flags. The default is None. If None the default settings for PBE functional from the DefaultInputs class are used.
+        kpoints : (Pymatgen Kpoints object), optional
+            Pymatgen Kpoints object. The default is None. If None the default settings from the DefaultInputs class are used.
+        potcar : (Pymatgen kpoints object), optional
+            Pymatgen kpoints object. The default is None. If None the default settings from the DefaultInputs class are used.
+        job_settings : (Dict), optional
+            Dictionary with job settings to create job script, parameters are defined in ScrpitHandler class function. The default is None.\n
+            If job_settings is None, the 'name' key will be added, the value is the 'name' parameter if provided, if 'name' parameter is \n
+            None the value will be: 'no_name'.
+        name : (str), optional
+            Name for the system to set up scheme for. The default is None.
+        """
+        
+        self.structures = structures
+        self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structures[0]).get_incar_default()
+        self.kpoints = kpoints if kpoints else DefaultInputs(self.structures[0]).get_kpoints_default()
+        self.potcar = potcar if potcar else DefaultInputs(self.structures[0]).get_potcar()
+        self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'NEB'})
+        self.name = name if name else None
+        
+        if 'name' not in self.job_settings.keys():
+            self.job_settings['name'] = self.name
+        if 'name' in self.job_settings.keys() and self.name:
+            self.job_settings['name'] = self.name
+
+
+        for key in ['KPAR','NCORE','NPAR']:
+            if key in self.incar_settings:
+                del self.incar_settings[key]
+
+        self.images = len(self.structures)-2
+
+
+    def preconverge(self):
+        
+        self.incar_settings.update({
+            'EDIFF' : 1e-04,
+            'NSW': 0
+            })
+
+        steps = []
+        structures = self.structures
+        for s in structures:
+            
+            index = structures.index(s)
+            image_name = str(index).zfill(2)
+            
+            incar = Incar(self.incar_settings)
+            kpoints = self.kpoints
+            potcar = self.potcar
+            poscar = Poscar(s)
+            vaspinput = VaspInput(incar, kpoints, poscar, potcar)
+            
+            job_settings = self.job_settings
+            job_settings['name'] = image_name
+            
+            steps.append(Step(image_name,vaspinput,job_settings))
+            
+        return Scheme(steps)
+
+            
+
+    def write_input(self,path, make_dir_if_not_present=True):
+        
+        self.incar_settings.update({
+            'ISYM': 0,
+            'EDIFF': 1e-04,    
+            'NSW' : 25,
+            'IMAGES' : self.images,
+            'SPRING' : -5,
+            'IOPT' : 0,
+            'IBRION' : 3,
+            'POTIM' : 0.10,
+            'ICHAIN' : 0,
+            'LCLIMB' : '.FALSE.',
+            'LTANGENTOLD' : '.FALSE.',
+            'LDNEB' : '.FALSE.',
+            'LNEBCELL' : '.FALSE.'
+            })
+        
+        
+        self.job_settings['nodes'] = self.images
+        if 'add_automation' not in self.job_settings:
+            self.job_settings['add_automation'] = None
+
+        structures = self.structures                 
+        incar = Incar(self.incar_settings)
+        kpoints = self.kpoints
+        potcar = self.potcar
+        job_settings = self.job_settings
+
+        for s in structures:
+            index = structures.index(s)
+            image_path = op.join(path,str(index).zfill(2))
+            if make_dir_if_not_present and not op.exists(image_path):
+                os.makedirs(image_path)
+            Poscar(s).write_file(op.join(image_path,'POSCAR'))
+        
+        incar.write_file(op.join(path,'INCAR'))
+        kpoints.write_file(op.join(path,'KPOINTS'))
+        potcar.write_file(op.join(path,'POTCAR'))
+        ScriptHandler(**job_settings).write_script(path=path)
+              
+        return
+            
+                
         
 class Scheme:
     """ 
@@ -1089,11 +1199,7 @@ class Scheme:
         """
         
         for step in self.steps:
-            complete_path = os.path.join(path,step.name) if path else step.name
-            vaspinput = step.vaspinput
-            vaspinput.write_input(complete_path,make_dir_if_not_present=make_dir_if_not_present)
-            script_handler = ScriptHandler(**step.job_settings)
-            script_handler.write_script(path=complete_path)
+            step.write_step(path,make_dir_if_not_present)
             
         return
 
@@ -1157,3 +1263,26 @@ class Step:
     def potcar(self,potcar):
         self.vaspinput['POTCAR'] = potcar
         self._potcar = potcar
+ 
+       
+    def write_step(self, path=None, make_dir_if_not_present=True):
+        """
+        Function to write input files from previously generated Step object.
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path to save calculation inputs. The default is None. If None files are saved in work dir.
+        make_dir_if_not_present : (Bool), optional
+            Create directory from given path is not present. The default is True.
+        """
+        complete_path = os.path.join(path,self.name) if path else self.name
+        vaspinput = self.vaspinput
+        vaspinput.write_input(complete_path,make_dir_if_not_present=make_dir_if_not_present)
+        script_handler = ScriptHandler(**self.job_settings)
+        script_handler.write_script(path=complete_path)
+        
+        return
+        
+        
+        

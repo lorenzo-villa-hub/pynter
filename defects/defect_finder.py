@@ -6,7 +6,24 @@ Created on Thu Jun  4 19:08:20 2020
 @author: lorenzo
 """
 
-def defect_finder(structure_defect,structure_bulk): # change with coordinate comparison > more accurate
+def defect_finder(structure_defect,structure_bulk):
+    """
+    Function to find defect comparing defect and bulk structure (Pymatgen objects).
+    Warning: apparantely comparing a structure read from Vasprun and one read from a Poscar doesn't work. 
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+
+    Returns
+    -------
+    defect_site : (Pymatgen PeriodicSite object)
+    defect_type : (str)
+        Type of defect ("Vacancy","Interstitial" or "Substitution").
+    """
 
     df = structure_defect
     bk = structure_bulk

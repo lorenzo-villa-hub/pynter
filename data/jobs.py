@@ -324,9 +324,11 @@ class VaspJob(Job):
         
     @property
     def initial_structure(self):
-        """Initial structure read from Poscar file with Pymatgen"""
+        """Initial structure read vasprun.xml if job is converged, otherwise read from Poscar file with Pymatgen"""
         poscar_file = op.join(self.path,'POSCAR')
-        if op.isfile(poscar_file):
+        if self.is_converged:
+            return self.outputs['Vasprun'].structures[0]
+        elif op.isfile(poscar_file):
             return Poscar.from_file(poscar_file).structure
         elif self.inputs['POSCAR']:
             poscar = self.inputs['POSCAR']
