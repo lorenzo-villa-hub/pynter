@@ -46,7 +46,7 @@ class Schemes:
         name : (str), optional
             Name for the system to set up scheme for. The default is None.
         """
-        self.path = path if path else os.getcwd()
+        self.path = op.abspath(path) if path else os.getcwd()
         if vaspinput:
             structure = vaspinput['POSCAR'].structure
             incar_settings = Incar(vaspinput['INCAR'].copy())
@@ -59,11 +59,8 @@ class Schemes:
             self.kpoints = kpoints if kpoints else DefaultInputs(self.structure).get_kpoints_default()
             self.potcar = potcar if potcar else DefaultInputs(self.structure).get_potcar()
             self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
-            self.name = name if name else self.job_settings['name']
-            self.path = op.join(self.path,name)
+            self.name = name if name != None else self.job_settings['name'] 
             
-            if 'name' not in self.job_settings.keys():
-                self.job_settings['name'] = self.name
             if 'name' in self.job_settings.keys() and self.name:
                 self.job_settings['name'] = self.name
                 
@@ -139,7 +136,7 @@ class Schemes:
         Uses 'LOPTICS' method in VASP.
         """
         
-        scheme_name = scheme_name if scheme_name else 'eps-el'
+        scheme_name = scheme_name if scheme_name != None else 'eps-el'
         stepnames = ['eps-electronic']
         jobs = []
 
@@ -177,7 +174,7 @@ class Schemes:
         Uses 'LCALCEPS' method in VASP, combined with 'IBRION=6'. Useful for Hybrid calculations where 'LEPSILON' method does not work.
         """
         
-        scheme_name = scheme_name if scheme_name else 'eps-ion-lcal'
+        scheme_name = scheme_name if scheme_name != None else 'eps-ion-lcal'
         stepnames = ['eps-ionic-lcalceps']
         jobs = []
 
@@ -214,7 +211,7 @@ class Schemes:
         Uses 'LEPSILON' method in VASP, combined with 'IBRION=8'. This method does not work with HSE functionals.
         """
         
-        scheme_name = scheme_name if scheme_name else 'eps-el-leps'
+        scheme_name = scheme_name if scheme_name != None else 'eps-el-leps'
         stepnames = ['eps-ionic-lepsilon']
         jobs = []
 
@@ -297,7 +294,7 @@ class Schemes:
             List of Job objects
         """
         
-        scheme_name = scheme_name if scheme_name else 'HSE-rel'
+        scheme_name = scheme_name if scheme_name != None else 'HSE-rel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT']
         jobs = []
         
@@ -384,7 +381,7 @@ class Schemes:
             List of Job objects
         """
         
-        scheme_name = scheme_name if scheme_name else'HSE-rel-gamma'
+        scheme_name = scheme_name if scheme_name != None else'HSE-rel-gamma'
         stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-HSE-SCF','7-HSE-OPT']
         jobs = []
@@ -521,7 +518,7 @@ class Schemes:
             List of Job objects
         """
 
-        scheme_name = scheme_name if scheme_name else'HSE-rel-gamma-ext'
+        scheme_name = scheme_name if scheme_name != None else'HSE-rel-gamma-ext'
         stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-PBE-OPT','7-HSE-SCF','8-HSE-OPT']
         jobs = []
@@ -667,7 +664,7 @@ class Schemes:
             List of Job objects
         """
 
-        scheme_name = scheme_name if scheme_name else 'HSE-rel-short'
+        scheme_name = scheme_name if scheme_name != None else 'HSE-rel-short'
         stepnames = ['1-HSE-SCF','2-HSE-OPT']        
         jobs = []
         
@@ -727,7 +724,7 @@ class Schemes:
             List of Job objects
         """
         
-        scheme_name = scheme_name if scheme_name else 'HSE-Vrel'
+        scheme_name = scheme_name if scheme_name != None else 'HSE-Vrel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT','5-HSE-VOPT']
         jobs = []
         
@@ -833,7 +830,7 @@ class Schemes:
         List of Job objects
         """
         
-        scheme_name = scheme_name if scheme_name else 'U_tuning'
+        scheme_name = scheme_name if scheme_name != None else 'U_tuning'
         jobs = []
         
         if ldauu_dict is None:
@@ -887,7 +884,7 @@ class Schemes:
         List of Job objects
         """
      
-        scheme_name = scheme_name if scheme_name else 'PBE-el-str'
+        scheme_name = scheme_name if scheme_name != None else 'PBE-el-str'
         stepnames = ['1-PBE-relax','2-PBE-DOS','3-PBE-BS']
         jobs = []
         
@@ -967,7 +964,7 @@ class Schemes:
         List of Job objects
         """        
 
-        scheme_name = scheme_name if scheme_name else 'PBE-rel'
+        scheme_name = scheme_name if scheme_name != None else 'PBE-rel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT']
         jobs = []
                
@@ -1019,7 +1016,7 @@ class Schemes:
         List of Job objects
         """
         
-        scheme_name = scheme_name if scheme_name else 'PBE-Vrel'
+        scheme_name = scheme_name if scheme_name != None else 'PBE-Vrel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-PBE-VOPT']
         jobs = []
         
