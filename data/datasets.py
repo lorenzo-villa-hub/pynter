@@ -370,7 +370,10 @@ class Dataset:
         for feature in kwargs:
             jobs = sel_jobs.copy()
             for j in jobs:
-                job_feature = getattr(j,feature) ()
+                try:
+                    job_feature = getattr(j,feature) ()
+                except:
+                    job_feature = getattr(j,feature)
                 if job_feature != kwargs[feature]:
                     sel_jobs.remove(j)
          
