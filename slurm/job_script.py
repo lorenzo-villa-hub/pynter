@@ -153,6 +153,8 @@ class ScriptHandler:
                 d['add_automation'] = line.replace('\n','')
             else:
                 d['add_automation'] = None
+        else:
+            d['add_automation'] = None
             
         d['filename'] = filename
         

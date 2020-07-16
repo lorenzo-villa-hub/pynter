@@ -3,8 +3,9 @@ from abc import ABCMeta, abstractmethod
 import os
 import os.path as op
 import shutil
-from pymatgen.io.vasp.inputs import VaspInput, Poscar
+from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
 from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.analysis.transition_state import NEBAnalysis
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
@@ -463,4 +464,105 @@ class VaspJob(Job):
         script_handler.write_script(path=self.path)
         inputs = self.inputs
         inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
+        return
+    
+    
+
+    
+class VaspNEBJob(Job):
+    
+    
+    @staticmethod
+    def from_directory(path,job_script_filename='job.sh'):
+        """
+        Builds VaspNEBjob object from data stored in a directory. Inputs dict is constructed
+        by reading with Pymatgen INCAR, KPOINTS and POTCAR and creating a series of Structure 
+        objects read from POSCARs in the images folders. 
+        Inputs is thus a dict with "structures", "INCAR","KPOINTS","POTCAR" as keys.
+        Output files are read usign Pymatgen NEBAnalysis and Vasprun classes.
+        Job settings are read from the job script file.
+
+        Parameters
+        ----------
+        path : (str)
+            Path were job data is stored.
+        job_script_filename : (str), optional
+            Filename of job script. The default is 'job.sh'.
+
+        Returns
+        -------
+        VaspNEBJob object.
+        
+        """
+                
+        inputs = {}
+        structures = []
+        path = op.abspath(path)
+        dirs = [d[0] for d in os.walk(path)]
+        for d in dirs:
+            image_name = op.relpath(d,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                image_path = d
+                structure = Poscar.from_file(op.join(image_path,'POSCAR')).structure
+                structures.append(structure)
+
+        inputs['structures'] = structures           
+        inputs['INCAR'] = Incar.from_file(op.join(path,'INCAR'))
+        inputs['KPOINTS'] = Kpoints.from_file(op.join(path,'KPOINTS'))
+        inputs['POTCAR'] = Potcar.from_file(op.join(path,'POTCAR'))
+        
+        outputs = {}
+        # seems that reading vasprun.xml with Vasprun doesn't work for NEB calculations      
+        try:
+            outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
+        except:
+            print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
+            outputs['NEBAnalysis'] = None
+            
+        s = ScriptHandler.from_file(path,filename=job_script_filename)
+        job_settings =  s.settings
+        
+        return VaspNEBJob(path,inputs,job_settings,outputs)
+    
+    @property
+    def images(self):
+        return len(self.inputs['structures'])-2
+    
+    @property
+    def structures(self):
+        return self.inputs['structures']
+
+
+    
+    def write_input(self,write_structures=True):
+    
+        path = op.abspath(self.path)
+        
+        self.job_settings['nodes'] = self.images
+        if 'add_automation' not in self.job_settings:
+            self.job_settings['add_automation'] = None
+               
+        incar = self.inputs['INCAR']
+        kpoints = self.inputs['KPOINTS']
+        potcar = self.inputs['POTCAR']
+        job_settings = self.job_settings
+
+        if write_structures:
+            self.write_structures()
+        
+        incar.write_file(op.join(path,'INCAR'))
+        kpoints.write_file(op.join(path,'KPOINTS'))
+        potcar.write_file(op.join(path,'POTCAR'))
+        ScriptHandler(**job_settings).write_script(path=path)
+
+    
+    def write_structures(self):
+        path = self.path
+        structures = self.inputs['structures']
+        for s in structures:
+            index = structures.index(s)
+            image_path = op.join(path,str(index).zfill(2)) #folders will be named 00,01,..,XX
+            if not op.exists(image_path):
+                os.makedirs(image_path)
+            Poscar(s).write_file(op.join(image_path,'POSCAR'))
         return
