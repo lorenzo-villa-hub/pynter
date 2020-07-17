@@ -46,23 +46,26 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
 
 class Dataset:
     
-    def __init__(self,path=None,name=None,jobs=None,sort_by_name=True): 
+    def __init__(self,jobs=None,path=None,name=None,sort_by_name=True): 
         """
         Class to store sets of calculations
 
         Parameters
         ----------
+        jobs : (list), optional
+            List of Job objects belonging to the dataset. The default is None.        
         path : (str), optional
-            Path of dataset directory. The default is None. If None the work dir is used.
+            Path of dataset directory. If None the work dir is used if jobs is None,
+            else the commonpath between the jobs is used. The default is None.
         name : (str), optional
             Name to assign to dataset. The default is None. If None the folder name is used.
-        jobs : (list), optional
-            List of Job objects belonging to the dataset. The default is None.
         sort_by_name : (bool), optional
             Sort list of jobs based on Job names. The default is True.
         """
-        
-        self.path = op.abspath(path) if path else os.getcwd()
+        if jobs:
+            self.path = op.commonpath([j.path for j in jobs])
+        else:
+            self.path = op.abspath(path) if path else os.getcwd()
         self.name = name if name else op.basename(self.path)
         self.sort_by_name = sort_by_name
         self.jobs = jobs
@@ -119,8 +122,13 @@ class Dataset:
     def groups(self):
         """Directory names of the first subdirectories in the dataset path."""
         groups = []
-        dirs = next(os.walk(self.path))[1]
-        for g in dirs:
+        commonpath = op.commonpath([op.abspath(j.path) for j in self.jobs])
+        grps = []
+        for j in self.jobs:
+            job_group = op.relpath(op.abspath(j.path),start=commonpath).split('/')[0]
+            if job_group not in grps:
+                grps.append(job_group)
+        for g in grps:
             if list(g)[0] != '.':
                 groups.append(g)
         return groups
@@ -145,12 +153,26 @@ class Dataset:
         return
 
 
-    def add_jobs(self,*args):
+    def add_jobs(self,jobs,regroup=True):
         """
-        Add jobs to self.jobs list
+        Add Jobs to Dataset.
+
+        Parameters
+        ----------
+        jobs : (list)
+            List of Job objects.
+        regroup : (bool), optional
+            If True Jobs in Datasets are regroupped and self.path is set to the commonpath. The default is True.
         """
-        for arg in args:
-            self.jobs.append(arg)  
+        if not self.jobs:
+            self.jobs = []
+        for j in jobs:
+            self.jobs.append(j)
+        if regroup:
+            paths = [j.path for j in self.jobs]
+            paths.append(self.path)
+            commonpath = op.commonpath(paths)
+            self.regroup_jobs(path=commonpath)
         return
 
     
@@ -169,11 +191,11 @@ class Dataset:
         sort_by_name : (bool), optional
             Sort list of jobs by attribute "name". The default is True.
         regroup : (bool), optional
-            Regroup jobs after adding new jobs list. The default is True.
+            Regroup jobs after adding new jobs list, self.path is set to the commonpath. The default is True.
         """        
         path = op.abspath(path)
         jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=sort_by_name)
-        self.add_jobs(*jobs)
+        self.add_jobs(jobs,False)
         if regroup:
             commonpath = op.commonpath([path,self.path])
             self.regroup_jobs(path=commonpath)

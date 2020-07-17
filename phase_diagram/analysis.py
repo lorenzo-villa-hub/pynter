@@ -435,7 +435,8 @@ class PDHandler:
         pd = self.pd
         form_energies = {}
         for e in self.get_entries_from_comp(comp):
-            form_energies[e] = pd.get_form_energy(e)
+            factor = e.composition.get_reduced_composition_and_factor()[1]
+            form_energies[e] = pd.get_form_energy(e)/factor
         return form_energies
             
 
@@ -453,7 +454,8 @@ class PDHandler:
         """
         pd = self.pd
         entry = self.get_stable_entry_from_comp(comp)
-        return pd.get_form_energy(entry)
+        factor = entry.composition.get_reduced_composition_and_factor()[1]
+        return pd.get_form_energy(entry)/factor
 
 
     def get_stability_diagram(self,elements):
