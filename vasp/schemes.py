@@ -14,7 +14,7 @@ from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints, Potcar
 from pynter.vasp.default_inputs import DefaultInputs
 from pynter.slurm.job_script import ScriptHandler
-from pynter.data.jobs import VaspJob
+from pynter.data.jobs import VaspJob, VaspNEBJob
 from pynter.data.datasets import Dataset
 
 
@@ -1070,10 +1070,12 @@ class Schemes:
         
 class NEBSchemes:
     
-    def __init__(self,structures,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
+    def __init__(self,path,structures,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
         """
         Parameters
         ----------
+        path : (str)
+            Main path for the scheme.        
         structures : (list of Pymatgen Structure objects), optional
             List of structures for reaction path.
         incar_settings : (Dict), optional
@@ -1090,6 +1092,7 @@ class NEBSchemes:
             Name for the system to set up scheme for. The default is None.
         """
         
+        self.path = path
         self.structures = structures
         self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structures[0]).get_incar_default()
         self.kpoints = kpoints if kpoints else DefaultInputs(self.structures[0]).get_kpoints_default()
@@ -1110,40 +1113,75 @@ class NEBSchemes:
         self.images = len(self.structures)-2
 
 
-    def preconverge(self):
+    def cineb_pbe(self,scheme_name=None):
+        """
+        Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation in done with damped 
+        dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 25.
+        """
+        scheme_name = scheme_name if scheme_name != None else 'CINEB'
+        stepnames = ['CINEB']
         
-        self.incar_settings.update({
-            'EDIFF' : 1e-04,
-            'NSW': 0
+        inputs = {}
+        incar_settings = self.incar_settings.copy()
+        job_settings = self.job_settings.copy()
+
+        incar_settings.update({
+            'ISYM': 0,
+            'EDIFF': 1e-05,
+            'EDIFFG': -0.05,
+            'ISIF': 2,
+            'NSW' : 25,
+            'IMAGES' : self.images,
+            'SPRING' : -5,
+            'IOPT' : 0,
+            'IBRION' : 3,
+            'POTIM' : 0.30,
+            'ICHAIN' : 0,
+            'LCLIMB' : '.TRUE.',
+            'LTANGENTOLD' : '.FALSE.',
+            'LDNEB' : '.FALSE.',
+            'LNEBCELL' : '.FALSE.'
             })
 
-        steps = []
-        structures = self.structures
-        for s in structures:
-            
-            index = structures.index(s)
-            image_name = str(index).zfill(2)
-            
-            incar = Incar(self.incar_settings)
-            kpoints = self.kpoints
-            potcar = self.potcar
-            poscar = Poscar(s)
-            vaspinput = VaspInput(incar, kpoints, poscar, potcar)
-            
-        #     job_settings = self.job_settings
-        #     job_settings['name'] = image_name
-            
-        #     steps.append(Step(image_name,vaspinput,job_settings))
-            
-        # return Scheme(steps)
-
-            
-
-    def write_input(self,path, make_dir_if_not_present=True):
+        incar = Incar(incar_settings)
+        kpoints = self.kpoints
+        potcar = self.potcar
         
-        self.incar_settings.update({
+        inputs['structures'] = self.structures
+        inputs['INCAR'] = incar
+        inputs['KPOINTS'] = kpoints
+        inputs['POTCAR'] = potcar
+        
+        job_settings['nodes'] = self.images
+        if 'add_automation' not in job_settings:
+            job_settings['add_automation'] = None        
+        job_settings['name'] = '_'.join([self.name,scheme_name])
+
+
+        jobname = '_'.join([self.name,scheme_name])
+        jobpath = op.join(self.path,stepnames[0])
+        nebjob = VaspNEBJob(path=jobpath,inputs=inputs,job_settings=job_settings,name=jobname)
+
+        return nebjob
+
+            
+    def neb_pbe(self,scheme_name=None):
+        """
+        Standard NEB job with PBE. The force convergence is set to 0.1 eV/A, relaxation in done with damped 
+        dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 25.
+        """
+        scheme_name = scheme_name if scheme_name != None else 'NEB'
+        stepnames = ['NEB']
+        
+        inputs = {}
+        incar_settings = self.incar_settings.copy()
+        job_settings = self.job_settings.copy()
+
+        incar_settings.update({
             'ISYM': 0,
-            'EDIFF': 1e-04,    
+            'EDIFF': 1e-04,
+            'EDIFFG': 0.1,
+            'ISIF': 2,
             'NSW' : 25,
             'IMAGES' : self.images,
             'SPRING' : -5,
@@ -1156,33 +1194,62 @@ class NEBSchemes:
             'LDNEB' : '.FALSE.',
             'LNEBCELL' : '.FALSE.'
             })
-        
-        
-        self.job_settings['nodes'] = self.images
-        if 'add_automation' not in self.job_settings:
-            self.job_settings['add_automation'] = None
 
-        structures = self.structures                 
-        incar = Incar(self.incar_settings)
+        incar = Incar(incar_settings)
         kpoints = self.kpoints
         potcar = self.potcar
-        job_settings = self.job_settings
+        
+        inputs['structures'] = self.structures
+        inputs['INCAR'] = incar
+        inputs['KPOINTS'] = kpoints
+        inputs['POTCAR'] = potcar
+        
+        job_settings['nodes'] = self.images
+        if 'add_automation' not in job_settings:
+            job_settings['add_automation'] = None        
+        job_settings['name'] = '_'.join([self.name,scheme_name])
 
+
+        jobname = '_'.join([self.name,scheme_name])
+        jobpath = op.join(self.path,stepnames[0])
+        nebjob = VaspNEBJob(path=jobpath,inputs=inputs,job_settings=job_settings,name=jobname)
+
+        return nebjob
+
+
+    def preconverge(self,scheme_name=None):
+        """
+        Do SCF convergence for all images before starting NEB calculation
+        """
+        
+        scheme_name = scheme_name if scheme_name!=None else 'SCF'
+        stepnames = ['preconverge']
+        self.incar_settings.update({
+            'EDIFF' : 1e-04,
+            'NSW': 0
+            })
+
+        jobs = []
+        structures = self.structures
         for s in structures:
+            
             index = structures.index(s)
-            image_path = op.join(path,str(index).zfill(2))
-            if make_dir_if_not_present and not op.exists(image_path):
-                os.makedirs(image_path)
-            Poscar(s).write_file(op.join(image_path,'POSCAR'))
-        
-        incar.write_file(op.join(path,'INCAR'))
-        kpoints.write_file(op.join(path,'KPOINTS'))
-        potcar.write_file(op.join(path,'POTCAR'))
-        ScriptHandler(**job_settings).write_script(path=path)
-              
-        return
-
-
-        
+            image_name = str(index).zfill(2)
+            
+            incar = Incar(self.incar_settings)
+            kpoints = self.kpoints
+            potcar = self.potcar
+            poscar = Poscar(s)
+            vaspinput = VaspInput(incar, kpoints, poscar, potcar)
+            
+            job_settings = self.job_settings
+            job_settings['name'] = '_'.join([self.name,scheme_name,image_name])
+            
+            jobname = '_'.join([self.name,scheme_name,image_name])
+            jobpath = op.join(self.path,stepnames[0],image_name)
+            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            jobs.append(vaspjob)
+            
+        return jobs      
         
         

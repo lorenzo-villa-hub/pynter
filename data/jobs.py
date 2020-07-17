@@ -51,9 +51,12 @@ class Job:
             self.name = name
         elif self.job_settings:
             self.name = self.job_settings['name']
-        else:
+        elif op.isfile(op.join(self.path,self.job_script_filename)):
             s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
             self.name = s.settings['name']
+        else:
+            self.name = 'no_name'
+            
         if not self.job_settings:
             self.job_settings = {}
         self.job_settings['name'] = self.name
@@ -103,6 +106,10 @@ class Job:
             print('Deleted Job %s'%self.name)
         return
 
+
+    @abstractmethod
+    def get_inputs(self):
+        pass
 
     @abstractmethod
     def get_outputs(self):
@@ -313,6 +320,29 @@ class VaspJob(Job):
         
         return VaspJob(path,inputs,job_settings,outputs)
 
+
+    @property
+    def incar(self):
+        return self.inputs['INCAR']
+    
+    @property
+    def kpoints(self):
+        return self.inputs['KPOINTS']
+    
+    @property
+    def poscar(self):
+        return self.inputs['POSCAR']
+    
+    @property
+    def potcar(self):
+        return self.inputs['POTCAR']
+
+    @property
+    def vasprun(self):
+        if 'Vasprun' in self.outputs.keys():
+            return self.outputs['Vasprun']
+        else:
+            raise ValueError('"vasprun.xml" file is not present in Job directory')
     
     @property
     def formula(self):
@@ -328,11 +358,11 @@ class VaspJob(Job):
         """Initial structure read vasprun.xml if job is converged, otherwise read from Poscar file with Pymatgen"""
         poscar_file = op.join(self.path,'POSCAR')
         if self.is_converged:
-            return self.outputs['Vasprun'].structures[0]
+            return self.vasprun.structures[0]
         elif op.isfile(poscar_file):
             return Poscar.from_file(poscar_file).structure
-        elif self.inputs['POSCAR']:
-            poscar = self.inputs['POSCAR']
+        elif self.poscar:
+            poscar = self.poscar
             return poscar.structure            
         else:
             return None
@@ -348,8 +378,8 @@ class VaspJob(Job):
         if self.outputs:
             if 'Vasprun' in self.outputs.keys():
                 is_converged = False
-                if self.outputs['Vasprun']:
-                    vasprun = self.outputs['Vasprun']
+                if self.vasprun:
+                    vasprun = self.vasprun
                     conv_el, conv_ionic = False, False
                     if vasprun:
                         conv_el = vasprun.converged_electronic
@@ -367,10 +397,10 @@ class VaspJob(Job):
         charge is set to 0.
         """
         charge = 0
-        if 'NELECT' in self.inputs['INCAR'].keys():
-            nelect = self.inputs['INCAR']['NELECT']
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
             val = {}
-            for p in self.inputs['POTCAR']:
+            for p in self.potcar:
                 val[p.element] = p.nelectrons
             neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
                            for el in self.initial_structure.composition])
@@ -380,7 +410,7 @@ class VaspJob(Job):
 
     def energy_gap(self):
         """Energy gap read from vasprun.xml with Pymatgen"""
-        vasprun = self.outputs['Vasprun']
+        vasprun = self.vasprun
         band_gap = vasprun.eigenvalue_band_properties[0]
         return band_gap
         
@@ -390,15 +420,15 @@ class VaspJob(Job):
         final_energy = None
         if self.is_converged:
             if 'Vasprun' in self.outputs.keys():
-                if self.outputs['Vasprun']:
-                    final_energy = self.outputs['Vasprun'].final_energy
+                if self.vasprun:
+                    final_energy = self.vasprun.final_energy
         return final_energy
      
             
     def final_structure(self):
         """Final structure read from "vasprun.xml" with Pymatgen"""
-        if self.outputs['Vasprun']:
-            final_structure = self.outputs['Vasprun'].structures[-1]
+        if self.vasprun:
+            final_structure = self.vasprun.structures[-1]
         else:
             final_structure = None
         return final_structure
@@ -444,16 +474,16 @@ class VaspJob(Job):
             Dictionary with Elements as keys and U parameters as values.
         """
         U_dict = {}
-        incar = self.inputs['INCAR']
-        ldauu = incar['LDAUU']
-        if ldauu:
+        incar = self.incar
+        if 'LDAUU' in incar.keys():
+            ldauu = incar['LDAUU']
             elements = self.initial_structure.composition.elements
             if isinstance(ldauu,str):
                 ldauu = ldauu.split()
             for i in range(0,len(ldauu)):
                 U_dict[elements[i]] = ldauu[i]
         else:
-            print('No LDAUU tag present in INCAR')
+            print('No LDAUU tag present in INCAR in Job "%s"' %self.name)
             
         return U_dict
             
@@ -493,8 +523,7 @@ class VaspNEBJob(Job):
         -------
         VaspNEBJob object.
         
-        """
-                
+        """                
         inputs = {}
         structures = []
         path = op.abspath(path)
@@ -512,7 +541,12 @@ class VaspNEBJob(Job):
         inputs['POTCAR'] = Potcar.from_file(op.join(path,'POTCAR'))
         
         outputs = {}
-        # seems that reading vasprun.xml with Vasprun doesn't work for NEB calculations      
+        if op.isfile(op.join(path,'vasprun.xml')):
+            try:
+                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
+            except:
+                print('Warning: Reading of vasprun.xml in "%s" failed'%path)
+                outputs['Vasprun'] = None   
         try:
             outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
         except:
@@ -523,6 +557,7 @@ class VaspNEBJob(Job):
         job_settings =  s.settings
         
         return VaspNEBJob(path,inputs,job_settings,outputs)
+
     
     @property
     def images(self):
@@ -532,7 +567,101 @@ class VaspNEBJob(Job):
     def structures(self):
         return self.inputs['structures']
 
+    @property
+    def incar(self):
+        return self.inputs['INCAR']
+    
+    @property
+    def kpoints(self):
+        return self.inputs['KPOINTS']
+    
+    @property
+    def potcar(self):
+        return self.inputs['POTCAR']
+    
+    @property
+    def vasprun(self):
+        if 'Vasprun' in self.outputs.keys():
+            return self.outputs['Vasprun']
+        else:
+            raise ValueError('"vasprun.xml" file is not present in Job directory')
+    
+    @property
+    def neb_analysis(self):
+        return self.outputs['NEBAnalysis']
+    
+    
+    @property
+    def is_converged(self):
+        """
+        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        is_converged = None
+        if self.outputs:
+            if 'Vasprun' in self.outputs.keys():
+                is_converged = False
+                if self.vasprun:
+                    vasprun = self.vasprun
+                    conv_el, conv_ionic = False, False
+                    if vasprun:
+                        conv_el = vasprun.converged_electronic
+                        conv_ionic = vasprun.converged_ionic
+                    if conv_el and conv_ionic:
+                        is_converged = True
+                    
+        return is_converged    
+    
 
+    def get_inputs(self,sync=False):
+        """
+        Read inputs from Job directory
+        """
+        if sync:
+            self.sync_from_hpc()
+        inputs = {}
+        structures = []
+        path = op.abspath(self.path)
+        dirs = [d[0] for d in os.walk(path)]
+        for d in dirs:
+            image_name = op.relpath(d,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                image_path = d
+                structure = Poscar.from_file(op.join(image_path,'POSCAR')).structure
+                structures.append(structure)
+
+        inputs['structures'] = structures           
+        inputs['INCAR'] = Incar.from_file(op.join(path,'INCAR'))
+        inputs['KPOINTS'] = Kpoints.from_file(op.join(path,'KPOINTS'))
+        inputs['POTCAR'] = Potcar.from_file(op.join(path,'POTCAR'))
+        
+        self.inputs = inputs
+        return
+
+
+    def get_outputs(self,sync=False):
+        """
+        Read outputs from Job directory
+        """
+        if sync:
+            self.sync_from_hpc()
+        outputs = {}
+        path = self.path
+        if op.isfile(op.join(path,'vasprun.xml')):
+            try:
+                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
+            except:
+                print('Warning: Reading of vasprun.xml in "%s" failed'%path)
+                outputs['Vasprun'] = None   
+        try:
+            outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
+        except:
+            print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
+            outputs['NEBAnalysis'] = None
+            
+        self.outputs = outputs
+        return
+    
     
     def write_input(self,write_structures=True):
     
