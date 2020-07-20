@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import os.path as op
 from shutil import copyfile
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Vasprun
@@ -171,6 +172,7 @@ class VaspAutomation(Automation):
     def vasprun(self):
         return self.read_vasprun()
     
+
     
     def compare_kpoints(self,dir1=None,dir2=None):
         """
@@ -229,6 +231,19 @@ class VaspAutomation(Automation):
             
         return converged_electronic, converged_ionic
        
+
+    def find_NEB_dirs(self,path=None):
+        
+        dirs = []
+        path = path if path else self.path
+        path = op.abspath(path)
+        for d in os.walk(path):
+            directory = d[0]
+            image_name = op.relpath(directory,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                dirs.append(directory)
+        return dirs
+
 
     def limit_electronic_steps_reached(self):
         """

@@ -6,6 +6,7 @@ Created on Tue Mar  3 19:25:00 2020
 @author: villa
 """
 import os
+import os.path as op
 from glob import glob
 from shutil import copyfile
 from pynter.automations.core import CommandHandler, VaspAutomation
@@ -28,7 +29,7 @@ class VaspSchemes:
         
         self.vasp_automation = vasp_automation
         self.status = status
-        self.path = vasp_automation.path
+        self._path = self.vasp_automation.path
         
         if kwargs:
             for key, value in kwargs.items():
@@ -37,7 +38,17 @@ class VaspSchemes:
             args = CommandHandler().args()
             for key, value in args.__dict__.items():
                 setattr(self,key,value)
+
+
+    @property
+    def path(self):
+        return self._path
     
+    @path.setter
+    def path(self,newpath):
+        self.vasp_automation.path = newpath
+        self._path = newpath
+        return
     
     def compare_next_step_kpoints(self):
         """
@@ -226,3 +237,101 @@ class VaspSchemes:
             print('Writing status file is disabled, if needed please set "status_filename" kwarg or "--status" optional argument on command line')
             
             
+class VaspNEBSchemes(VaspSchemes):
+
+
+    def clean_NEB_dirs(self,printout=False):
+        """
+        Clean image directories for NEB calculation. All files but CHGCAR,WAVECAR,POSCAR,CONTCAR and OUTCAR are removed.
+        """
+        v = self.vasp_automation
+        image_dirs = v.find_NEB_dirs()
+        for d in image_dirs:
+            files = [w[2] for w in os.walk(d)][0]
+            for f in files:
+                if f not in ('CHGCAR','WAVECAR','POSCAR','OUTCAR','CONTCAR'):
+                    os.remove(op.join(d,f))
+                    message = f'Removed {op.join(d,f)} \n'
+                    if printout:
+                        print(message)
+                    self.status.append(message)                            
+        return
+    
+
+    def check_preconvergence_images(self):
+        """
+        Check if all SCF calculations of the images are converged
+        """
+        if self.is_preconvergence():
+            v = self.vasp_automation
+            convergence = True
+            image_dirs = v.find_NEB_dirs()
+            for d in image_dirs:
+                conv_el, conv_ionic = v.convergence(path=d)
+                if conv_el == False or conv_ionic == False:
+                    convergence = False
+                    self.status.append(f'convergence in {d}: False')
+                else:
+                    self.status.append(f'convergence in {d}: True')
+        else:
+            raise ValueError("Current main folder doesn't contain preconvergence calculations of the images")
+        
+        return convergence
+                
+
+    def copy_images_next_step(self):
+        """
+        Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders
+        """
+        v = self.vasp_automation
+        next_step_path = v.get_next_step()
+        image_dirs = v.find_NEB_dirs()
+        for d in image_dirs:
+            image_name = op.basename(d)
+            files = [w[2] for w in os.walk(d)][0]
+            for f in files:
+                if f in ('CHGCAR','WAVECAR'):
+                    source = op.join(d,f)
+                    dest = op.join(next_step_path,image_name,f)
+                if f == 'CONTCAR':
+                    source = op.join(d,'CONTCAR')
+                    dest = op.join(next_step_path,image_name,'POSCAR')    
+                copyfile(source,dest)
+                self.status.append(f'{f} copied in {dest}')
+        return
+        
+
+    def copy_images_next_step_and_submit(self):
+        """
+        Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders 
+        and submit calculation in next step.
+        """
+        self.copy_images_next_step()
+        self.vasp_automation.submit_job()
+        self.status(f'Calculation in "{self.vasp_automation.get_next_step()}" submitted')
+        return
+
+                
+    def is_preconvergence(self):
+        """
+        Check if current main folder contains images folders with preconvergence calculations.
+        criteria for selection of preconvergence calculation is the presence of the INCAr file
+        in the image folder.
+        """
+        is_preconvergence = False
+        v = self.vasp_automation
+        image_dirs = v.find_NEB_dirs()
+        for d in image_dirs:
+            files = [w[2] for w in os.walk(d)][0]
+            if 'INCAR' in files:
+                is_preconvergence = True
+            elif is_preconvergence:
+                print('Warning: Inconsistencies in images directories: INCAR file is present but not in all directories')
+        return is_preconvergence
+        
+        
+    
+        
+        
+        
+        
