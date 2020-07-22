@@ -233,7 +233,10 @@ class VaspAutomation(Automation):
        
 
     def find_NEB_dirs(self,path=None):
-        
+        """
+        Find directories of images for NEB calculations. Directories are selected if all characters in the
+        directory name are digits.
+        """
         dirs = []
         path = path if path else self.path
         path = op.abspath(path)

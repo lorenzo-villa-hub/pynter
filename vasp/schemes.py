@@ -1113,13 +1113,12 @@ class NEBSchemes:
         self.images = len(self.structures)-2
 
 
-    def cineb_pbe(self,scheme_name=None):
+    def cineb_pbe(self,scheme_name=None,stepnames=['CINEB']):
         """
         Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation in done with damped 
         dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 25.
         """
         scheme_name = scheme_name if scheme_name != None else 'CINEB'
-        stepnames = ['CINEB']
         
         inputs = {}
         incar_settings = self.incar_settings.copy()
@@ -1164,14 +1163,62 @@ class NEBSchemes:
 
         return nebjob
 
-            
-    def neb_pbe(self,scheme_name=None):
+ 
+    def neb_complete_pbe(self,scheme_name=None):
+        """
+        NEB scheme with 3 steps:
+            - Step 1: preconvergence (SCF) of the images with EDIFF = 1e-04
+            - Step 2: NEB calculation with NSW = 25
+            - Step 3: CINEB with NSW = 25
+        """
+        scheme_name = scheme_name if scheme_name != None else 'NEB_comp'
+        jobs = []
+        step1 = self.preconverge(scheme_name='NEB-SCF_1',stepnames=['1-SCF'])
+        for j in step1:
+            jobs.append(j)
+        
+        step2 = self.neb_pbe(scheme_name='NEB_2',stepnames=['2-NEB'])
+        jobs.append(step2)
+        
+        step3 = self.cineb_pbe(scheme_name='NEB_3',stepnames=['3-CINEB'])
+        jobs.append(step3)
+
+        return jobs
+ 
+
+    def neb_complete_4step_pbe(self,scheme_name=None):
+        """
+        NEB scheme with 3 steps:
+            - Step 1: preconvergence (SCF) of the images with EDIFF = 1e-04
+            - Step 2: NEB calculation with NSW = 10
+            - Step 3: NEB calculation with NSW = 25
+            - Step 4: CINEB with NSW = 25
+        """
+        scheme_name = scheme_name if scheme_name != None else 'NEB_comp'
+        jobs = []
+        step1 = self.preconverge(scheme_name='NEB-SCF_1',stepnames=['1-SCF'])
+        for j in step1:
+            jobs.append(j)
+        
+        step2 = self.neb_pbe(scheme_name='NEB_2',stepnames=['2-NEB-NSW10'])
+        step2.inputs['INCAR']['NSW'] = 10
+        jobs.append(step2)
+
+        step3 = self.neb_pbe(scheme_name='NEB_3',stepnames=['3-NEB-NSW25'])
+        jobs.append(step3)
+        
+        step4 = self.cineb_pbe(scheme_name='NEB_4',stepnames=['4-CINEB'])
+        jobs.append(step4)
+
+        return jobs
+
+          
+    def neb_pbe(self,scheme_name=None,stepnames=['NEB']):
         """
         Standard NEB job with PBE. The force convergence is set to 0.1 eV/A, relaxation in done with damped 
         dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 25.
         """
         scheme_name = scheme_name if scheme_name != None else 'NEB'
-        stepnames = ['NEB']
         
         inputs = {}
         incar_settings = self.incar_settings.copy()
@@ -1217,13 +1264,12 @@ class NEBSchemes:
         return nebjob
 
 
-    def preconverge(self,scheme_name=None):
+    def preconverge(self,scheme_name=None,stepnames=['NEB-preconverge']):
         """
         Do SCF convergence for all images before starting NEB calculation
-        """
-        
+        """      
         scheme_name = scheme_name if scheme_name!=None else 'SCF'
-        stepnames = ['preconverge']
+
         self.incar_settings.update({
             'EDIFF' : 1e-04,
             'NSW': 0
@@ -1242,7 +1288,9 @@ class NEBSchemes:
             poscar = Poscar(s)
             vaspinput = VaspInput(incar, kpoints, poscar, potcar)
             
-            job_settings = self.job_settings
+            job_settings = self.job_settings.copy()
+            if 'add_automation' not in job_settings:
+                job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
             job_settings['name'] = '_'.join([self.name,scheme_name,image_name])
             
             jobname = '_'.join([self.name,scheme_name,image_name])

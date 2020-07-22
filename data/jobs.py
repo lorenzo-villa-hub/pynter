@@ -590,6 +590,21 @@ class VaspNEBJob(Job):
     def neb_analysis(self):
         return self.outputs['NEBAnalysis']
     
+
+    @property
+    def formula(self):
+        """Complete formula from initial structure (read with Pymatgen)"""
+        if self.initial_structure:
+            return self.initial_structure.composition.formula
+        else:
+            return None
+
+        
+    @property
+    def initial_structure(self):
+        """Initial structure read from first element of ""structures" attribute. """
+        return self.structures[0]
+
     
     @property
     def is_converged(self):
