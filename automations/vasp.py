@@ -9,12 +9,155 @@ import os
 import os.path as op
 from glob import glob
 from shutil import copyfile
-from pynter.automations.core import CommandHandler, VaspAutomation
+from pynter.automations.core import CommandHandler, Automation
 from pymatgen.analysis.transition_state import NEBAnalysis
+from pymatgen.io.vasp.inputs import Kpoints
+from pymatgen.io.vasp.outputs import Vasprun
 
-class VaspSchemes:
+
+
+class Base(Automation):
+    """
+    Subclass of Automation that contains methods for automations of VASP calculations. Works as base class for schemes.
+    """ 
+
+    def __init__(self,job_script_filename=None,status_filename='exit_status.txt',path=None):
+        super().__init__(job_script_filename,status_filename,path)
+
+
+    @property
+    def vasprun(self):
+        return self.read_vasprun()
     
-    def __init__(self,vasp_automation,status=[],**kwargs):
+    
+    def compare_kpoints(self,dir1=None,dir2=None):
+        """
+        Compare KPOINTS files in 2 different folders
+
+        Parameters
+        ----------
+        dir1 : (str), optional
+            First path. The default is None. If None "path" attribute is used.
+        dir2 : (str), optional
+            Second path. The default is None. If None the next step path is used (determined with "get_next_step()").
+
+        Returns
+        -------
+        kpoints_are_same : (bool)
+            True if KPOINTS files are the same, False if they're different.
+        """        
+        dir1 = dir1 if dir1 else self.path
+        dir2 = dir2 if dir2 else self.get_next_step()       
+        current_kpoints = Kpoints().from_file(os.path.join(dir1,'KPOINTS')).as_dict()        
+        if self.get_next_step():
+            next_kpoints = Kpoints().from_file(os.path.join(dir2,'KPOINTS')).as_dict()
+            kpoints_are_same = True if current_kpoints == next_kpoints else False
+        else:
+            kpoints_are_same = None            
+        return kpoints_are_same
+    
+
+    def convergence(self,path=None):
+        """
+        Check electronic and ionic convergence by reading "vasprun.xml" file with Pymatgen.\n
+        If reading of vasprun failes, returns False for electronic and ionic convergence.
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path of "vasprun.xml" file. The default is None. If None "path" attribute is used.        
+
+        Returns
+        -------
+        converged_electronic : (bool)
+            Electronic convergence reached.
+        converged_ionic : (bool)
+            Ionic convergence reached.
+        """                
+        path = path if path else self.path
+        converged_electronic = False
+        converged_ionic = False
+        try:
+            vasprun = self.read_vasprun(path=path)
+            converged_electronic = vasprun.converged_electronic
+            converged_ionic = vasprun.converged_ionic
+        except:
+            print('"vasprun.xml" could not be read, calculation probably failed')
+            pass
+            
+        return converged_electronic, converged_ionic
+       
+
+    def find_NEB_dirs(self,path=None):
+        """
+        Find directories of images for NEB calculations. Directories are selected if all characters in the
+        directory name are digits.
+        """
+        dirs = []
+        path = path if path else self.path
+        path = op.abspath(path)
+        for d in os.walk(path):
+            directory = d[0]
+            image_name = op.relpath(directory,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                dirs.append(directory)
+        return dirs
+
+
+    def limit_electronic_steps_reached(self):
+        """
+        Check if limit of electronic steps has been reached. This methods compares the "NELM" flag 
+        in the INCAR file with the number of electronic steps performed in the calculation
+
+        Returns
+        -------
+        bool
+            True if limit reached.
+        """
+        steps = self.vasprun.ionic_steps
+        n_electronic_steps = len(steps[-1]['electronic_steps'])
+        nelm = self.vasprun.parameters['NELM']        
+        return True if n_electronic_steps == nelm else False
+        
+
+    def limit_ionic_steps_reached(self):
+        """
+        Check if limit of ionic steps has been reached. This methods compares the "NSW" flag 
+        in the INCAR file with the number of ionic steps performed in the calculation
+
+        Returns
+        -------
+        bool
+            True if limit reached.
+        """
+        n_steps = len(self.vasprun.ionic_steps)
+        nsw = self.vasprun.parameters['NSW']                
+        return True if n_steps == nsw else False
+
+     
+    def read_vasprun(self,path=None):
+        """
+        Get Pymatgen Vasprun object by reading "vasprun.xml"        
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path of "vasprun.xml" file. The default is None. If None "path" attribute is used.
+
+        Returns
+        -------
+        Vasprun object
+        """
+        path = path if path else self.path
+        return Vasprun(os.path.join(path,'vasprun.xml'))
+
+
+
+
+
+class Schemes(Base):
+    
+    def __init__(self,job_script_filename=None,status_filename='exit_status.txt',path=None,status=[],**kwargs):
         """
         Class to organize automation schemes for Vasp
 
@@ -27,29 +170,17 @@ class VaspSchemes:
         **kwargs :
             If None the default arguments created by the CommandHandler class are used.
         """
+        super().__init__(job_script_filename,status_filename,path)
         
-        self.vasp_automation = vasp_automation
         self.status = status
-        self._path = self.vasp_automation.path
         
-        if kwargs:
+        args = CommandHandler().vasp_args() # default args
+        for key, value in args.__dict__.items():
+            setattr(self,key,value)
+
+        if kwargs: # custom args
             for key, value in kwargs.items():
                 setattr(self,key,value)
-        else:
-            args = CommandHandler().vasp_args()
-            for key, value in args.__dict__.items():
-                setattr(self,key,value)
-
-
-    @property
-    def path(self):
-        return self._path
-    
-    @path.setter
-    def path(self,newpath):
-        self.vasp_automation.path = newpath
-        self._path = newpath
-        return
     
     def compare_next_step_kpoints(self):
         """
@@ -60,7 +191,7 @@ class VaspSchemes:
         kpoints_are_same : bool
             True if KPOINTS files are the same.
         """
-        kpoints_are_same = self.vasp_automation.compare_kpoints()
+        kpoints_are_same = self.compare_kpoints()
         if kpoints_are_same:
             self.status.append('KPOINTS of current and next step are the same')
         else:
@@ -80,7 +211,7 @@ class VaspSchemes:
             Ionic convergence reached.
 
         """        
-        conv_el, conv_ionic = self.vasp_automation.convergence()
+        conv_el, conv_ionic = self.convergence()
         self.status.append('Job exit. Analysing "vasprun.xml"... ')
         self.status.append(f'\nElectronic convergence: {conv_el}')
         self.status.append(f'Ionic convergence: {conv_ionic}\n') 
@@ -98,8 +229,7 @@ class VaspSchemes:
         CHGCAR,WAVECAR and CONTCAR can be copied if their related attributes ("chgcar","wavecar","contcar") are set to True. \n
         This can be done either manually or by including the commands (-C or --chgcar, -W or --wavecar, -c or --contcar) in the command line.
         """
-        v = self.vasp_automation
-        if v.get_next_step():
+        if self.get_next_step():
             # if True copy CHGCAR and WAVECAR only if KPOINTS are the same, else copy them in any case
             if self.check_kpoints:
                 if self.compare_next_step_kpoints():
@@ -116,8 +246,8 @@ class VaspSchemes:
             if self.contcar:
                 self.transfer_contcar_to_poscar()
                                                   
-            v.submit_job()
-            self.status.append('\nNext step calculation submitted in dir "../%s"' %os.path.basename(v.get_next_step()))            
+            self.submit_job()
+            self.status.append('\nNext step calculation submitted in dir "../%s"' %os.path.basename(self.get_next_step()))            
         else:
             self.status.append('\nNo next step found, no other calculation submitted')        
 
@@ -141,13 +271,12 @@ class VaspSchemes:
         
         ionic_limit_reached : (bool)
         """
-        v = self.vasp_automation
-        if v.limit_electronic_steps_reached():
+        if self.limit_electronic_steps_reached():
             el_limit_reached = True
             self.status.append('Maximum limit of electronic steps has been reached')
         else:
             el_limit_reached = False
-        if v.limit_ionic_steps_reached():
+        if self.limit_ionic_steps_reached():
             ionic_limit_reached = True
             self.status.append('Maximum limit of ionic steps has been reached')
         else:
@@ -168,17 +297,16 @@ class VaspSchemes:
         
         number_of_out_files = len(glob(os.path.join(self.path,'out*')) )
         if number_of_out_files < 2:
-            v = self.vasp_automation
             self.status.append('Checking if limit of electronic or ionic steps have been reached...')
             el_limit, ionic_limit = self.step_limits_reached()
             
             if el_limit==True and ionic_limit==False:
-                v.submit_job(job_script_path = self.path)
+                self.submit_job(job_script_path = self.path)
                 self.status.append('Resubmitting calculation. Be sure "ISTART" in your INCAR is set to 1 or default.')
             
             if el_limit==False and ionic_limit==True:
                 copyfile(os.path.join(self.path,'CONTCAR'),os.path.join(self.path,'POSCAR'))
-                v.submit_job(job_script_path = self.path)
+                self.submit_job(job_script_path = self.path)
                 self.status.append('Resubmitting calculation. Be sure "ISTART" in your INCAR is set to 1 or default.')
             
             if el_limit==False and ionic_limit==False:
@@ -191,18 +319,16 @@ class VaspSchemes:
         """
         Copy CHGCAR file to next step directory
         """
-        v = self.vasp_automation
-        v.copy_files_to_next_step_dir('CHGCAR')
-        self.status.append('CHGCAR copied in dir "../%s"' %os.path.basename(v.get_next_step()))
+        self.copy_files_to_next_step_dir('CHGCAR')
+        self.status.append('CHGCAR copied in dir "../%s"' %os.path.basename(self.get_next_step()))
 
            
     def transfer_contcar_to_poscar(self):
         """
         Copy CONTCAR file to POSCAR file in next step directory
         """
-        v = self.vasp_automation
-        v.copy_files_to_next_step_dir(('CONTCAR','POSCAR'))
-        self.status.append('CONTCAR copied in POSCAR in dir "../%s"' %os.path.basename(v.get_next_step()))
+        self.copy_files_to_next_step_dir(('CONTCAR','POSCAR'))
+        self.status.append('CONTCAR copied in POSCAR in dir "../%s"' %os.path.basename(self.get_next_step()))
         return
 
     
@@ -210,9 +336,8 @@ class VaspSchemes:
         """
         Copy WAVECAR file to next step directory
         """
-        v = self.vasp_automation
-        v.copy_files_to_next_step_dir('WAVECAR')
-        self.status.append('WAVECAR copied in dir "../%s"' %os.path.basename(v.get_next_step()))        
+        self.copy_files_to_next_step_dir('WAVECAR')
+        self.status.append('WAVECAR copied in dir "../%s"' %os.path.basename(self.get_next_step()))        
         return
     
                 
@@ -238,15 +363,14 @@ class VaspSchemes:
             print('Writing status file is disabled, if needed please set "status_filename" kwarg or "--status" optional argument on command line')
             
             
-class VaspNEBSchemes(VaspSchemes):
+class NEBSchemes(Schemes):
 
 
     def clean_NEB_dirs(self,printout=False):
         """
         Clean image directories for NEB calculation. All files but CHGCAR,WAVECAR,POSCAR,CONTCAR and OUTCAR are removed.
         """
-        v = self.vasp_automation
-        image_dirs = v.find_NEB_dirs()
+        image_dirs = self.find_NEB_dirs()
         for d in image_dirs:
             files = [w[2] for w in os.walk(d)][0]
             for f in files:
@@ -264,11 +388,10 @@ class VaspNEBSchemes(VaspSchemes):
         Check if all SCF calculations of the images are converged
         """
         if self.is_preconvergence():
-            v = self.vasp_automation
             convergence = True
-            image_dirs = v.find_NEB_dirs()
+            image_dirs = self.find_NEB_dirs()
             for d in image_dirs:
-                conv_el, conv_ionic = v.convergence(path=d)
+                conv_el, conv_ionic = self.convergence(path=d)
                 if conv_el == False or conv_ionic == False:
                     convergence = False
                     self.status.append(f'convergence in {d}: False')
@@ -284,9 +407,8 @@ class VaspNEBSchemes(VaspSchemes):
         """
         Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders
         """
-        v = self.vasp_automation
-        next_step_path = v.get_next_step()
-        image_dirs = v.find_NEB_dirs()
+        next_step_path = self.get_next_step()
+        image_dirs = self.find_NEB_dirs()
         for d in image_dirs:
             image_name = op.basename(d)
             files = [w[2] for w in os.walk(d)][0]
@@ -309,10 +431,9 @@ class VaspNEBSchemes(VaspSchemes):
         Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders 
         and submit calculation in next step.
         """
-        v = self.vasp_automation
         self.copy_images_next_step()
-        v.submit_job()
-        self.status.append('Calculation in dir "%s" submitted' %os.path.basename(v.get_next_step()))
+        self.submit_job()
+        self.status.append('Calculation in dir "%s" submitted' %os.path.basename(self.get_next_step()))
         return
 
 
@@ -326,7 +447,7 @@ class VaspNEBSchemes(VaspSchemes):
             is_job_finished = True
         else:
             try:
-                neb_analysis = NEBAnalysis.from_dir(self.path)
+                neb_analysis = NEBAnalysis.from_dir(self.path) # check if analysis succedes
                 is_job_finished = True
             except:
                 warn = 'Warning: Reading of NEB job with NEBAnalysis failed'
@@ -336,8 +457,6 @@ class VaspNEBSchemes(VaspSchemes):
         
         return is_job_finished
                 
-            
-
                 
     def is_preconvergence(self):
         """
@@ -346,8 +465,7 @@ class VaspNEBSchemes(VaspSchemes):
         in the image folder.
         """
         is_preconvergence = False
-        v = self.vasp_automation
-        image_dirs = v.find_NEB_dirs()
+        image_dirs = self.find_NEB_dirs()
         for d in image_dirs:
             files = [w[2] for w in os.walk(d)][0]
             if 'INCAR' in files:

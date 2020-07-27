@@ -17,9 +17,9 @@ class Automation:
         Parameters
         ----------
         job_script_filename : (str), optional
-            Name of script for job submission. The default is 'job.sh'.
+            Name of script for job submission. The default is set in "config.yml".
         status_filename : (str), optional
-            Name for status file written after job exit. The default is 'exit_status.txt'.
+            Name for status file written after job exit. The default is "exit_status.txt".
         path : (str), optional
             Path of calculation to automize. The default is None. If None current work dir is used
         """        
@@ -128,7 +128,7 @@ class CommandHandler(Automation):
 
         parser = ap.ArgumentParser()
         
-        parser.add_argument('-j','--job-script',help='Job script filename, default is "job_vasp.sh"',required=False,default=self.job_script_filename,type=str,metavar='',dest='job_script_filename')
+        parser.add_argument('-j','--job-script',help='Job script filename, default is "job.sh"',required=False,default=self.job_script_filename,type=str,metavar='',dest='job_script_filename')
         parser.add_argument('-s','--status',help='Write exit status to file, default is "exit_status.txt"',required=False,default=self.status_filename,type=str,metavar='',dest='status_filename')
         parser.add_argument('-e','--error-check',action='store_true',help='Perform error checking. Default is False',required=False,default=False,dest='error_check')
         
@@ -160,140 +160,6 @@ class CommandHandler(Automation):
         self.status_filename = args.status_filename
         
         return args
-    
-
-
-class VaspAutomation(Automation):
-    """
-    Subclass of AutomationHandler that contains methods for automation of VASP calculations.
-    """ 
-
-    @property
-    def vasprun(self):
-        return self.read_vasprun()
-    
-
-    
-    def compare_kpoints(self,dir1=None,dir2=None):
-        """
-        Compare KPOINTS files in 2 different folders
-
-        Parameters
-        ----------
-        dir1 : (str), optional
-            First path. The default is None. If None "path" attribute is used.
-        dir2 : (str), optional
-            Second path. The default is None. If None the next step path is used (determined with "get_next_step()").
-
-        Returns
-        -------
-        kpoints_are_same : (bool)
-            True if KPOINTS files are the same, False if they're different.
-        """        
-        dir1 = dir1 if dir1 else self.path
-        dir2 = dir2 if dir2 else self.get_next_step()       
-        current_kpoints = Kpoints().from_file(os.path.join(dir1,'KPOINTS')).as_dict()        
-        if self.get_next_step():
-            next_kpoints = Kpoints().from_file(os.path.join(dir2,'KPOINTS')).as_dict()
-            kpoints_are_same = True if current_kpoints == next_kpoints else False
-        else:
-            kpoints_are_same = None            
-        return kpoints_are_same
-    
-
-    def convergence(self,path=None):
-        """
-        Check electronic and ionic convergence by reading "vasprun.xml" file with Pymatgen.\n
-        If reading of vasprun failes, returns False for electronic and ionic convergence.
-
-        Parameters
-        ----------
-        path : (str), optional
-            Path of "vasprun.xml" file. The default is None. If None "path" attribute is used.        
-
-        Returns
-        -------
-        converged_electronic : (bool)
-            Electronic convergence reached.
-        converged_ionic : (bool)
-            Ionic convergence reached.
-        """                
-        path = path if path else self.path
-        converged_electronic = False
-        converged_ionic = False
-        try:
-            vasprun = self.read_vasprun(path=path)
-            converged_electronic = vasprun.converged_electronic
-            converged_ionic = vasprun.converged_ionic
-        except:
-            print('"vasprun.xml" could not be read, calculation probably failed')
-            pass
-            
-        return converged_electronic, converged_ionic
-       
-
-    def find_NEB_dirs(self,path=None):
-        """
-        Find directories of images for NEB calculations. Directories are selected if all characters in the
-        directory name are digits.
-        """
-        dirs = []
-        path = path if path else self.path
-        path = op.abspath(path)
-        for d in os.walk(path):
-            directory = d[0]
-            image_name = op.relpath(directory,start=path)
-            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
-                dirs.append(directory)
-        return dirs
-
-
-    def limit_electronic_steps_reached(self):
-        """
-        Check if limit of electronic steps has been reached. This methods compares the "NELM" flag 
-        in the INCAR file with the number of electronic steps performed in the calculation
-
-        Returns
-        -------
-        bool
-            True if limit reached.
-        """
-        steps = self.vasprun.ionic_steps
-        n_electronic_steps = len(steps[-1]['electronic_steps'])
-        nelm = self.vasprun.parameters['NELM']        
-        return True if n_electronic_steps == nelm else False
-        
-
-    def limit_ionic_steps_reached(self):
-        """
-        Check if limit of ionic steps has been reached. This methods compares the "NSW" flag 
-        in the INCAR file with the number of ionic steps performed in the calculation
-
-        Returns
-        -------
-        bool
-            True if limit reached.
-        """
-        n_steps = len(self.vasprun.ionic_steps)
-        nsw = self.vasprun.parameters['NSW']                
-        return True if n_steps == nsw else False
-
-     
-    def read_vasprun(self,path=None):
-        """
-        Get Pymatgen Vasprun object by reading "vasprun.xml"        
-
-        Parameters
-        ----------
-        path : (str), optional
-            Path of "vasprun.xml" file. The default is None. If None "path" attribute is used.
-
-        Returns
-        -------
-        Vasprun object
-        """
-        path = path if path else self.path
-        return Vasprun(os.path.join(path,'vasprun.xml'))
 
         
 
