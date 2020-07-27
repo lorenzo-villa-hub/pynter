@@ -61,7 +61,7 @@ class Schemes:
             self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
             self.name = name if name != None else self.job_settings['name'] 
             
-            if 'name' in self.job_settings.keys() and self.name:
+            if self.name: # this return false if name is '', the previuos line considers only if name is None
                 self.job_settings['name'] = self.name
                 
         else:
