@@ -10,6 +10,7 @@ import os.path as op
 from glob import glob
 from shutil import copyfile
 from pynter.automations.core import CommandHandler, VaspAutomation
+from pymatgen.analysis.transition_state import NEBAnalysis
 
 class VaspSchemes:
     
@@ -35,7 +36,7 @@ class VaspSchemes:
             for key, value in kwargs.items():
                 setattr(self,key,value)
         else:
-            args = CommandHandler().args()
+            args = CommandHandler().vasp_args()
             for key, value in args.__dict__.items():
                 setattr(self,key,value)
 
@@ -293,11 +294,13 @@ class VaspNEBSchemes(VaspSchemes):
                 if f in ('CHGCAR','WAVECAR'):
                     source = op.join(d,f)
                     dest = op.join(next_step_path,image_name,f)
+                    copyfile(source,dest)
+                    self.status.append(f'{f} copied in {dest}')
                 if f == 'CONTCAR':
                     source = op.join(d,'CONTCAR')
                     dest = op.join(next_step_path,image_name,'POSCAR')    
-                copyfile(source,dest)
-                self.status.append(f'{f} copied in {dest}')
+                    copyfile(source,dest)
+                    self.status.append(f'{f} copied in {dest}')
         return
         
 
@@ -306,10 +309,34 @@ class VaspNEBSchemes(VaspSchemes):
         Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders 
         and submit calculation in next step.
         """
+        v = self.vasp_automation
         self.copy_images_next_step()
-        self.vasp_automation.submit_job()
-        self.status(f'Calculation in "{self.vasp_automation.get_next_step()}" submitted')
+        v.submit_job()
+        self.status.append('Calculation in dir "%s" submitted' %os.path.basename(v.get_next_step()))
         return
+
+
+    def is_NEB_job_finished(self):
+        """
+        Returns True if job is converged or if the limit of ionic steps has been reached
+        """
+        is_job_finished = False
+        conv_el,conv_ionic =  self.check_convergence()
+        if conv_el and conv_ionic:
+            is_job_finished = True
+        else:
+            try:
+                neb_analysis = NEBAnalysis.from_dir(self.path)
+                is_job_finished = True
+            except:
+                warn = 'Warning: Reading of NEB job with NEBAnalysis failed'
+                print(warn)
+                self.status.append(warn)
+                is_job_finished = False
+        
+        return is_job_finished
+                
+            
 
                 
     def is_preconvergence(self):

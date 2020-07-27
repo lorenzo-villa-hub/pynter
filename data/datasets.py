@@ -2,7 +2,7 @@
 import os
 import os.path as op
 import operator
-from pynter.data.jobs import VaspJob
+from pynter.data.jobs import VaspJob, VaspNEBJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import importlib
@@ -32,9 +32,14 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
     jobs = []
     for root , dirs, files in os.walk(path):
         if files != [] and job_script_filename in files:
-            if ('INCAR' and 'KPOINTS' and 'POSCAR' and 'POTCAR') in files:
+            if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
                 path = op.abspath(root)
                 j = VaspJob.from_directory(path,job_script_filename=job_script_filename)
+                j.job_script_filename = job_script_filename
+                jobs.append(j)
+            elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
+                path = op.abspath(root)
+                j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename)
                 j.job_script_filename = job_script_filename
                 jobs.append(j)
     if sort_by_name:

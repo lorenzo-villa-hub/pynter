@@ -1227,7 +1227,7 @@ class NEBSchemes:
         incar_settings.update({
             'ISYM': 0,
             'EDIFF': 1e-04,
-            'EDIFFG': 0.1,
+            'EDIFFG': -0.1,
             'ISIF': 2,
             'NSW' : 25,
             'IMAGES' : self.images,

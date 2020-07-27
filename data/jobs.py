@@ -63,18 +63,23 @@ class Job:
 
 
     def __str__(self):
+        jobclass = self.jobclass
         if hasattr(self,'group'):
             if self.group != '':
-                printout = 'Job "%s" of group "%s"' %(self.name, self.group)
+                printout = '%s "%s" of group "%s"' %(jobclass, self.name, self.group)
         else:
             self.group = ''
-            printout = 'Job "%s"' %self.name
+            printout = '%s "%s"' %(jobclass, self.name)
         
         return printout
     
     def __repr__(self):
         return self.__str__()
         
+    @property
+    def jobclass(self):
+        return self.__class__.__name__
+
         
     def cancel_job(self):
         """Cancel job on HPC"""
