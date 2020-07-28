@@ -413,7 +413,7 @@ class NEBSchemes(Schemes):
             image_name = op.basename(d)
             files = [w[2] for w in os.walk(d)][0]
             for f in files:
-                if f in ('CHGCAR','WAVECAR'):
+                if f in ('CHGCAR','WAVECAR','OUTCAR'):
                     source = op.join(d,f)
                     dest = op.join(next_step_path,image_name,f)
                     copyfile(source,dest)
