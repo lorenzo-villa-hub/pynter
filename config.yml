@@ -24,7 +24,7 @@ job_settings:
     - fftw/3.3.8
     path_exe: "/home/lv51dypu/vasp-5-3-3"
     add_stop_array: true
-    add_automation: automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check
+    add_automation: 
     add_lines_header: 
     add_lines_body: 
     filename: job.sh

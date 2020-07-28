@@ -1152,6 +1152,7 @@ class NEBSchemes:
         inputs['POTCAR'] = potcar
         
         job_settings['nodes'] = self.images
+        job_settings['path_exe'] = '/p/scratch/chda30/hda301/code/vasp-5-3-3/vasp-5-3-3'
         if 'add_automation' not in job_settings:
             job_settings['add_automation'] = None        
         job_settings['name'] = '_'.join([self.name,scheme_name])
