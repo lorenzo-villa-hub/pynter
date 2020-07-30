@@ -11,8 +11,8 @@ from glob import glob
 from shutil import copyfile
 from pynter.automations.core import CommandHandler, Automation
 from pymatgen.analysis.transition_state import NEBAnalysis
-from pymatgen.io.vasp.inputs import Kpoints
-from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.io.vasp.inputs import Kpoints, Incar
+from pymatgen.io.vasp.outputs import Vasprun, Oszicar, Outcar
 
 
 
@@ -82,7 +82,7 @@ class Base(Automation):
             converged_electronic = vasprun.converged_electronic
             converged_ionic = vasprun.converged_ionic
         except:
-            print('"vasprun.xml" could not be read, calculation probably failed')
+            print('"vasprun.xml" could not be read, calculation probably did not converge')
             pass
             
         return converged_electronic, converged_ionic
@@ -134,7 +134,41 @@ class Base(Automation):
         nsw = self.vasprun.parameters['NSW']                
         return True if n_steps == nsw else False
 
-     
+ 
+    def read_oszicar(self,path=None):
+        """
+        Get Pymatgen OSZICAR object by reading "OSZICAR" file        
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path of "OSZICAR" file. The default is None. If None "path" attribute is used.
+
+        Returns
+        -------
+        Oszicar object
+        """
+        path = path if path else self.path
+        return Oszicar(os.path.join(path,'OSZICAR'))
+
+
+    def read_outcar(self,path=None):
+        """
+        Get Pymatgen OSZICAR object by reading "OUTCAR" file        
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path of "OUTCAR" file. The default is None. If None "path" attribute is used.
+
+        Returns
+        -------
+        Outcar object
+        """
+        path = path if path else self.path
+        return Outcar(os.path.join(path,'OUTCAR'))
+
+    
     def read_vasprun(self,path=None):
         """
         Get Pymatgen Vasprun object by reading "vasprun.xml"        
@@ -216,7 +250,7 @@ class Schemes(Base):
         self.status.append(f'\nElectronic convergence: {conv_el}')
         self.status.append(f'Ionic convergence: {conv_ionic}\n') 
         if conv_el == False and conv_ionic == False:
-            self.status.append('Calculation probably FAILED, control manually')
+            self.status.append('Calculation probably did not converge, control manually')
         return conv_el,conv_ionic
 
 
@@ -383,6 +417,28 @@ class NEBSchemes(Schemes):
         return
     
 
+    def check_limit_ionic_steps_oszicar(self,printout=False):
+        """
+        Function to check if limit of ionic steps is reached from OSZICAR file. Reading of vasprun.xml
+        failes for NEB calculations. This function checks if the limit is reached from OSZICAR file
+        in all images directories. The reference is the NSW tag in the INCAR file in the parent dir.
+        """
+        limit_reached = True
+        image_dirs = self.find_NEB_dirs()
+        for d in image_dirs:
+            if d != image_dirs[0] and d != image_dirs[-1]:
+                image_name = op.basename(d)
+                n_steps = len(self.read_oszicar(path=d).ionic_steps)
+                nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
+                if printout:
+                    self.status.append(f'{image_name}: number of ionic steps:{n_steps}, INCAR["NSW"]:{nsw}')
+                if nsw != n_steps:
+                    limit_reached = False
+        if limit_reached:
+            self.status.append('Limit of ionic steps has been reached')
+        return limit_reached
+            
+            
     def check_preconvergence_images(self):
         """
         Check if all SCF calculations of the images are converged
@@ -445,16 +501,11 @@ class NEBSchemes(Schemes):
         conv_el,conv_ionic =  self.check_convergence()
         if conv_el and conv_ionic:
             is_job_finished = True
-        else:
-            try:
-                neb_analysis = NEBAnalysis.from_dir(self.path) # check if analysis succedes
-                is_job_finished = True
-            except:
-                warn = 'Warning: Reading of NEB job with NEBAnalysis failed'
-                print(warn)
-                self.status.append(warn)
-                is_job_finished = False
+        elif self.check_limit_ionic_steps_oszicar():
+            is_job_finished = True
         
+        if is_job_finished:
+            self.status.append('NEB job is finished: converged or limit of ionic steps has been reached')
         return is_job_finished
                 
                 
