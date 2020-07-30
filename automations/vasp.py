@@ -101,6 +101,7 @@ class Base(Automation):
             image_name = op.relpath(directory,start=path)
             if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
                 dirs.append(directory)
+        dirs.sort()
         return dirs
 
 
