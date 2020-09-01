@@ -129,6 +129,90 @@ class Schemes:
             
         return jobs
 
+
+    def convergence_encut(self,encuts=[]):
+        """
+        Scheme for energy cutoff convergence
+
+        Parameters
+        ----------
+        encuts : (list), optional
+            List of energy cutoffs to use. If not provided a range from 200 to 700 eV is used.The default is [].
+
+        Returns
+        -------
+        jobs : (list)
+            List of Job objects.
+        """
+        jobs = []        
+        if not encuts:
+            encuts = range(300,800,100)
+
+        for ec in encuts:
+            
+            incar_settings = self.incar_settings.copy()
+            job_settings = self.job_settings.copy()
+            
+            incar_settings['ENCUT'] = ec
+            incar_settings['NSW'] = 0
+            incar = Incar(incar_settings)
+            kpoints = self.kpoints
+            poscar = Poscar(self.structure)
+            potcar = self.potcar
+            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+            stepname = f'cutoff{ec}'
+            job_settings['name'] = '_'.join([self.job_settings['name'],stepname])
+            
+            jobname = '_'.join([self.name,stepname])
+            jobpath = op.join(self.path,stepname)
+            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            jobs.append(vaspjob)
+        
+        return jobs
+        
+
+    def convergence_kpoints(self,kpoints_meshes=[]):
+        """
+        Scheme for kpoints convergence.
+
+        Parameters
+        ----------
+        kpoints_meshes : (list), optional
+            List of kpoints meshes to use. If not provided a range from 2x2x2 to 7x7x7 is used.The default is [].
+
+        Returns
+        -------
+        jobs : (list)
+            List of Job objects.
+        """
+        jobs = []        
+        if not kpoints_meshes:
+            kpoints_meshes = []
+            for k in range(2,9):
+                kpoints_meshes.append((k,k,k))
+
+        for kmesh in kpoints_meshes:
+            
+            incar_settings = self.incar_settings.copy()
+            job_settings = self.job_settings.copy()
+            
+            incar_settings.pop('KPAR', None)
+            incar_settings['NSW'] = 0
+            incar = Incar(incar_settings)
+            kpoints = Kpoints().gamma_automatic(kpts=kmesh)
+            poscar = Poscar(self.structure)
+            potcar = self.potcar
+            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+            stepname = 'k%ix%ix%i' %(kmesh[0],kmesh[1],kmesh[2])
+            job_settings['name'] = '_'.join([self.job_settings['name'],stepname])
+            
+            jobname = '_'.join([self.name,stepname])
+            jobpath = op.join(self.path,stepname)
+            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            jobs.append(vaspjob)
+        
+        return jobs
+
                
     def dielectric_properties_electronic(self,scheme_name=None):
         """
