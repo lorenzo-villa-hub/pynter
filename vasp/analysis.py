@@ -13,81 +13,6 @@ from pymatgen.analysis.eos import EOS
 matplotlib.rcParams.update({'font.size': 15})
 
 
-class Vaspout: # in progress, will probably be eliminated because inefficient
-    
-    def __init__(self,**kwargs):
-        
-        for key,value in kwargs.items():
-            setattr(self, key, value)
- 
-           
-    def __str__(self):
-        return self.__dict__.__str__()
-    
-    def __repr__(self):
-        return self.__str__()
-    
-    
-    def as_dict(self):
-        d = {}
-        d["@module"] = self.__class__.__module__
-        d["@class"] = self.__class__.__name__
-    #    d['structures'] = [s.as_dict() for s in self.structures]
-        d['epsilon_static'] = self.epsilon_static
-        d['epsilon_static_wolfe'] = self.epsilon_static_wolfe
-        d['epsilon_ionic'] = self.epsilon_ionic
- #       d['dielectric'] = self.dielectric if hasattr(self,'dielectric') else None
- #       d['optical_absorption_coeff'] = self.optical_absorption_coeff if hasattr(self,'optical_absorption_coeff') else None
-        d['converged_electronic'] = self.converged_electronic
-        d['converged_ionic'] = self.converged_ionic
-        d['converged'] = self.converged
-        d['final_energy'] = self.final_energy
-        d['complete_dos'] = self.complete_dos.as_dict()
-        d['hubbards'] = self.hubbards
-        d['is_hubbard'] = self.is_hubbard
-        d['is_spin'] = self.is_spin
-        d['bandstructure'] = self.bandstructure.as_dict()
-        d['eigenvalue_band_properties'] = self.eigenvalue_band_properties
-        
-        return d
-        
-        
-    @staticmethod
-    def from_dict(d):
-        k = {}
-        k['structures'] = [Structure.from_dict(s) for s in d['structures']]
-        pass
-        
-
-    
-    @staticmethod
-    def from_Vasprun(vasprun):
-        v = vasprun
-        k = {}
-        k['structures'] = v.structures
-        k['epsilon_static'] = v.epsilon_static
-        k['epsilon_static_wolfe'] = v.epsilon_static_wolfe
-        k['epsilon_ionic'] = v.epsilon_ionic
-        if v.dielectric_data:
-            k['dielectric'] = v.dielectric
-            k['optical_absorption_coeff'] = v.optical_absorption_coeff
-        k['converged_electronic'] = v.converged_electronic
-        k['converged_ionic'] = v.converged_ionic
-        k['converged'] = v.converged
-        k['final_energy'] = v.final_energy
-        k['complete_dos'] = v.complete_dos
-        k['hubbards'] = v.hubbards
-        k['is_hubbard'] = v.is_hubbard
-        k['is_spin'] = v.is_spin
-        k['bandstructure'] = v.get_band_structure(force_hybrid_mode=True)
-        k['eigenvalue_band_properties'] = v.eigenvalue_band_properties
-                
-        kwargs = k
-            
-        return Vaspout(**kwargs)
-        
-        
-
 class JobAnalysis:
     
     def __init__(self,job):
@@ -174,7 +99,6 @@ class DatasetAnalysis:
             Pymatgen EosBase object.
         """
         V,E = [],[]
-        V,E = [],[]
         for j in self.jobs:
             V.append(j.initial_structure.lattice.volume)
             E.append(j.final_energy())
@@ -187,6 +111,45 @@ class DatasetAnalysis:
         plt.tight_layout()
         
         return plt, eos_fit
+
+
+    def plot_convergence_encut(self,title=None,delta=1e-03):
+        """
+        Plot total energy convergence with respect to ENCUT
+
+        Parameters
+        ----------
+        title : (str), optional
+            Plot title. The default is None.
+        delta : (float), optional
+            Value of delta E for energy convergence. The default is 1e-03.
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        plt.figure(figsize=(10,8))
+        cutoff_max = 0
+        energies = {}
+        for j in self.jobs:
+            cutoff = j.incar['ENCUT']
+            if cutoff > cutoff_max:
+                cutoff_max = cutoff
+            energies[cutoff] = j.final_energy()/len(j.initial_structure)
+        
+        E0 = energies[cutoff_max]
+        cutoffs = [c for c in energies.keys()]
+        deltas = [E0 - e for e in energies.values()]
+
+        plt.plot(cutoffs,deltas,'o--',markersize=10)
+        plt.axhline(y=delta,ls='-',color='k')
+        plt.axhline(y=-1*delta,ls='-',color='k')
+        plt.xlabel('PW cutoff (eV)')
+        plt.ylabel('Energy difference (eV/atom)')
+        plt.grid()
+
+        return plt         
 
         
     def plot_fractional_charge(self,name='',new_figure=True,legend_out=False):
