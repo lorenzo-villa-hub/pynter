@@ -1020,7 +1020,7 @@ def f0(E, fermi, T):
 
 def f0_holes(E, fermi, T):
     """
-    Returns 1-f0 (equilibrium fermi-dirac). Note that the exp is rewritten as fermi -E.
+    Returns 1-f0 (f0 = equilibrium fermi-dirac). Note that the exp is rewritten as (fermi -E).
     Args:
         E (float): energy in eV
         fermi (float): the fermi level in eV
