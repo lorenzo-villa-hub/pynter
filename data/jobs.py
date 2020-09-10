@@ -662,11 +662,14 @@ class VaspNEBJob(Job):
         limit_reached = True
         image_dirs = self.image_dirs
         for d in image_dirs:
-            if d != image_dirs[0] and d != image_dirs[-1]:                
-                n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
-                nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
-                if nsw != n_steps:
+            if d != image_dirs[0] and d != image_dirs[-1]:
+                if not os.path.isfile(os.path.join(d,'OSZICAR')): # check if OSZICAR files are present 
                     limit_reached = False
+                else:                
+                    n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
+                    nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
+                    if nsw != n_steps:
+                        limit_reached = False
         return limit_reached
     
 

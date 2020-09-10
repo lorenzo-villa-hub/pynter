@@ -1218,7 +1218,7 @@ class NEBSchemes:
             'SPRING' : -5,
             'IOPT' : 0,
             'IBRION' : 3,
-            'POTIM' : 0.30,
+            'POTIM' : 0.05,
             'ICHAIN' : 0,
             'LCLIMB' : '.TRUE.',
             'LTANGENTOLD' : '.FALSE.',
@@ -1236,7 +1236,7 @@ class NEBSchemes:
         inputs['POTCAR'] = potcar
         
         job_settings['nodes'] = self.images
-        job_settings['path_exe'] = '/p/scratch/chda30/hda301/code/vasp-5-3-3/vasp-5-3-3'
+        job_settings['path_exe'] = '/home/lv51dypu/vasp.5.4.4_vtstcode/bin/vasp_std'
         if 'add_automation' not in job_settings:
             job_settings['add_automation'] = None        
         job_settings['name'] = '_'.join([self.name,scheme_name])
@@ -1319,7 +1319,7 @@ class NEBSchemes:
             'SPRING' : -5,
             'IOPT' : 0,
             'IBRION' : 3,
-            'POTIM' : 0.10,
+            'POTIM' : 0.05,
             'ICHAIN' : 0,
             'LCLIMB' : '.FALSE.',
             'LTANGENTOLD' : '.FALSE.',
@@ -1338,7 +1338,7 @@ class NEBSchemes:
         
         job_settings['nodes'] = self.images
         if 'add_automation' not in job_settings:
-            job_settings['add_automation'] = None        
+            job_settings['add_automation'] = 'automation_vasp_NEB.py'        
         job_settings['name'] = '_'.join([self.name,scheme_name])
 
 
@@ -1375,7 +1375,10 @@ class NEBSchemes:
             
             job_settings = self.job_settings.copy()
             if 'add_automation' not in job_settings:
-                job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
+                if index ==  structures.index(structures[-1]):
+                    job_settings['add_automation'] = 'automation_vasp_NEB.py'
+                else:
+                    job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
             job_settings['name'] = '_'.join([self.name,scheme_name,image_name])
             
             jobname = '_'.join([self.name,scheme_name,image_name])

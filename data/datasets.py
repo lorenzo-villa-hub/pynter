@@ -68,7 +68,8 @@ class Dataset:
             Sort list of jobs based on Job names. The default is True.
         """
         if jobs:
-            self.path = op.commonpath([j.path for j in jobs])
+            path = op.commonpath([j.path for j in jobs])
+            self.path = op.abspath(path)
         else:
             self.path = op.abspath(path) if path else os.getcwd()
         self.name = name if name else op.basename(self.path)
