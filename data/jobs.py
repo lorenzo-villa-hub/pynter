@@ -4,7 +4,7 @@ import os
 import os.path as op
 import shutil
 from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
-from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.io.vasp.outputs import Vasprun, Oszicar
 from pymatgen.analysis.transition_state import NEBAnalysis
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
@@ -569,6 +569,23 @@ class VaspNEBJob(Job):
         return len(self.inputs['structures'])-2
     
     @property
+    def image_dirs(self):
+        """
+        Directories of images for NEB calculations. Directories are selected if all characters in the
+        directory name are digits.
+        """
+        dirs = []
+        path = self.path
+        path = op.abspath(path)
+        for d in os.walk(path):
+            directory = d[0]
+            image_name = op.relpath(directory,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                dirs.append(directory)
+        dirs.sort()
+        return dirs
+    
+    @property
     def structures(self):
         return self.inputs['structures']
 
@@ -628,9 +645,29 @@ class VaspNEBJob(Job):
                         conv_el = vasprun.converged_electronic
                         conv_ionic = vasprun.converged_ionic
                     if conv_el and conv_ionic:
-                        is_converged = True
-                    
+                        is_converged = True                
+        if not is_converged:
+            if self.is_step_limit_reached:
+                is_converged = True
+            
         return is_converged    
+    
+    
+    @property
+    def is_step_limit_reached(self):
+        """
+        Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
+        is equal to the step limit in INCAR file (NSW tag)
+        """
+        limit_reached = True
+        image_dirs = self.image_dirs
+        for d in image_dirs:
+            if d != image_dirs[0] and d != image_dirs[-1]:                
+                n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
+                nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
+                if nsw != n_steps:
+                    limit_reached = False
+        return limit_reached
     
 
     def get_inputs(self,sync=False):
@@ -684,7 +721,9 @@ class VaspNEBJob(Job):
     
     
     def write_input(self,write_structures=True):
-    
+        """
+        Write input files in all image directories
+        """
         path = op.abspath(self.path)
         
         self.job_settings['nodes'] = self.images
@@ -706,6 +745,9 @@ class VaspNEBJob(Job):
 
     
     def write_structures(self):
+        """
+        Writes POSCAR files in image directories
+        """
         path = self.path
         structures = self.inputs['structures']
         for s in structures:

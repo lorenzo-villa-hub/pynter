@@ -19,7 +19,7 @@ if not os.path.exists(wdir):
     os.makedirs(wdir)
 os.chdir(wdir)
 
-command = f"rsync -r -uavzh -e ssh {hostname}:{workdir}/*  {localdir}"
+command = f"rsync -r -uavzh --exclude 'core.*' -e ssh {hostname}:{workdir}/*  {localdir}"
 command = command.split() #subprocess.run() takes a list with the arguments of the command
 
 def job(command):
