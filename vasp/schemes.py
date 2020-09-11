@@ -1376,7 +1376,7 @@ class NEBSchemes:
             job_settings = self.job_settings.copy()
             if 'add_automation' not in job_settings:
                 if index ==  structures.index(structures[-1]):
-                    job_settings['add_automation'] = 'automation_vasp_NEB.py'
+                    job_settings['add_automation'] = '(cd ../ && automation_vasp_NEB.py)'
                 else:
                     job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
             job_settings['name'] = '_'.join([self.name,scheme_name,image_name])
