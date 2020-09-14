@@ -425,10 +425,12 @@ class NEBSchemes(Schemes):
         """
         outfiles = glob(os.path.join(self.path,'out*'))
         if outfiles:
+            outfiles.sort()
             outfile = outfiles[-1]
             lines = grep('reached required accuracy - stopping structural energy minimisation',outfile)
-            print('"reached required accuracy - stopping structural energy minimisation" found in %s' %outfile)
             if lines:
+                print('"reached required accuracy - stopping structural energy minimisation" found in %s' %outfile)
+                self.status.append('"reached required accuracy - stopping structural energy minimisation" found in %s' %outfile)
                 return True
         else:
             return False
