@@ -10,10 +10,9 @@ import os.path as op
 from glob import glob
 from shutil import copyfile
 from pynter.automations.core import CommandHandler, Automation
-from pymatgen.analysis.transition_state import NEBAnalysis
 from pymatgen.io.vasp.inputs import Kpoints, Incar
 from pymatgen.io.vasp.outputs import Vasprun, Oszicar, Outcar
-
+from pynter.tools.grep import grep
 
 
 class Base(Automation):
@@ -418,6 +417,23 @@ class NEBSchemes(Schemes):
         return
     
 
+    def check_ionic_relaxation_from_outfile(self):
+        """
+        Useful for NEB because Pymatgen fails to read vasprun file for NEB calculations.
+        This function reads the outfile with highest number in the dir and checks for the 
+        string: "reached required accuracy - stopping structural energy minimisation". 
+        """
+        outfiles = glob(os.path.join(self.path,'out*'))
+        if outfiles:
+            outfile = outfiles[-1]
+            lines = grep('reached required accuracy - stopping structural energy minimisation',outfile)
+            print('"reached required accuracy - stopping structural energy minimisation" found in %s' %outfile)
+            if lines:
+                return True
+        else:
+            return False
+        
+
     def check_limit_ionic_steps_oszicar(self,printout=False):
         """
         Function to check if limit of ionic steps is reached from OSZICAR file. Reading of vasprun.xml
@@ -499,8 +515,8 @@ class NEBSchemes(Schemes):
         Returns True if job is converged or if the limit of ionic steps has been reached
         """
         is_job_finished = False
-        conv_el,conv_ionic =  self.check_convergence()
-        if conv_el and conv_ionic:
+        
+        if self.check_ionic_relaxation_from_outfile():
             is_job_finished = True
         elif self.check_limit_ionic_steps_oszicar():
             is_job_finished = True
