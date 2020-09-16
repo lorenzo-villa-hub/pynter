@@ -18,10 +18,7 @@ from pynter.data.jobs import VaspJob, VaspNEBJob
 from pynter.data.datasets import Dataset
 
 
-class Schemes:
-    """
-    Class to generate and write input files for different calculation schemes in VASP
-    """
+class InputSets:
     
     def __init__(self,path=None,vaspinput=None,structure=None,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
         """
@@ -65,11 +62,11 @@ class Schemes:
                 self.job_settings['name'] = self.name
                 
         else:
-            raise ValueError('You need to provide Structure, either as Poscar in VaspInput or in "structure" arg')
-                
+            raise ValueError('You need to provide Structure, either as Poscar object in VaspInput or in "structure" arg')
+
 
     def __str__(self):
-        printout = 'CalculationScheme object, system name:"%s" \n' %self.name
+        printout = 'System name:"%s" \n' %self.name
         printout += 'STRUCTURE:\n'
         printout += self.structure.__str__() + '\n'
         printout += 'INCAR:\n'
@@ -84,8 +81,196 @@ class Schemes:
     
     def __repr__(self):
         return self.__str__()
-        
 
+
+    def hse_ionic_rel(self,setname='HSE-rel',pathname='HSE-rel'):
+        """
+        Set up ionic relaxation with HSE
+        """
+        vaspjob = self.pbe_ionic_rel(setname,pathname)
+        vaspjob.incar['LHFCALC'] = '.TRUE.'
+        vaspjob.incar['ISYM'] = 3
+        vaspjob.job_settings['array_size'] = 7
+        return vaspjob
+
+    def hse_ionic_vol_rel(self,setname='HSE-rel',pathname='HSE-rel'):
+        """
+        Relaxation of atomic positions and cell volume with HSE
+        """
+        vaspjob = self.hse_ionic_rel(setname,pathname)
+        vaspjob.incar['ISIF'] = 3        
+        return vaspjob
+
+    def hse_ionic_rel_gamma(self,setname='HSE-rel-Gamma',pathname='HSE-rel-gamma'):
+        """
+        Set up HSE ionic relaxation only in gamma point 
+        """
+        vaspjob = self.hse_ionic_rel(setname,pathname)
+        vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))         
+        return vaspjob 
+
+    def hse_scf(self,setname='HSE-SCF',pathname='HSE-SCF'):
+        """
+        Set up SCF calculation with HSE
+        """
+        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob.incar['LHFCALC'] = '.TRUE.'
+        vaspjob.incar['ISYM'] = 3  
+        vaspjob.job_settings['timelimit'] = '72:00:00'
+        return vaspjob
+
+    def hse_scf_gamma(self,setname='HSE-SCF-Gamma',pathname='HSE-SCF-Gamma'):
+        """
+        Set up HSE-SCF calculation only in gamma point 
+        """
+        vaspjob = self.hse_scf(setname,pathname)
+        vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))        
+        return vaspjob 
+
+    def hse_standard(self,setname='HSE',pathname='HSE'):
+        """
+        Set for standard HSE caculation
+        """
+        vaspjob = self.get_vaspjob(setname,pathname)
+        vaspjob.incar['LHFCALC'] = '.TRUE.'
+        vaspjob.incar['ISYM'] = 3 
+        return vaspjob
+
+
+    def hubbard(self,ldauu_dict,setname,pathname):
+        """
+        Set for standard PBE+U calculation. The dict {Element:U_value} is used to construct the INCAR
+        """
+        vaspjob = self.get_vaspjob(setname,pathname)
+        vaspjob.incar['LDAU'] = '.TRUE.'
+        vaspjob.incar['LDAUTYPE'] = 2
+        vaspjob.incar['LDAUPRINT'] = 2
+        vaspjob.incar['LDAUU'] = ' '.join([str(ldauu_dict[el]) for el in ldauu_dict])
+        return vaspjob
+
+
+    def pbe_bs(self,kpoints_bs=None,setname='PBE-BS',pathname='PBE-BS'):
+        """
+        Set up band structure calculation with PBE
+        
+        Parameters
+        ----------
+        kpoints_bs : (Pymatgen Kpoints object) , optional
+            Pymatgen Kpoints object for the path in BS calculation. The default is None. If None the default high symmetry path \n
+            from Pymatgen class HighSymmKpath is obtained from the input Structure with 10 points between high symm k-points. '
+        """
+        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob.incar['ICHARG'] = 11
+        vaspjob.incar['LORBIT'] = 11
+        vaspjob.incar['ISMEAR'] = 0
+        if kpoints_bs:
+            kpoints = kpoints_bs
+        else:
+            kpoints = Kpoints().automatic_linemode(10,HighSymmKpath(self.structure))
+        vaspjob.inputs['KPOINTS'] = kpoints
+        return vaspjob
+
+    def pbe_dos(self,kmesh=3,setname='PBE-DOS',pathname='PBE-DOS'):
+        """
+        Set up DOS calculation with PBE
+
+        Parameters
+        ----------
+        kmesh : (Int), optional
+            Multiplier for coefficients of the k-mesh for the DOS with respect to first step SCF calculation. The default is 3.
+        """
+        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob.incar['NEDOS'] = 2000
+        vaspjob.incar['ISMEAR'] = -5        
+        # multiply by 3 coeff of k-mesh
+        kpoints = vaspjob.inputs['KPOINTS']
+        style, kpts, kpts_shift = kpoints.style, kpoints.kpts, kpoints.kpts_shift
+        kpts_new = []
+        kpts_new.append([k*kmesh for k in kpts[0]])
+        kpoints = Kpoints(style=style,kpts=kpts_new,kpts_shift=kpts_shift)
+        vaspjob.inputs['KPOINTS'] = kpoints
+        return vaspjob
+ 
+    def pbe_ionic_rel(self,setname='PBE-rel',pathname='PBE-rel'):
+        """
+        Relaxation of atomic positions with PBE
+        """
+        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob.incar['NSW'] = 100
+        vaspjob.incar['EDIFF'] = 1e-05
+        vaspjob.incar['ISIF'] = 2        
+        return vaspjob 
+
+    def pbe_ionic_rel_gamma(self,setname='PBE-rel-Gamma',pathname='PBE-rel-gamma'):
+        """
+        Set up PBE ionic relaxation only in gamma point 
+        """
+        vaspjob = self.pbe_ionic_rel(setname,pathname)
+        vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))        
+        return vaspjob 
+
+    def pbe_ionic_vol_rel(self,setname='PBE-rel-vol',pathname='PBE-rel-vol'):
+        """
+        Relaxation of atomic positions and cell volume with PBE
+        """
+        vaspjob = self.pbe_ionic_rel(setname,pathname)
+        vaspjob.incar['ISIF'] = 3        
+        return vaspjob 
+                
+    def pbe_scf(self,setname='PBE-SCF',pathname='PBE-SCF'):
+        """
+        Set up standard input for electronic minimization with PBE
+        """        
+        vaspjob = self.get_vaspjob(setname,pathname)
+        vaspjob.incar['NSW'] = 0
+        vaspjob.incar['EDIFF'] = 1e-06        
+        return vaspjob      
+
+    def pbe_scf_gamma(self,setname='PBE-SCF-Gamma',pathname='PBE-SCF-Gamma'):
+        """
+        Set up PBE-SCF calculation only in gamma point 
+        """
+        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))         
+        return vaspjob 
+
+    def get_vaspjob(self,setname='',pathname=''):
+        """
+        Generate VaspJob object from the input settings of the class.
+
+        Parameters
+        ----------
+        setname : (str), optional
+            String to be added to 'name' key in job_settings dictionary and to name attribute of VaspJob. The default is ''.
+        pathname : (str), optional
+            String to be added to self.path. The complete path will be input in 'path' arg of VaspJob. The default is ''.
+
+        Returns
+        -------
+        vaspjob : (VaspJob object)
+        """        
+        incar_settings = self.incar_settings.copy()
+        job_settings = self.job_settings.copy()
+        
+        incar = Incar(incar_settings)
+        kpoints = self.kpoints
+        poscar = Poscar(self.structure)
+        potcar = self.potcar
+        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+        job_settings['name'] = '_'.join([self.job_settings['name'],setname])
+        
+        jobname = '_'.join([self.name,setname])
+        jobpath = op.join(self.path,pathname)
+        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        
+        return vaspjob    
+
+
+class Schemes(InputSets):
+    """
+    Class to generate and write input files for different calculation schemes in VASP
+    """
+        
     def charge_states(self,charges,locpot=True):
         """
         Generate calculation schemes for calculations of different charge states.
@@ -93,38 +278,22 @@ class Schemes:
         A list of desired charges (float or int) is required.
         
         Returns:
-            List of Job objects        
-        """
-        
-        jobs = []
-        
+            List of VaspJob objects        
+        """  
+        jobs = []        
         val = {}
         for p in self.potcar:
             val[p.element] = p.nelectrons        
         nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
         
         for q in charges:
-            
-            incar_settings = self.incar_settings.copy()
-            job_settings = self.job_settings.copy()
-            
             if isinstance(q,float) and not q.is_integer():
                 q = np.around(q,decimals=1)
-            incar_settings['NELECT'] = nelect - q 
-            
-            if locpot:
-                incar_settings['LVTOT'] = '.TRUE.' #most likely needed for corrections in defect calculations
-            incar = Incar(incar_settings)
-            kpoints = self.kpoints
-            poscar = Poscar(self.structure)
-            potcar = self.potcar
-            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
             stepname = f'q{q}'
-            job_settings['name'] = '_'.join([self.job_settings['name'],stepname])
-            
-            jobname = '_'.join([self.name,stepname])
-            jobpath = op.join(self.path,stepname)
-            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            vaspjob = self.get_vaspjob(setname=stepname,pathname=stepname)
+            vaspjob.incar['NELECT'] = nelect - q 
+            if locpot:
+                vaspjob.incar['LVTOT'] = '.TRUE.' #most likely needed for corrections in defect calculations
             jobs.append(vaspjob)
             
         return jobs
@@ -142,32 +311,18 @@ class Schemes:
         Returns
         -------
         jobs : (list)
-            List of Job objects.
+            List of VaspJob objects.
         """
         jobs = []        
         if not encuts:
             encuts = range(300,800,100)
 
-        for ec in encuts:
-            
-            incar_settings = self.incar_settings.copy()
-            job_settings = self.job_settings.copy()
-            
-            incar_settings['ENCUT'] = ec
-            incar_settings['NSW'] = 0
-            incar = Incar(incar_settings)
-            kpoints = self.kpoints
-            poscar = Poscar(self.structure)
-            potcar = self.potcar
-            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+        for ec in encuts:            
             stepname = f'cutoff{ec}'
-            job_settings['name'] = '_'.join([self.job_settings['name'],stepname])
-            
-            jobname = '_'.join([self.name,stepname])
-            jobpath = op.join(self.path,stepname)
-            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            vaspjob = self.pbe_scf(setname=stepname,pathname=stepname)            
+            vaspjob.incar['ENCUT'] = ec
             jobs.append(vaspjob)
-        
+            
         return jobs
         
 
@@ -183,7 +338,7 @@ class Schemes:
         Returns
         -------
         jobs : (list)
-            List of Job objects.
+            List of VaspJob objects.
         """
         jobs = []        
         if not kpoints_meshes:
@@ -192,138 +347,60 @@ class Schemes:
                 kpoints_meshes.append((k,k,k))
 
         for kmesh in kpoints_meshes:
-            
-            incar_settings = self.incar_settings.copy()
-            job_settings = self.job_settings.copy()
-            
-            incar_settings.pop('KPAR', None)
-            incar_settings['NSW'] = 0
-            incar = Incar(incar_settings)
-            kpoints = Kpoints().gamma_automatic(kpts=kmesh)
-            poscar = Poscar(self.structure)
-            potcar = self.potcar
-            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
             stepname = 'k%ix%ix%i' %(kmesh[0],kmesh[1],kmesh[2])
-            job_settings['name'] = '_'.join([self.job_settings['name'],stepname])
-            
-            jobname = '_'.join([self.name,stepname])
-            jobpath = op.join(self.path,stepname)
-            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            vaspjob = self.get_vaspjob(setname=stepname,pathname=stepname)
+            vaspjob.incar.pop('KPAR', None)
+            vaspjob.incar['NSW'] = 0
+            vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=kmesh)
             jobs.append(vaspjob)
-        
+            
         return jobs
+            
 
-               
-    def dielectric_properties_electronic(self,scheme_name=None):
+    def dielectric_properties_electronic(self,scheme_name='eps-electronic'):
         """
         Set calculation for electronic contribution to the dielectric constant (and also dielectric function).
         Uses 'LOPTICS' method in VASP.
         """
-        
-        scheme_name = scheme_name if scheme_name != None else 'eps-el'
-        stepnames = ['eps-electronic']
-        jobs = []
-
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()  
-
         val = {}
         for p in self.potcar:
             val[p.element] = p.nelectrons
-        incar_settings['NEDOS'] = 2000
-        incar_settings['LOPTICS'] = '.TRUE.'              
+        vaspjob = self.get_vaspjob(setname='eps-el',pathname=scheme_name)    
+        vaspjob.incar['NEDOS'] = 2000
+        vaspjob.incar['LOPTICS'] = '.TRUE.'              
         nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()]) #number of electrons
         nbands = int((nelect/2 + len(self.structure.sites)/2)*3) # 3*VASP default NBANDS (NELECT/2 +NIONS/2)
-        incar_settings['NBANDS'] = nbands
-
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name])
-        job_settings['add_automation'] = None
+        vaspjob.incar['NBANDS'] = nbands
         
-        jobname = '_'.join([self.name,scheme_name,stepnames[0]])
-        jobpath = op.join(self.path,stepnames[0])
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
-        
-        return jobs[0]
+        return vaspjob
         
 
-    def dielectric_properties_ionic_lcalceps(self,scheme_name=None):
+    def dielectric_properties_ionic_lcalceps(self,scheme_name='eps-ionic-lcalceps'):
         """
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LCALCEPS' method in VASP, combined with 'IBRION=6'. Useful for Hybrid calculations where 'LEPSILON' method does not work.
         """
-        
-        scheme_name = scheme_name if scheme_name != None else 'eps-ion-lcal'
-        stepnames = ['eps-ionic-lcalceps']
-        jobs = []
-
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()  
-
-        val = {}
-        for p in self.potcar:
-            val[p.element] = p.nelectrons
-        incar_settings['NEDOS'] = 2000
-        incar_settings['LCALCEPS'] = '.TRUE.'              
-        incar_settings['IBRION'] = 6
-        incar_settings['NSW'] = 100
-
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name])
-        job_settings['add_automation'] = None
-        
-        jobname = '_'.join([self.name,scheme_name,stepnames[0]])
-        jobpath = op.join(self.path,stepnames[0])
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
-        
-        return jobs[0]
+        vaspjob = self.get_vaspjob(setname='eps-ion-lcal',pathname=scheme_name)
+        vaspjob.incar['NEDOS'] = 2000
+        vaspjob.incar['LCALCEPS'] = '.TRUE.'              
+        vaspjob.incar['IBRION'] = 6
+        vaspjob.incar['NSW'] = 100
+ 
+        return vaspjob
 
 
-    def dielectric_properties_ionic_lepsilon(self,scheme_name=None):
+    def dielectric_properties_ionic_lepsilon(self,scheme_name='eps-ionic-lepsilon'):
         """
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LEPSILON' method in VASP, combined with 'IBRION=8'. This method does not work with HSE functionals.
         """
-        
-        scheme_name = scheme_name if scheme_name != None else 'eps-el-leps'
-        stepnames = ['eps-ionic-lepsilon']
-        jobs = []
-
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()  
-
-        val = {}
-        for p in self.potcar:
-            val[p.element] = p.nelectrons
-        incar_settings['NEDOS'] = 2000
-        incar_settings['LEPSILON'] = '.TRUE.'              
-        incar_settings['IBRION'] = 8
-        incar_settings['NSW'] = 100
-
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name])
-        job_settings['add_automation'] = None
-        
-        jobname = '_'.join([self.name,scheme_name,stepnames[0]])
-        jobpath = op.join(self.path,stepnames[0])
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
-        
-        return jobs[0]
+        vaspjob = self.get_vaspjob(setname='eps-ion-leps',pathname=scheme_name)
+        vaspjob.incar['NEDOS'] = 2000
+        vaspjob.incar['LEPSILON'] = '.TRUE.'              
+        vaspjob.incar['IBRION'] = 8
+        vaspjob.incar['NSW'] = 100
+ 
+        return vaspjob
 
 
     def fractional_charge_linearity(self):
@@ -332,125 +409,62 @@ class Schemes:
         The number of electrons are scanned from NELECT to NELECT + 1 with interval of 0.2.
         
         Returns:
-            List of Job objects
-        """
-        
-        jobs = []
-        
+            List of VaspJob objects
+        """        
+        jobs = []        
         val = {}
         for p in self.potcar:
             val[p.element] = p.nelectrons        
         nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
         
         for q in np.arange(0,1.2,0.2):
-            
-            incar_settings = self.incar_settings.copy()
-            job_settings = self.job_settings.copy()
-            
             q = np.around(q,decimals=1)
-            incar_settings['NELECT'] = nelect + q
-            
-            incar = Incar(incar_settings)
-            kpoints = self.kpoints
-            poscar = Poscar(self.structure)
-            potcar = self.potcar
-            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
             stepname = f'q{q}'
-            job_settings['name'] = '_'.join([self.job_settings['name'],stepname])
-            
-            jobname = '_'.join([self.name,stepname])
-            jobpath = op.join(self.path,stepname)
-            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            vaspjob = self.get_vaspjob(setname=stepname,pathname=stepname)
+            vaspjob.incar['NELECT'] = nelect + q
             jobs.append(vaspjob)
             
         return jobs
         
     
-    def hse_rel(self,scheme_name=None):
+    def hse_relaxation(self,scheme_name='HSE-rel'):
         """
         Generates calculation scheme for ionic relaxation for HSE. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE \n
             '2-PBE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with PBE \n
             '3-HSE-SCF': Electronic SCF with HSE \n
-            '4-HSE-OPT-Gamma': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE
+            '4-HSE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE
             
         Returns:
-            List of Job objects
-        """
-        
-        scheme_name = scheme_name if scheme_name != None else 'HSE-rel'
+            List of VaspJob objects
+        """        
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT']
         jobs = []
         
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 #set step 1        
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 2
-        incar_settings['LHFCALC'] = '.FALSE.'
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 1 #set step number 1
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 2  # set step 2
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2
+        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 3 # set step 3
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 3 
+        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 4 # set step 4
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 4
+        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
-    
+
         return jobs
     
     
-    def hse_rel_gamma(self,scheme_name=None):
+    def hse_relaxation_gamma(self,scheme_name='HSE-rel-gamma'):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -462,131 +476,50 @@ class Schemes:
             '7-HSE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE'''
 
         Returns:
-            List of Job objects
+            List of VaspJob objects
         """
-        
-        scheme_name = scheme_name if scheme_name != None else'HSE-rel-gamma'
         stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-HSE-SCF','7-HSE-OPT']
         jobs = []
         
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 #set step 1
-        incar_settings['NSW'] = 0
-        incar_settings['LHFCALC'] = '.FALSE.'
-        incar_settings['ISYM'] = 2
-        incar = Incar(incar_settings)
-        kpoints = Kpoints().gamma_automatic(kpts=(1,1,1))
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 1 #set step number 1
+        vaspjob = self.pbe_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 2 # set step 2
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2 
+        vaspjob = self.pbe_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 3 # set step 3
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 3 
+        vaspjob = self.hse_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 4 # set step 4
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 4 
+        vaspjob = self.hse_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
-    
-        sn = 5 # set step 5
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 2
-        incar_settings['LHFCALC'] = '.FALSE.'
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+
+        sn = 5 
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 6 # set step 6
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 6 
+        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 7 # set step 7
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 7
+        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
-        
+
         return jobs
     
     
-    def hse_rel_gamma_extended(self,scheme_name=None):
+    def hse_relaxation_gamma_extended(self,scheme_name='HSE-rel-gamma-ext'):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -599,203 +532,79 @@ class Schemes:
             '8-HSE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE'''
 
         Returns:
-            List of Job objects
+            List of VaspJob objects
         """
-
-        scheme_name = scheme_name if scheme_name != None else'HSE-rel-gamma-ext'
         stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-HSE-SCF-Gamma',
                   '4-HSE-OPT-Gamma','5-PBE-SCF','6-PBE-OPT','7-HSE-SCF','8-HSE-OPT']
         jobs = []
         
-        
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 #set step 1
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 2
-        incar_settings['LHFCALC'] = '.FALSE.'
-        incar = Incar(incar_settings)
-        kpoints = Kpoints().gamma_automatic(kpts=(1,1,1))
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 1 #set step number 1
+        vaspjob = self.pbe_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 2 # set step 2
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2
+        vaspjob = self.pbe_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 3 # set step 3
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 3
+        vaspjob = self.hse_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 4 # set step 4
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
-    
-        sn = 5 # set step 5
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 2
-        incar_settings['LHFCALC'] = '.FALSE.'
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 4
+        vaspjob = self.hse_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
 
-        sn = 6 # set step 6
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 5 
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 7 # set step 7
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 6 
+        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 8 # set step 8
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 7 
+        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
+        sn = 8 
+        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)
+
         return jobs
                       
 
-    def hse_rel_short(self,scheme_name=None):
+    def hse_relaxation_short(self,scheme_name='HSE-rel-short'):
         """
         Generates calculation scheme for ionic relaxation for HSE (short version i.e. no PBE preliminary calculation). Steps: \n
             '1-PBE-SCF': Electronic SCF with HSE \n
             '2-PBE-OPT': Relaxation of atomic positions with ISIF = 2 and EDIFFG = 0.05 eV/A with HSE
 
         Returns:
-            List of Job objects
+            List of VaspJob objects
         """
-
-        scheme_name = scheme_name if scheme_name != None else 'HSE-rel-short'
         stepnames = ['1-HSE-SCF','2-HSE-OPT']        
         jobs = []
         
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 # set step 1
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar        
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['nodes'] = 8
-        job_settings['timelimit'] = '72:00:00'
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 1 
+        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 2 # set step 2
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['nodes'] = 8
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2
+        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
-    
-        return jobs 
+        
+        return jobs
 
     
-    def hse_vol_rel(self,scheme_name=None):
+    def hse_vol_relaxation(self,scheme_name='HSE-Vrel'):
         """
         Generates calculation scheme for structure relaxations for HSE including cell volume relaxation. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE
@@ -805,96 +614,38 @@ class Schemes:
             '5-HSE-VOPT': Cell volume relaxation and ionic relaxation with HSE (ISIF=3)
 
         Returns:
-            List of Job objects
+            List of VaspJob objects
         """
-        
-        scheme_name = scheme_name if scheme_name != None else 'HSE-Vrel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-HSE-SCF','4-HSE-OPT','5-HSE-VOPT']
         jobs = []
         
-        
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 #set step 1
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 2
-        incar_settings['LHFCALC'] = '.FALSE.'
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 1 
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 2 # set step 2
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2
+        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob.incar['LHFCALC'] = '.FALSE.'
+        vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
-        sn = 3 # set step 3
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-06
-        incar_settings['NSW'] = 0
-        incar_settings['ISYM'] = 3
-        incar_settings['LHFCALC'] = '.TRUE.'
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 3 
+        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 4  # set step 4
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['array_size'] = 7
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
-        
-        sn = 5 # set volume relaxation
-        job_settings = self.job_settings.copy()
-        incar_settings['ISIF'] = 3
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 4 
+        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
 
+        sn = 5
+        vaspjob = self.hse_ionic_vol_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)
         return jobs
     
     
-    def hubbard_tuning(self,specie,ldauu_dict=None,u_range=(1,10),scheme_name=None):
+    def hubbard_tuning(self,specie,ldauu_dict=None,u_range=(1,10),scheme_name='U_tuning'):
         """
         Generates Scheme for many calculations using different Hubbard corrections
 
@@ -907,14 +658,12 @@ class Schemes:
         u_range : (Tuple), optional
             Tuple with range of U parameter to scan. The default is (1,10).
         scheme_name : (str), optional
-            Name for Scheme, if None the name is set to "U_tuning". The default is None.
+            Name for scheme. The default is "U_tuning".
 
         Returns
         -------
-        List of Job objects
+        List of VaspJob objects
         """
-        
-        scheme_name = scheme_name if scheme_name != None else 'U_tuning'
         jobs = []
         
         if ldauu_dict is None:
@@ -926,30 +675,16 @@ class Schemes:
                 raise ValueError('size of "ldauu_dict" needs to be the same as the number of species in Structure')
                 
         for u in range(u_range[0],u_range[1]+1):
-            
-            incar_settings = self.incar_settings.copy()
-            job_settings = self.job_settings.copy()
-            
+                        
             ldauu_dict[Element(specie)] = u
-            incar_settings['LDAUU'] = ' '.join([str(ldauu_dict[el]) for el in ldauu_dict])
-            
-            incar = Incar(incar_settings)
-            kpoints = self.kpoints
-            poscar = Poscar(self.structure)
-            potcar = self.potcar
-            vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-            stepname = f'U_{u}'
-            job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,stepname])
-            
-            jobname = '_'.join([self.name,scheme_name,stepname])
-            jobpath = op.join(self.path,scheme_name,stepname)
-            vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+            stepname = f'U{u}'
+            vaspjob = self.hubbard(ldauu_dict,setname=stepname,pathname=stepname)
             jobs.append(vaspjob)
             
         return jobs
 
     
-    def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name=None):
+    def pbe_electronic_structure(self,kmesh_dos=3, kpoints_bs=None,scheme_name='PBE-el-str'):
         """
         Generates calculation scheme for electronic structure calculations for PBE (in general non hybrid functionals) Steps: \n
             '1-PBE-relax': Relaxation of atomic positions and cell volume \n
@@ -965,78 +700,27 @@ class Schemes:
             
         Returns
         -------
-        List of Job objects
+        List of VaspJob objects
         """
-     
-        scheme_name = scheme_name if scheme_name != None else 'PBE-el-str'
         stepnames = ['1-PBE-relax','2-PBE-DOS','3-PBE-BS']
         jobs = []
         
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
+        sn = 1 
+        vaspjob = self.pbe_ionic_vol_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)  
         
-        sn = 1 #set step 1 : relaxation
-        incar_settings['NSW'] = 100
-        incar_settings['ISIF'] = 3
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
-        
-        sn = 2 # set step 2 : DOS calculation
-        job_settings = self.job_settings.copy()
-        incar_settings['NSW'] = 0
-        incar_settings['ISTART'] = 1
-        incar_settings['ICHARG'] = 1
-        incar_settings['NEDOS'] = 2000
-        incar_settings['ISMEAR'] = -5
-        incar = Incar(incar_settings)
-        
-        # multiply by 3 coeff of k-mesh
-        style, kpts, kpts_shift = kpoints.style, kpoints.kpts, kpoints.kpts_shift
-        kpts_new = []
-        kpts_new.append([k*kmesh_dos for k in kpts[0]])
-        kpoints = Kpoints(style=style,kpts=kpts_new,kpts_shift=kpts_shift)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2 
+        vaspjob = self.pbe_dos(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
 
-        sn = 3 # set step 3 : BS calculation
-        job_settings = self.job_settings.copy()
-        incar_settings['ICHARG'] = 11
-        incar_settings['LORBIT'] = 11
-        incar_settings['ISMEAR'] = 0
-        if kpoints_bs:
-            kpoints = kpoints_bs
-        else:
-            kpoints = Kpoints().automatic_linemode(10,HighSymmKpath(self.structure))
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 3
+        vaspjob = self.pbe_bs(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
         return jobs
-                 
+
     
-    def pbe_rel(self,scheme_name=None):
+    def pbe_relaxation(self,scheme_name='PBE-rel'):
         """
         Generates calculation scheme for ionic relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SCF \n
@@ -1045,49 +729,23 @@ class Schemes:
 
         Returns
         -------
-        List of Job objects
+        List of VaspJob objects
         """        
-
-        scheme_name = scheme_name if scheme_name != None else 'PBE-rel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT']
         jobs = []
-               
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 #set step 1
-        incar_settings['NSW'] = 0
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+              
+        sn = 1
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 2 # set step 2 : ionic relaxation
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2 
+        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
         return jobs
     
     
-    def pbe_vol_rel(self,scheme_name=None):
+    def pbe_vol_relaxation(self,scheme_name='PBE-Vrel'):
         """
         Generates calculation scheme for ionic and cell relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SC \n
@@ -1097,57 +755,21 @@ class Schemes:
 
         Returns
         -------
-        List of Job objects
+        List of VaspJob objects
         """
-        
-        scheme_name = scheme_name if scheme_name != None else 'PBE-Vrel'
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-PBE-VOPT']
         jobs = []
-        
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        sn = 1 #set step 1
-        incar_settings['NSW'] = 0
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 1
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
         
-        sn = 2 # set step 2 :ionic relaxation
-        job_settings = self.job_settings.copy()
-        incar_settings['EDIFF'] = 1e-05
-        incar_settings['NSW'] = 100
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        sn = 2 
+        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
         jobs.append(vaspjob)
-        
-        sn = 3 # set step 3: volume relaxation
-        job_settings = self.job_settings.copy()
-        incar_settings['ISIF'] = 3
-        incar = Incar(incar_settings)
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],scheme_name,str(sn)])
-        
-        stepname = stepnames[sn-1]
-        jobname = '_'.join([self.name,scheme_name,str(sn)])
-        jobpath = op.join(self.path,scheme_name,stepname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        jobs.append(vaspjob)
+ 
+        sn = 3 
+        vaspjob = self.pbe_ionic_vol_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)       
         
         return jobs
                  
