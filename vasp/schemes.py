@@ -427,7 +427,7 @@ class Schemes(InputSets):
         return jobs
         
     
-    def hse_rel(self,scheme_name='HSE-rel'):
+    def hse_relaxation(self,scheme_name='HSE-rel'):
         """
         Generates calculation scheme for ionic relaxation for HSE. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE \n
@@ -464,7 +464,7 @@ class Schemes(InputSets):
         return jobs
     
     
-    def hse_rel_gamma(self,scheme_name='HSE-rel-gamma'):
+    def hse_relaxation_gamma(self,scheme_name='HSE-rel-gamma'):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -519,7 +519,7 @@ class Schemes(InputSets):
         return jobs
     
     
-    def hse_rel_gamma_extended(self,scheme_name='HSE-rel-gamma-ext'):
+    def hse_relaxation_gamma_extended(self,scheme_name='HSE-rel-gamma-ext'):
         """
         Generates calculation scheme for structure relaxations for HSE with more intermediate steps. Steps: \n
             '1-PBE-SCF-Gamma': Electronic SCF with PBE only in Gamma point \n
@@ -581,7 +581,7 @@ class Schemes(InputSets):
         return jobs
                       
 
-    def hse_rel_short(self,scheme_name='HSE-rel-short'):
+    def hse_relaxation_short(self,scheme_name='HSE-rel-short'):
         """
         Generates calculation scheme for ionic relaxation for HSE (short version i.e. no PBE preliminary calculation). Steps: \n
             '1-PBE-SCF': Electronic SCF with HSE \n
@@ -604,7 +604,7 @@ class Schemes(InputSets):
         return jobs
 
     
-    def hse_vol_rel(self,scheme_name='HSE-Vrel'):
+    def hse_vol_relaxation(self,scheme_name='HSE-Vrel'):
         """
         Generates calculation scheme for structure relaxations for HSE including cell volume relaxation. Steps: \n
             '1-PBE-SCF': Electronic SCF with PBE
@@ -720,7 +720,7 @@ class Schemes(InputSets):
         return jobs
 
     
-    def pbe_rel(self,scheme_name='PBE-rel'):
+    def pbe_relaxation(self,scheme_name='PBE-rel'):
         """
         Generates calculation scheme for ionic relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SCF \n
@@ -745,7 +745,7 @@ class Schemes(InputSets):
         return jobs
     
     
-    def pbe_vol_rel(self,scheme_name='PBE-Vrel'):
+    def pbe_vol_relaxation(self,scheme_name='PBE-Vrel'):
         """
         Generates calculation scheme for ionic and cell relaxation with PBE functional. Steps: \n
             '1-PBE-SCF': Electronic SC \n
