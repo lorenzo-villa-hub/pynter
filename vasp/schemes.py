@@ -83,6 +83,38 @@ class InputSets:
         return self.__str__()
 
 
+    def get_vaspjob(self,setname='',pathname=''):
+        """
+        Generate VaspJob object from the input settings of the class.
+
+        Parameters
+        ----------
+        setname : (str), optional
+            String to be added to 'name' key in job_settings dictionary and to name attribute of VaspJob. The default is ''.
+        pathname : (str), optional
+            String to be added to self.path. The complete path will be input in 'path' arg of VaspJob. The default is ''.
+
+        Returns
+        -------
+        vaspjob : (VaspJob object)
+        """        
+        incar_settings = self.incar_settings.copy()
+        job_settings = self.job_settings.copy()
+        
+        incar = Incar(incar_settings)
+        kpoints = self.kpoints
+        poscar = Poscar(self.structure)
+        potcar = self.potcar
+        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
+        job_settings['name'] = '_'.join([self.job_settings['name'],setname])
+        
+        jobname = '_'.join([self.name,setname])
+        jobpath = op.join(self.path,pathname)
+        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        
+        return vaspjob  
+
+
     def hse_ionic_rel(self,setname='HSE-rel',pathname='HSE-rel'):
         """
         Set up ionic relaxation with HSE
@@ -234,38 +266,7 @@ class InputSets:
         vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))         
         return vaspjob 
 
-    def get_vaspjob(self,setname='',pathname=''):
-        """
-        Generate VaspJob object from the input settings of the class.
-
-        Parameters
-        ----------
-        setname : (str), optional
-            String to be added to 'name' key in job_settings dictionary and to name attribute of VaspJob. The default is ''.
-        pathname : (str), optional
-            String to be added to self.path. The complete path will be input in 'path' arg of VaspJob. The default is ''.
-
-        Returns
-        -------
-        vaspjob : (VaspJob object)
-        """        
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
-        
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        poscar = Poscar(self.structure)
-        potcar = self.potcar
-        vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],setname])
-        
-        jobname = '_'.join([self.name,setname])
-        jobpath = op.join(self.path,pathname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
-        
-        return vaspjob    
-
-
+  
 class Schemes(InputSets):
     """
     Class to generate and write input files for different calculation schemes in VASP
