@@ -88,7 +88,7 @@ class Job:
         hpc.cancel_jobs(job_id)
         
         return 
-    
+
     
     def delete_job_files(self,safety=True):
         """
@@ -326,6 +326,28 @@ class VaspJob(Job):
         return VaspJob(path,inputs,job_settings,outputs)
 
 
+    def delete_outputs(self,safety=True):
+        """
+        Delete files that aren't input files (INCAR,KPOINTS,POSCAR,POTCAR)
+        """
+        if safety:
+            inp = input('Are you sure you want to delete outputs of Job %s ?: (y/n)' %self.name)
+            if inp in ('y','Y'):
+                delete = True
+            else:
+                delete = False
+        else:
+            delete= True
+            
+        if delete:                
+            files = [f for f in os.listdir(self.path) if os.path.isfile(os.path.join(self.path, f))]
+            for f in files:
+                if f not in ['INCAR','KPOINTS','POSCAR','POTCAR',self.job_script_filename]:
+                    os.remove(os.path.join(self.path,f))
+                    print('Deleted file %s'%os.path.join(self.path,f))   
+        return
+
+
     @property
     def incar(self):
         return self.inputs['INCAR']
@@ -492,6 +514,22 @@ class VaspJob(Job):
             
         return U_dict
             
+
+    def nelectrons(self):
+        """
+        Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
+        Else the sum of valence electrons from POTCAR is returned.
+        """
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+        else:
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+        return nelect
+
     
     def write_input(self):
         """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
@@ -563,6 +601,30 @@ class VaspNEBJob(Job):
         
         return VaspNEBJob(path,inputs,job_settings,outputs)
 
+ 
+    def delete_outputs(self,safety=True):
+        """
+        Delete files that aren't input files (INCAR,KPOINTS,POSCAR,POTCAR)
+        """
+        if safety:
+            inp = input('Are you sure you want to delete outputs of Job %s ?: (y/n)' %self.name)
+            if inp in ('y','Y'):
+                delete = True
+            else:
+                delete = False
+        else:
+            delete= True
+            
+        if delete:
+            dirs = self.image_dirs
+            dirs.append(self.path)
+            for d in dirs:                
+                files = [f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f))]
+                for f in files:
+                    if f not in ['INCAR','KPOINTS','POSCAR','POTCAR',self.job_script_filename]:
+                        os.remove(os.path.join(d,f))
+                        print('Deleted file %s'%os.path.join(d,f))   
+        return
     
     @property
     def images(self):
@@ -673,6 +735,24 @@ class VaspNEBJob(Job):
         return limit_reached
     
 
+    def charge(self):
+        """
+        Charge of the system calculated as the difference between the value of "NELECT"
+        in the INCAR and the number of electrons in POTCAR. If "NELECT" is not present 
+        charge is set to 0.
+        """
+        charge = 0
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+            charge = neutral - nelect
+        return charge
+
+
     def get_inputs(self,sync=False):
         """
         Read inputs from Job directory
@@ -722,6 +802,22 @@ class VaspNEBJob(Job):
         self.outputs = outputs
         return
     
+
+    def nelectrons(self):
+        """
+        Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
+        Else the sum of valence electrons from POTCAR is returned.
+        """
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+        else:
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+        return nelect
+
     
     def write_input(self,write_structures=True):
         """
