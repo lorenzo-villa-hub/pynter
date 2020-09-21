@@ -105,7 +105,7 @@ class Dataset:
     
     
     @staticmethod
-    def from_directory(path,job_script_filename='job.sh',sort_by_name=True): 
+    def from_directory(path=None,job_script_filename='job.sh',sort_by_name=True): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -113,12 +113,13 @@ class Dataset:
         Parameters
         ----------
         path : (str)
-            Parent directory of the dataset.
+            Parent directory of the dataset. If None the current wdir is used.
         job_script_filename : (str), optional
             Filename of job bash script. The default is 'job.sh'.
         sort_by_name : (bool), optional
             Sort list of jobs by attribute "name". The default is True.
         """
+        path = path if path else os.getcwd()
         jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False) # names are sorted in __init__ method
      
         return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
