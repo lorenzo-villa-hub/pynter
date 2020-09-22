@@ -177,13 +177,11 @@ class DatasetAnalysis:
         jobs = self.jobs
         energy_dict = {}
         
-        if reference=='electrons':
-            reference_charge = -1
-        if reference=='holes':
-            reference_charge = +1
-        
         for j in jobs:
-            n = reference_charge*np.around(j.charge(),decimals=1) # express in terms of occupation
+            if reference=='electrons':
+                n = -1*np.around(j.charge(),decimals=1) # express in terms of occupation
+            if reference=='holes':
+                n = 1 - np.around(j.charge(),decimals=1) #shift to 0 charge of +1
             energy_dict[n] = j.final_energy()            
         energy_dict = {k: v for k, v in sorted(energy_dict.items(), key=lambda item: item[0])} #order by charge
 
