@@ -152,12 +152,14 @@ class DatasetAnalysis:
         return plt         
 
         
-    def plot_fractional_charge(self,name='',new_figure=True,legend_out=False):
+    def plot_fractional_charge(self,reference='electrons',name='',new_figure=True,legend_out=False):
         """
         Plot fractional charge study
         
         Parameters
         ----------
+        reference: (str)
+            Reference for fractional charge sign. 'electrons' or 'holes'. Default is 'electrons'.
         name: (str)
             Name to put in legend
         new_figure: (bool)
@@ -175,8 +177,13 @@ class DatasetAnalysis:
         jobs = self.jobs
         energy_dict = {}
         
+        if reference=='electrons':
+            reference_charge = -1
+        if reference=='holes':
+            reference_charge = +1
+        
         for j in jobs:
-            n = -1*np.around(j.charge(),decimals=1) # express in terms of occupation
+            n = reference_charge*np.around(j.charge(),decimals=1) # express in terms of occupation
             energy_dict[n] = j.final_energy()            
         energy_dict = {k: v for k, v in sorted(energy_dict.items(), key=lambda item: item[0])} #order by charge
 
