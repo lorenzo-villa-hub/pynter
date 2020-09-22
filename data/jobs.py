@@ -10,6 +10,7 @@ from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.grep import grep_list
 import importlib
+import numpy as np
 
 
 class Job:
@@ -432,6 +433,8 @@ class VaspJob(Job):
             neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
                            for el in self.initial_structure.composition])
             charge = neutral - nelect
+        if not isinstance(charge,int):
+            charge = np.around(charge,decimals=1)
         return charge
 
 
@@ -750,6 +753,8 @@ class VaspNEBJob(Job):
             neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
                            for el in self.initial_structure.composition])
             charge = neutral - nelect
+        if not isinstance(charge,int):
+            charge = np.around(charge,decimals=1)
         return charge
 
 
