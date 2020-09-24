@@ -8,7 +8,7 @@ Created on Fri Nov 22 11:41:35 2019
 ##################################################################################################
 
 def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,path_to_pure_locpot,charge,
-                             dielectric_constant,defect_site_coordinates,energy_cutoff=500):
+                             dielectric_constant,defect_site_coordinates,energy_cutoff=500,get_plot=False):
     
     ''' Function to perform charge corrections according to the method proposed py Freysoldt
         If this correction is used, please reference Freysoldt's original paper.
@@ -23,6 +23,7 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
             dielectric_constant: Dielectric constant
             defect_site_coordinates: numpy array with fractional coordinates of defect site
             energy_cutoff: Cut-off of plane wave expansion
+            get_plot: return also Matplotlib object with plot
             
         Returns:
             Freysoldt corrections values as a dictionary 
@@ -76,10 +77,11 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
     
     freysoldt_corrections = freysoldt_class.get_correction(defect_entry)
   
-  # plot  
-  #  freysoldt_class.plot(1)
-    
-    return freysoldt_corrections
+    if get_plot:
+        plt = freysoldt_class.plot(1)
+        return freysoldt_corrections , plt
+    else:    
+        return freysoldt_corrections
 
 ##############################################################################
     
