@@ -744,6 +744,42 @@ class Schemes(InputSets):
         jobs.append(vaspjob)
         
         return jobs
+
+
+    def pbe_relaxation_gamma(self,scheme_name='PBE-rel-gamma'):
+        """
+        Generates calculation scheme for ionic relaxation with PBE functional. Steps: \n
+            '1-PBE-SCF-Gamma': Electronic SCF in Gamma point\n
+            '2-PBE-OPT-Gamma': Ionic relaxation in Gamma point with maximum 100 ionic steps (NSW=100), Energy change between electronic steps of 1e-05 (EDIFF=1e-05), \n
+                         Force convergence criterion of 0.05 eV/Amstrong (EDIFFG=-0.05).
+            '3-PBE-SCF': Electronic SCF \n
+            '4-PBE-OPT': Ionic relaxation with maximum 100 ionic steps (NSW=100), Energy change between electronic steps of 1e-05 (EDIFF=1e-05), \n
+                         Force convergence criterion of 0.05 eV/Amstrong (EDIFFG=-0.05).
+
+        Returns
+        -------
+        List of VaspJob objects
+        """        
+        stepnames = ['1-PBE-SCF-Gamma','2-PBE-OPT-Gamma','3-PBE-SCF','4-PBE-OPT']
+        jobs = []
+
+        sn = 1
+        vaspjob = self.pbe_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)
+        
+        sn = 2 
+        vaspjob = self.pbe_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)
+              
+        sn = 3
+        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)
+        
+        sn = 4 
+        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        jobs.append(vaspjob)
+        
+        return jobs
     
     
     def pbe_vol_relaxation(self,scheme_name='PBE-Vrel'):
