@@ -404,19 +404,24 @@ class Schemes(InputSets):
         return vaspjob
 
 
-    def fractional_charge_linearity(self):
+    def fractional_charge_linearity(self,nelect=None):
         """
         Generate calculation scheme for occupation linearity test.
         The number of electrons are scanned from NELECT to NELECT + 1 with interval of 0.2.
         
+        Parameters
+        --------
+        nelect: (int)
+            NELECT to start from. If None the total valence electrons from Potcar are used.
         Returns:
             List of VaspJob objects
         """        
         jobs = []        
         val = {}
         for p in self.potcar:
-            val[p.element] = p.nelectrons        
-        nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
+            val[p.element] = p.nelectrons 
+        if not nelect:
+            nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
         
         for q in np.arange(0,1.2,0.2):
             q = np.around(q,decimals=1)
