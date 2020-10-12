@@ -6,11 +6,11 @@ Created on Tue Jan 14 12:56:45 2020
 @author: villa
 """
 
+import os
+import re
+
 def job_status(path=None,job_script_filename='job_vasp.sh'):
-    
-    import os
-    import re
-    
+        
     if path == None:
         path = os.getcwd()
     os.system('squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R" > job_list.txt')

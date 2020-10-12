@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb 10 15:43:14 2020
+Created on Mon Oct 12 15:47:16 2020
 
 @author: villa
 """
+
+import numpy as np
 
 def kpoints_file_for_HSE(k_points, k_path, npoints=10, input_file='IBZKPT' , output_file='KPOINTS'):
     ''' Creates KPOINTS file in the format for HSE bandstructure calculations on VASP
@@ -23,8 +25,6 @@ def kpoints_file_for_HSE(k_points, k_path, npoints=10, input_file='IBZKPT' , out
             input_file: IBZKPT format file to add kpoints to
             output_file: Output KPOINTS file for HSE calc
     '''
-    import numpy as np
-
     k_list = []    
     # getting coordinates of the path
     for list in k_path:
@@ -44,10 +44,8 @@ def kpoints_file_for_HSE(k_points, k_path, npoints=10, input_file='IBZKPT' , out
                 # adding the i-th step
                 point = l[p] + step*i
                 k_inter.append(point)
-      #      if l == k_list[-1]:
             if p == len(l)-2:
                     k_inter.append(l[p+1])
-            # resetting step 
             step = 0
     # getting number of added points
     total_new_kpoints = len(k_inter)    
@@ -89,4 +87,3 @@ def kpoints_file_for_HSE(k_points, k_path, npoints=10, input_file='IBZKPT' , out
     k_file.close()
     
     return
-

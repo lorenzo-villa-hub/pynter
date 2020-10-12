@@ -5,7 +5,7 @@ import os
 import os.path as op
 import argparse as ap
 from pynter.__init__ import load_config
-from pynter.tools.grep import grep
+from pynter.tools.utils import grep
 
 class ScriptHandler:
     
