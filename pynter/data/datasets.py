@@ -92,6 +92,9 @@ class Dataset:
             
     def __repr__(self):
         return self.__str__()
+    
+    def __iter__(self):
+        return self.jobs.__iter__()
 
 
     def as_dict(self):
