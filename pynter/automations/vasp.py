@@ -12,7 +12,7 @@ from shutil import copyfile
 from pynter.automations.core import CommandHandler, Automation
 from pymatgen.io.vasp.inputs import Kpoints, Incar
 from pymatgen.io.vasp.outputs import Vasprun, Oszicar, Outcar
-from pynter.tools.grep import grep
+from pynter.tools.utils import grep
 
 
 class Base(Automation):

@@ -1,8 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Oct 12 15:40:26 2020
 
-###############################################################################
+@author: villa
+"""
 
+import re
+import os
 
-###############################################################################
 def change_file (input_file , output_file=None, back_up_file = True,
                  str_to_modify = {}, lines_to_add=[], check_added_lines = True, lines_to_remove = []):
     
@@ -20,9 +26,6 @@ def change_file (input_file , output_file=None, back_up_file = True,
      check_added_lines: - True - if line is already present is not added
                         - False - line is added indipendently of the others
     ''' 
-    import re
-    import os
-
     origin_file = open(input_file,'r')
     lines_list = origin_file.readlines()
     origin_file.close()
@@ -34,30 +37,21 @@ def change_file (input_file , output_file=None, back_up_file = True,
         else:
             os.remove(input_file)
     
-
     new_file = open(output_file,'w')
-         
-      # searching lines in input file   
-    for line in lines_list:
-        
+           
+    for line in lines_list:        
         rem_line = False
         mod_line = False 
-    # checking lines to remove 
         for l in lines_to_remove:
             if l + '\n' == line:
                 rem_line = True
         for string in str_to_modify: 
-            # emulating 'grep' command
-            target_line = re.findall(string, line)
-            # if line is the target line replace string                      
+            target_line = re.findall(string, line)                      
             if target_line != [] and rem_line == False:
-                # writing line with new string
                 new_file.write(line.replace(string,str_to_modify[string]))
                 mod_line = True                  
-         # if no modified line has been written and line is not to be removed write original line
         if mod_line == False and rem_line == False:
              new_file.write(line)   
-              # add lines 
          
     for l in lines_to_add:
           if check_added_lines:              
@@ -68,5 +62,32 @@ def change_file (input_file , output_file=None, back_up_file = True,
     
     new_file.close()
     
-###############################################################################
-           
+    return
+    
+
+def grep(search_string,file):    
+    '''
+    Function that emulates "grep" function and returns a list of lines
+    that contain target string
+    '''         
+    lines = []    
+    with open (file,'r') as origin_file:
+    # searching lines in input file   
+        for line in origin_file:
+       # emulating 'grep' command
+            target_line = re.findall(search_string, line)
+            if target_line:
+                lines.append(line)
+        return lines
+         
+
+def grep_list(search_string,target_list):
+    """
+    Search string in a list of strings. Returns lines that contain the searched string.
+    """
+    lines=[]
+    for l in target_list:
+        if search_string in l:
+            lines.append(l)
+            
+    return lines

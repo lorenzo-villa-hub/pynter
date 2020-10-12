@@ -8,7 +8,7 @@ from pymatgen.io.vasp.outputs import Vasprun, Oszicar
 from pymatgen.analysis.transition_state import NEBAnalysis
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
-from pynter.tools.grep import grep_list
+from pynter.tools.utils import grep_list
 import importlib
 import numpy as np
 
@@ -511,7 +511,7 @@ class VaspJob(Job):
             if isinstance(ldauu,str):
                 ldauu = ldauu.split()
             for i in range(0,len(ldauu)):
-                U_dict[elements[i]] = ldauu[i]
+                U_dict[elements[i]] = int(ldauu[i])
         else:
             print('No LDAUU tag present in INCAR in Job "%s"' %self.name)
             
