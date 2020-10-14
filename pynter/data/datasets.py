@@ -477,14 +477,15 @@ class Dataset:
                 if common_node not in j.nodes:
                     sel_jobs.remove(j)
         
-        for feature in complex_features:
-            feature_name = feature[0]
-            feature_value = feature[1]
-            jobs = sel_jobs.copy()
-            for j in jobs:
-                job_feature = self.get_job_feature(j,feature_name)
-                if job_feature != feature_value:
-                    sel_jobs.remove(j)
+        if complex_features:
+            for feature in complex_features:
+                feature_name = feature[0]
+                feature_value = feature[1]
+                jobs = sel_jobs.copy()
+                for j in jobs:
+                    job_feature = self.get_job_feature(j,feature_name)
+                    if job_feature != feature_value:
+                        sel_jobs.remove(j)
 
         for feature in kwargs:
             jobs = sel_jobs.copy()
