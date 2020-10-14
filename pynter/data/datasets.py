@@ -263,6 +263,41 @@ class Dataset:
         return
         
 
+    def get_job_feature(self,job,feature):
+        """
+        Get value of attribute or method of a target Job.
+        If feature is a single method only the string with the method's name is required.
+        If the target feature is stored in a dictionary (or dict of dictionaries), a list of this format needs to be provided:
+            ["method_name",key1,key2,...] - This will identify the value of Job.method[key1][key2][...] .
+
+        Parameters
+        ----------
+        job : (Job)
+            Job object.
+        feature : (str or list)
+            Method or attribute of Job class for which the value is needed.
+        """
+        if isinstance(feature,list):
+            met = feature[0]
+            try:
+                attr = getattr(job,met) ()
+            except:
+                attr = getattr(job,met)                
+            for k in feature[1:]:
+                if isinstance(attr[k],dict):
+                    attr = attr[k]
+                else:
+                    return attr[k]
+                
+        else:
+            met = feature
+            try:
+                attr = getattr(job,met) ()
+            except:
+                attr = getattr(job,met)
+            return attr
+
+
     def get_jobs_inputs(self):
         """Read inputs for all jobs from the data stored in the respective directories"""
         for j in self.jobs:
@@ -285,7 +320,7 @@ class Dataset:
             List of jobs to display in the table. The default is []. If [] the attribute "jobs" is used.
         properties_to_display : (list), optional
             List of kwargs with methods in the Job class. The properties referred to these will be added
-            to the table. The default is [].
+            to the table. See self.get_job_feature for more details. The default is [].
 
         Returns
         -------
@@ -303,7 +338,13 @@ class Dataset:
             d['nodes'] = j.nodes
             d['is_converged'] = j.is_converged
             for feature in properties_to_display:
-                d[feature] = getattr(j,feature) ()
+                if isinstance(feature,list):
+                    key = feature[0]
+                    for k in feature[1:]:
+                        key = key + '["%s"]'%k
+                else:
+                    key = feature
+                d[key] = self.get_job_feature(j,feature)
             table.append(d)
             
         df = pd.DataFrame(table,index=index)
@@ -354,7 +395,39 @@ class Dataset:
         return
 
 
-    def select_jobs(self,jobs=None,names=None,groups=None,common_node=None,**kwargs):
+    def sort_jobs(self,jobs_to_sort=None,feature='name',reset=True):
+        """
+        Sort jobs according to the target feature. If list of jobs is not given
+        and reset is True the attribute self.jobs is rewritten with the sorted list.
+
+        Parameters
+        ----------
+        jobs_to_sort : (list), optional
+            List of Job objects. If None self.jobs is used. The default is None.
+        feature : (str or list), optional
+            Feature to use to sort the list (see self.get_job_feature). The default is 'name'.
+        reset : (bool), optional
+            Reset the self.jobs attribute if jobs_to_sort is None. The default is True.
+
+        Returns
+        -------
+        sorted_jobs : (list)
+            List of sorted Job objects.
+        """
+        jobs = jobs_to_sort if jobs_to_sort else self.jobs
+        sorted_jobs = sorted(jobs, key=lambda x: self.get_job_feature(x,feature))
+
+        if not jobs_to_sort:
+            if reset:
+                self.jobs = sorted_jobs
+                return
+            else:
+                return sorted_jobs
+        else:
+            return sorted_jobs
+            
+
+    def select_jobs(self,jobs=None,names=None,groups=None,common_node=None,complex_features=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
@@ -371,6 +444,11 @@ class Dataset:
             List of groups that jobs need to belong to. The default is None.
         common_node : (str), optional
             String that needs to be present in the node. The default is None.
+        complex_features : (list of tuples) , optional
+            List of properties that need to be satisfied.
+            To use when the property of interest is stored in a dictionary.
+            The first element of the tuple indentifies the property (see self.get_job_feature),
+            the second corrisponds to the target value.
         **kwargs : (dict)
             Properties that the jobs need to satisfy. Keys are referred to methods 
             present in the relative Job class.
@@ -399,13 +477,19 @@ class Dataset:
                 if common_node not in j.nodes:
                     sel_jobs.remove(j)
         
+        for feature in complex_features:
+            feature_name = feature[0]
+            feature_value = feature[1]
+            jobs = sel_jobs.copy()
+            for j in jobs:
+                job_feature = self.get_job_feature(j,feature_name)
+                if job_feature != feature_value:
+                    sel_jobs.remove(j)
+
         for feature in kwargs:
             jobs = sel_jobs.copy()
             for j in jobs:
-                try:
-                    job_feature = getattr(j,feature) ()
-                except:
-                    job_feature = getattr(j,feature)
+                job_feature = self.get_job_feature(j,feature)
                 if job_feature != kwargs[feature]:
                     sel_jobs.remove(j)
          
