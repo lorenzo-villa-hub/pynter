@@ -6,10 +6,10 @@ from pynter.data.jobs import VaspJob, VaspNEBJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import importlib
+import json
 
 
-
-def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
+def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=True):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder contained jobs are selected based on the presence of the file job_script_filename
@@ -34,12 +34,12 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True):
         if files != [] and job_script_filename in files:
             if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
                 path = op.abspath(root)
-                j = VaspJob.from_directory(path,job_script_filename=job_script_filename)
+                j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
                 j.job_script_filename = job_script_filename
                 jobs.append(j)
             elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
                 path = op.abspath(root)
-                j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename)
+                j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
                 j.job_script_filename = job_script_filename
                 jobs.append(j)
     if sort_by_name:
@@ -97,18 +97,82 @@ class Dataset:
         return self.jobs.__iter__()
 
 
-    def as_dict(self):
+    def as_dict(self,**kwargs):
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
              "path":self.path,
              "name":self.name,
-             "jobs":[j.as_dict() for j in self.jobs],
+             "jobs":[j.as_dict(**kwargs) for j in self.jobs],
              "sort_by_name":self.sort_by_name}
         return d
     
+
+    def to_json(self,path,**kwargs):
+        """
+        Save Dataset object as json string or file.
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file.  If None a string is exported. 
+
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+
+        """
+        d = self.as_dict(**kwargs)
+        if path:
+            with open(path,'w') as file:
+                json.dump(d,file)
+            return
+        else:
+            return d.__str__()   
+
+    
+    @classmethod
+    def from_dict(cls,d):
+        path = d['path']
+        name = d['name']
+        jobs = []
+        for j in d['jobs']:
+            job_class = j['@class']
+            module = importlib.import_module(j['@module'])
+            jobclass = getattr(module, job_class)
+            jobs.append(jobclass.from_dict(j))
+        sort_by_name = d['sort_by_name']
+        
+        return cls(jobs,path,name,sort_by_name)
+    
     
     @staticmethod
-    def from_directory(path=None,job_script_filename='job.sh',sort_by_name=True): 
+    def from_json(path_or_string):
+        """
+        Build Dataset object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        Dataset object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return Dataset.from_dict(d)
+        
+    
+    
+    @staticmethod
+    def from_directory(path=None,job_script_filename='job.sh',sort_by_name=True,load_outputs=True): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -123,7 +187,7 @@ class Dataset:
             Sort list of jobs by attribute "name". The default is True.
         """
         path = path if path else os.getcwd()
-        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False) # names are sorted in __init__ method
+        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False,load_outputs=load_outputs) # names are sorted in __init__ method
      
         return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
 
@@ -308,6 +372,15 @@ class Dataset:
         """Read output for all jobs from the data stored in respective directories"""
         for j in self.jobs:
             j.get_outputs()
+            
+            
+    def get_jobs_output_properties(self,**kwargs):
+        """
+        Get Job output attributes by reading data in outputs dictionary
+        """
+        for j in self.jobs:
+            j.get_output_properties(**kwargs)
+        return
 
     
     def jobs_table(self,jobs=[],properties_to_display=[]):
