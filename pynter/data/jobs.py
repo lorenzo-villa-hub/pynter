@@ -310,10 +310,8 @@ class VaspJob(Job):
         Returns:
             Json-serializable dict representation of VaspJob.
         """
-        
-        band_structure = kwargs['band_structure'] if 'band_structure' in kwargs.keys() else False 
-        complete_dos = kwargs['complete_dos'] if 'complete_dos' in kwargs.keys() else False
-        
+        kwargs = self._parse_kwargs(**kwargs)
+                
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
              "path": self.path,
@@ -322,13 +320,12 @@ class VaspJob(Job):
              "job_script_filename":self.job_script_filename,
              "name":self.name}
              
-
         d["energy_gap"] = self.energy_gap
         d["final_energy"] = self.final_energy 
         d["final_structure"] = self.final_structure.as_dict() if self.final_structure else None
         d["is_converged"] = self.is_converged
-        d["band_structure"] = self.band_structure.as_dict() if band_structure else None
-        d["complete_dos"] = self.complete_dos.as_dict() if complete_dos else None
+        d["band_structure"] = self.band_structure.as_dict() if kwargs['band_structure'] else None
+        d["complete_dos"] = self.complete_dos.as_dict() if kwargs['complete_dos'] else None
         return d
 
 
@@ -655,12 +652,11 @@ class VaspJob(Job):
         complete_dos : (bool), optional
             Get CompleteDos object from vasprun. The default is False.
         """
-        band_structure = kwargs['band_structure'] if 'band_structure' in kwargs.keys() else False 
-        complete_dos = kwargs['complete_dos'] if 'complete_dos' in kwargs.keys() else False
-        
+        kwargs = self._parse_kwargs(**kwargs)
+                
         self._is_converged = self._get_convergence()
-        self._band_structure = self._get_band_structure() if band_structure else None
-        self._complete_dos = self._get_complete_dos() if complete_dos else None
+        self._band_structure = self._get_band_structure() if kwargs['band_structure'] else None
+        self._complete_dos = self._get_complete_dos() if kwargs['complete_dos'] else None
         self._energy_gap = self._get_energy_gap()
         self._final_energy = self._get_final_energy()
         self._final_structure = self._get_final_structure()
@@ -741,6 +737,11 @@ class VaspJob(Job):
             final_structure = None
         return final_structure    
 
+
+    def _parse_kwargs(self,**kwargs):
+        kwargs['band_structure'] = kwargs['band_structure'] if 'band_structure' in kwargs.keys() else False 
+        kwargs['complete_dos'] = kwargs['complete_dos'] if 'complete_dos' in kwargs.keys() else False
+        return kwargs
 
 class VaspNEBJob(Job):
     
