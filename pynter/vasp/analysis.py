@@ -34,15 +34,14 @@ class JobAnalysis:
         job = self.job
         wdir = os.getcwd()
         os.chdir(job.path)
-        if job.is_converged:
-            vasprun = job.outputs['Vasprun']       
-            complete_dos = vasprun.complete_dos
+        if job.is_converged:   
+            complete_dos = job.complete_dos
             partial_dos = complete_dos.get_spd_dos()        
             dos_plotter = DosPlotter(stack=stack)
             dos_plotter.add_dos('Total',complete_dos)
             for orbital in partial_dos:
                 dos_plotter.add_dos(orbital,partial_dos[orbital])
-            eg = job.energy_gap()
+            eg = job.energy_gap
             plt = dos_plotter.get_plot(xlim=(xlim[0],eg+xlim[1]))
         else:
             raise ValueError(f'Job %s is not converged' %self.job.name)
@@ -58,9 +57,8 @@ class JobAnalysis:
         wdir = os.getcwd()
         os.chdir(job.path)
         if job.is_converged:
-            vasprun = job.outputs['Vasprun']
-            bs = vasprun.get_band_structure(line_mode=True)
-            dos = vasprun.complete_dos
+            bs = job.get_band_structure(line_mode=True)
+            dos = job.complete_dos
             plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)           
         else:
             raise ValueError(f'Job %s is not converged' %self.name)
@@ -101,7 +99,7 @@ class DatasetAnalysis:
         V,E = [],[]
         for j in self.jobs:
             V.append(j.initial_structure.lattice.volume)
-            E.append(j.final_energy())
+            E.append(j.final_energy)
         eos = EOS(eos_name='birch_murnaghan')
         eos_fit = eos.fit(V, E)
         eos_fit.plot(width = 10, height = 10 , text = '', markersize = 15,  label= 'Birch-Murnaghan fit')  
@@ -136,7 +134,7 @@ class DatasetAnalysis:
             cutoff = j.incar['ENCUT']
             if cutoff > cutoff_max:
                 cutoff_max = cutoff
-            energies[cutoff] = j.final_energy()/len(j.initial_structure)
+            energies[cutoff] = j.final_energy/len(j.initial_structure)
         
         E0 = energies[cutoff_max]
         cutoffs = [c for c in energies.keys()]
@@ -179,10 +177,10 @@ class DatasetAnalysis:
         
         for j in jobs:
             if reference=='electrons':
-                n = -1*np.around(j.charge(),decimals=1) # express in terms of occupation
+                n = -1*np.around(j.charge,decimals=1) # express in terms of occupation
             if reference=='holes':
-                n = 1 - np.around(j.charge(),decimals=1) #shift to 0 charge of +1
-            energy_dict[n] = j.final_energy()            
+                n = 1 - np.around(j.charge,decimals=1) #shift to 0 charge of +1
+            energy_dict[n] = j.final_energy            
         energy_dict = {k: v for k, v in sorted(energy_dict.items(), key=lambda item: item[0])} #order by charge
 
         def linear(x,E0,E1):
@@ -240,10 +238,10 @@ class DatasetAnalysis:
         lattice_params = []
         band_gaps = []
         for j in self.jobs:
-            U_list.append(j.hubbard()[el])
-            lattice = j.final_structure().lattice
+            U_list.append(j.hubbard[el])
+            lattice = j.final_structure.lattice
             lattice_params.append(getattr(lattice,lattice_parameter))
-            band_gaps.append(j.energy_gap())
+            band_gaps.append(j.energy_gap)
         
         plt.subplot(1,2,1)
         plt.xlabel('U on %s'%element)
