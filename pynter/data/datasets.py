@@ -250,7 +250,7 @@ class Dataset:
         return
 
     
-    def add_jobs_from_directory(self,path,job_script_filename='job.sh',sort_by_name=True,regroup=True):
+    def add_jobs_from_directory(self,path,job_script_filename='job.sh',sort_by_name=True,load_outputs=True,regroup=True):
         """
         Add jobs to the Dataset searching all folders and subfolders contained in given path. 
         Jobs are selected based on where the job bash script is present. 
@@ -268,7 +268,7 @@ class Dataset:
             Regroup jobs after adding new jobs list, self.path is set to the commonpath. The default is True.
         """        
         path = op.abspath(path)
-        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=sort_by_name)
+        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=sort_by_name,load_outputs=load_outputs)
         self.add_jobs(jobs,False)
         if regroup:
             commonpath = op.commonpath([path,self.path])
@@ -366,13 +366,16 @@ class Dataset:
         """Read inputs for all jobs from the data stored in the respective directories"""
         for j in self.jobs:
             j.get_inputs()
+        return
 
-
-    def get_jobs_outputs(self):
+    def get_jobs_outputs(self,update_only=False):
         """Read output for all jobs from the data stored in respective directories"""
         for j in self.jobs:
-            j.get_outputs()
-            
+            if update_only:
+                if not j.outputs:
+                    j.get_outputs()
+            else:
+                j.get_outputs()
             
     def get_jobs_output_properties(self,**kwargs):
         """

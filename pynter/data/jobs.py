@@ -76,6 +76,8 @@ class Job:
         if hasattr(self,'group'):
             if self.group != '':
                 printout = '%s "%s" of group "%s"' %(jobclass, self.name, self.group)
+            else:
+                printout = '%s "%s"' %(jobclass, self.name)
         else:
             self.group = ''
             printout = '%s "%s"' %(jobclass, self.name)
@@ -622,7 +624,7 @@ class VaspJob(Job):
         return
     
     
-    def get_outputs(self,sync=False):
+    def get_outputs(self,sync=False,get_output_properties=True):
         """
         Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
         read with Pymatgen
@@ -638,6 +640,8 @@ class VaspJob(Job):
                 print('Warning: Reading of vasprun.xml in "%s" failed'%path)
                 outputs['Vasprun'] = None
         self.outputs = outputs
+        if get_output_properties:
+            self.get_output_properties()
         return
 
     
@@ -743,7 +747,81 @@ class VaspJob(Job):
         kwargs['complete_dos'] = kwargs['complete_dos'] if 'complete_dos' in kwargs.keys() else False
         return kwargs
 
+
+
 class VaspNEBJob(Job):
+    
+    
+    def as_dict(self):
+        
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "path": self.path,             
+             "job_settings": self.job_settings,
+             "job_script_filename":self.job_script_filename,
+             "name":self.name}
+        
+        inputs_as_dict = {}
+        inputs_as_dict['structures'] = [s.as_dict() for s in self.structures]
+        inputs_as_dict['INCAR'] = self.incar.as_dict()
+        inputs_as_dict['KPOINTS'] = self.kpoints.as_dict()
+        inputs_as_dict['POTCAR'] = self.potcar.as_dict()
+        
+        d["inputs"] = inputs_as_dict
+        d["is_step_limit_reached"] = self.is_step_limit_reached
+        d["is_converged"] = self.is_converged
+        d["r"] = self.r.tolist()
+        d["energies"] = self.energies.tolist()
+        d["forces"] = self.forces.tolist()
+        
+        return d
+    
+
+    def to_json(self,path):
+        """
+        Save VaspNEBJob object as json string or file
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file.  If None a string is exported.
+            
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+        """
+        d = self.as_dict()
+        if path:
+            with open(path,'w') as file:
+                json.dump(d,file)
+            return
+        else:
+            return d.__str__() 
+
+    
+    @staticmethod
+    def from_dict(d):
+
+        path = d['path']
+        inputs = {}
+        inputs["structures"] = [Structure.from_dict(s) for s in d['inputs']['structures']]
+        inputs["INCAR"] = Incar.from_dict(d['inputs']['INCAR'])
+        inputs["KPOINTS"] = Kpoints.from_dict(d['inputs']['KPOINTS'])
+        inputs["POTCAR"] = Potcar.from_dict(d['inputs']['POTCAR'])
+        job_settings = d['job_settings']
+        job_script_filename = d['job_script_filename']
+        name = d['name']
+        outputs={}
+        
+        vaspNEBjob = VaspNEBJob(path,inputs,job_settings,outputs,job_script_filename,name)
+        
+        vaspNEBjob._is_step_limit_reached = d['is_step_limit_reached']
+        vaspNEBjob._is_converged = d['is_converged']
+        vaspNEBjob._r = np.array(d['r'])
+        vaspNEBjob._energies = np.array(d['energies'])
+        vaspNEBjob._forces = np.array(d['forces'])
+        
+        return vaspNEBjob
     
     
     @staticmethod
@@ -803,6 +881,27 @@ class VaspNEBJob(Job):
         
         return VaspNEBJob(path,inputs,job_settings,outputs)
 
+
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build VaspJob object from json file or string.
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+        Returns
+        -------
+        VaspJob object.
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return VaspNEBJob.from_dict(d)
+
  
     def delete_outputs(self,safety=True):
         """
@@ -827,6 +926,7 @@ class VaspNEBJob(Job):
                         os.remove(os.path.join(d,f))
                         print('Deleted file %s'%os.path.join(d,f))   
         return
+
     
     @property
     def images(self):
@@ -871,12 +971,44 @@ class VaspNEBJob(Job):
             return self.outputs['Vasprun']
         else:
             raise ValueError('"vasprun.xml" file is not present in Job directory')
-    
-    @property
-    def neb_analysis(self):
-        return self.outputs['NEBAnalysis']
-    
 
+
+    @property
+    def charge(self):
+        """
+        Charge of the system calculated as the difference between the value of "NELECT"
+        in the INCAR and the number of electrons in POTCAR. If "NELECT" is not present 
+        charge is set to 0.
+        """
+        charge = 0
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+            charge = neutral - nelect
+        if not isinstance(charge,int):
+            charge = np.around(charge,decimals=1)
+        return charge
+
+
+    @property
+    def energies(self):
+        """
+        Energies of images read with NEBAnalysis
+        """
+        return self._energies
+
+    @property
+    def forces(self):
+        """
+        Forces of images read with NEBAnalysis
+        """
+        return self._forces
+        
+        
     @property
     def formula(self):
         """Complete formula from initial structure (read with Pymatgen)"""
@@ -896,25 +1028,13 @@ class VaspNEBJob(Job):
     def is_converged(self):
         """
         Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        or the ionic step limit has been reached reading from the OSZICAR file.
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        is_converged = None
-        if self.outputs:
-            if 'Vasprun' in self.outputs.keys():
-                is_converged = False
-                if self.vasprun:
-                    vasprun = self.vasprun
-                    conv_el, conv_ionic = False, False
-                    if vasprun:
-                        conv_el = vasprun.converged_electronic
-                        conv_ionic = vasprun.converged_ionic
-                    if conv_el and conv_ionic:
-                        is_converged = True                
-        if not is_converged:
-            if self.is_step_limit_reached:
-                is_converged = True
-            
-        return is_converged    
+        if hasattr(self,'_is_converged'):
+            return self._is_converged
+        else:
+            return None
     
     
     @property
@@ -923,38 +1043,43 @@ class VaspNEBJob(Job):
         Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
         is equal to the step limit in INCAR file (NSW tag)
         """
-        limit_reached = True
-        image_dirs = self.image_dirs
-        for d in image_dirs:
-            if d != image_dirs[0] and d != image_dirs[-1]:
-                if not os.path.isfile(os.path.join(d,'OSZICAR')): # check if OSZICAR files are present 
-                    limit_reached = False
-                else:                
-                    n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
-                    nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
-                    if nsw != n_steps:
-                        limit_reached = False
-        return limit_reached
-    
+        return self._is_step_limit_reached
 
-    def charge(self):
+
+    @property
+    def neb_analysis(self):
         """
-        Charge of the system calculated as the difference between the value of "NELECT"
-        in the INCAR and the number of electrons in POTCAR. If "NELECT" is not present 
-        charge is set to 0.
+        Get NEBAnalysis object from r, energies and forces. Returns None if any of the inputs is None.
         """
-        charge = 0
+        if self.r is not None and self.energies is not None and self.forces is not None:
+            return NEBAnalysis(self.r, self.energies, self.forces, self.structures)
+        else:
+            return None
+
+
+    @property
+    def nelectrons(self):
+        """
+        Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
+        Else the sum of valence electrons from POTCAR is returned.
+        """
         if 'NELECT' in self.incar.keys():
             nelect = self.incar['NELECT']
+        else:
             val = {}
             for p in self.potcar:
                 val[p.element] = p.nelectrons
-            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+            nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
                            for el in self.initial_structure.composition])
-            charge = neutral - nelect
-        if not isinstance(charge,int):
-            charge = np.around(charge,decimals=1)
-        return charge
+        return nelect
+
+
+    @property
+    def r(self):
+        """
+        Root mean square distances between structures read with NEBAnalysis
+        """
+        return self._r
 
 
     def get_inputs(self,sync=False):
@@ -983,7 +1108,7 @@ class VaspNEBJob(Job):
         return
 
 
-    def get_outputs(self,sync=False):
+    def get_outputs(self,sync=False,get_output_properties=True):
         """
         Read outputs from Job directory
         """
@@ -1004,23 +1129,25 @@ class VaspNEBJob(Job):
             outputs['NEBAnalysis'] = None
             
         self.outputs = outputs
+        if get_output_properties:
+            self.get_output_properties()
         return
     
 
-    def nelectrons(self):
+    def get_output_properties(self):
         """
-        Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
-        Else the sum of valence electrons from POTCAR is returned.
+        Parse outputs properties from VaspNEBJob.outputs.
         """
-        if 'NELECT' in self.incar.keys():
-            nelect = self.incar['NELECT']
-        else:
-            val = {}
-            for p in self.potcar:
-                val[p.element] = p.nelectrons
-            nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
-                           for el in self.initial_structure.composition])
-        return nelect
+
+        self._is_step_limit_reached = self._get_step_limit_reached()                
+        self._is_converged = self._get_convergence()
+        
+        neb = self.outputs['NEBAnalysis']
+        self._r = neb.r
+        self._energies = neb.energies
+        self._forces = neb.forces
+
+        return
 
     
     def write_input(self,write_structures=True):
@@ -1060,3 +1187,46 @@ class VaspNEBJob(Job):
                 os.makedirs(image_path)
             Poscar(s).write_file(op.join(image_path,'POSCAR'))
         return
+    
+    
+    def _get_convergence(self):
+        """
+        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        is_converged = None
+        if self.outputs:
+            if 'Vasprun' in self.outputs.keys():
+                is_converged = False
+                if self.vasprun:
+                    vasprun = self.vasprun
+                    conv_el, conv_ionic = False, False
+                    if vasprun:
+                        conv_el = vasprun.converged_electronic
+                        conv_ionic = vasprun.converged_ionic
+                    if conv_el and conv_ionic:
+                        is_converged = True                
+        if not is_converged:
+            if self.is_step_limit_reached:
+                is_converged = True
+            
+        return is_converged     
+        
+        
+    def _get_step_limit_reached(self):
+        """
+        Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
+        is equal to the step limit in INCAR file (NSW tag)
+        """
+        limit_reached = True
+        image_dirs = self.image_dirs
+        for d in image_dirs:
+            if d != image_dirs[0] and d != image_dirs[-1]:
+                if not os.path.isfile(os.path.join(d,'OSZICAR')): # check if OSZICAR files are present 
+                    limit_reached = False
+                else:                
+                    n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
+                    nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
+                    if nsw != n_steps:
+                        limit_reached = False
+        return limit_reached    
