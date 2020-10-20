@@ -107,14 +107,15 @@ class Dataset:
         return d
     
 
-    def to_json(self,path,**kwargs):
+    def to_json(self,path='',**kwargs):
         """
         Save Dataset object as json string or file.
 
         Parameters
         ----------
         path : (str), optional
-            Path to the destination file.  If None a string is exported. 
+            Path to the destination file. If '' the path is set to "self.path/self.name.json".
+            If None a string is exported. 
 
         Returns
         -------
@@ -123,6 +124,8 @@ class Dataset:
 
         """
         d = self.as_dict(**kwargs)
+        if path == '':
+            path = op.join(self.path,self.name+'.json')
         if path:
             with open(path,'w') as file:
                 json.dump(d,file)
