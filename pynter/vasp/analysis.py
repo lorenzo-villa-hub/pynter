@@ -57,7 +57,7 @@ class JobAnalysis:
         wdir = os.getcwd()
         os.chdir(job.path)
         if job.is_converged:
-            bs = job.get_band_structure(line_mode=True)
+            bs = job.band_structure
             dos = job.complete_dos
             plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)           
         else:
