@@ -1143,9 +1143,9 @@ class VaspNEBJob(Job):
         self._is_converged = self._get_convergence()
         
         neb = self.outputs['NEBAnalysis']
-        self._r = neb.r
-        self._energies = neb.energies
-        self._forces = neb.forces
+        self._r = neb.r  if neb else None
+        self._energies = neb.energies  if neb else None
+        self._forces = neb.forces  if neb else None
 
         return
 
