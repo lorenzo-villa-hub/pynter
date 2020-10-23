@@ -15,6 +15,8 @@ from pynter.tools.utils import grep_list
 import importlib
 import numpy as np
 import json
+from glob import glob
+from pynter.tools.utils import grep
 
 class Job:
     
@@ -864,12 +866,6 @@ class VaspNEBJob(Job):
         
         outputs = {}
         if load_outputs:
-            if op.isfile(op.join(path,'vasprun.xml')):
-                try:
-                    outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
-                except:
-                    print('Warning: Reading of vasprun.xml in "%s" failed'%path)
-                    outputs['Vasprun'] = None   
             try:
                 outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
             except:
@@ -964,13 +960,6 @@ class VaspNEBJob(Job):
     @property
     def potcar(self):
         return self.inputs['POTCAR']
-    
-    @property
-    def vasprun(self):
-        if 'Vasprun' in self.outputs.keys():
-            return self.outputs['Vasprun']
-        else:
-            raise ValueError('"vasprun.xml" file is not present in Job directory')
 
 
     @property
@@ -1035,6 +1024,17 @@ class VaspNEBJob(Job):
             return self._is_converged
         else:
             return None
+
+
+    @property
+    def is_required_accuracy_reached(self):
+        """
+        True if "reached required accuracy - stopping structural energy minimisation" 
+        is found in most recent out.* file. 
+        False if file exists but no line is found.
+        None if no out.* file exists.
+        """
+        return self._is_required_accuracy_reached
     
     
     @property
@@ -1115,13 +1115,7 @@ class VaspNEBJob(Job):
         if sync:
             self.sync_from_hpc()
         outputs = {}
-        path = self.path
-        if op.isfile(op.join(path,'vasprun.xml')):
-            try:
-                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
-            except:
-                print('Warning: Reading of vasprun.xml in "%s" failed'%path)
-                outputs['Vasprun'] = None   
+        path = self.path  
         try:
             outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
         except:
@@ -1138,7 +1132,8 @@ class VaspNEBJob(Job):
         """
         Parse outputs properties from VaspNEBJob.outputs.
         """
-
+        
+        self._is_required_accuracy_reached = self._get_ionic_relaxation_from_outfile()
         self._is_step_limit_reached = self._get_step_limit_reached()                
         self._is_converged = self._get_convergence()
         
@@ -1156,10 +1151,7 @@ class VaspNEBJob(Job):
         """
         path = op.abspath(self.path)
         
-        self.job_settings['nodes'] = self.images
-        if 'add_automation' not in self.job_settings:
-            self.job_settings['add_automation'] = None
-               
+        self.job_settings['nodes'] = self.images               
         incar = self.inputs['INCAR']
         kpoints = self.inputs['KPOINTS']
         potcar = self.inputs['POTCAR']
@@ -1187,30 +1179,45 @@ class VaspNEBJob(Job):
                 os.makedirs(image_path)
             Poscar(s).write_file(op.join(image_path,'POSCAR'))
         return
-    
+
     
     def _get_convergence(self):
         """
-        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
-        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        Returns True if:
+            - "reached required accuracy - stopping structural energy minimisation" is found in the most recent out file.
+                OR
+            - Ionic step limit has been reached, which means the step # in OSZICAR file matches the "NSW" tag in INCAR.
+        Returns False if files named out.* exist but the no "reached required accuracy" has been found AND step limit 
+            has not been reached.
+        Returns None if no out.* files have been found.
         """
-        is_converged = None
-        if self.outputs:
-            if 'Vasprun' in self.outputs.keys():
-                is_converged = False
-                if self.vasprun:
-                    vasprun = self.vasprun
-                    conv_el, conv_ionic = False, False
-                    if vasprun:
-                        conv_el = vasprun.converged_electronic
-                        conv_ionic = vasprun.converged_ionic
-                    if conv_el and conv_ionic:
-                        is_converged = True                
+        is_converged = self._get_ionic_relaxation_from_outfile()
         if not is_converged:
             if self.is_step_limit_reached:
                 is_converged = True
             
         return is_converged     
+
+
+    def _get_ionic_relaxation_from_outfile(self):
+        """
+        Useful for NEB because Pymatgen fails to read vasprun file for NEB calculations.
+        This function reads the outfile with highest number in the dir and checks for the 
+        string: "reached required accuracy - stopping structural energy minimisation". 
+        """
+        reached_accuracy = None
+        outfiles = glob(os.path.join(self.path,'out*'))
+        if outfiles:
+            outfiles.sort()
+            outfile = outfiles[-1] #taking more recent out file ("out.jobid" with bigger job id)
+            lines = grep('reached required accuracy - stopping structural energy minimisation',outfile)
+            if lines:
+                print('"reached required accuracy - stopping structural energy minimisation" found in %s' %outfile)
+                reached_accuracy = True
+            else:
+                reached_accuracy = False
+        
+        return reached_accuracy
         
         
     def _get_step_limit_reached(self):
