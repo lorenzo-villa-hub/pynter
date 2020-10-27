@@ -717,11 +717,11 @@ class VaspJob(Job):
     
     def _get_energy_gap(self):
         """Energy gap read from vasprun.xml with Pymatgen"""
+        band_gap = None
         if self.vasprun:
             vasprun = self.vasprun
             band_gap = vasprun.eigenvalue_band_properties[0]
-        else:
-            band_gap = None
+
         return band_gap
         
           
@@ -737,10 +737,10 @@ class VaspJob(Job):
             
     def _get_final_structure(self):
         """Final structure read from "vasprun.xml" with Pymatgen"""
+        final_structure = None
         if self.vasprun:
             final_structure = self.vasprun.structures[-1]
-        else:
-            final_structure = None
+
         return final_structure    
 
 
