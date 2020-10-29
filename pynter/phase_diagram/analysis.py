@@ -126,6 +126,12 @@ class Reservoirs:
         return chempots_abs
                 
 
+    def get_reference_chempots_values(self):
+        """
+        Get dictionary with values of reference chemical potentials based on data in the PhaseDiagram
+        """
+        return PDHandler(self.phase_diagram).get_chempots_reference()
+
     
     def get_dataframe(self,format_compositions=False,all_math=False):
         """
@@ -219,7 +225,10 @@ class ChempotAnalysis:
         for el,coeff in comp.items():
             if el in fixed_chempots_delta:
                 mu += -1*coeff * fixed_chempots_delta[el]
-        return mu
+            else:
+                factor = coeff
+        
+        return mu/factor
                 
 
     def get_chempots_abs(self,chempots_delta):
