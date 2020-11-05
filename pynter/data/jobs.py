@@ -9,6 +9,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.electronic_structure.dos import CompleteDos
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.analysis.transition_state import NEBAnalysis
+from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import grep_list
@@ -306,10 +307,8 @@ class VaspJob(Job):
         
         Parameters
         ----------
-        band_structure : (bool), optional
+        get_band_structure : (bool), optional
             Export BandStructure as dict. The default is False.
-        complete_dos : (bool), optional
-            Export CompleteDos as dict. The default is False.
             
         Returns:
             Json-serializable dict representation of VaspJob.
@@ -323,13 +322,13 @@ class VaspJob(Job):
              "job_settings": self.job_settings,
              "job_script_filename":self.job_script_filename,
              "name":self.name}
-             
-        d["energy_gap"] = self.energy_gap
-        d["final_energy"] = self.final_energy 
-        d["final_structure"] = self.final_structure.as_dict() if self.final_structure else None
+        
+        d["outputs"] = {}
+        if "ComputedStructureEntry" in self.outputs.keys():
+            d["outputs"]["ComputedStructureEntry"] = self.computed_entry.as_dict()
+        
         d["is_converged"] = self.is_converged
-        d["band_structure"] = self.band_structure.as_dict() if kwargs['band_structure'] else None
-        d["complete_dos"] = self.complete_dos.as_dict() if kwargs['complete_dos'] else None
+        d["band_structure"] = self.band_structure.as_dict() if kwargs['get_band_structure'] else None
         return d
 
 
@@ -341,10 +340,8 @@ class VaspJob(Job):
         ----------
         path : (str), optional
             Path to the destination file.  If None a string is exported.
-        band_structure : (bool), optional
+        get_band_structure : (bool), optional
             Export BandStructure as dict. The default is False.
-        complete_dos : (bool), optional
-            Export CompleteDos as dict. The default is False.
 
         Returns
         -------
@@ -376,15 +373,17 @@ class VaspJob(Job):
         job_script_filename = d['job_script_filename']
         name = d['name']
         outputs={}
+        if d['outputs']:
+            outputs['ComputedStructureEntry'] = ComputedStructureEntry.from_dict(d['outputs']['ComputedStructureEntry'])
         
         vaspjob = VaspJob(path,inputs,job_settings,outputs,job_script_filename,name)
         
         vaspjob._band_structure = BandStructure.from_dict(d['band_structure']) if d['band_structure'] else None
-        vaspjob._complete_dos = CompleteDos.from_dict(d['complete_dos']) if d['complete_dos'] else None
-        vaspjob._energy_gap = d['energy_gap']
-        vaspjob._final_energy = d['final_energy']
-        vaspjob._final_structure = Structure.from_dict(d['final_structure']) if d['final_structure'] else None
         vaspjob._is_converged = d['is_converged']
+        if outputs:
+            for k,v in vaspjob.computed_entry.data.items():
+                if k not in vaspjob._default_data_computed_entry:
+                    setattr(vaspjob,k,v)
         
         return vaspjob
         
@@ -470,9 +469,17 @@ class VaspJob(Job):
         if 'Vasprun' in self.outputs.keys():
             return self.outputs['Vasprun']
         else:
-            print('Warning: "vasprun.xml" file is not present in Job directory')
+            if not op.exists(op.join(self.path,'vasprun.xml')):
+                print('Warning: "vasprun.xml" file is not present in Job directory')
             return None
 
+    @property
+    def computed_entry(self):
+        if 'ComputedStructureEntry' in self.outputs.keys():
+            return self.outputs['ComputedStructureEntry']
+        else:
+            return None
+        
 
     @property
     def band_structure(self):
@@ -501,23 +508,33 @@ class VaspJob(Job):
 
 
     @property
-    def complete_dos(self):
-        return self._complete_dos
-
-
-    @property
     def energy_gap(self):
-        return self._energy_gap
+        """Energy gap read from vasprun.xml with Pymatgen"""
+        band_gap = None
+        if self.computed_entry:
+            band_gap = self.computed_entry.data['eigenvalue_band_properties'][0]
+            
+        return band_gap
     
 
     @property
     def final_energy(self):
-        return self._final_energy
+        """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
+        final_energy = None
+        if self.computed_entry:
+            final_energy = self.computed_entry.data['final_energy']
+            
+        return final_energy
     
     
     @property
     def final_structure(self):
-        return self._final_structure
+        """Final structure read from "vasprun.xml" with Pymatgen"""
+        final_structure = None
+        if self.computed_entry:
+            final_structure = self.computed_entry.data['structures'][-1]
+            
+        return final_structure 
     
             
     @property
@@ -653,19 +670,31 @@ class VaspJob(Job):
 
         Parameters
         ----------
-        band_structure : (bool), optional
+        get_band_structure : (bool), optional
             Get BandStructure object from vasprun. The default is False.
-        complete_dos : (bool), optional
-            Get CompleteDos object from vasprun. The default is False.
-        """
-        kwargs = self._parse_kwargs(**kwargs)
-                
+        data : (list), optional
+            List of attributes of Vasprun to parse in ComputedStructureEntry. The default is None.
+        """                
         self._is_converged = self._get_convergence()
-        self._band_structure = self._get_band_structure() if kwargs['band_structure'] else None
-        self._complete_dos = self._get_complete_dos() if kwargs['complete_dos'] else None
-        self._energy_gap = self._get_energy_gap()
-        self._final_energy = self._get_final_energy()
-        self._final_structure = self._get_final_structure()
+        
+        self._default_data_computed_entry = ['final_energy','structures','eigenvalue_band_properties'] # default imports from Vasprun
+
+        kwargs = self._parse_kwargs(**kwargs)  
+        if self.vasprun:
+            data = self._default_data_computed_entry 
+            optional_attributes = []
+            if kwargs['data']:
+                for attr in kwargs['data']:
+                    data.append(attr)
+                    optional_attributes.append(attr)
+            self.outputs['ComputedStructureEntry'] = self.vasprun.get_computed_entry(data=data)
+            
+            if optional_attributes:
+                for attr in optional_attributes:
+                    value = self.computed_entry.data[attr]
+                    setattr(self,attr,value)
+
+        self._band_structure = self._get_band_structure() if kwargs['get_band_structure'] else None
         
         return
 
@@ -677,20 +706,12 @@ class VaspJob(Job):
         inputs = self.inputs
         inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
         return
-    
+
 
     def _get_band_structure(self):
         """Get BandStructure objects from Vasprun"""
         if self.vasprun:
             return self.vasprun.get_band_structure(kpoints_filename=op.join(self.path,'KPOINTS'))
-        else:
-            return None
-
-
-    def _get_complete_dos(self):
-        """Get CompleteDos object (Pymatgen) from Vasprun"""
-        if self.vasprun:
-            return self.vasprun.complete_dos
         else:
             return None
             
@@ -714,39 +735,10 @@ class VaspJob(Job):
                         is_converged = True                    
         return is_converged
 
-    
-    def _get_energy_gap(self):
-        """Energy gap read from vasprun.xml with Pymatgen"""
-        band_gap = None
-        if self.vasprun:
-            vasprun = self.vasprun
-            band_gap = vasprun.eigenvalue_band_properties[0]
-
-        return band_gap
-        
-          
-    def _get_final_energy(self):
-        """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
-        final_energy = None
-        if self.is_converged:
-            if 'Vasprun' in self.outputs.keys():
-                if self.vasprun:
-                    final_energy = self.vasprun.final_energy
-        return final_energy
-     
-            
-    def _get_final_structure(self):
-        """Final structure read from "vasprun.xml" with Pymatgen"""
-        final_structure = None
-        if self.vasprun:
-            final_structure = self.vasprun.structures[-1]
-
-        return final_structure    
-
 
     def _parse_kwargs(self,**kwargs):
-        kwargs['band_structure'] = kwargs['band_structure'] if 'band_structure' in kwargs.keys() else False 
-        kwargs['complete_dos'] = kwargs['complete_dos'] if 'complete_dos' in kwargs.keys() else False
+        kwargs['data'] = kwargs['data'] if 'data' in kwargs.keys() else None
+        kwargs['get_band_structure'] = kwargs['get_band_structure'] if 'get_band_structure' in kwargs.keys() else False 
         return kwargs
 
 
