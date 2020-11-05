@@ -307,10 +307,8 @@ class VaspJob(Job):
         
         Parameters
         ----------
-        band_structure : (bool), optional
+        get_band_structure : (bool), optional
             Export BandStructure as dict. The default is False.
-        complete_dos : (bool), optional
-            Export CompleteDos as dict. The default is False.
             
         Returns:
             Json-serializable dict representation of VaspJob.
@@ -342,10 +340,8 @@ class VaspJob(Job):
         ----------
         path : (str), optional
             Path to the destination file.  If None a string is exported.
-        band_structure : (bool), optional
+        get_band_structure : (bool), optional
             Export BandStructure as dict. The default is False.
-        complete_dos : (bool), optional
-            Export CompleteDos as dict. The default is False.
 
         Returns
         -------
@@ -384,6 +380,10 @@ class VaspJob(Job):
         
         vaspjob._band_structure = BandStructure.from_dict(d['band_structure']) if d['band_structure'] else None
         vaspjob._is_converged = d['is_converged']
+        if outputs:
+            for k,v in vaspjob.computed_entry.data.items():
+                if k not in vaspjob._default_data_computed_entry:
+                    setattr(vaspjob,k,v)
         
         return vaspjob
         
@@ -672,23 +672,25 @@ class VaspJob(Job):
         ----------
         get_band_structure : (bool), optional
             Get BandStructure object from vasprun. The default is False.
-        complete_dos : (bool), optional
-            Get CompleteDos object from vasprun. The default is False.
+        data : (list), optional
+            List of attributes of Vasprun to parse in ComputedStructureEntry. The default is None.
         """                
         self._is_converged = self._get_convergence()
+        
+        self._default_data_computed_entry = ['final_energy','structures','eigenvalue_band_properties'] # default imports from Vasprun
 
         kwargs = self._parse_kwargs(**kwargs)  
-        if self.outputs['Vasprun']:
-            data=['final_energy','structures','eigenvalue_band_properties'] # default imports from Vasprun
-            attributes = []
+        if self.vasprun:
+            data = self._default_data_computed_entry 
+            optional_attributes = []
             if kwargs['data']:
                 for attr in kwargs['data']:
                     data.append(attr)
-                    attributes.append(attr)
+                    optional_attributes.append(attr)
             self.outputs['ComputedStructureEntry'] = self.vasprun.get_computed_entry(data=data)
             
-            if attributes:
-                for attr in attributes:
+            if optional_attributes:
+                for attr in optional_attributes:
                     value = self.computed_entry.data[attr]
                     setattr(self,attr,value)
 
@@ -704,7 +706,7 @@ class VaspJob(Job):
         inputs = self.inputs
         inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
         return
-    
+
 
     def _get_band_structure(self):
         """Get BandStructure objects from Vasprun"""
