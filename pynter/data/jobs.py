@@ -532,7 +532,8 @@ class VaspJob(Job):
         """Final structure read from "vasprun.xml" with Pymatgen"""
         final_structure = None
         if self.computed_entry:
-            final_structure = self.computed_entry.data['structures'][-1]
+            if self.computed_entry.data['structures']:
+                final_structure = self.computed_entry.data['structures'][-1]
             
         return final_structure 
     
@@ -547,7 +548,7 @@ class VaspJob(Job):
 
     
     @property
-    def hubbard(self):
+    def hubbards(self):
         """
         Generate dictionary with U paramenters from LDAUU tag in INCAR file
 
