@@ -14,9 +14,16 @@ from pynter.data.jobs import VaspJob
 
 
 class VaspJobQuery(QueryEngine):
-    
+    """
+    Subclass of QueryEngine in pymatgen-db (matgendb) package.
+    To set up the database for VaspJob we use the pymatgen-db package which already provides a useful
+    interface to the other pymatgen objects that are already used (like Structure or ComputedEntry).
+    This class helps to interface a VaspJob object with the database.
+    This class sets up the default "optional_data" to get from the db which allows to convert 
+    pymatgen's ComputedStructureEntry objects retrieved from the db to VaspJob objects. 
+    """
     def __init__(self, host="127.0.0.1", port=27017, database="vasp",
-                 user=None, password=None, collection="tasks",
+                 user=None, password=None, collection="test-matgendb",
                  aliases_config=None, default_properties=None,
                  query_post=None, result_post=None,
                  connection=None, replicaset=None, **ignore):
@@ -29,6 +36,19 @@ class VaspJobQuery(QueryEngine):
         
 
     def convert_computed_entry_to_job(self,entry):
+        """
+        Convert ComputedStructureEntry into VaspJob object
+
+        Parameters
+        ----------
+        entry : 
+            ComputedStructureEntry.
+
+        Returns
+        -------
+        vaspjob : 
+            VaspJob object.
+        """
         e = entry
         path = e.data['dir_name']
         
@@ -53,14 +73,47 @@ class VaspJobQuery(QueryEngine):
 
 
     def get_entries_optional_data(self,criteria,optional_data=[]):
+        """
+        Get entries with get_entries method with default "optional_data".
 
+        Parameters
+        ----------
+        criteria : 
+            Criteria obeying the same syntax as query.
+        optional_data : (list), optional
+            Optional data to include in the entry. The default is [].
+
+        Returns
+        -------
+        entries : (list)
+            List of ComputedStructureEntry objects.
+        """
         optional_data = optional_data + self.optional_data
         entries = self.get_entries(criteria,inc_structure=True,optional_data=optional_data)
         return entries
 
 
     def get_entries_in_system_optional_data(self,elements,optional_data=[],additional_criteria=None):
+        """
+        Uses get_entries_in_system method with default "optional_data".
+        Gets all entries in a chemical system, e.g. Li-Fe-O will return all
+        Li-O, Fe-O, Li-Fe, Li-Fe-O compounds.
         
+        Parameters
+        ----------
+        elements: (list)
+            List of strings with element symbols.
+        optional_data : (list), optional
+            Optional data to include in the entry. The default is [].
+        criteria : 
+            Added ability to provide additional criteria other than just
+            the chemical system.
+
+        Returns
+        -------
+        entries : (list)
+            List of ComputedStructureEntry objects.
+        """        
         optional_data = optional_data + self.optional_data
         entries = self.get_entries_in_system(elements,inc_structure=True, optional_data=optional_data,
                                              additional_criteria=additional_criteria)
@@ -68,7 +121,22 @@ class VaspJobQuery(QueryEngine):
     
     
     def get_jobs(self,criteria,optional_data=[]):
-        
+        """
+        Get VaspJob objects from db. First retrives ComputedStructureEntry objects than 
+        converts them into VaspJob objects.
+
+        Parameters
+        ----------
+        criteria : 
+            Criteria obeying the same syntax as query.
+        optional_data : (list), optional
+            Optional data to include in the entry. The default is [].
+
+        Returns
+        -------
+        jobs : (list)
+            List of VaspJob objects.
+        """
         optional_data = optional_data + self.optional_data
         jobs = []
         entries = self.get_entries_optional_data(criteria,optional_data=optional_data)

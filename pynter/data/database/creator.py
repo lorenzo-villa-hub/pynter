@@ -42,11 +42,15 @@ class VaspJobDrone(VaspToDbTaskDrone):
         """
         Insert VaspJob intro database.
         """
-        if self.job.is_converged:
+        if check_convergence:
+            if self.job.is_converged:
+                doc = self.get_task_doc_from_files()     
+                self._insert_doc(doc)
+            else:
+                print(f'VaspJob "{self.job.name}" is not converged and will not be added into the database')
+        else:
             doc = self.get_task_doc_from_files()     
             self._insert_doc(doc)
-        else:
-            print(f'VaspJob "{self.job.name}" is not converged and will not be added into the database')
         return
         
     
