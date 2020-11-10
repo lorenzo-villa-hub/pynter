@@ -28,3 +28,12 @@ job_settings:
     add_lines_header: 
     add_lines_body: 
     filename: job.sh
+
+dbconfig:
+  vasp:
+    collection: test-matgendb
+    database: vasp
+    host: 127.0.0.1
+    password: null
+    port: 27017
+    user: null

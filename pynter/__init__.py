@@ -4,7 +4,7 @@ import os
 import subprocess
 
 homedir = os.getenv("HOME")
-cfgfile = os.path.join(homedir,'pynter','config.yml')
+cfgfile = os.path.join(homedir,'.pynter','config.yml')
 
 def load_config(cfgfile=cfgfile):
     with open(cfgfile,"r") as ymlfile:

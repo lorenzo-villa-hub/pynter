@@ -11,7 +11,10 @@ from matgendb.query_engine import QueryEngine
 from pymatgen.io.vasp.inputs import VaspInput, Incar,Kpoints,Poscar,Potcar
 from pymatgen.core.structure import Structure
 from pynter.data.jobs import VaspJob
+from pynter.__init__ import load_config
 
+
+dbconfig = load_config()['dbconfig']
 
 class VaspJobQuery(QueryEngine):
     """
@@ -22,14 +25,22 @@ class VaspJobQuery(QueryEngine):
     This class sets up the default "optional_data" to get from the db which allows to convert 
     pymatgen's ComputedStructureEntry objects retrieved from the db to VaspJob objects. 
     """
-    def __init__(self, host="127.0.0.1", port=27017, database="vasp",
-                 user=None, password=None, collection="test-matgendb",
-                 aliases_config=None, default_properties=None,
-                 query_post=None, result_post=None,
-                 connection=None, replicaset=None, **ignore):
+    def __init__(self,aliases_config=None,default_properties=None,query_post=None,
+                 result_post=None,connection=None,replicaset=None,**kwargs):
         
+        for k,v in dbconfig['vasp'].items():
+            if k not in kwargs:
+                kwargs[k] = v
+        host = kwargs['host']
+        port = kwargs['port']
+        database = kwargs['database']
+        user = kwargs['user']
+        password = kwargs['password']
+        collection = kwargs['collection']
+        
+        #can't pass kwargs directly because of **ignore in QueryEngine
         super().__init__(host,port,database,user,password,collection,aliases_config,
-                         default_properties,query_post,result_post,connection,replicaset,**ignore)
+                         default_properties,query_post,result_post,connection,replicaset) 
         
         self.optional_data = ['calculations','dir_name','final_energy','eigenvalue_band_properties',
                          'job_settings','job_script_filename','job_name','is_converged','structures']

@@ -10,10 +10,11 @@ Created on Mon Nov  9 11:12:09 2020
 from matgendb.creator import VaspToDbTaskDrone
 from pynter.data.jobs import VaspJob
 from pynter.data.datasets import Dataset
+from pynter.__init__ import load_config
+
+dbconfig = load_config()['dbconfig']
 
 # for VaspJob we use pymatgen-db interface
-
-
 class VaspJobDrone(VaspToDbTaskDrone):
     """
     Subclass of VaspToDbTaskDrone in pymatgen-db (matgendb) package.
@@ -23,16 +24,14 @@ class VaspJobDrone(VaspToDbTaskDrone):
     For documentation on input args (https://github.com/materialsproject/pymatgen-db/blob/master/matgendb/creator.py).
     Warning: 'use_full_uri' has been set to False here to allow interface with VaspJob objects.
     """
-    
-    def __init__(self, job, host="127.0.0.1", port=27017, database="vasp",
-                 user=None, password=None, collection="tasks",
-                 parse_dos=False, compress_dos=False,parse_projected_eigen=False,
-                 simulate_mode=False, additional_fields=None, update_duplicates=True,
-                 mapi_key=None, use_full_uri=False, runs=None):
+    def __init__(self, job, **kwargs):
         
-        super().__init__(host,port,database,user,password,collection,parse_dos,compress_dos,
-                         parse_projected_eigen,simulate_mode,additional_fields,update_duplicates,
-                         mapi_key,use_full_uri,runs)
+        for k,v in dbconfig['vasp'].items():
+            if k not in kwargs:
+                kwargs[k] = v
+        
+        print(kwargs)                
+        super().__init__(use_full_uri=False,**kwargs)
 
         self.job = job
         self._path = self.job.path
