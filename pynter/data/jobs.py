@@ -13,6 +13,7 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import grep_list
+from pynter.data.database.creator import VaspJobDrone
 import importlib
 import numpy as np
 import json
@@ -114,7 +115,7 @@ class Job:
             Ask confirmation to delete job. The default is True.
         """
         if safety:
-            inp = input('Are you sure you want to delete Job %s ?: (y/n)' %self.name)
+            inp = input('Are you sure you want to delete Job %s ? (y/n) : ' %self.name)
             if inp in ('y','Y'):
                 shutil.rmtree(self.path)
                 print('Deleted Job %s'%self.name)
@@ -136,6 +137,10 @@ class Job:
     
     @abstractmethod
     def get_output_properties(self):
+        pass
+
+    @abstractmethod
+    def insert_in_database(self):
         pass
 
 
@@ -698,6 +703,41 @@ class VaspJob(Job):
         self._band_structure = self._get_band_structure() if kwargs['get_band_structure'] else None
         
         return
+
+
+    def insert_in_database(self,get_doc_only=False,safety=True,check_convergence=True,**kwargs):
+        """
+        Get VaspJob doc and insert in pynter default database with matgendb's VaspToDbTaskDrone.
+
+        Parameters
+        ----------
+        get_doc_only: (bool), optional
+            Get only doc with get_task_doc but does not perform the insertion into db. Default is False.
+        safety : (bool), optional
+            Ask confirmation to insert job. The default is True.
+        check_convergence: (bool), optional
+            Insert job in DB only if is_converged is True. The default is True.
+        **kwargs :
+            Args to pass to VaspToDbTaskDrone
+            
+        Returns
+        -------
+        drone: 
+            VaspJobDrone object that contains all attributes of VaspToDbTaskDrone.
+        """
+        drone = VaspJobDrone(self,**kwargs)
+        if get_doc_only:
+            return drone.get_task_doc_from_files()
+        if safety:
+            inp = input('Are you sure you want to insert VaspJob %s in database "%s", collection "%s"? (y/n) : ' 
+                        %(self.name,drone.database,drone.collection))        
+            if inp in ('y','Y'):
+                assimilate = True
+            else:
+                assimilate = False
+        if assimilate:
+            drone.assimilate_job(check_convergence=check_convergence)
+        return 
 
     
     def write_input(self):

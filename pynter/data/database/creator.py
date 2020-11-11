@@ -29,8 +29,7 @@ class VaspJobDrone(VaspToDbTaskDrone):
         for k,v in dbconfig['vasp'].items():
             if k not in kwargs:
                 kwargs[k] = v
-        
-        print(kwargs)                
+                   
         super().__init__(use_full_uri=False,**kwargs)
 
         self.job = job
