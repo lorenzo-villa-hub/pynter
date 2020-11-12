@@ -8,8 +8,6 @@ Created on Mon Nov  9 11:12:09 2020
 
 
 from matgendb.creator import VaspToDbTaskDrone
-from pynter.data.jobs import VaspJob
-from pynter.data.datasets import Dataset
 from pynter.__init__ import load_config
 
 dbconfig = load_config()['dbconfig']
