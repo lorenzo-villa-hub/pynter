@@ -295,15 +295,7 @@ class VaspJob(Job):
     
     def as_dict(self,**kwargs):        
         """
-        Get VaspJob as dictionary. The outputs dict is not exported. Exported default output attributes are:
-            - energy_gap
-            - final_energy
-            - final_structure
-            - is_converged
-            
-        If args are set to True are exported also:
-            - band_structure
-            - complete_dos
+        Get VaspJob as dictionary. The Vasprun ouput object is not exported.
         
         Parameters
         ----------
