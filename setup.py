@@ -26,7 +26,7 @@ workdir = input('Remote calculation directory: ')
 
 print('\nDefault settings for job script setup: ')
 project_id = input('Project ID: ')
-email = input('email address: ')
+email = input('email address (Default None): ')
 path_exe = input('Path of default executable: ')
 job_script_filename = input('Job script filename (default job.sh): ')
 
@@ -62,7 +62,7 @@ config = {
           'timelimit': '24:00:00',
           'memory_per_cpu': 2400,
           'processor': 'avx2',
-          'modules': ['intel/2019.2', 'intel/2019.3', 'intelmpi/2019.3', 'fftw/3.3.8'],
+          'modules': None,
           'path_exe': path_exe,
           'add_stop_array': True,
           'add_automation': None,

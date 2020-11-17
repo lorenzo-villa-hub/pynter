@@ -1,7 +1,5 @@
 # pynter
-Set of useful python classes and functions. Uses pymatgen package (https://pymatgen.org).
-Includes:
-  - Tools to create VASP calculation schemes and job automations
-  - Tools to analyse defect calculations
-  - Script to create and organize job submission scripts
-  - Tools to interface with Materials Project (https://materialsproject.org)
+Tools for atomistic calculations, up to now has interface only to VASP. Uses pymatgen package (https://pymatgen.org).
+
+Run setup.py to configure the file with the preferred default options for job submissions and database.
+Check out the notebook in the tutorials folder to get started.

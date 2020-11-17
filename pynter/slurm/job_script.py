@@ -176,8 +176,8 @@ class ScriptHandler:
         parser.add_argument('-e','--email',help='Email address for job notification',required=False,default=self.email,type=str,metavar='',dest='email')
         parser.add_argument('-N','--nodes',help='Number of nodes, default is 4',required=False,default=self.nodes,type=int,metavar='',dest='nodes')
         parser.add_argument('-c','--cores-per-node',help='Number of cores per node, default is 24',required=False,default=self.cores_per_node,type=int,metavar='',dest='cores_per_node')
-        parser.add_argument('-out','--output',help='Output filename',required=False,default=self.name,type=str,metavar='',dest='output_filename')
-        parser.add_argument('-err','--error',help='Error filename',required=False,default=self.name,type=str,metavar='',dest='error_filename')
+        parser.add_argument('-out','--output',help='Output filename',required=False,default=self.output_filename,type=str,metavar='',dest='output_filename')
+        parser.add_argument('-err','--error',help='Error filename',required=False,default=self.error_filename,type=str,metavar='',dest='error_filename')
         parser.add_argument('-t','--timelimit',help='Timelimit, default is 24:00:00',required=False,default=self.timelimit,type=str,metavar='',dest='timelimit')
         parser.add_argument('-M','--memory-per-cpu',help='Memory per cpu, default is 2400',required=False,default=self.memory_per_cpu,type=int,metavar='',dest='memory_per_cpu')
         parser.add_argument('-C','--processor',help='(avx or avx2, default is avx2)',required=False,default=self.processor,type=str,metavar='',dest='processor')
@@ -280,8 +280,9 @@ class ScriptHandler:
             f.write('#SBATCH --job-name=%s\n' %self.name)
             if self.array_size:
                 f.write('#SBATCH --array=1-%i%%1\n' %self.array_size)
-            f.write('#SBATCH --mail-user=%s\n' %self.email)
-            f.write('#SBATCH --mail-type=ALL\n')
+            if self.email:
+                f.write('#SBATCH --mail-user=%s\n' %self.email)
+                f.write('#SBATCH --mail-type=ALL\n')
             f.write('#SBATCH --nodes=%i\n' %self.nodes)
             f.write('#SBATCH --ntasks-per-node=%i\n' %self.cores_per_node)
             f.write('#SBATCH --cpus-per-task=1\n')
@@ -292,7 +293,8 @@ class ScriptHandler:
             f.write('#SBATCH --exclusive\n')
             f.write('#SBATCH --mem-per-cpu=%i\n' %self.memory_per_cpu)
             f.write('#SBATCH -C %s\n' %self.processor)
-            f.writelines([' '.join(['ml', m , '\n']) for m in self.modules])
+            if self.modules:
+                f.writelines([' '.join(['ml', m , '\n']) for m in self.modules])
             if self.add_lines_header:
                 f.writelines('\n'.join([l for l in self.add_lines_header]))
 
