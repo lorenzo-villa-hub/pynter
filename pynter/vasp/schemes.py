@@ -195,6 +195,7 @@ class InputSets:
         vaspjob.incar['ICHARG'] = 11
         vaspjob.incar['LORBIT'] = 11
         vaspjob.incar['ISMEAR'] = 0
+        vaspjob.incar['NEDOS'] = 2000
         if kpoints_bs:
             kpoints = kpoints_bs
         else:
