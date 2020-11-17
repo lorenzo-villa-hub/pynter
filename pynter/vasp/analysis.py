@@ -59,7 +59,7 @@ class JobAnalysis:
         if job.is_converged:
             bs = job.band_structure
             dos = job.complete_dos
-            plt = BSDOSPlotter(bs_projection=None,dos_projection=None).get_plot(bs,dos)           
+            plt = BSDOSPlotter(bs_projection=bs_projection,dos_projection=dos_projection).get_plot(bs,dos)           
         else:
             raise ValueError(f'Job %s is not converged' %self.name)
         os.chdir(wdir)
