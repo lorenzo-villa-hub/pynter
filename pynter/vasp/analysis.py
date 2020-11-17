@@ -49,7 +49,7 @@ class JobAnalysis:
         return plt
 
 
-    def plot_dos_bs(self):
+    def plot_dos_bs(self,bs_projection=None,dos_projection=None):
         """
         Plot DOS and BS from data in vasprun.xml with Pymatgen
         """
