@@ -8,6 +8,9 @@ Created on Mon Oct 12 15:40:26 2020
 
 import re
 import os
+import os.path as op
+import json
+
 
 def change_file (input_file , output_file=None, back_up_file = True,
                  str_to_modify = {}, lines_to_add=[], check_added_lines = True, lines_to_remove = []):
@@ -64,6 +67,57 @@ def change_file (input_file , output_file=None, back_up_file = True,
     
     return
     
+
+
+def get_object_from_json(cls,path_or_string):
+    """
+    Build class object from json file or string. The class must posses the 'from_dict' method.
+
+    Parameters
+    ----------
+    cls : (class)
+    path_or_string : (str)
+        If an existing path to a file is given the object is constructed reading the json file.
+        Otherwise it will be read as a string.
+
+    Returns
+    -------
+    PhaseDiagram object.
+
+    """
+    if op.isfile(path_or_string):
+        with open(path_or_string) as file:
+            d = json.load(file)
+    else:
+        d = json.load(path_or_string)
+
+    return cls.from_dict(d)
+
+
+def save_as_json(object,path):
+    """
+    Save class object as json string or file. The class must posses the 'as_dict' method.
+
+    Parameters
+    ----------
+    object: object of a class
+    path : (str)
+        Path to the destination file.  If None a string is exported.
+
+    Returns
+    -------
+    d : (str)
+        If path is not set a string is returned.
+    """
+    d = object.as_dict()
+    if path:
+        with open(path,'w') as file:
+            json.dump(d,file)
+        return
+    else:
+        return d.__str__() 
+
+
 
 def grep(search_string,file):    
     '''
