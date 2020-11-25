@@ -1,4 +1,6 @@
 
+import json
+import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
@@ -47,6 +49,12 @@ class Reservoirs:
         self.res_dict[reskey] = chempots
         return
 
+    def keys(self):
+        return self.res_dict.keys()
+
+    def values(self):
+        return self.res_dict.values()
+    
     def items(self):
         return self.res_dict.items()
 
@@ -74,6 +82,29 @@ class Reservoirs:
         return d
 
 
+    def to_json(self,path):
+        """
+        Save Reservoirs object as json string or file
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file.  If None a string is exported.
+
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+        """
+        d = self.as_dict()
+        if path:
+            with open(path,'w') as file:
+                json.dump(d,file)
+            return
+        else:
+            return d.__str__()  
+
+
     @classmethod
     def from_dict(cls,d):
         """
@@ -94,6 +125,30 @@ class Reservoirs:
         are_chempots_delta = d['are_chempots_delta']
             
         return cls(res_dict,phase_diagram,are_chempots_delta)
+
+
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build Reservoirs object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        Reservoir object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return Reservoirs.from_dict(d)
 
 
     def get_referenced_chempots(self):
@@ -160,12 +215,33 @@ class Reservoirs:
         return df
         
      
+    def set_chempots_to_absolute(self):
+        """
+        Set reservoir dictionary to absolute values of chempots.
+        """
+        new_res_dict = self.get_absolute_chempots()
+        self.res_dict = new_res_dict
+        self.are_chempots_delta = False
+        return
+
+        
+    def set_chempots_to_reference(self):
+        """
+        Set reservoir dictionary to referenced values of chempots.
+        """
+        new_res_dict = self.get_referenced_chempots()
+        self.res_dict = new_res_dict
+        self.are_chempots_delta = True
+        return    
+    
        
 class ChempotAnalysis:
     
     def __init__(self,phase_diagram):
         """
-        Initializes class to analyse chemical potentials of a phase diagram generated with Pymatgen
+        Initializes class to analyse chemical potentials of a phase diagram generated with Pymatgen.
+        All of the functions in this class take the Referenced chemical potentials values as argument,
+        to facilitate the connection with stability diagram visualization.
         
         Parameters
         ----------
@@ -185,21 +261,23 @@ class ChempotAnalysis:
         ----------
         comp : (Pymatgen Composition object)
             Composition of the phase you want to get the chemical potentials at the boundary.
-        fixed_chempot : (Dict)
+        fixed_chempot_delta : (Dict)
             Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}).
-            The chemical potential here is the global value. 
+            The chemical potential here is the referenced value. 
         Returns
         -------
         chempots : (Dict)
             Dictionary with compositions at the boundaries as keys and delta chemical potentials as value.
         """       
         chempots = {}
-        fixed_chempot_abs = self.get_chempots_abs(fixed_chempot_delta)
-        comp1,comp2 = self.get_composition_boundaries(comp, fixed_chempot_abs)
+        comp1,comp2 = self.get_composition_boundaries(comp, fixed_chempot_delta)
+        
         boundary = '-'.join([comp1.reduced_formula,comp.reduced_formula])
         chempots[boundary] = self.get_chempots_boundary(comp1, comp, fixed_chempot_delta)
+        
         boundary = '-'.join([comp.reduced_formula,comp2.reduced_formula])
         chempots[boundary] = self.get_chempots_boundary(comp, comp2, fixed_chempot_delta)
+        
         return chempots        
         
 
@@ -335,7 +413,7 @@ class ChempotAnalysis:
         ----------
         comp : (Pymatgen Composition object)
             Target composition for which you want to get the bounday phases.
-        fixed_chempot : (Dict)
+        fixed_chempots_delta : (Dict)
             Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}).
             The chemical potential is the referenced value
 
@@ -371,7 +449,7 @@ class ChempotAnalysis:
                 if x > x_target and x <= x_min_right:
                     x_min_right = x
                     comp2 = c
-        return comp1,comp2
+        return comp1.reduced_composition,comp2.reduced_composition
             
         
         
