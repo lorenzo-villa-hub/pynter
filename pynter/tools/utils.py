@@ -94,7 +94,7 @@ def get_object_from_json(cls,path_or_string):
     return cls.from_dict(d)
 
 
-def save_as_json(object,path):
+def save_object_as_json(object,path):
     """
     Save class object as json string or file. The class must posses the 'as_dict' method.
 
