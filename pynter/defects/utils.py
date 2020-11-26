@@ -10,9 +10,11 @@ from pymatgen.analysis.defects.utils import StructureMotifInterstitial
 import numpy as np
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.io.vasp.inputs import Poscar
-from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData
-from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, Substitution
-from pymatgen.analysis.defects.corrections import FreysoldtCorrection
+from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
+from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, Substitution, Defect
+from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
+import os.path as op
+import importlib
 
 def create_interstitial_supercells(structure,element,size=2):
     
@@ -190,7 +192,75 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
 
 
 
+def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar,path_to_bulk_outcar,dielectric_tensor,
+                           charge,defect_type=None,defect_specie=None,defect_site=None,sampling_radius=None,gamma=None,
+                           get_plot=False):
+    
+    
+    if not defect_site and not defect_type and not defect_specie:
+        defect_site, defect_type = defect_finder(structure_defect, structure_bulk)
+        defect_specie = defect_site.specie.symbol
+   
+    site_matching_indices = []
+    for site in structure_defect:
+        site_matching_indices.append([structure_bulk.index(site),structure_defect.index(site)])
+    # for sb in structure_bulk:
+    #     if sb != defect_site:
+    #         for sd in structure_defect:
+    #             if sb == sd:
+    #                 site_matching_indices.append([structure_bulk.index(sb),structure_bulk.index(sd)])
+    
+    print(site_matching_indices)
+    bulk_atomic_site_averages = Outcar(op.join(path_to_bulk_outcar,'OUTCAR')).read_avg_core_poten()[-1]
+    defect_atomic_site_averages = Outcar(op.join(path_to_defect_outcar,'OUTCAR')).read_avg_core_poten()[0]
+    defect_frac_sc_coords = defect_site.frac_coords
+    initial_defect_structure = structure_defect
+    
+    parameters = {}
+    parameters['bulk_atomic_site_averages'] = bulk_atomic_site_averages
+    parameters['defect_atomic_site_averages'] = defect_atomic_site_averages
+    parameters['site_matching_indices'] = site_matching_indices
+    parameters['initial_defect_structure'] = initial_defect_structure
+    parameters['defect_frac_sc_coords'] = defect_frac_sc_coords
+    
+    module = importlib.import_module("pymatgen.analysis.defects.core")
+    defect_class = getattr(module,defect_type)
+    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=None)
+    defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
 
+    kumagai = KumagaiCorrection(dielectric_tensor,sampling_radius,gamma)
+    kumagai_corrections = kumagai.get_correction(defect_entry)
+    
+    if get_plot:
+        plt = kumagai.plot(1)
+        return kumagai_corrections , plt
+    else:    
+        return kumagai_corrections
+    
+    
+def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defect_site=None,sampling_radius=None,
+                                     gamma=None,get_plot=False):
 
-
-
+    structure_defect = job_defect.initial_structure
+    structure_bulk = job_bulk.final_structure
+    path_to_defect_outcar = op.join(job_defect.path)
+    path_to_bulk_outcar = op.join(job_bulk.path)
+    
+    if not defect_site:
+        defect_site, defect_type = defect_finder(structure_defect, structure_bulk)
+        defect_specie = defect_site.specie.symbol
+    
+    charge = job_defect.charge
+    
+    corr = get_kumagai_correction(structure_defect, structure_bulk, path_to_defect_outcar, path_to_bulk_outcar,
+                                  dielectric_tensor, charge, defect_type, defect_specie, defect_site, sampling_radius,
+                                  gamma, get_plot)
+    
+    return corr
+    
+    
+    
+    
+    
+    
+    
