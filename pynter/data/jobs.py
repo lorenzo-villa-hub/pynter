@@ -386,7 +386,7 @@ class VaspJob(Job):
         
     
     @staticmethod
-    def from_directory(path,job_script_filename='job.sh',load_outputs=True):
+    def from_directory(path,job_script_filename='job.sh',load_outputs=True,**kwargs):
         """
         Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
         Output files are read usign Pymatgen Vasprun class.
@@ -398,7 +398,8 @@ class VaspJob(Job):
             Path were job data is stored.
         job_script_filename : (str), optional
             Filename of job script. The default is 'job.sh'.
-
+        kwargs : (dict)
+            Arguments to pass to Vasprun parser.
         Returns
         -------
         VaspJob object.
@@ -410,7 +411,7 @@ class VaspJob(Job):
         if load_outputs:
             if op.isfile(op.join(path,'vasprun.xml')):
                 try:
-                    outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
+                    outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
                 except:
                     print('Warning: Reading of vasprun.xml in "%s" failed'%path)
                     outputs['Vasprun'] = None

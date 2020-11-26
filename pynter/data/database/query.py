@@ -39,8 +39,9 @@ class VaspJobQuery(QueryEngine):
         collection = kwargs['collection']
         
         #can't pass kwargs directly because of **ignore in QueryEngine
-        super().__init__(host,port,database,user,password,collection,aliases_config,
-                         default_properties,query_post,result_post,connection,replicaset) 
+        super().__init__(host=host,port=port,database=database,user=user,password=password,collection=collection,
+                         aliases_config=aliases_config,default_properties=default_properties,query_post=query_post,
+                         result_post=result_post,connection=connection,replicaset=replicaset) 
         
         self.optional_data = ['calculations','dir_name','final_energy','eigenvalue_band_properties',
                          'job_settings','job_script_filename','job_name','is_converged','structures']

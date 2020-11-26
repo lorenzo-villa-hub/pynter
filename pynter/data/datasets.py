@@ -9,7 +9,7 @@ import importlib
 import json
 
 
-def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=True):
+def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder contained jobs are selected based on the presence of the file job_script_filename
@@ -22,6 +22,9 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=T
         Filename of job bash script. The default is 'job.sh'.
     sort_by_name : (bool), optional
         Sort list of jobs by attribute "name". The default is True.
+    jobs_kwargs : (dict), optional
+        Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
+        from directory for each job class.
 
     Returns
     -------
@@ -34,7 +37,8 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=T
         if files != [] and job_script_filename in files:
             if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
                 path = op.abspath(root)
-                j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
+                kwargs = jobs_kwargs['VaspJob']
+                j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
                 j.job_script_filename = job_script_filename
                 jobs.append(j)
             elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
@@ -175,7 +179,7 @@ class Dataset:
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filename='job.sh',sort_by_name=True,load_outputs=True): 
+    def from_directory(path=None,job_script_filename='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -188,9 +192,13 @@ class Dataset:
             Filename of job bash script. The default is 'job.sh'.
         sort_by_name : (bool), optional
             Sort list of jobs by attribute "name". The default is True.
+        jobs_kwargs : (dict), optional
+            Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
+            from directory for each job class.
         """
         path = path if path else os.getcwd()
-        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False,load_outputs=load_outputs) # names are sorted in __init__ method
+        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False,
+                         load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) # names are sorted in __init__ method
      
         return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
 

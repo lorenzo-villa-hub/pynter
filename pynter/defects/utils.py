@@ -101,6 +101,32 @@ def defect_finder(structure_defect,structure_bulk):
     return defect_site  , defect_type   
 
 
+def get_delta_atoms(structure_defect,structure_bulk):
+    """
+    Function to biuld delta_atoms dictionary starting from Pymatgen Structure objects.
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    Returns
+    -------
+    delta_atoms : (dict)
+        Dictionary with Element as keys and delta n as values.
+    """
+    delta_atoms = {}
+    comp_defect = structure_defect.composition
+    comp_bulk = structure_bulk.composition
+    for el,n in comp_defect.items():
+        nsites_defect = n
+        nsites_bulk = comp_bulk[el] if el in comp_bulk.keys() else 0
+        delta_n = nsites_defect - nsites_bulk
+        if delta_n != 0:
+            delta_atoms[el] = delta_n
+        
+    return delta_atoms
+
+
 
 def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,path_to_pure_locpot,charge,
                              dielectric_constant,defect_site_coordinates,energy_cutoff=500,get_plot=False):
