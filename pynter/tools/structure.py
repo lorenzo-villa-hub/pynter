@@ -7,6 +7,8 @@ Created on Fri Nov 27 10:52:08 2020
 """
 
 import numpy as np
+from pymatgen.io.ase import AseAtomsAdaptor
+from ase.visualize import view
 
 def is_site_in_structure(site,structure,tol=1e-03):
     """
@@ -38,3 +40,13 @@ def is_site_in_structure(site,structure,tol=1e-03):
             return is_site_in_structure,index
     index=None
     return is_site_in_structure,index
+
+
+def view_structure_with_ase(structure):
+    """
+    Visualize the Structure object with the ASE. First the Structure object is converted into an
+    ase Atom object, the "view" is used to visualize it.
+    """
+    atoms = AseAtomsAdaptor.get_atoms(structure)
+    view(atoms)
+    return
