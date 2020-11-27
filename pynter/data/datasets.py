@@ -37,7 +37,10 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=T
         if files != [] and job_script_filename in files:
             if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
                 path = op.abspath(root)
-                kwargs = jobs_kwargs['VaspJob']
+                if jobs_kwargs:
+                    kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
+                else:
+                    kwargs = {}
                 j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
                 j.job_script_filename = job_script_filename
                 jobs.append(j)

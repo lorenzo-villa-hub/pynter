@@ -15,6 +15,7 @@ from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, 
 from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
 import os.path as op
 import importlib
+from pynter.tools.structure import is_site_in_structure
 
 def create_interstitial_supercells(structure,element,size=2):
     
@@ -54,7 +55,7 @@ def create_interstitial_supercells(structure,element,size=2):
     return interstitials
 
 
-def defect_finder(structure_defect,structure_bulk):
+def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     """
     Function to find defect comparing defect and bulk structure (Pymatgen objects).
     Warning: apparantely comparing a structure read from Vasprun and one read from a Poscar doesn't work. 
@@ -65,6 +66,8 @@ def defect_finder(structure_defect,structure_bulk):
         Defect structure.
     structure_bulk : (Pymatgen Structure object)
         Bulk structure.
+    tol: (float)
+        Tolerance for fractional coordinates comparison.
 
     Returns
     -------
@@ -79,13 +82,13 @@ def defect_finder(structure_defect,structure_bulk):
     if len(df) > len(bk):
         defect_type = 'Interstitial'
         for s in df:
-            if s not in bk:
+            if is_site_in_structure(s,bk,tol=tol)[0] is False: #if s not in bk:
                 defect_site = s
         
     elif len(df) < len(bk):
         defect_type = 'Vacancy'
         for s in bk:
-            if s not in df:
+            if is_site_in_structure(s,df,tol=tol)[0] is False:#if s not in df:
                 defect_site = s
 
     elif len(df) == len(bk):
@@ -169,15 +172,12 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
     parameters['initial_defect_structure'] = locpot_defect.structure
     parameters['defect_frac_sc_coords'] = defect_site_coordinates
     
+    structure_bulk = locpot_pure.structure
     defect_site = PeriodicSite(defect_specie, coords=defect_site_coordinates, lattice = locpot_pure.structure.lattice)
     
-    if defect_type == 'Vacancy':
-        defect = Vacancy(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
-    if defect_type == 'Interstitial':
-        defect = Interstitial(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
-    if defect_type == 'Substitution':
-        defect = Substitution(locpot_pure.structure, defect_site, charge=charge, multiplicity=None)
-        
+    module = importlib.import_module("pymatgen.analysis.defects.core")
+    defect_class = getattr(module,defect_type)
+    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=None)
     defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
     
     freysoldt_class = FreysoldtCorrection(dielectric_constant,energy_cutoff=energy_cutoff)
@@ -195,7 +195,44 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
 def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar,path_to_bulk_outcar,dielectric_tensor,
                            charge,defect_type=None,defect_specie=None,defect_site=None,sampling_radius=None,gamma=None,
                            get_plot=False):
-    
+    """
+    Get Kumagai correction with Pymatgen.
+
+    Parameters
+    ----------
+    structure_defect : (Structure)
+        Structure of defect.
+    structure_bulk : (Structure)
+        Bulk structure.
+    path_to_defect_outcar : (str)
+        Path to OUTCAR of defect calculation.
+    path_to_bulk_outcar : (str)
+        Path to OUTCAR of pure calculation.
+    dielectric_tensor : (array or float)
+        Dielectric tensor, if is a float a diagonal matrix is constructed.
+    charge : (int or float)
+        Charge of the defect.
+    defect_type : (str), optional
+        Type of defect ('Vacancy','Interstitial' or 'Substitution')
+        If None it's determined with defect_finder. The default is None.
+    defect_specie : (str), optional
+        Symbol of the defect specie.
+        If None it's determined with defect_finder. The default is None.
+    defect_site : (Site), optional
+        Site of defect. If None it's determined with defect_finder. The default is None.
+    sampling_radius (float): radius (in Angstrom) which sites must be outside
+        of to be included in the correction. Publication by Kumagai advises to
+        use Wigner-Seitz radius of defect supercell, so this is default value.
+    gamma (float): convergence parameter for gamma function.
+                    Code will automatically determine this if set to None.
+    get_plot : (bool), optional
+        Get Matplotlib object with plot. The default is False.
+
+    Returns
+    -------
+    corr : (dict or tuple)
+        Dictionary with corrections, if get_plot is True a tuple with dict and plt object is returned.
+    """
     
     if not defect_site and not defect_type and not defect_specie:
         defect_site, defect_type = defect_finder(structure_defect, structure_bulk)
@@ -203,14 +240,12 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
    
     site_matching_indices = []
     for site in structure_defect:
-        site_matching_indices.append([structure_bulk.index(site),structure_defect.index(site)])
-    # for sb in structure_bulk:
-    #     if sb != defect_site:
-    #         for sd in structure_defect:
-    #             if sb == sd:
-    #                 site_matching_indices.append([structure_bulk.index(sb),structure_bulk.index(sd)])
+        site_in_str ,index_bulk = is_site_in_structure(site, structure_bulk)
+        if site_in_str:
+            site_matching_indices.append([index_bulk,structure_defect.index(site)])
+        else:
+            raise ValueError(f'Site {site} is not in bulk structure')
     
-    print(site_matching_indices)
     bulk_atomic_site_averages = Outcar(op.join(path_to_bulk_outcar,'OUTCAR')).read_avg_core_poten()[-1]
     defect_atomic_site_averages = Outcar(op.join(path_to_defect_outcar,'OUTCAR')).read_avg_core_poten()[0]
     defect_frac_sc_coords = defect_site.frac_coords
@@ -240,7 +275,34 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
     
 def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defect_site=None,sampling_radius=None,
                                      gamma=None,get_plot=False):
+    """
+    Get Kumagai corrections from VaspJob objects.
 
+    Parameters
+    ----------
+    job_defect : (VaspJob)
+        Defect calculation.
+    job_bulk : TYPE
+        Bulk calculation.
+    dielectric_tensor : (array or float)
+        Dielectric tensor, if is a float a diagonal matrix is constructed.
+    defect_site : (Site) , optional
+        Defect site. If None the defect site is found unsing defect_finder. The default is None.
+    sampling_radius (float): radius (in Angstrom) which sites must be outside
+        of to be included in the correction. Publication by Kumagai advises to
+        use Wigner-Seitz radius of defect supercell, so this is default value.
+    gamma (float): convergence parameter for gamma function.
+                    Code will automatically determine this if set to None.
+    get_plot : (bool), optional
+        Get Matplotlib object with plot. The default is False.
+
+    Returns
+    -------
+    corr : (dict or tuple)
+        Dictionary with corrections, if get_plot is True a tuple with dict and plt object is returned.
+
+    """
+    
     structure_defect = job_defect.initial_structure
     structure_bulk = job_bulk.final_structure
     path_to_defect_outcar = op.join(job_defect.path)
