@@ -359,6 +359,24 @@ class Schemes(InputSets):
         return jobs
             
 
+    def dielectric_properties_complete(self,scheme_name='dielectric-properties',hybrid=False):
+        """
+        Set up calculations for electronic and ionic contribution in the dielectric constant.
+        If hybrid is set to True the LCALCEPS method is used, else the LEPSILON is used.
+        """
+        jobs = []
+        vaspjob = self.dielectric_properties_electronic()
+        jobs.append(vaspjob)
+        
+        if hybrid:
+            vaspjob = self.dielectric_properties_ionic_lcalceps()
+        else:
+            vaspjob = self.dielectric_properties_ionic_lepsilon()
+        jobs.append(vaspjob)
+        
+        return jobs
+
+
     def dielectric_properties_electronic(self,scheme_name='eps-electronic'):
         """
         Set calculation for electronic contribution to the dielectric constant (and also dielectric function).
