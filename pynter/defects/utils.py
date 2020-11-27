@@ -55,7 +55,7 @@ def create_interstitial_supercells(structure,element,size=2):
     return interstitials
 
 
-def defect_finder(structure_defect,structure_bulk,tol=1e-03):
+def defect_finder(structure_defect,structure_bulk,tol=1e-03,get_label=False):
     """
     Function to find defect comparing defect and bulk structure (Pymatgen objects).
     Warning: apparantely comparing a structure read from Vasprun and one read from a Poscar doesn't work. 
@@ -102,8 +102,18 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03):
             for s in df:
                 if s.specie == sub_element:
                     defect_site = s
+                    sub_site_in_pure = bk[df.index(defect_site)]
 
-    return defect_site  , defect_type   
+    if get_label:
+        if defect_type == 'Vacancy':
+            label = 'Vac_%s' %defect_site.specie.symbol
+        if defect_type == 'Interstitial':
+            label = 'Int_%s' %defect_site.specie.symbol
+        if defect_type == 'Substitution':
+            label = 'Sub_%s_on_%s'%(sub_element,sub_site_in_pure.specie.symbol)
+        return defect_site, defect_type, label
+    else:
+        return defect_site  , defect_type   
 
 
 def get_delta_atoms(structure_defect,structure_bulk):
@@ -267,7 +277,7 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
     kumagai_corrections = kumagai.get_correction(defect_entry)
     
     if get_plot:
-        plt = kumagai.plot(1)
+        plt = kumagai.plot()
         return kumagai_corrections , plt
     else:    
         return kumagai_corrections
@@ -282,7 +292,7 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
     ----------
     job_defect : (VaspJob)
         Defect calculation.
-    job_bulk : TYPE
+    job_bulk : (VaspJob)
         Bulk calculation.
     dielectric_tensor : (array or float)
         Dielectric tensor, if is a float a diagonal matrix is constructed.
