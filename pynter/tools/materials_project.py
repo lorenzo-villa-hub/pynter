@@ -23,7 +23,12 @@ with MPRester(API_KEY) as mpr:
             
             self.mp_id = mp_id if mp_id else None
             self.api_key = API_KEY
-         
+        
+        @property
+        def mp_rester(self):
+            return mpr
+            
+            
         def args(self):
             """
             Get arguments for use from terminal
