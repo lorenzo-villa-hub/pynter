@@ -254,7 +254,7 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
         if site_in_str:
             site_matching_indices.append([index_bulk,structure_defect.index(site)])
         else:
-            raise ValueError(f'Site {site} is not in bulk structure')
+            print(f'Warning: Site {site} is not in bulk structure')
     
     bulk_atomic_site_averages = Outcar(op.join(path_to_bulk_outcar,'OUTCAR')).read_avg_core_poten()[-1]
     defect_atomic_site_averages = Outcar(op.join(path_to_defect_outcar,'OUTCAR')).read_avg_core_poten()[0]
