@@ -20,7 +20,8 @@ from pynter.data.datasets import Dataset
 
 class InputSets:
     
-    def __init__(self,path=None,vaspinput=None,structure=None,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
+    def __init__(self,path=None,vaspinput=None,structure=None,incar_settings=None,kpoints=None,potcar=None,
+                 job_settings=None,name=None,add_parent_folder=False):
         """
         Parameters
         ----------
@@ -42,6 +43,8 @@ class InputSets:
             None the value will be: 'no_name'.
         name : (str), optional
             Name for the system to set up scheme for. The default is None.
+        add_parent_folder : (bool), optional
+            Add folder to the path names like the name of the InputSets. Default is False.
         """
         self.path = op.abspath(path) if path else os.getcwd()
         if vaspinput:
@@ -64,6 +67,8 @@ class InputSets:
         else:
             raise ValueError('You need to provide Structure, either as Poscar object in VaspInput or in "structure" arg')
 
+        if add_parent_folder:
+            self.path = op.join(self.path,self.name)
 
     def __str__(self):
         printout = 'System name:"%s" \n' %self.name
@@ -110,7 +115,8 @@ class InputSets:
         
         jobname = '_'.join([self.name,setname])
         jobpath = op.join(self.path,pathname)
-        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,name=jobname)
+        job_script_filename = job_settings['filename'] if 'filename' in job_settings.keys() else None
+        vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,job_script_filename=job_script_filename,name=jobname)
         
         return vaspjob  
 

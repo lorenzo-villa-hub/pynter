@@ -22,7 +22,7 @@ from pynter.tools.utils import grep
 
 class Job:
     
-    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename='job.sh',name=None):
+    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename=None,name=None):
         """
         Class to control and organize inputs and outputs of a generic job.
 
@@ -37,7 +37,7 @@ class Job:
         outputs : (dict), optional
             Dictionary with output data. The default is None.
         job_script_filename : (str), optional
-            Filename of job script. The default is 'job.sh'.
+            Filename of job script. The default is taken from the key 'filename' in the job_settings in the config file.
         name : (str)
             Name of the job. If none the name is searched in the job script.
 
@@ -47,7 +47,7 @@ class Job:
         self.inputs = inputs
         self.job_settings = job_settings
         self.outputs = outputs
-        self.job_script_filename = job_script_filename
+        self.job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
         
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
