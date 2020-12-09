@@ -13,7 +13,7 @@ from pynter.defects.pmg_dos import FermiDosCarriersInfo
 
 class SingleDefectData:
     
-    def __init__(self,bulk_structure,delta_atoms,energy_diff,corrections,charge=0,name=None,defect_site=None):
+    def __init__(self,bulk_structure,delta_atoms,energy_diff,corrections,charge=0,multiplicity=1,name=None,defect_site=None):
         """
         Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
 
@@ -26,7 +26,9 @@ class SingleDefectData:
             corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
                                 added to the defect formation energy.            
             charge: (int or float) defect charge
-                    default is zero, meaning no change to NELECT after defect is created in the structure                         
+                    default is zero, meaning no change to NELECT after defect is created in the structure 
+            multiplicity: (int).
+                Multiplicity of the defect. Default is 1.                        
             name (str): Name of the defect structure
             defect_site (Pymatgen Site object): site for defect within structure
                                 must have same lattice as structure                
@@ -36,6 +38,7 @@ class SingleDefectData:
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
         self._charge = charge 
+        self._multiplicity = multiplicity
         self._name = name if name else None
         self._defect_site = defect_site if defect_site else None
         if defect_site:
@@ -63,6 +66,10 @@ class SingleDefectData:
         return self._charge
     
     @property
+    def multiplicity(self):
+        return self._multiplicity
+    
+    @property
     def name(self):
         return self._name
 
@@ -83,6 +90,7 @@ class SingleDefectData:
              "energy_diff": self.energy_diff,
              "corrections": self.corrections,
              "charge": self.charge,
+             "multiplicity": self.multiplicity,
              "name": self.name,
              "defect_site":self.defect_site.as_dict() if self.defect_site else None
              }
@@ -105,9 +113,10 @@ class SingleDefectData:
         energy_diff = d['energy_diff']
         corrections = d['corrections']
         charge = d['charge']
+        multiplicity = d['multiplicity']
         name = d['name']
         defect_site = PeriodicSite.from_dict(d['defect_site']) if d['defect_site'] else None
-        return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,name,defect_site)
+        return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,multiplicity,name,defect_site)
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
         """
@@ -144,7 +153,7 @@ class SingleDefectData:
         Returns:
             defects concentration in cm^-3
         """
-        n = 1e24 / self.bulk_structure.volume
+        n = self.multiplicity * 1e24 / self.bulk_structure.volume
         conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
                           (kb * temperature))
         return conc
