@@ -10,160 +10,16 @@ from pymatgen.electronic_structure.dos import FermiDos
 import matplotlib
 import matplotlib.pyplot as plt
 from pynter.defects.pmg_dos import FermiDosCarriersInfo
+from pynter.defects.utils import get_delta_atoms
+from pynter.defects.entries import SingleDefectEntry
 
-class SingleDefectData:
-    
-    def __init__(self,bulk_structure,delta_atoms,energy_diff,corrections,charge=0,multiplicity=1,name=None,defect_site=None):
-        """
-        Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
-
-        Args:
-            bulk_structure: Pymatgen Structure without any defects
-            delta_atoms ({Element:number}): dictionary with the difference btw the number of atoms in the defect structure 
-                         for each specie (pmg Element object). The number is negative is atoms has been removed and 
-                         positive if atoms have been added
-            energy_diff (float): difference btw energy of defect structure and energy of pure structure
-            corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
-                                added to the defect formation energy.            
-            charge: (int or float) defect charge
-                    default is zero, meaning no change to NELECT after defect is created in the structure 
-            multiplicity: (int).
-                Multiplicity of the defect. Default is 1.                        
-            name (str): Name of the defect structure
-            defect_site (Pymatgen Site object): site for defect within structure
-                                must have same lattice as structure                
-        """        
-        self._bulk_structure = bulk_structure
-        self._delta_atoms = delta_atoms
-        self._energy_diff = energy_diff
-        self._corrections = corrections if corrections else {}
-        self._charge = charge 
-        self._multiplicity = multiplicity
-        self._name = name if name else None
-        self._defect_site = defect_site if defect_site else None
-        if defect_site:
-            if bulk_structure.lattice != defect_site.lattice:
-                raise ValueError("defect_site lattice must be same as bulk_structure lattice.")
-        
-    @property
-    def bulk_structure(self):
-        return self._bulk_structure
-    
-    @property
-    def delta_atoms(self):
-        return self._delta_atoms
-    
-    @property
-    def energy_diff(self):
-        return self._energy_diff
-    
-    @property
-    def corrections(self):
-        return self._corrections
-
-    @property
-    def charge(self):
-        return self._charge
-    
-    @property
-    def multiplicity(self):
-        return self._multiplicity
-    
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def defect_site(self):
-        return self._defect_site
-
-
-    def as_dict(self):
-        """
-        Returns:
-            Json-serializable dict representation of SignleDefectData
-        """
-        d = {"@module": self.__class__.__module__,
-             "@class": self.__class__.__name__,
-             "bulk_structure": self.bulk_structure.as_dict(),
-             "delta_atoms": {e.symbol:self.delta_atoms[e] for e in self.delta_atoms},
-             "energy_diff": self.energy_diff,
-             "corrections": self.corrections,
-             "charge": self.charge,
-             "multiplicity": self.multiplicity,
-             "name": self.name,
-             "defect_site":self.defect_site.as_dict() if self.defect_site else None
-             }
-        return d        
-
-    @classmethod
-    def from_dict(cls,d):
-        """
-        Reconstitute a SingleDefectData object from a dict representation created using
-        as_dict().
-
-        Args:
-            d (dict): dict representation of SingleDefectData.
-
-        Returns:
-            SingleDefectData object
-        """
-        bulk_structure = Structure.from_dict(d['bulk_structure'])
-        delta_atoms = {Element(e):d['delta_atoms'][e] for e in d['delta_atoms']}
-        energy_diff = d['energy_diff']
-        corrections = d['corrections']
-        charge = d['charge']
-        multiplicity = d['multiplicity']
-        name = d['name']
-        defect_site = PeriodicSite.from_dict(d['defect_site']) if d['defect_site'] else None
-        return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,multiplicity,name,defect_site)
-
-    def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
-        """
-        Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
-        Args:
-            vbm(float): Valence band maximum of pure structure
-            chemical_potentials (dict): Dictionary of elemental chemical potential values.
-                Keys are Element objects within the defect structure's composition.
-                Values are float numbers equal to the atomic chemical potential for that element.
-            fermi_level (float):  Value corresponding to the electron chemical potential.
-            """
-            
-        formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
-                       sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 
-                        ) 
-        
-        if chemical_potentials:
-            chempot_correction = -1 * sum([self.delta_atoms[el]*chemical_potentials[el] for el in self.delta_atoms])
-        else:
-            chempot_correction = 0
-            
-        formation_energy = formation_energy + chempot_correction
-        
-        return formation_energy
-    
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
-        """
-        Compute the defect concentration for a temperature and Fermi level.
-        Args:
-            temperature:
-                the temperature in K
-            fermi_level:
-                the fermi level in eV (with respect to the VBM)
-        Returns:
-            defects concentration in cm^-3
-        """
-        n = self.multiplicity * 1e24 / self.bulk_structure.volume
-        conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
-                          (kb * temperature))
-        return conc
     
     
 class DefectsAnalysis:
     """ 
     Class to compute defect properties starting from single calculations of defects
     Args:
-        defect_entries ([SingleDefectData]): A list of SingleDefectData objects
+        entries (list): A list of SingleDefectEntry objects
         vbm (float): Valence Band energy to use for all defect entries.
             NOTE if using band shifting-type correction then this VBM
             should still be that of the GGA calculation
@@ -173,8 +29,8 @@ class DefectsAnalysis:
             NOTE if using band shifting-type correction then this gap
             should still be that of the Hybrid calculation you are shifting to.       
     """    
-    def __init__(self, defect_entries, vbm, band_gap):
-        self.defect_entries = defect_entries
+    def __init__(self, entries, vbm, band_gap):
+        self.entries = entries
         self.vbm = vbm
         self.band_gap = band_gap
         
@@ -187,7 +43,7 @@ class DefectsAnalysis:
         d = {
         "@module": self.__class__.__module__,
         "@class": self.__class__.__name__,
-        "defect_entries": [entry.as_dict() for entry in self.defect_entries],
+        "entries": [entry.as_dict() for entry in self.entries],
         "vbm":self.vbm,
         "band_gap":self.band_gap
             }
@@ -206,10 +62,10 @@ class DefectsAnalysis:
         Returns:
             DefectsAnalysis object
         """
-        defect_entries = [SingleDefectData.from_dict(entry_dict) for entry_dict in d['defect_entries']]        
+        entries = [SingleDefectEntry.from_dict(entry_dict) for entry_dict in d['entries']]        
         vbm = d['vbm']
         band_gap = d['band_gap']
-        return cls(defect_entries,vbm,band_gap)
+        return cls(entries,vbm,band_gap)
     
     
     def binding_energy(self,name,fermi_level=0):
@@ -221,7 +77,7 @@ class DefectsAnalysis:
             binding_energy (float)
         """
         # finding entry associated to 'name'        
-        for entry in self.defect_entries:
+        for entry in self.entries:
             if entry.name == name:
                 defect_complex = entry
                 break
@@ -231,7 +87,7 @@ class DefectsAnalysis:
         for el in entry.delta_atoms:
             # sign of delta atoms - if > 0 interstitial, if < 0 vacancy
             sign_el = 1 if entry.delta_atoms[el]>0 else -1 if entry.delta_atoms[el]<0 else 0
-            for d in self.defect_entries:
+            for d in self.entries:
                 # has to be a single defect - delta_atoms needs to have only 1 key
                 if el in d.delta_atoms and len(d.delta_atoms.keys()) == 1:
                     # sign in delta atoms of single defect has to be the same (Vacancy or interstitial)
@@ -488,7 +344,7 @@ class DefectsAnalysis:
             list of dictionaries of defect concentrations
         """
         concentrations = []
-        for dfct in self.defect_entries:
+        for dfct in self.entries:
             concentrations.append({
                 'conc':
                 dfct.defect_concentration(
@@ -703,7 +559,7 @@ class DefectsAnalysis:
         """
 
         computed_charges = {}
-        for d in self.defect_entries:
+        for d in self.entries:
             name = d.name
             if name in computed_charges:
                 computed_charges[name].append((d.charge,d.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
@@ -720,7 +576,7 @@ class DefectsAnalysis:
         """
         
         names = []
-        for d in self.defect_entries:
+        for d in self.entries:
             if d.name not in names:
                 names.append(d.name)
         
@@ -913,7 +769,6 @@ class DefectsAnalysis:
         plt.ylabel('Binding energy (eV)')
         
         return plt
-    
     
     
     def plot_ctl(self, ylim=None, size=1, fermi_level=None, format_legend=True):

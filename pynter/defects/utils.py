@@ -129,9 +129,26 @@ def get_delta_atoms(structure_defect,structure_bulk):
     delta_atoms : (dict)
         Dictionary with Element as keys and delta n as values.
     """
-    delta_atoms = {}
     comp_defect = structure_defect.composition
     comp_bulk = structure_bulk.composition
+        
+    return get_delta_atoms_from_comp(comp_defect, comp_bulk)
+
+
+def get_delta_atoms_from_comp(comp_defect,comp_bulk):
+    """
+    Function to biuld delta_atoms dictionary starting from Pymatgen Structure objects.
+    ----------
+    comp_defect : (Pymatgen Composition object)
+        Defect structure.
+    comp_bulk : (Pymatgen Composition object)
+        Bulk structure.
+    Returns
+    -------
+    delta_atoms : (dict)
+        Dictionary with Element as keys and delta n as values.
+    """
+    delta_atoms = {}
     for el,n in comp_defect.items():
         nsites_defect = n
         nsites_bulk = comp_bulk[el] if el in comp_bulk.keys() else 0
@@ -140,7 +157,6 @@ def get_delta_atoms(structure_defect,structure_bulk):
             delta_atoms[el] = delta_n
         
     return delta_atoms
-
 
 
 def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,path_to_pure_locpot,charge,
