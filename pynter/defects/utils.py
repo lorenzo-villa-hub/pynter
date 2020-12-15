@@ -15,7 +15,7 @@ from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, 
 from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
 import os.path as op
 import importlib
-from pynter.tools.structure import is_site_in_structure
+from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords
 
 def create_interstitial_supercells(structure,element,size=2):
     
@@ -55,10 +55,10 @@ def create_interstitial_supercells(structure,element,size=2):
     return interstitials
 
 
-def defect_finder(structure_defect,structure_bulk,tol=1e-03,get_label=False):
+
+def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     """
-    Function to find defect comparing defect and bulk structure (Pymatgen objects).
-    Warning: apparantely comparing a structure read from Vasprun and one read from a Poscar doesn't work. 
+    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
 
     Parameters
     ----------
@@ -71,51 +71,38 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03,get_label=False):
 
     Returns
     -------
-    defect_site : (Pymatgen PeriodicSite object)
-    defect_type : (str)
-        Type of defect ("Vacancy","Interstitial" or "Substitution").
+    defects : (list)
+        List of tuples with defect site (Pymatgen PeriodicSite object) and defect type ("Vacancy","Interstitial" or "Substitution")
+        for each point defect present. If len(defects) is 1 only the tuple is returned.
     """
-
     df = structure_defect
     bk = structure_bulk
+    defects = []
     
-    if len(df) > len(bk):
-        defect_type = 'Interstitial'
-        for s in df:
-            if is_site_in_structure(s,bk,tol=tol)[0] is False: #if s not in bk:
-                defect_site = s
-        
-    elif len(df) < len(bk):
-        defect_type = 'Vacancy'
-        for s in bk:
-            if is_site_in_structure(s,df,tol=tol)[0] is False:#if s not in df:
-                defect_site = s
-
-    elif len(df) == len(bk):
-        comp_df = structure_defect.composition
-        comp_bk = structure_bulk.composition
-        if comp_df != comp_bk:
-            defect_type = 'Substitution'
-            for el in comp_df:
-                if el not in comp_bk:
-                    sub_element = el
-            for s in df:
-                if s.specie == sub_element:
-                    defect_site = s
-                    sub_site_in_pure = bk[df.index(defect_site)]
-
-    if get_label:
-        if defect_type == 'Vacancy':
-            label = 'Vac_%s' %defect_site.specie.symbol
-        if defect_type == 'Interstitial':
-            label = 'Int_%s' %defect_site.specie.symbol
-        if defect_type == 'Substitution':
-            label = 'Sub_%s_on_%s'%(sub_element,sub_site_in_pure.specie.symbol)
-        return defect_site, defect_type, label
+    for s in df:
+        if is_site_in_structure_coords(s,bk)[0]:
+            if is_site_in_structure(s,bk)[0] == False:
+                dsite = s
+                dtype = 'Substitution'
+                defects.append((dsite,dtype))
+        else:
+            dsite = s
+            dtype = 'Interstitial'
+            defects.append((dsite,dtype))
+            
+    for s in bk:
+        if is_site_in_structure_coords(s,df)[0] == False:
+            dsite = s
+            dtype = 'Vacancy'
+            defects.append((dsite,dtype))
+    
+    if len(defects) == 1:
+        return defects[0]
     else:
-        return defect_site  , defect_type   
-
-
+        return defects
+            
+    
+    
 def get_delta_atoms(structure_defect,structure_bulk):
     """
     Function to biuld delta_atoms dictionary starting from Pymatgen Structure objects.
@@ -270,7 +257,7 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
         if site_in_str:
             site_matching_indices.append([index_bulk,structure_defect.index(site)])
         else:
-            print(f'Warning: Site {site} is not in bulk structure')
+            print(f'Warning in Kumagai corrections: Site {site} is not in bulk structure')
     
     bulk_atomic_site_averages = Outcar(op.join(path_to_bulk_outcar,'OUTCAR')).read_avg_core_poten()[-1]
     defect_atomic_site_averages = Outcar(op.join(path_to_defect_outcar,'OUTCAR')).read_avg_core_poten()[0]

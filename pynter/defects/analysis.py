@@ -35,6 +35,20 @@ class DefectsAnalysis:
         self.band_gap = band_gap
         
 
+    @property
+    def names(self):
+        """
+        Returns a list with all the different names of defect entries
+        """
+        
+        names = []
+        for d in self.entries:
+            if d.name not in names:
+                names.append(d.name)
+        
+        return names
+
+
     def as_dict(self):
         """
         Returns:
@@ -107,7 +121,7 @@ class DefectsAnalysis:
         return binding_energy
 
 
-    def carrier_concentrations_intrinsic(self,bulk_dos,temperature=300,fermi_level=0.):
+    def carrier_concentrations(self,bulk_dos,temperature=300,fermi_level=0.):
         """
         Get intrinsic carrier concentrations by integrating over the density of states
         given a fixed Fermi level
@@ -127,148 +141,6 @@ class DefectsAnalysis:
         
         return abs(h) , abs(n)
 
-
-    def carrier_concentrations_total(self,chemical_potentials,bulk_dos,temperature=300,fermi_level=0.):
-        """
-        Get carrier concentrations by summing charges coming from defects and intrinsic carriers
-        given a fixed Fermi level
-        Args:
-            chemical_potentials: dict of chemical potentials to use for calculation fermi level
-            bulk_dos: bulk system dos (pymatgen Dos object)
-            temperature: Temperature to equilibrate fermi energies for
-            fermi_level: (float) is fermi level relative to valence band maximum
-                Default efermi = 0 = VBM energy         
-        Returns:
-            total positive charge concentration ,total negative charge concentration in absolute values
-        """
-                
-        ef = fermi_level
-
-        qd_negative = sum([
-            d['charge'] * d['conc']
-            for d in self.defect_concentrations(
-                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            if d['charge'] < 0
-            ])
-        
-        qd_positive = sum([
-            d['charge'] * d['conc']
-            for d in self.defect_concentrations(
-                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            if d['charge'] > 0
-            ])
-        h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
-        
-        qtot_positive = abs(qd_positive) + h
-        qtot_negative = abs(qd_negative) + n
-
-        return qtot_positive , qtot_negative
-    
-
-    def carrier_concentrations_total_non_eq(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
-                                            external_defects=[],temperature=300, fermi_level=0.):
-        """
-        Calculate charge carriers concentrations in non-equilibrium conditions. The contribution to the total charge concentration
-        of the defects can arise from 3 different contributions (groups):
-            - D1 : frozen defects with defect specie present in defect entries
-            - D2 : normal defects with defect specie present in defect entries
-            - D3 : external defects not present in defect entries, with fixed concentration and charge
-            
-        The group D1 is the less straightforward. Frozen defects can also be relative to another system and another temperature,
-        but only the ones with names found in the defect entries will be computed. 
-        This part will account for a fixed installed distribution of intrisic defects that are allowed to 
-        change their charge state. One example would be to equilibrate the system with concentrations
-        of intrinsic defects installed in another phase at a higher temperature, that are considered constant 
-        (kinetically trapped) as the temperature lowers and the phases changes. The variation of the charge states is 
-        accounted for in the solution of the charge neutrality by defining a charge state distribution for every defect
-        specie, which depends of the fermi level. 
-        If a defect entry is not found in group D1 is considered to belong to group D2. The number of elements of 
-        D1 U D2 will be equal to the muber of defect entries.
-        The charge concentration associated to group D2 is treated as in the "equilibrium_fermi_level" function.
-        The charge concentration associated to group D3 is a number and thus not Fermi level dependent.
-        
-        Parameters
-        ----------
-        frozen_defect_concentrations : (list)
-            List of defect concentrations. Most likely generated with the defect_concentrations() method. It is not
-            recommended to generate this manually.
-        chemical_potentials : (Dict)
-            Dictionary of chemical potentials in the format {Element('el'):chempot}.
-        bulk_dos : (CompleteDos object)
-            Pymatgen CompleteDos object of the DOS of the bulk system.
-        external_defects : (list)
-            List of external defect concentrations (not present in defect entries).
-        temperature : (float), optional
-            Temperature to equilibrate the system to. The default is 300.
-        fermi_level : (float)
-            Fermi level at which charge carriers need to be computed.
-
-        Returns
-        -------
-        qtot_positive, qtot_negative (float,float)
-            Absolute value of total positive and negative charge concentrations
-        """
-        ef = fermi_level        
-        fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
-        _,fdos_vbm = fdos.get_cbm_vbm()
-        
-        c_tot_frozen = {}       
-        for d in frozen_defect_concentrations:
-            name = d['name']
-            if name in self.names():           
-                if name not in c_tot_frozen:
-                    c_tot_frozen[name] = d['conc']
-                else:
-                    c_tot_frozen[name] += d['conc']
-            else:
-                print(f'Warning: Frozen defect named "{name}" is not in the list of computed defects and will not contribute to the calculation')
-        
-        for name in self.names():
-            if name not in c_tot_frozen:
-                c_tot_frozen[name] = 0 #if specie is not frozen its contribution in the sum with frozen defects is 0
-            
-            # defect concentrations that depend on ef
-            conc_ef = self.defect_concentrations(chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            
-            c_tot_specie = {}
-            for name in self.names():
-                c_tot_specie[name] = 0
-                for d in conc_ef:
-                    if d['name'] == name:
-                        c_tot_specie[name] += d['conc']
-            
-        qd_positive=0
-        qd_negative=0
-        #frozen defects - D1
-        for d in conc_ef:
-            if c_tot_frozen[d['name']] != 0 and c_tot_specie[d['name']] > 1e-250: #if smaller then 1e-300 you get division by zero Error
-                if d['charge'] > 0:
-                    qd_positive += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
-                elif d['charge'] < 0:
-                    qd_negative += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
-        
-        # normal defects - D2
-        for d in conc_ef:
-            if c_tot_frozen[d['name']] == 0:
-                if d['charge'] > 0:
-                    qd_positive += d['charge']*d['conc']
-                elif d['charge'] < 0:
-                    qd_negative += d['charge']*d['conc'] 
-
-        #external fixed defects - D3
-        for d_ext in external_defects:
-            if d['charge'] > 0:
-                qd_positive += d_ext['charge']*d_ext['conc']
-            elif d['charge'] < 0:
-                qd_negative += d_ext['charge']*d_ext['conc']
-        
-        h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
-
-        qtot_positive = abs(qd_positive + h)
-        qtot_negative = abs(qd_negative + n)
-
-        return qtot_positive , qtot_negative
-    
            
     def charge_transition_level(self,name,q1,q2):
         """
@@ -307,7 +179,7 @@ class DefectsAnalysis:
         
         # set charge_transition_levels dict
         charge_transition_levels = {}
-        for name in self.names():
+        for name in self.names:
             charge_transition_levels[name] = []
 
         if energy_range == None:
@@ -410,7 +282,7 @@ class DefectsAnalysis:
         """
         
         total_concentrations = {}
-        for name in self.names():
+        for name in self.names:
             total_concentrations[name] = 0
             for d in self.defect_concentrations(chemical_potentials=chemical_potentials,
                                                 temperature=temperature,fermi_level=fermi_level):
@@ -497,7 +369,7 @@ class DefectsAnalysis:
         c_tot_frozen = {}       
         for d in frozen_defect_concentrations:
             name = d['name']
-            if name in self.names():           
+            if name in self.names:           
                 if name not in c_tot_frozen:
                     c_tot_frozen[name] = d['conc']
                 else:
@@ -505,7 +377,7 @@ class DefectsAnalysis:
             else:
                 print(f'Warning: Frozen defect named "{name}" is not in the list of computed defects and will not contribute to the calculation')
         
-        for name in self.names():
+        for name in self.names:
             if name not in c_tot_frozen:
                 c_tot_frozen[name] = 0 #if specie is not frozen its contribution in the sum with frozen defects is 0
 
@@ -515,7 +387,7 @@ class DefectsAnalysis:
             conc_ef = self.defect_concentrations(chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
             
             c_tot_specie = {}
-            for name in self.names():
+            for name in self.names:
                 c_tot_specie[name] = 0
                 for d in conc_ef:
                     if d['name'] == name:
@@ -568,19 +440,6 @@ class DefectsAnalysis:
                 computed_charges[name].append((d.charge,d.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
         
         return computed_charges
-   
-    
-    def names(self):
-        """
-        Returns a list with all the different names of defect entries
-        """
-        
-        names = []
-        for d in self.entries:
-            if d.name not in names:
-                names.append(d.name)
-        
-        return names
             
     
     def plot(self,mu_elts=None,xlim=None, ylim=None, title=None, fermi_level=None, 
