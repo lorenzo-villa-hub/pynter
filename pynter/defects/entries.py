@@ -176,7 +176,7 @@ class SingleDefectEntry:
         dsite,dtype = defect_finder(defect_structure, bulk_structure)
         module = importlib.import_module("pymatgen.analysis.defects.core")
         defect_class = getattr(module,dtype)
-        defect = defect_class(bulk_structure,dsite,charge,multiplicity)
+        defect = defect_class(bulk_structure,dsite,charge,multiplicity=multiplicity)
         
         return SingleDefectEntry(defect, bulk_structure, energy_diff, corrections)
 
