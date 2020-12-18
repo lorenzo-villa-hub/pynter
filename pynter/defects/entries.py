@@ -53,7 +53,7 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,multiplicity=None
     if isinstance(defects,list):
         entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,multiplicity)
     else:
-        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk_corrections,multiplicity)
+        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,multiplicity)
         
     return entry
 
@@ -190,7 +190,8 @@ class SingleDefectEntry:
             "Corrections = %.4f" %sum([v for v in self.corrections.values()]),
             "Charge = %i" %self.charge,
             "Multiplicity = %i" %self.multiplicity,
-            "Name = %s" %self.name
+            "Name = %s" %self.name,
+            "\n"
             ]
         return "\n".join(output)
     
@@ -408,9 +409,9 @@ class DefectComplexEntry:
         defect_list = []
         defects = defect_finder(defect_structure, bulk_structure)
         for dsite,dtype in defects:
-            module = importlib.import_module("pymatgen.analysis.defects.core")
+            module = importlib.import_module("pynter.defects.pmg_defects_core") #modified pymatgen version with corrected multiplicity bug in super().init for Interstitials
             defect_class = getattr(module,dtype)
-            defect = defect_class(bulk_structure,dsite,charge,multiplicity)
+            defect = defect_class(bulk_structure,dsite,charge=charge,multiplicity=multiplicity)
             defect_list.append(defect)
         
         return DefectComplexEntry(defect_list, bulk_structure, energy_diff, corrections, charge, multiplicity)
@@ -426,7 +427,8 @@ class DefectComplexEntry:
             "Corrections = %.4f" %sum([v for v in self.corrections.values()]),
             "Charge = %i" %self.charge,
             f"Multiplicity = {self.multiplicity}",
-            "Name = %s" %self.name
+            "Name = %s" %self.name,
+            "\n"
             ]
         return "\n".join(output)
     
