@@ -296,7 +296,7 @@ class DefectComplexEntry:
         self._bulk_structure = bulk_structure
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
-        self._charge = charge
+        self._charge = int(charge)
         self._multiplicity = multiplicity if multiplicity else 1
 
 
@@ -512,4 +512,6 @@ class DefectComplexEntry:
         conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
                           (kb * temperature))
         return conc    
+    
+    
     

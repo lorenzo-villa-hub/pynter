@@ -33,20 +33,6 @@ class DefectsAnalysis:
         self.entries = entries
         self.vbm = vbm
         self.band_gap = band_gap
-        
-
-    @property
-    def names(self):
-        """
-        Returns a list with all the different names of defect entries
-        """
-        
-        names = []
-        for d in self.entries:
-            if d.name not in names:
-                names.append(d.name)
-        
-        return names
 
 
     def as_dict(self):
@@ -82,6 +68,33 @@ class DefectsAnalysis:
         return cls(entries,vbm,band_gap)
     
     
+    @property
+    def names(self):
+        """
+        Returns a list with all the different names of defect entries
+        """
+        
+        names = []
+        for d in self.entries:
+            if d.name not in names:
+                names.append(d.name)
+        
+        return names
+    
+    
+    def find_entries_by_name(self,name):        
+        sel_entries = []
+        for e in self.entries:
+            if e.name == name:
+                sel_entries.append(e)
+        return sel_entries
+               
+    def find_entry_by_name_and_charge(self,name,charge):
+        for e in self.find_entries_by_name(name):
+            if e.charge == charge:
+                return e
+    
+    
     def binding_energy(self,name,fermi_level=0):
         """
         Args:
@@ -94,6 +107,7 @@ class DefectsAnalysis:
         for entry in self.entries:
             if entry.name == name:
                 defect_complex = entry
+                print(defect_complex)
                 break
         
         # finding names and elements of single defects of which the complex is made
@@ -115,8 +129,8 @@ class DefectsAnalysis:
         # energy of defect complex
         binding_energy = stable_charges[name][1]
         # subtracting sum of energies of single defects
-        binding_energy += -1 * sum([abs(defect_complex.delta_atoms[el]) * stable_charges[single_defects[el]][1]
-                                    for el in defect_complex.delta_atoms])
+        binding_energy += -1 * sum([abs(v) * stable_charges[single_defects[el]][1]
+                                    for el,v in defect_complex.delta_atoms.items()])
     
         return binding_energy
 
@@ -320,7 +334,44 @@ class DefectsAnalysis:
         return bisect(_get_total_q, -1., self.band_gap + 1.)
             
 
-
+    def _get_frozen_charge(self,frozen_defect_concentrations, chemical_potentials, temperature=300, fermi_level=0.):
+        
+        conc = self.defect_concentrations(chemical_potentials,temperature,fermi_level)
+        total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level)
+        frozen_conc = {fr['name']:fr['conc'] for fr in frozen_defect_concentrations}
+        
+        qd_tot = 0
+        for d in conc:
+            name = d['name'] 
+            entry = self.find_entry_by_name_and_charge(name,d['charge'])
+            c = d['conc']
+            #handle defect complex case
+            if entry.__class__.__name__ == 'DefectComplexEntry': 
+                complex_elements = [d.site.specie.symbol for d in entry.defect_list]
+                for el in complex_elements:
+                    for name in frozen_conc.keys():
+                        if el in name:
+                            if name in total_conc.keys():
+                                c = c * (frozen_conc[name] / total_conc[name])
+                            else:
+                                print(f'Warning: Defect with name {name} is not in defect entries and will not affect the calculation')
+                qd_tot += d['charge'] * c
+            
+            #handle single defect case
+            else: 
+                # D1 group
+                if name in frozen_conc.keys():
+                    if name in total_conc.keys():
+                        qd_tot += d['charge'] * d['conc'] * (frozen_conc[name] / total_conc[name])
+                    else:
+                        print(f'Warning: Defect with name {name} is not in defect entries and will not affect the calculation')
+                # D2 group
+                else: 
+                    qd_tot += d['charge'] * d['conc']
+                
+            return qd_tot
+            
+        
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
                                         external_defects=[], temperature=300):
         """
@@ -365,44 +416,11 @@ class DefectsAnalysis:
         
         fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
         _,fdos_vbm = fdos.get_cbm_vbm()
-        
-        c_tot_frozen = {}       
-        for d in frozen_defect_concentrations:
-            name = d['name']
-            if name in self.names:           
-                if name not in c_tot_frozen:
-                    c_tot_frozen[name] = d['conc']
-                else:
-                    c_tot_frozen[name] += d['conc']
-            else:
-                print(f'Warning: Frozen defect named "{name}" is not in the list of computed defects and will not contribute to the calculation')
-        
-        for name in self.names:
-            if name not in c_tot_frozen:
-                c_tot_frozen[name] = 0 #if specie is not frozen its contribution in the sum with frozen defects is 0
 
         def _get_total_q(ef):
             
-            # defect concentrations that depend on ef
-            conc_ef = self.defect_concentrations(chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            
-            c_tot_specie = {}
-            for name in self.names:
-                c_tot_specie[name] = 0
-                for d in conc_ef:
-                    if d['name'] == name:
-                        c_tot_specie[name] += d['conc']
-            
-            qd_tot=0
-            #frozen defects - D1
-            for d in conc_ef:
-                if c_tot_frozen[d['name']] != 0 and c_tot_specie[d['name']] > 1e-250: #if smaller then 1e-300 you get division by zero Error
-                    qd_tot += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
-            
-            # normal defects - D2
-            for d in conc_ef:
-                if c_tot_frozen[d['name']] == 0:
-                    qd_tot += d['charge']*d['conc']
+            # get groups D1 and D2
+            qd_tot = self._get_frozen_charge(frozen_defect_concentrations, chemical_potentials,temperature,fermi_level=ef)
 
             #external fixed defects - D3
             for d_ext in external_defects:
@@ -534,22 +552,7 @@ class DefectsAnalysis:
        
             # if format_legend is True get latex-like legend
             if format_legend:
-                flds = name.split('_')
-                if 'Vac' == flds[0]:
-                    base = '$V'
-                    sub_str = '_{' + flds[1] + '}$'
-                elif 'Sub' == flds[0]:
-                    flds = name.split('_')
-                    base = '$' + flds[1]
-                    sub_str = '_{' + flds[3] + '}$'
-                elif 'Int' == flds[0]:
-                    base = '$' + flds[1]
-                    sub_str = '_{int}$'
-                else:
-                    base = name
-                    sub_str = ''
-    
-                label_txt = base + sub_str
+                label_txt = self._get_formatted_legend(name)
             else:
                 label_txt = name
                 
@@ -581,6 +584,54 @@ class DefectsAnalysis:
 
         return plt
      
+
+    def _get_formatted_legend(self,name):
+        
+        if '-' not in [c for c in name]:        
+            flds = name.split('_')
+            if 'Vac' == flds[0]:
+                base = '$V'
+                sub_str = '_{' + flds[1] + '}$'
+            elif 'Sub' == flds[0]:
+                flds = name.split('_')
+                base = '$' + flds[1]
+                sub_str = '_{' + flds[3] + '}$'
+            elif 'Int' == flds[0]:
+                base = '$' + flds[1]
+                sub_str = '_{int}$'
+            else:
+                base = name
+                sub_str = ''
+    
+            return  base + sub_str
+        
+        else:
+            label = ''
+            names = name.split('-')
+            for name in names:
+                flds = name.split('_')
+                if '-' not in flds:
+                    if 'Vac' == flds[0]:
+                        base = '$V'
+                        sub_str = '_{' + flds[1] + '}$'
+                    elif 'Sub' == flds[0]:
+                        flds = name.split('_')
+                        base = '$' + flds[1]
+                        sub_str = '_{' + flds[3] + '}$'
+                    elif 'Int' == flds[0]:
+                        base = '$' + flds[1]
+                        sub_str = '_{int}$'
+                    else:
+                        base = name
+                        sub_str = ''
+            
+                    if names.index(name) != (len(names) - 1):
+                        label += base + sub_str + '-'
+                    else:
+                        label += base + sub_str
+            
+            return label
+    
     
     def plot_binding_energies(self, names, xlim=None, ylim=None, size=1):
         """
