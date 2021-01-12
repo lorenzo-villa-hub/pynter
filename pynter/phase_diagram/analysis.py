@@ -451,8 +451,8 @@ class ChempotAnalysis:
                     comp2 = c
         return comp1.reduced_composition,comp2.reduced_composition
             
-        
-        
+
+    
 class PDHandler:
     
     def __init__(self,phase_diagram):
@@ -543,6 +543,14 @@ class PDHandler:
         entry = self.get_stable_entry_from_comp(comp)
         factor = entry.composition.get_reduced_composition_and_factor()[1]
         return pd.get_form_energy(entry)/factor
+
+
+    def get_plot(self,**kwargs):
+        """
+        Get plot with Pymatgen
+        """
+        PDPlotter(self.pd,show_unstable=0,backend='matplotlib').get_plot(**kwargs)
+        return plt
 
 
     def get_stability_diagram(self,elements):

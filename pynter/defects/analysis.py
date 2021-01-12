@@ -810,8 +810,9 @@ class DefectsAnalysis:
         return stable_charges
         
             
-            
-            
+
+        
+        
         
         
         
