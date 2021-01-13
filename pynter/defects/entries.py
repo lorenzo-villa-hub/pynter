@@ -102,6 +102,11 @@ class SingleDefectEntry:
     def multiplicity(self):
         return self.defect.multiplicity
     
+    @multiplicity.setter
+    def multiplicity(self,multiplicity):
+        self._multiplicity = multiplicity
+        return
+    
     @property
     def name(self):
         return self.defect.name
@@ -323,6 +328,11 @@ class DefectComplexEntry:
     @property
     def multiplicity(self):
         return self._multiplicity
+    
+    @multiplicity.setter
+    def multiplicity(self,multiplicity):
+        self._multiplicity = multiplicity
+        return
     
     @property
     def name(self):
