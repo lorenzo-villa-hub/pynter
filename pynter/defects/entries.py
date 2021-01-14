@@ -21,7 +21,7 @@ from pynter.defects.utils import *
 from monty.json import MontyDecoder, MSONable
 
 
-def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,multiplicity=None):
+def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,multiplicity=None):
     """
     Get defect entry from VaspJob objects of defect and bulk calculation.
     The defect_finder method is used to determine if the defect site is single or 
@@ -37,6 +37,8 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,multiplicity=None
     corrections : (dict)
         Dict of corrections for defect formation energy. All values will be summed and
         added to the defect formation energy.
+    defect_structure : (Structure)
+        Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
     multiplicity : (int), optional
         Multiplicity of defect within the supercell. The default is None.
         If not provided, for single defects it is determined by pymatgen with symmetry analysis,
@@ -47,13 +49,13 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,multiplicity=None
     SingleDefectEntry or DefectComplexEntry
 
     """
-    defect_structure = job_defect.initial_structure
+    defect_structure = defect_structure if defect_structure else job_defect.initial_structure
     bulk_structure = job_bulk.final_structure
     defects = defect_finder(defect_structure,bulk_structure)
     if isinstance(defects,list):
-        entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,multiplicity)
+        entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity)
     else:
-        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,multiplicity)
+        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity)
         
     return entry
 
@@ -123,7 +125,7 @@ class SingleDefectEntry:
 
 
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, multiplicity=None):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None):
         """
         Generate SingleDefectEntry object from VaspJob objects.
 
@@ -136,6 +138,8 @@ class SingleDefectEntry:
         corrections : (dict)
             Dict of corrections for defect formation energy. All values will be summed and
             added to the defect formation energy.
+        defect_structure : (Structure)
+            Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
         multiplicity : (int), optional
             Multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
@@ -144,7 +148,7 @@ class SingleDefectEntry:
         -------
         SingleDefectEntry
         """
-        defect_structure = job_defect.initial_structure
+        defect_structure = defect_structure if defect_structure else job_defect.initial_structure
         bulk_structure = job_bulk.final_structure
         energy_diff = job_defect.final_energy - job_bulk.final_energy
         charge = job_defect.charge
@@ -361,7 +365,7 @@ class DefectComplexEntry:
 
 
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, multiplicity=None):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None):
         """
         Generate DefectComplexEntry object from VaspJob objects.
 
@@ -374,6 +378,8 @@ class DefectComplexEntry:
         corrections : (dict)
             Dict of corrections for defect formation energy. All values will be summed and
             added to the defect formation energy.
+        defect_structure : (Structure)
+            Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
         multiplicity : (int), optional
             Multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
@@ -382,7 +388,7 @@ class DefectComplexEntry:
         -------
         DefectComplexEntry
         """ 
-        defect_structure = job_defect.initial_structure
+        defect_structure = defect_structure if defect_structure else job_defect.initial_structure
         bulk_structure = job_bulk.final_structure
         energy_diff = job_defect.final_energy - job_bulk.final_energy
         charge = job_defect.charge
