@@ -14,11 +14,24 @@ from pymatgen.util.plotting import pretty_plot
 
 
 class PartialPressureAnalysis:
-    
+    """
+    Class that handles the analysis of the oxygen partial pressure dependency.
+    """
     
     def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature=300):
         """
-        Class that handles the analysis of the oxygen partial pressure dependency
+        Parameters
+        ----------
+        defects_analysis :
+            DefectsAnalysis object.
+        phase_diagram : 
+            Pymatgen PhaseDiagram object.
+        target_comp : 
+            Pymatgen Composition object.
+        bulk_dos : 
+            Pymatgen Dos object.
+        temperature : (float), optional
+            Temperature in Kelvin. The default is 300K.
         """
         self.da = defects_analysis
         self.pd = phase_diagram
@@ -77,6 +90,34 @@ class PartialPressureAnalysis:
         return partial_pressures, defect_concentrations, carrier_concentrations
     
     
+    def get_fermi_levels(self,pressure_range=(-20,10)):
+        """
+        Calculate defect and carrier concentrations at different oxygen partial pressure values
+
+        Parameters
+        ----------
+        pressure_range : (tuple), optional
+            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
+            
+        Returns
+        -------
+        partial_pressures : (list)
+            List of partial pressure values.
+        fermi_levels : (list)
+            List of Fermi level values
+        """
+        res = ChempotExperimental().oxygen_partial_pressure_range(self.pd,self.target_comp,
+                                                                  self.temperature,p_range=pressure_range)
+        partial_pressures = list(res.keys())
+        fermi_levels = []
+        dos = self.bulk_dos
+        T = self.temperature
+        for r,mu in res.items():
+            mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
+            fermi_levels.append(mue)
+            
+        return partial_pressures, fermi_levels
+    
     
     def plot_concentrations(self,defect_indexes=None,pressure_range=(-20,10),concentrations_output='all',size=(12,8),xlim=(1e-20,1e08),ylim=None):
         """
@@ -126,6 +167,47 @@ class PartialPressureAnalysis:
         
         return plt
         
+   
+    def plot_fermi_level(self,new_figure=True,label=None,pressure_range=(-20,10),size=(12,8),xlim=(1e-20,1e08),ylim=None):
+        """
+        Plot Fermi level as a function of the oxygen partial pressure.
+
+        Parameters
+        ----------
+        new_figure : (bool), optional
+            Initialize a new matplotlib figure. The default is True.
+        label : (str), optional
+            Label for the data. The default is None.
+        pressure_range : (tuple), optional
+            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
+        size : (tuple), optional
+            Size of the matplotlib figure. The default is (12,8).
+        xlim : (tuple), optional
+            Range of x-axis. The default is (1e-20,1e08).
+        ylim : (tuple), optional
+            Range of y-axis. The default is None.
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        if not label:
+            label = '$\mu_{e}$'
+        matplotlib.rcParams.update({'font.size': 22})
+        plt = self._plot_mue(new_figure,label,pressure_range,size)
+        plt.xscale('log')
+        plt.xlim(xlim)
+        if ylim:
+            plt.ylim(ylim)
+        plt.xlabel('Oxygen partial pressure (atm)')
+        plt.ylabel('Electron chemical potential (eV)')
+        plt.legend()
+        if new_figure:
+            plt.grid()
+        
+        return plt
+    
     
     def _plot_conc(self,defect_indexes,pressure_range,concentrations_output,size):
         
@@ -144,7 +226,6 @@ class PartialPressureAnalysis:
                 plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
-    
         return plt
     
     
@@ -161,7 +242,14 @@ class PartialPressureAnalysis:
             plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
+        return plt
+   
     
+    def _plot_mue(self,new_figure,label,pressure_range,size):
+        if new_figure:
+            plt.figure(figsize=(size))
+        p,mue = self.get_fermi_levels(pressure_range)
+        plt.plot(p,mue,linewidth=4,label=label)
         return plt
     
     

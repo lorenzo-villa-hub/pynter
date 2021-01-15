@@ -106,7 +106,7 @@ class SingleDefectEntry:
     
     @multiplicity.setter
     def multiplicity(self,multiplicity):
-        self._multiplicity = multiplicity
+        self.defect._multiplicity = multiplicity
         return
     
     @property
