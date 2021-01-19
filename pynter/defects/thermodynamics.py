@@ -18,7 +18,7 @@ class PartialPressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature=300):
+    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature=300,frozen_defect_concentrations=None,external_defects=[]):
         """
         Parameters
         ----------
@@ -38,6 +38,8 @@ class PartialPressureAnalysis:
         self.target_comp = target_comp
         self.bulk_dos = bulk_dos
         self.temperature = temperature
+        self.frozen_defect_concentrations = frozen_defect_concentrations
+        self.external_defects = external_defects
     
     
     def get_concentrations(self,pressure_range=(-20,10),concentrations_output='all'):
@@ -73,8 +75,13 @@ class PartialPressureAnalysis:
         carrier_concentrations = []
         dos = self.bulk_dos
         T = self.temperature
+        frozen_df = self.frozen_defect_concentrations
+        ext_df = self.external_defects
         for r,mu in res.items():
-            mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
+            if frozen_df or ext_df:
+                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T)
+            else:
+                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
             if concentrations_output == 'all':
                 conc = self.da.defect_concentrations(mu,temperature=T,fermi_level=mue)
             elif concentrations_output == 'total':
@@ -112,14 +119,20 @@ class PartialPressureAnalysis:
         fermi_levels = []
         dos = self.bulk_dos
         T = self.temperature
+        frozen_df = self.frozen_defect_concentrations
+        ext_df = self.external_defects
         for r,mu in res.items():
-            mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
+            if frozen_df or ext_df:
+                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T)
+            else:
+                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
             fermi_levels.append(mue)
             
         return partial_pressures, fermi_levels
     
     
-    def plot_concentrations(self,defect_indexes=None,pressure_range=(-20,10),concentrations_output='all',size=(12,8),xlim=(1e-20,1e08),ylim=None):
+    def plot_concentrations(self,partial_pressures,defect_concentrations,carrier_concentrations,
+                            defect_indexes=None,concentrations_output='all',size=(12,8),xlim=(1e-20,1e08),ylim=None):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -148,12 +161,12 @@ class PartialPressureAnalysis:
         plt : 
             Matplotlib object.
         """
-        
+        p,dc,cc = partial_pressures,defect_concentrations,carrier_concentrations
         matplotlib.rcParams.update({'font.size': 22})
         if concentrations_output == 'all' or concentrations_output == 'stable':
-            plt = self._plot_conc(defect_indexes,pressure_range,concentrations_output,size)
+            plt = self._plot_conc(p,dc,cc,defect_indexes,concentrations_output,size)
         elif concentrations_output == 'total':
-            plt = self._plot_conc_total(pressure_range,size)
+            plt = self._plot_conc_total(p,dc,cc,size)
             
         plt.xscale('log')
         plt.yscale('log')
@@ -168,7 +181,7 @@ class PartialPressureAnalysis:
         return plt
         
    
-    def plot_fermi_level(self,new_figure=True,label=None,pressure_range=(-20,10),size=(12,8),xlim=(1e-20,1e08),ylim=None):
+    def plot_fermi_level(self,partial_pressures, fermi_levels, new_figure=True,label=None,size=(12,8),xlim=(1e-20,1e08),ylim=None):
         """
         Plot Fermi level as a function of the oxygen partial pressure.
 
@@ -195,7 +208,10 @@ class PartialPressureAnalysis:
         if not label:
             label = '$\mu_{e}$'
         matplotlib.rcParams.update({'font.size': 22})
-        plt = self._plot_mue(new_figure,label,pressure_range,size)
+        if new_figure:
+            plt.figure(figsize=(size))
+        p,mue = partial_pressures, fermi_levels
+        plt.plot(p,mue,linewidth=4,label=label)
         plt.xscale('log')
         plt.xlim(xlim)
         if ylim:
@@ -209,11 +225,11 @@ class PartialPressureAnalysis:
         return plt
     
     
-    def _plot_conc(self,defect_indexes,pressure_range,concentrations_output,size):
+    def _plot_conc(self,partial_pressures,defect_concentrations,carrier_concentrations,defect_indexes,
+                   concentrations_output,size):
         
         plt.figure(figsize=size)
         filter_defects = True if defect_indexes else False
-        partial_pressures,defect_concentrations,carrier_concentrations = self.get_concentrations(pressure_range,concentrations_output)
         p = partial_pressures
         dc = defect_concentrations
         h = [cr[0] for cr in carrier_concentrations] 
@@ -229,10 +245,9 @@ class PartialPressureAnalysis:
         return plt
     
     
-    def _plot_conc_total(self,pressure_range,size):
+    def _plot_conc_total(self,partial_pressures,defect_concentrations,carrier_concentrations,size):
         
         plt.figure(figsize=size)
-        partial_pressures,defect_concentrations,carrier_concentrations = self.get_concentrations(pressure_range,concentrations_output='total')
         p = partial_pressures
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations] 
@@ -242,14 +257,6 @@ class PartialPressureAnalysis:
             plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
-        return plt
-   
-    
-    def _plot_mue(self,new_figure,label,pressure_range,size):
-        if new_figure:
-            plt.figure(figsize=(size))
-        p,mue = self.get_fermi_levels(pressure_range)
-        plt.plot(p,mue,linewidth=4,label=label)
         return plt
     
     
@@ -273,3 +280,12 @@ class PartialPressureAnalysis:
         
         mod_label = mod_label + "$"
         return mod_label
+    
+
+    
+    
+
+
+
+
+
