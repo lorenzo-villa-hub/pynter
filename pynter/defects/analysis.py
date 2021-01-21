@@ -116,46 +116,6 @@ class DefectsAnalysis:
         for e in self.find_entries_by_name(name):
             if e.charge == charge:
                 return e
-    
-    
-    def binding_energy_back(self,name,fermi_level=0):
-        """
-        Args:
-            name (string): name of defect complex as assigned in SingleDefectData object
-            fermi_level (float): Fermi level at which binding energy needs to be computed
-        Returns:
-            binding_energy (float)
-        """
-        # finding entry associated to 'name'        
-        for entry in self.entries:
-            if entry.name == name:
-                defect_complex = entry
-                print(defect_complex)
-                break
-        
-        # finding names and elements of single defects of which the complex is made
-        single_defects = {}
-        for el in entry.delta_atoms:
-            # sign of delta atoms - if > 0 interstitial, if < 0 vacancy
-            sign_el = 1 if entry.delta_atoms[el]>0 else -1 if entry.delta_atoms[el]<0 else 0
-            for d in self.entries:
-                # has to be a single defect - delta_atoms needs to have only 1 key
-                if el in d.delta_atoms and len(d.delta_atoms.keys()) == 1:
-                    # sign in delta atoms of single defect has to be the same (Vacancy or interstitial)
-                    sign_el_single = 1 if d.delta_atoms[el]>0 else -1 if d.delta_atoms[el]<0 else 0 
-                    if sign_el == sign_el_single:
-                        # add name to dict of single defects to consider for binding energy
-                        single_defects[el] = d.name
-        
-        # getting stable charge states at desired fermi level                    
-        stable_charges = self.stable_charges(None,fermi_level=fermi_level)
-        # energy of defect complex
-        binding_energy = stable_charges[name][1]
-        # subtracting sum of energies of single defects
-        binding_energy += -1 * sum([abs(v) * stable_charges[single_defects[el]][1]
-                                    for el,v in defect_complex.delta_atoms.items()])
-    
-        return binding_energy
 
 
     def binding_energy(self,name,fermi_level=0):
