@@ -113,7 +113,10 @@ class SingleDefectData:
         energy_diff = d['energy_diff']
         corrections = d['corrections']
         charge = d['charge']
-        multiplicity = d['multiplicity']
+        if 'multiplicity' in d.keys(): # adapt to import old dict
+            multiplicity = d['multiplicity']
+        else:
+            multiplicity = 1
         name = d['name']
         defect_site = PeriodicSite.from_dict(d['defect_site']) if d['defect_site'] else None
         return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,multiplicity,name,defect_site)
