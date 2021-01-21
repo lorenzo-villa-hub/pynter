@@ -123,6 +123,10 @@ class SingleDefectEntry:
         comp_bulk = self.bulk_structure.composition
         return get_delta_atoms_from_comp(comp_defect,comp_bulk)
 
+    @property
+    def classname(self):
+        return self.__class__.__name__
+
 
     @staticmethod
     def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None):
@@ -364,6 +368,11 @@ class DefectComplexEntry:
         return da_global
 
 
+    @property
+    def classname(self):
+        return self.__class__.__name__
+  
+    
     @staticmethod
     def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None):
         """

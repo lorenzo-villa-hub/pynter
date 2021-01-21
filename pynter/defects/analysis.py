@@ -82,6 +82,29 @@ class DefectsAnalysis:
         return names
     
     
+    def find_entries_by_type_and_specie(self,dtype,dspecie):
+        """
+        Find entries by selecting defect type and defect specie. Finds only SingleDefectEntry objects.
+
+        Parameters
+        ----------
+        dtype : (str)
+            Class name of defect type ('Vacancy','Interstitial','Substitution').
+        dspecie : (str)
+            Symbol of the element of defect specie.
+
+        Returns
+        -------
+        sel_entries : (list)
+            List of SingleDefectEntry objects.
+        """
+        sel_entries = []
+        for e in self.entries:
+            if e.classname == 'SingleDefectEntry':
+                if e.defect.__class__.__name__ == dtype and e.defect.site.specie.symbol == dspecie:
+                    sel_entries.append(e)
+        return sel_entries
+    
     def find_entries_by_name(self,name):        
         sel_entries = []
         for e in self.entries:
@@ -95,7 +118,7 @@ class DefectsAnalysis:
                 return e
     
     
-    def binding_energy(self,name,fermi_level=0):
+    def binding_energy_back(self,name,fermi_level=0):
         """
         Args:
             name (string): name of defect complex as assigned in SingleDefectData object
@@ -132,6 +155,27 @@ class DefectsAnalysis:
         binding_energy += -1 * sum([abs(v) * stable_charges[single_defects[el]][1]
                                     for el,v in defect_complex.delta_atoms.items()])
     
+        return binding_energy
+
+
+    def binding_energy(self,name,fermi_level=0):
+        """
+        Args:
+            name (string): name of defect complex as assigned in SingleDefectData object
+            fermi_level (float): Fermi level at which binding energy needs to be computed
+        Returns:
+            binding_energy (float)
+        """
+        stable_charges = self.stable_charges(None,fermi_level)
+        charge = stable_charges[name][0]
+        binding_energy = stable_charges[name][1]
+        entry = self.find_entry_by_name_and_charge(name, charge)
+        for sd in entry.defect_list:
+            dtype = sd.__class__.__name__
+            dspecie = sd.site.specie.symbol
+            dname = self.find_entries_by_type_and_specie(dtype,dspecie)[0].name
+            binding_energy = binding_energy - stable_charges[dname][1]    
+        
         return binding_energy
 
 
@@ -200,7 +244,7 @@ class DefectsAnalysis:
             energy_range = (-0.5,self.band_gap +0.5)
         
         # creating energy array
-        npoints = 1000
+        npoints = 3000
         step = abs(energy_range[1]-energy_range[0])/npoints
         e = np.arange(energy_range[0],energy_range[1],step)
         
@@ -461,7 +505,7 @@ class DefectsAnalysis:
             
     
     def plot(self,mu_elts=None,xlim=None, ylim=None, title=None, fermi_level=None, 
-             plotsize=1, fontsize=1.2, show_legend=True, format_legend=False, 
+             plotsize=1, fontsize=1.2, show_legend=True, format_legend=True, 
              order_legend=False, get_subplot=False, subplot_settings=None):
         """
         Produce defect Formation energy vs Fermi energy plot
@@ -633,18 +677,21 @@ class DefectsAnalysis:
             return label
     
     
-    def plot_binding_energies(self, names, xlim=None, ylim=None, size=1):
+    def plot_binding_energies(self, names=None, xlim=None, ylim=None, size=1,format_legend=True):
         """
         Plot binding energies for complex of defects as a function of the fermi level
         Args:
             names: 
-                List of strings with names of defect complex as assigned in SingleDefectData object
+                List of strings with names of DefectComplexEntry. If None all DefectComplexEntry
+                objects are plotted.
             xlim:
                 Tuple (min,max) giving the range of the x (fermi energy) axis
             ylim:
                 Tuple (min,max) giving the range for the formation energy axis
             size:
                 Float multiplier to change plot size
+            format_legend:
+                Bool for getting latex-like legend based on the name of defect entries
         """
         
         plt.figure(figsize=(8*size,6*size))
@@ -657,11 +704,18 @@ class DefectsAnalysis:
         ef = np.arange(xlim[0],xlim[1]+0.1,(xlim[1]-xlim[0])/200)        
         binding_energy = np.zeros(len(ef))
         
+        names = []
+        for e in self.entries:
+            if e.classname == 'DefectComplexEntry':
+                if e.name not in names:
+                    names.append(e.name)
+        
         # getting binding energy at different fermi levels for every name in list
         for name in names:
+            label = self._get_formatted_legend(name) if format_legend else name
             for i in range(0,len(ef)):
                 binding_energy[i] = self.binding_energy(name,fermi_level=ef[i])            
-            plt.plot(ef,binding_energy, linewidth=2.5*size,label=name)
+            plt.plot(ef,binding_energy, linewidth=2.5*size,label=label)
             
         plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
         plt.axvline(x=self.band_gap, linestyle='-', color='k',
@@ -697,12 +751,8 @@ class DefectsAnalysis:
         if ylim == None:
             ylim = (-0.5,self.band_gap +0.5)
         
-        # get all charge transition levels
         charge_transition_levels = self.charge_transition_levels()
-        
-        # number of defect names
-        number_defects = len(charge_transition_levels)
-        
+        number_defects = len(charge_transition_levels)   
         x_max = 10
         interval = x_max/(number_defects + 1)
         x = np.arange(0,x_max,interval)
@@ -742,23 +792,8 @@ class DefectsAnalysis:
         
         # format latex-like legend
         if format_legend:    
-            for name in x_ticks_labels:
-                flds = name.split('_')
-                if 'Vac' == flds[0]:
-                    base = '$V'
-                    sub_str = '_{' + flds[1] + '}$'
-                elif 'Sub' == flds[0]:
-                    flds = name.split('_')
-                    base = '$' + flds[1]
-                    sub_str = '_{' + flds[3] + '}$'
-                elif 'Int' == flds[0]:
-                    base = '$' + flds[1]
-                    sub_str = '_{int}$'
-                else:
-                    base = name
-                    sub_str = ''
-            
-                x_ticks_labels[x_ticks_labels.index(name)] = base + sub_str
+             for name in x_ticks_labels:            
+                x_ticks_labels[x_ticks_labels.index(name)] = self._get_formatted_legend(name)
         
         
         if fermi_level:
