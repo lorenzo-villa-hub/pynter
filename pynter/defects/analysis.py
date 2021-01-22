@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from pynter.defects.pmg_dos import FermiDosCarriersInfo
 from pynter.defects.utils import get_delta_atoms
 from pynter.defects.entries import SingleDefectEntry
+from monty.json import MontyDecoder, MSONable
 
     
     
@@ -62,7 +63,7 @@ class DefectsAnalysis:
         Returns:
             DefectsAnalysis object
         """
-        entries = [SingleDefectEntry.from_dict(entry_dict) for entry_dict in d['entries']]        
+        entries = [MontyDecoder().process_decoded(entry_dict) for entry_dict in d['entries']]        
         vbm = d['vbm']
         band_gap = d['band_gap']
         return cls(entries,vbm,band_gap)
@@ -80,6 +81,27 @@ class DefectsAnalysis:
                 names.append(d.name)
         
         return names
+    
+   
+    def filter_entries_by_name(self,names):
+        """
+        Returns another DefectsAnalysis object containing only entries 
+        whose names are in the list.
+
+        Parameters
+        ----------
+        names : (list)
+            List of entry names.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """
+        entries = []
+        for e in self.entries:
+            if e.name in names:
+                entries.append(e)
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
     
     
     def find_entries_by_type_and_specie(self,dtype,dspecie):
@@ -464,7 +486,7 @@ class DefectsAnalysis:
         return computed_charges
             
     
-    def plot(self,mu_elts=None,xlim=None, ylim=None, title=None, fermi_level=None, 
+    def plot(self,mu_elts=None,filter_names=None,xlim=None, ylim=None, title=None, fermi_level=None, 
              plotsize=1, fontsize=1.2, show_legend=True, format_legend=True, 
              order_legend=False, get_subplot=False, subplot_settings=None):
         """
@@ -473,6 +495,9 @@ class DefectsAnalysis:
             mu_elts:
                 a dictionnary of {Element:value} giving the chemical
                 potential of each element
+            filter_names: (list)
+                Display plot only of defect specie whose names are in the list.
+                If None all defect species are displayed. The default is None.
             xlim:
                 Tuple (min,max) giving the range of the x (fermi energy) axis
             ylim:
@@ -559,9 +584,14 @@ class DefectsAnalysis:
                 label_txt = self._get_formatted_legend(name)
             else:
                 label_txt = name
-                
-            plt.plot(x,emin,label=label_txt,linewidth=3)
-            plt.scatter(x_star,y_star,s=120,marker='*')
+            
+            if filter_names:
+                if name in filter_names:
+                    plt.plot(x,emin,label=label_txt,linewidth=3)
+                    plt.scatter(x_star,y_star,s=120,marker='*')
+            else:
+                plt.plot(x,emin,label=label_txt,linewidth=3)
+                plt.scatter(x_star,y_star,s=120,marker='*')
                         
         plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
         plt.axvline(x=self.band_gap, linestyle='-', color='k',

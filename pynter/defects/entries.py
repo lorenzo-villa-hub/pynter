@@ -436,7 +436,7 @@ class DefectComplexEntry:
         for dsite,dtype in defects:
             module = importlib.import_module("pynter.defects.pmg_defects_core") #modified pymatgen version with corrected multiplicity bug in super().init for Interstitials
             defect_class = getattr(module,dtype)
-            defect = defect_class(bulk_structure,dsite,charge=charge,multiplicity=multiplicity)
+            defect = defect_class(bulk_structure,dsite,charge=charge,multiplicity=1)
             defect_list.append(defect)
         
         return DefectComplexEntry(defect_list, bulk_structure, energy_diff, corrections, charge, multiplicity)
