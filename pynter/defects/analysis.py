@@ -368,12 +368,18 @@ class DefectsAnalysis:
         return bisect(_get_total_q, -1., self.band_gap + 1.)
             
 
-    def _get_frozen_charge(self,frozen_defect_concentrations, chemical_potentials, temperature=300, fermi_level=0.):
+    def _get_frozen_charge(self,frozen_defect_concentrations, chemical_potentials, temperature, fermi_level,ignore_multiplicity):
         
         conc = self.defect_concentrations(chemical_potentials,temperature,fermi_level)
         total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level)
+        if ignore_multiplicity:
+            for d in conc:
+                d['name'] = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
+            total_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : total_conc[n] for n in total_conc}
+            for d in frozen_defect_concentrations:
+                d['name'] = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
         frozen_conc = {fr['name']:fr['conc'] for fr in frozen_defect_concentrations}
-        
+
         qd_tot = 0
         for d in conc:
             name = d['name'] 
@@ -403,7 +409,7 @@ class DefectsAnalysis:
                 else: 
                     qd_tot += d['charge'] * d['conc']
                 
-            return qd_tot
+        return qd_tot
             
      
     def get_dataframe(self,filter_names=None,include_bulk=False):
@@ -451,7 +457,7 @@ class DefectsAnalysis:
         
         
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
-                                        external_defects=[], temperature=300):
+                                        external_defects=[], temperature=300,ignore_multiplicity=False):
         """
         Solve charge neutrality in non-equilibrium conditions. The contribution to the total charge concentration
         of the defects can arise from 3 different contributions (groups):
@@ -498,7 +504,7 @@ class DefectsAnalysis:
         def _get_total_q(ef):
             
             # get groups D1 and D2
-            qd_tot = self._get_frozen_charge(frozen_defect_concentrations, chemical_potentials,temperature,fermi_level=ef)
+            qd_tot = self._get_frozen_charge(frozen_defect_concentrations, chemical_potentials,temperature,ef,ignore_multiplicity)
 
             #external fixed defects - D3
             for d_ext in external_defects:

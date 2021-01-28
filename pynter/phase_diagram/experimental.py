@@ -8,7 +8,7 @@ Created on Wed Mar 18 13:12:05 2020
 
 import numpy as np
 from pymatgen.core.periodic_table import Element
-from pynter.phase_diagram.analysis import ChempotAnalysis, Reservoirs
+from pynter.phase_diagram.analysis import ChempotAnalysis, Reservoirs, PDHandler
 
 class ChempotExperimental:
     
@@ -52,34 +52,9 @@ class ChempotExperimental:
         chempot = mu0 + 0.5*kb*temperature*np.log(partial_pressure)
         return chempot
         
-
-        
-    def oxygen_standard_chempot(self,temperature=None):
-        """
-        Get value of oxygen delta mu standard (mu_0(T,Po)) at a speficic temperature
-        The data is taken from the following work: 
-            Reuter and Scheffler, “Composition, Structure, and Stability of RuO 2 ( 110 ) as a Function of Oxygen Pressure.”
-        The value at a specific temperature is extracted from a linear fitting of the behaviour of mu_O with Temperature.
-        
-        Parameters
-        ----------
-        temperature : (float)
-
-        Returns
-        -------
-        Chemical potential at standard p0 at given temperature.
-
-        """
-        temperature = temperature if temperature else self.temperature
-        T = np.array([100,200,300,400,500,600,700,800,900,1000])
-        mu_0 = np.array([-0.08, -0.17,-0.27,-0.38,-0.50,-0.61,-0.73,-0.85,-0.98,-1.10])
-        
-        coef = np.polyfit(T,mu_0,1)
-        poly1d_fn = np.poly1d(coef)
-        return poly1d_fn(temperature)
     
     
-    def oxygen_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,p_range=(-20,10),get_pressures_as_strings=False):
+    def chempots_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,pressure_range=(-20,10),get_pressures_as_strings=False):
         """
         Generate Reservoirs object with a set of different chemical potentials starting from a range of oxygen partial pressure.
         The code distinguishes between 2-component and 3-component phase diagrams.
@@ -96,7 +71,7 @@ class ChempotExperimental:
             Pymatgen Composition object.
         temperature : (float), optional
             Temperature value. If None the value with which the class is initialized is taken. The default is None.
-        p_range : (tuple), optional
+        pressure_range : (tuple), optional
             Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
         get_pressures_as_strings : (bool), optional
             Get pressure values (keys in the Reservoirs dict) as strings. The default is set to floats.
@@ -111,7 +86,7 @@ class ChempotExperimental:
         reservoirs = {}
         pd = phase_diagram
         temperature = temperature if temperature else self.temperature
-        partial_pressures = np.logspace(p_range[0],p_range[1],num=50,base=10)
+        partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=50,base=10)
         mu_standard = self.oxygen_standard_chempot(temperature)
         
         for p in partial_pressures:
@@ -142,9 +117,53 @@ class ChempotExperimental:
         return Reservoirs(reservoirs,phase_diagram=pd,are_chempots_delta=False)
                                 
         
+    def oxygen_partial_pressure_range(self,chempots,phase_diagram=None,oxygen_ref=None,temperature=None,
+                                      pressure_range=(-20,10),get_pressures_as_strings=False):
         
+        reservoirs = {}
+        temperature = temperature if temperature else self.temperature
+        partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=50,base=10)
+        mu_standard = self.oxygen_standard_chempot(temperature)
+        if phase_diagram:
+            muO_ref = PDHandler(phase_diagram).get_chempots_reference()[Element('O')]
+        else:
+            muO_ref = oxygen_ref
         
+        for p in partial_pressures:
+            mu = chempots.copy()
+            muO = self.chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p)
+            mu.update({Element('O'):muO_ref + muO})
+            if get_pressures_as_strings:
+                p = "%.1g" % p
+                p = str(p)
+            reservoirs[p] = mu
         
+        return Reservoirs(reservoirs,phase_diagram,are_chempots_delta=False)
+            
+        
+    def oxygen_standard_chempot(self,temperature=None):
+        """
+        Get value of oxygen delta mu standard (mu_0(T,Po)) at a speficic temperature
+        The data is taken from the following work: 
+            Reuter and Scheffler, “Composition, Structure, and Stability of RuO 2 ( 110 ) as a Function of Oxygen Pressure.”
+        The value at a specific temperature is extracted from a linear fitting of the behaviour of mu_O with Temperature.
+        
+        Parameters
+        ----------
+        temperature : (float)
+
+        Returns
+        -------
+        Chemical potential at standard p0 at given temperature.
+
+        """
+        temperature = temperature if temperature else self.temperature
+        T = np.array([100,200,300,400,500,600,700,800,900,1000])
+        mu_0 = np.array([-0.08, -0.17,-0.27,-0.38,-0.50,-0.61,-0.73,-0.85,-0.98,-1.10])
+        
+        coef = np.polyfit(T,mu_0,1)
+        poly1d_fn = np.poly1d(coef)
+        return poly1d_fn(temperature)            
         
         
         

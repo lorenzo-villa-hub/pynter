@@ -18,7 +18,7 @@ class PartialPressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature=300,frozen_defect_concentrations=None,external_defects=[]):
+    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature,frozen_defect_concentrations=None,external_defects=[]):
         """
         Parameters
         ----------
@@ -68,8 +68,8 @@ class PartialPressureAnalysis:
             List of tuples with intrinsic carriers concentrations (holes,electrons).
         """
         
-        res = ChempotExperimental().oxygen_partial_pressure_range(self.pd,self.target_comp,
-                                                                  self.temperature,p_range=pressure_range)
+        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
+                                                                  self.temperature,pressure_range=pressure_range)
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
@@ -113,8 +113,8 @@ class PartialPressureAnalysis:
         fermi_levels : (list)
             List of Fermi level values
         """
-        res = ChempotExperimental().oxygen_partial_pressure_range(self.pd,self.target_comp,
-                                                                  self.temperature,p_range=pressure_range)
+        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
+                                                                  self.temperature,pressure_range=pressure_range)
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
@@ -130,6 +130,14 @@ class PartialPressureAnalysis:
             
         return partial_pressures, fermi_levels
     
+
+
+class PartialPressurePlotter:
+    
+    def __init__(self,defects_analysis):
+        
+        self.da = defects_analysis
+
     
     def plot_concentrations(self,partial_pressures,defect_concentrations,carrier_concentrations,
                             defect_indexes=None,concentrations_output='all',size=(12,8),xlim=(1e-20,1e08),ylim=None):
