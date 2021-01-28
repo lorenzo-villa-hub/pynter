@@ -13,6 +13,7 @@ from pynter.defects.pmg_dos import FermiDosCarriersInfo
 from pynter.defects.utils import get_delta_atoms
 from pynter.defects.entries import SingleDefectEntry
 from monty.json import MontyDecoder, MSONable
+import pandas as pd
 
     
     
@@ -36,6 +37,13 @@ class DefectsAnalysis:
         self.band_gap = band_gap
 
 
+    def __str__(self):     
+        return self.get_dataframe().__str__()
+            
+    def __repr__(self):
+        return self.__str__()
+    
+    
     def as_dict(self):
         """
         Returns:
@@ -397,6 +405,50 @@ class DefectsAnalysis:
                 
             return qd_tot
             
+     
+    def get_dataframe(self,filter_names=None,include_bulk=False):
+        """
+        Get DataFrame to display entries. 
+
+        Parameters
+        ----------
+        filter_names : (list), optional
+            Only entries whose name is on the list will be displayed. The default is None.
+        include_bulk: (bool), optional
+            Include bulk composition and space group for each entry in DataFrame.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if filter_names:
+            entries = []
+            for name in filter_names:
+                en = self.find_entries_by_name(name)
+                for e in en:
+                    entries.append(e)
+        else:
+            entries = self.entries
+        d = {}
+        index = []
+        table = []
+        for e in entries:
+            index.append(e.name)
+            d = {}
+            if include_bulk:
+                d['bulk composition'] = e.bulk_structure.composition.formula
+                d['bulk space group'] = e.bulk_structure.get_space_group_info()
+            d['delta atoms'] = e.delta_atoms
+            d['charge'] = e.charge
+            d['multiplicity'] = e.multiplicity
+            table.append(d)
+        df = pd.DataFrame(table,index=index)
+        df.index.name = 'name'
+        return df
+            
+                
+        
         
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
                                         external_defects=[], temperature=300):
