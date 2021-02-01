@@ -31,8 +31,8 @@ class DefectsAnalysis:
             NOTE if using band shifting-type correction then this gap
             should still be that of the Hybrid calculation you are shifting to.       
     """    
-    def __init__(self, entries, vbm, band_gap):
-        self.entries = entries
+    def __init__(self, entries, vbm, band_gap, sort_entries = True):
+        self.entries = sorted(entries, key=lambda x: x.name) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap
 
@@ -91,6 +91,61 @@ class DefectsAnalysis:
         return names
     
    
+    def filter_entries(self,entries):
+        """
+        Returns another DefectsAnalysis object containing only the given entries
+
+        Parameters
+        ----------
+        entries : (list)
+            List of defect entries.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """
+        entries = []
+        for e in self.entries:
+            if e in entries:
+                entries.append(e)
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+    
+    
+    def filter_entries_by_elements(self,elements,get_intrinsic=True):
+        """
+        Returns another DefectsAnalysis object containing only entries 
+        whose names are in the list.
+
+        Parameters
+        ----------
+        names : (list)
+            List of entry names.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """
+        entries = []
+        elements = [Element(el) for el in elements]
+
+                
+        for e in self.entries:
+            flt_el = elements.copy()
+            if get_intrinsic:
+                for el in e.bulk_structure.composition.elements:
+                    flt_el.append(el)
+            for el in e.delta_atoms:
+                if el in flt_el:
+                    select = True
+                else:
+                    select = False
+                    break
+            if select:
+                entries.append(e)
+                
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+    
+    
     def filter_entries_by_name(self,names):
         """
         Returns another DefectsAnalysis object containing only entries 
@@ -211,7 +266,6 @@ class DefectsAnalysis:
         charge_transition_level = -1*(E1 - E2)/(q1 - q2)
         
         return charge_transition_level
-    
     
     
     def charge_transition_levels(self, energy_range=None):
@@ -410,50 +464,6 @@ class DefectsAnalysis:
                     qd_tot += d['charge'] * d['conc']
                 
         return qd_tot
-            
-     
-    def get_dataframe(self,filter_names=None,include_bulk=False):
-        """
-        Get DataFrame to display entries. 
-
-        Parameters
-        ----------
-        filter_names : (list), optional
-            Only entries whose name is on the list will be displayed. The default is None.
-        include_bulk: (bool), optional
-            Include bulk composition and space group for each entry in DataFrame.
-
-        Returns
-        -------
-        df : 
-            DataFrame object.
-        """
-        if filter_names:
-            entries = []
-            for name in filter_names:
-                en = self.find_entries_by_name(name)
-                for e in en:
-                    entries.append(e)
-        else:
-            entries = self.entries
-        d = {}
-        index = []
-        table = []
-        for e in entries:
-            index.append(e.name)
-            d = {}
-            if include_bulk:
-                d['bulk composition'] = e.bulk_structure.composition.formula
-                d['bulk space group'] = e.bulk_structure.get_space_group_info()
-            d['delta atoms'] = e.delta_atoms
-            d['charge'] = e.charge
-            d['multiplicity'] = e.multiplicity
-            table.append(d)
-        df = pd.DataFrame(table,index=index)
-        df.index.name = 'name'
-        return df
-            
-                
         
         
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
@@ -515,7 +525,58 @@ class DefectsAnalysis:
             return qd_tot
                        
         return bisect(_get_total_q, -1., self.band_gap + 1.)
+            
+     
+    def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False):
+        """
+        Get DataFrame to display entries. 
 
+        Parameters
+        ----------
+        filter_names : (list), optional
+            Only entries whose name is on the list will be displayed. The default is None.
+        include_bulk: (bool), optional
+            Include bulk composition and space group for each entry in DataFrame.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if filter_names:
+            entries = []
+            for name in filter_names:
+                en = self.find_entries_by_name(name)
+                for e in en:
+                    entries.append(e)
+        else:
+            entries = self.entries
+        d = {}
+        index = []
+        table = []
+        for e in entries:
+            symbol = self._get_formatted_legend(e.name)
+            if pretty:
+                index.append(symbol)
+            else:
+                index.append(e.name)
+            d = {}
+            if include_bulk:
+                d['bulk composition'] = e.bulk_structure.composition.formula
+                d['bulk space group'] = e.bulk_structure.get_space_group_info()
+            if not pretty:
+                d['symbol'] = symbol    
+                d['delta atoms'] = e.delta_atoms
+            d['charge'] = e.charge
+            d['multiplicity'] = e.multiplicity
+            table.append(d)
+        df = pd.DataFrame(table,index=index)
+        if pretty:
+            df.index.name = 'symbol'
+        else:
+            df.index.name = 'name'
+        return df
+    
     
     def formation_energies(self,chemical_potentials,fermi_level=0):
         """
@@ -858,7 +919,7 @@ class DefectsAnalysis:
         plt.ylabel('Energy(eV)',fontsize=20*size)  
         
         return plt
-    
+   
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """

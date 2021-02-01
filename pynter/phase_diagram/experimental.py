@@ -119,7 +119,7 @@ class ChempotExperimental:
         
     def oxygen_partial_pressure_range(self,chempots,phase_diagram=None,oxygen_ref=None,temperature=None,
                                       pressure_range=(-20,10),get_pressures_as_strings=False):
-        
+           
         reservoirs = {}
         temperature = temperature if temperature else self.temperature
         partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=50,base=10)

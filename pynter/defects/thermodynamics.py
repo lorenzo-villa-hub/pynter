@@ -134,13 +134,13 @@ class PartialPressureAnalysis:
 
 class PartialPressurePlotter:
     
-    def __init__(self,defects_analysis):
+    def __init__(self,xlim=(1e-20,1e08)):
         
-        self.da = defects_analysis
+        self.xlim = xlim
 
     
     def plot_concentrations(self,partial_pressures,defect_concentrations,carrier_concentrations,
-                            defect_indexes=None,concentrations_output='all',size=(12,8),xlim=(1e-20,1e08),ylim=None):
+                            defect_indexes=None,concentrations_output='all',size=(12,8),xlim=None,ylim=None):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -178,6 +178,7 @@ class PartialPressurePlotter:
             
         plt.xscale('log')
         plt.yscale('log')
+        xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
         if ylim:
             plt.ylim(ylim)
@@ -189,7 +190,7 @@ class PartialPressurePlotter:
         return plt
         
    
-    def plot_fermi_level(self,partial_pressures, fermi_levels, new_figure=True,label=None,size=(12,8),xlim=(1e-20,1e08),ylim=None):
+    def plot_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
         """
         Plot Fermi level as a function of the oxygen partial pressure.
 
@@ -213,17 +214,25 @@ class PartialPressurePlotter:
         plt : 
             Matplotlib object.
         """
+        ylim = ylim if ylim else (-0.5, band_gap+0.5)
         if not label:
             label = '$\mu_{e}$'
         matplotlib.rcParams.update({'font.size': 22})
         if new_figure:
             plt.figure(figsize=(size))
         p,mue = partial_pressures, fermi_levels
-        plt.plot(p,mue,linewidth=4,label=label)
+        plt.plot(p,mue,linewidth=4,marker='s',label=label)
         plt.xscale('log')
+        xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
         if ylim:
             plt.ylim(ylim)
+        plt.hlines(0, xlim[0], xlim[1],color='k')
+        plt.text(xlim[1]+(xlim[1]-xlim[0]),-0.05,'VB')
+        plt.text(xlim[1]+(xlim[1]-xlim[0]),band_gap-0.05,'CB')
+        plt.hlines(band_gap, xlim[0], xlim[1],color='k')
+        plt.axhspan(ylim[0], 0, alpha=0.2,color='k')
+        plt.axhspan(band_gap, ylim[1], alpha=0.2,color='k')
         plt.xlabel('Oxygen partial pressure (atm)')
         plt.ylabel('Electron chemical potential (eV)')
         plt.legend()
@@ -245,7 +254,7 @@ class PartialPressurePlotter:
         for i in range(0,len(defect_concentrations[0])):
             if filter_defects is False or (defect_indexes is not None and i in defect_indexes):
                 conc = [c[i]['conc'] for c in defect_concentrations]
-                label_txt = self.da._get_formatted_legend(dc[0][i]['name'])
+                label_txt = self._get_formatted_legend(dc[0][i]['name'])
                 label_txt = self._format_legend_with_charge(label_txt,dc[0][i]['charge'])
                 plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
@@ -261,7 +270,7 @@ class PartialPressurePlotter:
         n = [cr[1] for cr in carrier_concentrations] 
         for name in defect_concentrations[0]:
             conc = [c[name] for c in defect_concentrations]
-            label_txt = self.da._get_formatted_legend(name)
+            label_txt = self._get_formatted_legend(name)
             plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
@@ -290,6 +299,52 @@ class PartialPressurePlotter:
         return mod_label
     
 
+    def _get_formatted_legend(self,name):
+        
+        if '-' not in [c for c in name]:        
+            flds = name.split('_')
+            if 'Vac' == flds[0]:
+                base = '$V'
+                sub_str = '_{' + flds[1] + '}$'
+            elif 'Sub' == flds[0]:
+                flds = name.split('_')
+                base = '$' + flds[1]
+                sub_str = '_{' + flds[3] + '}$'
+            elif 'Int' == flds[0]:
+                base = '$' + flds[1]
+                sub_str = '_{int}$'
+            else:
+                base = name
+                sub_str = ''
+    
+            return  base + sub_str
+        
+        else:
+            label = ''
+            names = name.split('-')
+            for name in names:
+                flds = name.split('_')
+                if '-' not in flds:
+                    if 'Vac' == flds[0]:
+                        base = '$V'
+                        sub_str = '_{' + flds[1] + '}$'
+                    elif 'Sub' == flds[0]:
+                        flds = name.split('_')
+                        base = '$' + flds[1]
+                        sub_str = '_{' + flds[3] + '}$'
+                    elif 'Int' == flds[0]:
+                        base = '$' + flds[1]
+                        sub_str = '_{int}$'
+                    else:
+                        base = name
+                        sub_str = ''
+            
+                    if names.index(name) != (len(names) - 1):
+                        label += base + sub_str + '-'
+                    else:
+                        label += base + sub_str
+            
+            return label
     
     
 
