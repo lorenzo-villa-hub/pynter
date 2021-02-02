@@ -453,8 +453,8 @@ class ChempotAnalysis:
                     comp2 = c
         return comp1.reduced_composition,comp2.reduced_composition
             
-        
-        
+
+    
 class PDHandler:
     
     def __init__(self,phase_diagram):
@@ -546,8 +546,15 @@ class PDHandler:
         factor = entry.composition.get_reduced_composition_and_factor()[1]
         return pd.get_form_energy(entry)/factor
 
+    def get_plot(self,**kwargs):
+        """
+        Get plot with Pymatgen
+        """
+        PDPlotter(self.pd,show_unstable=0,backend='matplotlib').get_plot(**kwargs)
+        return plt
 
-    def get_stability_diagram(self,elements,size=None):
+
+    def get_stability_diagram(self,elements):
         """
         Method to get stability diagram with 'get_chempot_range_map_plot' method in pymatgen
 

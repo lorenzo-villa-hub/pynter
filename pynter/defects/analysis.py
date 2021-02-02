@@ -10,163 +10,17 @@ from pymatgen.electronic_structure.dos import FermiDos
 import matplotlib
 import matplotlib.pyplot as plt
 from pynter.defects.pmg_dos import FermiDosCarriersInfo
-
-class SingleDefectData:
-    
-    def __init__(self,bulk_structure,delta_atoms,energy_diff,corrections,charge=0,multiplicity=1,name=None,defect_site=None):
-        """
-        Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
-
-        Args:
-            bulk_structure: Pymatgen Structure without any defects
-            delta_atoms ({Element:number}): dictionary with the difference btw the number of atoms in the defect structure 
-                         for each specie (pmg Element object). The number is negative is atoms has been removed and 
-                         positive if atoms have been added
-            energy_diff (float): difference btw energy of defect structure and energy of pure structure
-            corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
-                                added to the defect formation energy.            
-            charge: (int or float) defect charge
-                    default is zero, meaning no change to NELECT after defect is created in the structure 
-            multiplicity: (int).
-                Multiplicity of the defect. Default is 1.                        
-            name (str): Name of the defect structure
-            defect_site (Pymatgen Site object): site for defect within structure
-                                must have same lattice as structure                
-        """        
-        self._bulk_structure = bulk_structure
-        self._delta_atoms = delta_atoms
-        self._energy_diff = energy_diff
-        self._corrections = corrections if corrections else {}
-        self._charge = charge 
-        self._multiplicity = multiplicity
-        self._name = name if name else None
-        self._defect_site = defect_site if defect_site else None
-        if defect_site:
-            if bulk_structure.lattice != defect_site.lattice:
-                raise ValueError("defect_site lattice must be same as bulk_structure lattice.")
-        
-    @property
-    def bulk_structure(self):
-        return self._bulk_structure
-    
-    @property
-    def delta_atoms(self):
-        return self._delta_atoms
-    
-    @property
-    def energy_diff(self):
-        return self._energy_diff
-    
-    @property
-    def corrections(self):
-        return self._corrections
-
-    @property
-    def charge(self):
-        return self._charge
-    
-    @property
-    def multiplicity(self):
-        return self._multiplicity
-    
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def defect_site(self):
-        return self._defect_site
+from pynter.defects.utils import get_delta_atoms
+from pynter.defects.entries import SingleDefectEntry
+from monty.json import MontyDecoder, MSONable
+import pandas as pd
 
 
-    def as_dict(self):
-        """
-        Returns:
-            Json-serializable dict representation of SignleDefectData
-        """
-        d = {"@module": self.__class__.__module__,
-             "@class": self.__class__.__name__,
-             "bulk_structure": self.bulk_structure.as_dict(),
-             "delta_atoms": {e.symbol:self.delta_atoms[e] for e in self.delta_atoms},
-             "energy_diff": self.energy_diff,
-             "corrections": self.corrections,
-             "charge": self.charge,
-             "multiplicity": self.multiplicity,
-             "name": self.name,
-             "defect_site":self.defect_site.as_dict() if self.defect_site else None
-             }
-        return d        
-
-    @classmethod
-    def from_dict(cls,d):
-        """
-        Reconstitute a SingleDefectData object from a dict representation created using
-        as_dict().
-
-        Args:
-            d (dict): dict representation of SingleDefectData.
-
-        Returns:
-            SingleDefectData object
-        """
-        bulk_structure = Structure.from_dict(d['bulk_structure'])
-        delta_atoms = {Element(e):d['delta_atoms'][e] for e in d['delta_atoms']}
-        energy_diff = d['energy_diff']
-        corrections = d['corrections']
-        charge = d['charge']
-        if 'multiplicity' in d.keys(): # adapt to import old dict
-            multiplicity = d['multiplicity']
-        else:
-            multiplicity = 1
-        name = d['name']
-        defect_site = PeriodicSite.from_dict(d['defect_site']) if d['defect_site'] else None
-        return cls(bulk_structure,delta_atoms,energy_diff,corrections,charge,multiplicity,name,defect_site)
-
-    def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
-        """
-        Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
-        Args:
-            vbm(float): Valence band maximum of pure structure
-            chemical_potentials (dict): Dictionary of elemental chemical potential values.
-                Keys are Element objects within the defect structure's composition.
-                Values are float numbers equal to the atomic chemical potential for that element.
-            fermi_level (float):  Value corresponding to the electron chemical potential.
-            """
-            
-        formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
-                       sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 
-                        ) 
-        
-        if chemical_potentials:
-            chempot_correction = -1 * sum([self.delta_atoms[el]*chemical_potentials[el] for el in self.delta_atoms])
-        else:
-            chempot_correction = 0
-            
-        formation_energy = formation_energy + chempot_correction
-        
-        return formation_energy
-    
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
-        """
-        Compute the defect concentration for a temperature and Fermi level.
-        Args:
-            temperature:
-                the temperature in K
-            fermi_level:
-                the fermi level in eV (with respect to the VBM)
-        Returns:
-            defects concentration in cm^-3
-        """
-        n = self.multiplicity * 1e24 / self.bulk_structure.volume
-        conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
-                          (kb * temperature))
-        return conc
-    
-    
 class DefectsAnalysis:
     """ 
     Class to compute defect properties starting from single calculations of defects
     Args:
-        defect_entries ([SingleDefectData]): A list of SingleDefectData objects
+        entries (list): A list of SingleDefectEntry objects
         vbm (float): Valence Band energy to use for all defect entries.
             NOTE if using band shifting-type correction then this VBM
             should still be that of the GGA calculation
@@ -176,12 +30,19 @@ class DefectsAnalysis:
             NOTE if using band shifting-type correction then this gap
             should still be that of the Hybrid calculation you are shifting to.       
     """    
-    def __init__(self, defect_entries, vbm, band_gap):
-        self.defect_entries = defect_entries
+    def __init__(self, entries, vbm, band_gap, sort_entries = True):
+        self.entries = sorted(entries, key=lambda x: x.name) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap
-        
 
+
+    def __str__(self):     
+        return self.get_dataframe().__str__()
+            
+    def __repr__(self):
+        return self.__str__()
+    
+    
     def as_dict(self):
         """
         Returns:
@@ -190,7 +51,7 @@ class DefectsAnalysis:
         d = {
         "@module": self.__class__.__module__,
         "@class": self.__class__.__name__,
-        "defect_entries": [entry.as_dict() for entry in self.defect_entries],
+        "entries": [entry.as_dict() for entry in self.entries],
         "vbm":self.vbm,
         "band_gap":self.band_gap
             }
@@ -209,12 +70,138 @@ class DefectsAnalysis:
         Returns:
             DefectsAnalysis object
         """
-        defect_entries = [SingleDefectData.from_dict(entry_dict) for entry_dict in d['defect_entries']]        
+        entries = [MontyDecoder().process_decoded(entry_dict) for entry_dict in d['entries']]        
         vbm = d['vbm']
         band_gap = d['band_gap']
-        return cls(defect_entries,vbm,band_gap)
+        return cls(entries,vbm,band_gap)
     
     
+    @property
+    def names(self):
+        """
+        Returns a list with all the different names of defect entries
+        """
+        
+        names = []
+        for d in self.entries:
+            if d.name not in names:
+                names.append(d.name)
+        
+        return names
+    
+   
+    def filter_entries(self,entries):
+        """
+        Returns another DefectsAnalysis object containing only the given entries
+
+        Parameters
+        ----------
+        entries : (list)
+            List of defect entries.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """
+        entries = []
+        for e in self.entries:
+            if e in entries:
+                entries.append(e)
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+    
+    
+    def filter_entries_by_elements(self,elements,get_intrinsic=True):
+        """
+        Returns another DefectsAnalysis object containing only entries 
+        whose names are in the list.
+
+        Parameters
+        ----------
+        names : (list)
+            List of entry names.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """
+        entries = []
+        elements = [Element(el) for el in elements]
+
+                
+        for e in self.entries:
+            flt_el = elements.copy()
+            if get_intrinsic:
+                for el in e.bulk_structure.composition.elements:
+                    flt_el.append(el)
+            for el in e.delta_atoms:
+                if el in flt_el:
+                    select = True
+                else:
+                    select = False
+                    break
+            if select:
+                entries.append(e)
+                
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+    
+    
+    def filter_entries_by_name(self,names):
+        """
+        Returns another DefectsAnalysis object containing only entries 
+        whose names are in the list.
+
+        Parameters
+        ----------
+        names : (list)
+            List of entry names.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """
+        entries = []
+        for e in self.entries:
+            if e.name in names:
+                entries.append(e)
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+    
+    
+    def find_entries_by_type_and_specie(self,dtype,dspecie):
+        """
+        Find entries by selecting defect type and defect specie. Finds only SingleDefectEntry objects.
+
+        Parameters
+        ----------
+        dtype : (str)
+            Class name of defect type ('Vacancy','Interstitial','Substitution').
+        dspecie : (str)
+            Symbol of the element of defect specie.
+
+        Returns
+        -------
+        sel_entries : (list)
+            List of SingleDefectEntry objects.
+        """
+        sel_entries = []
+        for e in self.entries:
+            if e.classname == 'SingleDefectEntry':
+                if e.defect.__class__.__name__ == dtype and e.defect.site.specie.symbol == dspecie:
+                    sel_entries.append(e)
+        return sel_entries
+    
+    def find_entries_by_name(self,name):        
+        sel_entries = []
+        for e in self.entries:
+            if e.name == name:
+                sel_entries.append(e)
+        return sel_entries
+               
+    def find_entry_by_name_and_charge(self,name,charge):
+        for e in self.find_entries_by_name(name):
+            if e.charge == charge:
+                return e
+
+
     def binding_energy(self,name,fermi_level=0):
         """
         Args:
@@ -223,38 +210,20 @@ class DefectsAnalysis:
         Returns:
             binding_energy (float)
         """
-        # finding entry associated to 'name'        
-        for entry in self.defect_entries:
-            if entry.name == name:
-                defect_complex = entry
-                break
-        
-        # finding names and elements of single defects of which the complex is made
-        single_defects = {}
-        for el in entry.delta_atoms:
-            # sign of delta atoms - if > 0 interstitial, if < 0 vacancy
-            sign_el = 1 if entry.delta_atoms[el]>0 else -1 if entry.delta_atoms[el]<0 else 0
-            for d in self.defect_entries:
-                # has to be a single defect - delta_atoms needs to have only 1 key
-                if el in d.delta_atoms and len(d.delta_atoms.keys()) == 1:
-                    # sign in delta atoms of single defect has to be the same (Vacancy or interstitial)
-                    sign_el_single = 1 if d.delta_atoms[el]>0 else -1 if d.delta_atoms[el]<0 else 0 
-                    if sign_el == sign_el_single:
-                        # add name to dict of single defects to consider for binding energy
-                        single_defects[el] = d.name
-        
-        # getting stable charge states at desired fermi level                    
-        stable_charges = self.stable_charges(None,fermi_level=fermi_level)
-        # energy of defect complex
+        stable_charges = self.stable_charges(None,fermi_level)
+        charge = stable_charges[name][0]
         binding_energy = stable_charges[name][1]
-        # subtracting sum of energies of single defects
-        binding_energy += -1 * sum([abs(defect_complex.delta_atoms[el]) * stable_charges[single_defects[el]][1]
-                                    for el in defect_complex.delta_atoms])
-    
+        entry = self.find_entry_by_name_and_charge(name, charge)
+        for sd in entry.defect_list:
+            dtype = sd.__class__.__name__
+            dspecie = sd.site.specie.symbol
+            dname = self.find_entries_by_type_and_specie(dtype,dspecie)[0].name
+            binding_energy = binding_energy - stable_charges[dname][1]    
+        
         return binding_energy
 
 
-    def carrier_concentrations_intrinsic(self,bulk_dos,temperature=300,fermi_level=0.):
+    def carrier_concentrations(self,bulk_dos,temperature=300,fermi_level=0.):
         """
         Get intrinsic carrier concentrations by integrating over the density of states
         given a fixed Fermi level
@@ -274,148 +243,6 @@ class DefectsAnalysis:
         
         return abs(h) , abs(n)
 
-
-    def carrier_concentrations_total(self,chemical_potentials,bulk_dos,temperature=300,fermi_level=0.):
-        """
-        Get carrier concentrations by summing charges coming from defects and intrinsic carriers
-        given a fixed Fermi level
-        Args:
-            chemical_potentials: dict of chemical potentials to use for calculation fermi level
-            bulk_dos: bulk system dos (pymatgen Dos object)
-            temperature: Temperature to equilibrate fermi energies for
-            fermi_level: (float) is fermi level relative to valence band maximum
-                Default efermi = 0 = VBM energy         
-        Returns:
-            total positive charge concentration ,total negative charge concentration in absolute values
-        """
-                
-        ef = fermi_level
-
-        qd_negative = sum([
-            d['charge'] * d['conc']
-            for d in self.defect_concentrations(
-                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            if d['charge'] < 0
-            ])
-        
-        qd_positive = sum([
-            d['charge'] * d['conc']
-            for d in self.defect_concentrations(
-                chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            if d['charge'] > 0
-            ])
-        h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
-        
-        qtot_positive = abs(qd_positive) + h
-        qtot_negative = abs(qd_negative) + n
-
-        return qtot_positive , qtot_negative
-    
-
-    def carrier_concentrations_total_non_eq(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
-                                            external_defects=[],temperature=300, fermi_level=0.):
-        """
-        Calculate charge carriers concentrations in non-equilibrium conditions. The contribution to the total charge concentration
-        of the defects can arise from 3 different contributions (groups):
-            - D1 : frozen defects with defect specie present in defect entries
-            - D2 : normal defects with defect specie present in defect entries
-            - D3 : external defects not present in defect entries, with fixed concentration and charge
-            
-        The group D1 is the less straightforward. Frozen defects can also be relative to another system and another temperature,
-        but only the ones with names found in the defect entries will be computed. 
-        This part will account for a fixed installed distribution of intrisic defects that are allowed to 
-        change their charge state. One example would be to equilibrate the system with concentrations
-        of intrinsic defects installed in another phase at a higher temperature, that are considered constant 
-        (kinetically trapped) as the temperature lowers and the phases changes. The variation of the charge states is 
-        accounted for in the solution of the charge neutrality by defining a charge state distribution for every defect
-        specie, which depends of the fermi level. 
-        If a defect entry is not found in group D1 is considered to belong to group D2. The number of elements of 
-        D1 U D2 will be equal to the muber of defect entries.
-        The charge concentration associated to group D2 is treated as in the "equilibrium_fermi_level" function.
-        The charge concentration associated to group D3 is a number and thus not Fermi level dependent.
-        
-        Parameters
-        ----------
-        frozen_defect_concentrations : (list)
-            List of defect concentrations. Most likely generated with the defect_concentrations() method. It is not
-            recommended to generate this manually.
-        chemical_potentials : (Dict)
-            Dictionary of chemical potentials in the format {Element('el'):chempot}.
-        bulk_dos : (CompleteDos object)
-            Pymatgen CompleteDos object of the DOS of the bulk system.
-        external_defects : (list)
-            List of external defect concentrations (not present in defect entries).
-        temperature : (float), optional
-            Temperature to equilibrate the system to. The default is 300.
-        fermi_level : (float)
-            Fermi level at which charge carriers need to be computed.
-
-        Returns
-        -------
-        qtot_positive, qtot_negative (float,float)
-            Absolute value of total positive and negative charge concentrations
-        """
-        ef = fermi_level        
-        fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
-        _,fdos_vbm = fdos.get_cbm_vbm()
-        
-        c_tot_frozen = {}       
-        for d in frozen_defect_concentrations:
-            name = d['name']
-            if name in self.names():           
-                if name not in c_tot_frozen:
-                    c_tot_frozen[name] = d['conc']
-                else:
-                    c_tot_frozen[name] += d['conc']
-            else:
-                print(f'Warning: Frozen defect named "{name}" is not in the list of computed defects and will not contribute to the calculation')
-        
-        for name in self.names():
-            if name not in c_tot_frozen:
-                c_tot_frozen[name] = 0 #if specie is not frozen its contribution in the sum with frozen defects is 0
-            
-            # defect concentrations that depend on ef
-            conc_ef = self.defect_concentrations(chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            
-            c_tot_specie = {}
-            for name in self.names():
-                c_tot_specie[name] = 0
-                for d in conc_ef:
-                    if d['name'] == name:
-                        c_tot_specie[name] += d['conc']
-            
-        qd_positive=0
-        qd_negative=0
-        #frozen defects - D1
-        for d in conc_ef:
-            if c_tot_frozen[d['name']] != 0 and c_tot_specie[d['name']] > 1e-250: #if smaller then 1e-300 you get division by zero Error
-                if d['charge'] > 0:
-                    qd_positive += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
-                elif d['charge'] < 0:
-                    qd_negative += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
-        
-        # normal defects - D2
-        for d in conc_ef:
-            if c_tot_frozen[d['name']] == 0:
-                if d['charge'] > 0:
-                    qd_positive += d['charge']*d['conc']
-                elif d['charge'] < 0:
-                    qd_negative += d['charge']*d['conc'] 
-
-        #external fixed defects - D3
-        for d_ext in external_defects:
-            if d['charge'] > 0:
-                qd_positive += d_ext['charge']*d_ext['conc']
-            elif d['charge'] < 0:
-                qd_negative += d_ext['charge']*d_ext['conc']
-        
-        h, n = self.carrier_concentrations_intrinsic(bulk_dos,temperature=temperature,fermi_level=ef)
-
-        qtot_positive = abs(qd_positive + h)
-        qtot_negative = abs(qd_negative + n)
-
-        return qtot_positive , qtot_negative
-    
            
     def charge_transition_level(self,name,q1,q2):
         """
@@ -440,7 +267,6 @@ class DefectsAnalysis:
         return charge_transition_level
     
     
-    
     def charge_transition_levels(self, energy_range=None):
         """
         Computes charge transition levels for all defect entries
@@ -454,14 +280,14 @@ class DefectsAnalysis:
         
         # set charge_transition_levels dict
         charge_transition_levels = {}
-        for name in self.names():
+        for name in self.names:
             charge_transition_levels[name] = []
 
         if energy_range == None:
             energy_range = (-0.5,self.band_gap +0.5)
         
         # creating energy array
-        npoints = 1000
+        npoints = 3000
         step = abs(energy_range[1]-energy_range[0])/npoints
         e = np.arange(energy_range[0],energy_range[1],step)
         
@@ -491,7 +317,7 @@ class DefectsAnalysis:
             list of dictionaries of defect concentrations
         """
         concentrations = []
-        for dfct in self.defect_entries:
+        for dfct in self.entries:
             concentrations.append({
                 'conc':
                 dfct.defect_concentration(
@@ -557,7 +383,7 @@ class DefectsAnalysis:
         """
         
         total_concentrations = {}
-        for name in self.names():
+        for name in self.names:
             total_concentrations[name] = 0
             for d in self.defect_concentrations(chemical_potentials=chemical_potentials,
                                                 temperature=temperature,fermi_level=fermi_level):
@@ -595,9 +421,51 @@ class DefectsAnalysis:
         return bisect(_get_total_q, -1., self.band_gap + 1.)
             
 
+    def _get_frozen_charge(self,frozen_defect_concentrations, chemical_potentials, temperature, fermi_level,ignore_multiplicity):
+        
+        conc = self.defect_concentrations(chemical_potentials,temperature,fermi_level)
+        total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level)
+        frozen_conc = frozen_defect_concentrations
+        if ignore_multiplicity:
+            for d in conc:
+                d['name'] = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
+            total_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : total_conc[n] for n in total_conc}
+            frozen_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : frozen_conc[n] for n in frozen_conc}
 
+        qd_tot = 0
+        for d in conc:
+            name = d['name'] 
+            entry = self.find_entry_by_name_and_charge(name,d['charge'])
+            c = d['conc']
+            #handle defect complex case
+            if entry.__class__.__name__ == 'DefectComplexEntry': 
+                complex_elements = [d.site.specie.symbol for d in entry.defect_list]
+                for el in complex_elements:
+                    for name in frozen_conc.keys():
+                        if el in name:
+                            if name in total_conc.keys():
+                                c = c * (frozen_conc[name] / total_conc[name])
+                            else:
+                                print(f'Warning: Defect with name {name} is not in defect entries and will not affect the calculation')
+                qd_tot += d['charge'] * c
+            
+            #handle single defect case
+            else: 
+                # D1 group
+                if name in frozen_conc.keys():
+                    if name in total_conc.keys():
+                        qd_tot += d['charge'] * d['conc'] * (frozen_conc[name] / total_conc[name])
+                    else:
+                        print(f'Warning: Defect with name {name} is not in defect entries and will not affect the calculation')
+                # D2 group
+                else: 
+                    qd_tot += d['charge'] * d['conc']
+                
+        return qd_tot
+        
+        
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
-                                        external_defects=[], temperature=300):
+                                        external_defects=[], temperature=300,ignore_multiplicity=False):
         """
         Solve charge neutrality in non-equilibrium conditions. The contribution to the total charge concentration
         of the defects can arise from 3 different contributions (groups):
@@ -640,44 +508,11 @@ class DefectsAnalysis:
         
         fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
         _,fdos_vbm = fdos.get_cbm_vbm()
-        
-        c_tot_frozen = {}       
-        for d in frozen_defect_concentrations:
-            name = d['name']
-            if name in self.names():           
-                if name not in c_tot_frozen:
-                    c_tot_frozen[name] = d['conc']
-                else:
-                    c_tot_frozen[name] += d['conc']
-            else:
-                print(f'Warning: Frozen defect named "{name}" is not in the list of computed defects and will not contribute to the calculation')
-        
-        for name in self.names():
-            if name not in c_tot_frozen:
-                c_tot_frozen[name] = 0 #if specie is not frozen its contribution in the sum with frozen defects is 0
 
         def _get_total_q(ef):
             
-            # defect concentrations that depend on ef
-            conc_ef = self.defect_concentrations(chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
-            
-            c_tot_specie = {}
-            for name in self.names():
-                c_tot_specie[name] = 0
-                for d in conc_ef:
-                    if d['name'] == name:
-                        c_tot_specie[name] += d['conc']
-            
-            qd_tot=0
-            #frozen defects - D1
-            for d in conc_ef:
-                if c_tot_frozen[d['name']] != 0 and c_tot_specie[d['name']] > 1e-250: #if smaller then 1e-300 you get division by zero Error
-                    qd_tot += d['charge'] * (1/c_tot_specie[d['name']]) * d['conc'] * c_tot_frozen[d['name']]
-            
-            # normal defects - D2
-            for d in conc_ef:
-                if c_tot_frozen[d['name']] == 0:
-                    qd_tot += d['charge']*d['conc']
+            # get groups D1 and D2
+            qd_tot = self._get_frozen_charge(frozen_defect_concentrations, chemical_potentials,temperature,ef,ignore_multiplicity)
 
             #external fixed defects - D3
             for d_ext in external_defects:
@@ -688,7 +523,58 @@ class DefectsAnalysis:
             return qd_tot
                        
         return bisect(_get_total_q, -1., self.band_gap + 1.)
+            
+     
+    def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False):
+        """
+        Get DataFrame to display entries. 
 
+        Parameters
+        ----------
+        filter_names : (list), optional
+            Only entries whose name is on the list will be displayed. The default is None.
+        include_bulk: (bool), optional
+            Include bulk composition and space group for each entry in DataFrame.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if filter_names:
+            entries = []
+            for name in filter_names:
+                en = self.find_entries_by_name(name)
+                for e in en:
+                    entries.append(e)
+        else:
+            entries = self.entries
+        d = {}
+        index = []
+        table = []
+        for e in entries:
+            symbol = self._get_formatted_legend(e.name)
+            if pretty:
+                index.append(symbol)
+            else:
+                index.append(e.name)
+            d = {}
+            if include_bulk:
+                d['bulk composition'] = e.bulk_structure.composition.formula
+                d['bulk space group'] = e.bulk_structure.get_space_group_info()
+            if not pretty:
+                d['symbol'] = symbol    
+                d['delta atoms'] = e.delta_atoms
+            d['charge'] = e.charge
+            d['multiplicity'] = e.multiplicity
+            table.append(d)
+        df = pd.DataFrame(table,index=index)
+        if pretty:
+            df.index.name = 'symbol'
+        else:
+            df.index.name = 'name'
+        return df
+    
     
     def formation_energies(self,chemical_potentials,fermi_level=0):
         """
@@ -706,7 +592,7 @@ class DefectsAnalysis:
         """
 
         computed_charges = {}
-        for d in self.defect_entries:
+        for d in self.entries:
             name = d.name
             if name in computed_charges:
                 computed_charges[name].append((d.charge,d.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
@@ -715,23 +601,10 @@ class DefectsAnalysis:
                 computed_charges[name].append((d.charge,d.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
         
         return computed_charges
-   
-    
-    def names(self):
-        """
-        Returns a list with all the different names of defect entries
-        """
-        
-        names = []
-        for d in self.defect_entries:
-            if d.name not in names:
-                names.append(d.name)
-        
-        return names
             
     
-    def plot(self,mu_elts=None,xlim=None, ylim=None, title=None, fermi_level=None, 
-             plotsize=1, fontsize=1.2, show_legend=True, format_legend=False, 
+    def plot(self,mu_elts=None,filter_names=None,xlim=None, ylim=None, title=None, fermi_level=None, 
+             plotsize=1, fontsize=1.2, show_legend=True, format_legend=True, 
              order_legend=False, get_subplot=False, subplot_settings=None):
         """
         Produce defect Formation energy vs Fermi energy plot
@@ -739,6 +612,9 @@ class DefectsAnalysis:
             mu_elts:
                 a dictionnary of {Element:value} giving the chemical
                 potential of each element
+            filter_names: (list)
+                Display plot only of defect specie whose names are in the list.
+                If None all defect species are displayed. The default is None.
             xlim:
                 Tuple (min,max) giving the range of the x (fermi energy) axis
             ylim:
@@ -822,27 +698,17 @@ class DefectsAnalysis:
        
             # if format_legend is True get latex-like legend
             if format_legend:
-                flds = name.split('_')
-                if 'Vac' == flds[0]:
-                    base = '$V'
-                    sub_str = '_{' + flds[1] + '}$'
-                elif 'Sub' == flds[0]:
-                    flds = name.split('_')
-                    base = '$' + flds[1]
-                    sub_str = '_{' + flds[3] + '}$'
-                elif 'Int' == flds[0]:
-                    base = '$' + flds[1]
-                    sub_str = '_{int}$'
-                else:
-                    base = name
-                    sub_str = ''
-    
-                label_txt = base + sub_str
+                label_txt = self._get_formatted_legend(name)
             else:
                 label_txt = name
-                
-            plt.plot(x,emin,label=label_txt,linewidth=3)
-            plt.scatter(x_star,y_star,s=120,marker='*')
+            
+            if filter_names:
+                if name in filter_names:
+                    plt.plot(x,emin,label=label_txt,linewidth=3)
+                    plt.scatter(x_star,y_star,s=120,marker='*')
+            else:
+                plt.plot(x,emin,label=label_txt,linewidth=3)
+                plt.scatter(x_star,y_star,s=120,marker='*')
                         
         plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
         plt.axvline(x=self.band_gap, linestyle='-', color='k',
@@ -869,19 +735,70 @@ class DefectsAnalysis:
 
         return plt
      
+
+    def _get_formatted_legend(self,name):
+        
+        if '-' not in [c for c in name]:        
+            flds = name.split('_')
+            if 'Vac' == flds[0]:
+                base = '$V'
+                sub_str = '_{' + flds[1] + '}$'
+            elif 'Sub' == flds[0]:
+                flds = name.split('_')
+                base = '$' + flds[1]
+                sub_str = '_{' + flds[3] + '}$'
+            elif 'Int' == flds[0]:
+                base = '$' + flds[1]
+                sub_str = '_{int}$'
+            else:
+                base = name
+                sub_str = ''
     
-    def plot_binding_energies(self, names, xlim=None, ylim=None, size=1):
+            return  base + sub_str
+        
+        else:
+            label = ''
+            names = name.split('-')
+            for name in names:
+                flds = name.split('_')
+                if '-' not in flds:
+                    if 'Vac' == flds[0]:
+                        base = '$V'
+                        sub_str = '_{' + flds[1] + '}$'
+                    elif 'Sub' == flds[0]:
+                        flds = name.split('_')
+                        base = '$' + flds[1]
+                        sub_str = '_{' + flds[3] + '}$'
+                    elif 'Int' == flds[0]:
+                        base = '$' + flds[1]
+                        sub_str = '_{int}$'
+                    else:
+                        base = name
+                        sub_str = ''
+            
+                    if names.index(name) != (len(names) - 1):
+                        label += base + sub_str + '-'
+                    else:
+                        label += base + sub_str
+            
+            return label
+    
+    
+    def plot_binding_energies(self, names=None, xlim=None, ylim=None, size=1,format_legend=True):
         """
         Plot binding energies for complex of defects as a function of the fermi level
         Args:
             names: 
-                List of strings with names of defect complex as assigned in SingleDefectData object
+                List of strings with names of DefectComplexEntry. If None all DefectComplexEntry
+                objects are plotted.
             xlim:
                 Tuple (min,max) giving the range of the x (fermi energy) axis
             ylim:
                 Tuple (min,max) giving the range for the formation energy axis
             size:
                 Float multiplier to change plot size
+            format_legend:
+                Bool for getting latex-like legend based on the name of defect entries
         """
         
         plt.figure(figsize=(8*size,6*size))
@@ -894,11 +811,18 @@ class DefectsAnalysis:
         ef = np.arange(xlim[0],xlim[1]+0.1,(xlim[1]-xlim[0])/200)        
         binding_energy = np.zeros(len(ef))
         
+        names = []
+        for e in self.entries:
+            if e.classname == 'DefectComplexEntry':
+                if e.name not in names:
+                    names.append(e.name)
+        
         # getting binding energy at different fermi levels for every name in list
         for name in names:
+            label = self._get_formatted_legend(name) if format_legend else name
             for i in range(0,len(ef)):
                 binding_energy[i] = self.binding_energy(name,fermi_level=ef[i])            
-            plt.plot(ef,binding_energy, linewidth=2.5*size,label=name)
+            plt.plot(ef,binding_energy, linewidth=2.5*size,label=label)
             
         plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
         plt.axvline(x=self.band_gap, linestyle='-', color='k',
@@ -918,7 +842,6 @@ class DefectsAnalysis:
         return plt
     
     
-    
     def plot_ctl(self, ylim=None, size=1, fermi_level=None, format_legend=True):
         """
         Plotter for the charge transition levels
@@ -935,12 +858,8 @@ class DefectsAnalysis:
         if ylim == None:
             ylim = (-0.5,self.band_gap +0.5)
         
-        # get all charge transition levels
         charge_transition_levels = self.charge_transition_levels()
-        
-        # number of defect names
-        number_defects = len(charge_transition_levels)
-        
+        number_defects = len(charge_transition_levels)   
         x_max = 10
         interval = x_max/(number_defects + 1)
         x = np.arange(0,x_max,interval)
@@ -980,23 +899,8 @@ class DefectsAnalysis:
         
         # format latex-like legend
         if format_legend:    
-            for name in x_ticks_labels:
-                flds = name.split('_')
-                if 'Vac' == flds[0]:
-                    base = '$V'
-                    sub_str = '_{' + flds[1] + '}$'
-                elif 'Sub' == flds[0]:
-                    flds = name.split('_')
-                    base = '$' + flds[1]
-                    sub_str = '_{' + flds[3] + '}$'
-                elif 'Int' == flds[0]:
-                    base = '$' + flds[1]
-                    sub_str = '_{int}$'
-                else:
-                    base = name
-                    sub_str = ''
-            
-                x_ticks_labels[x_ticks_labels.index(name)] = base + sub_str
+             for name in x_ticks_labels:            
+                x_ticks_labels[x_ticks_labels.index(name)] = self._get_formatted_legend(name)
         
         
         if fermi_level:
@@ -1013,7 +917,7 @@ class DefectsAnalysis:
         plt.ylabel('Energy(eV)',fontsize=20*size)  
         
         return plt
-    
+   
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """
@@ -1048,8 +952,9 @@ class DefectsAnalysis:
         return stable_charges
         
             
-            
-            
+
+        
+        
         
         
         

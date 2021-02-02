@@ -10,6 +10,7 @@ import numpy as np
 from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 
+
 def is_site_in_structure(site,structure,tol=1e-03):
     """
     Check if Site is part of the Structure list. This function is needed because 
@@ -40,6 +41,36 @@ def is_site_in_structure(site,structure,tol=1e-03):
             return is_site_in_structure,index
     index=None
     return is_site_in_structure,index
+
+
+def is_site_in_structure_coords(site,structure,tol=1e-03):
+    """
+    Check if Site coordinates are prensent in the Structure list. 
+
+    Parameters
+    ----------
+    site : (Site)
+        PeriodicSite or Site object.
+    structure : (Structure)
+        Pymatgen Structure object.
+    tol : (float), optional
+        Tolerance for fractional coordinates. The default is 1e-03.
+
+    Returns
+    -------
+    is_site_in_structure_coords : (bool)
+    index : (int)
+        Index of site in structure in case site is_site_in_structure_coords returns True
+        If False index will be None.
+    """
+    is_site_in_structure_coords = False
+    for s in structure:
+        if np.allclose(site.frac_coords,s.frac_coords,rtol=tol):
+            is_site_in_structure_coords = True
+            index = structure.index(s)
+            return is_site_in_structure_coords,index
+    index=None
+    return is_site_in_structure_coords,index
 
 
 def view_structure_with_ase(structure):
