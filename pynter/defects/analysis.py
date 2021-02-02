@@ -426,13 +426,12 @@ class DefectsAnalysis:
         
         conc = self.defect_concentrations(chemical_potentials,temperature,fermi_level)
         total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level)
+        frozen_conc = frozen_defect_concentrations
         if ignore_multiplicity:
             for d in conc:
                 d['name'] = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
             total_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : total_conc[n] for n in total_conc}
-            for d in frozen_defect_concentrations:
-                d['name'] = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
-        frozen_conc = {fr['name']:fr['conc'] for fr in frozen_defect_concentrations}
+            frozen_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : frozen_conc[n] for n in frozen_conc}
 
         qd_tot = 0
         for d in conc:

@@ -146,6 +146,10 @@ class PartialPressurePlotter:
 
         Parameters
         ----------
+        partial_pressures : (list)
+            list with partial pressure values.
+        defect_concentrations : (list or dict)
+            Defect concentrations in the same format as the output of DefectsAnalysis. 
         defect_indexes : (list), optional
             List of indexes of the entry that need to be included in the plot. If None 
             all defect entries are included. The default is None.
@@ -196,6 +200,13 @@ class PartialPressurePlotter:
 
         Parameters
         ----------
+        partial_pressures : (list)
+            list with partial pressure values.
+        fermi_levels : (dict or list)
+            If is a dict multiples lines will be plotted, with labels as keys and fermi level list
+            as values. If is a list only one line is plotted with label taken from the "label" argument.
+        band_gap : (float)
+            Band gap of the bulk material.
         new_figure : (bool), optional
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
@@ -220,8 +231,13 @@ class PartialPressurePlotter:
         matplotlib.rcParams.update({'font.size': 22})
         if new_figure:
             plt.figure(figsize=(size))
-        p,mue = partial_pressures, fermi_levels
-        plt.plot(p,mue,linewidth=4,marker='s',label=label)
+        if isinstance(fermi_levels,dict):
+            for name,mue in fermi_levels.items():
+                p = partial_pressures
+                plt.plot(p,mue,linewidth=4,marker='s',label=name)
+        else:
+            p,mue = partial_pressures, fermi_levels
+            plt.plot(p,mue,linewidth=4,marker='s',label=label)
         plt.xscale('log')
         xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
