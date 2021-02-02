@@ -15,8 +15,7 @@ from pynter.defects.entries import SingleDefectEntry
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 
-    
-    
+
 class DefectsAnalysis:
     """ 
     Class to compute defect properties starting from single calculations of defects
