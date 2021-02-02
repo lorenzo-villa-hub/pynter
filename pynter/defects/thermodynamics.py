@@ -42,7 +42,7 @@ class PartialPressureAnalysis:
         self.external_defects = external_defects
     
     
-    def get_concentrations(self,pressure_range=(-20,10),concentrations_output='all'):
+    def get_concentrations(self,pressure_range=(-20,10),concentrations_output='all',npoints=50):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -69,7 +69,7 @@ class PartialPressureAnalysis:
         """
         
         res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
-                                                                  self.temperature,pressure_range=pressure_range)
+                                                                  self.temperature,pressure_range=pressure_range,npoints=npoints)
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
@@ -97,7 +97,7 @@ class PartialPressureAnalysis:
         return partial_pressures, defect_concentrations, carrier_concentrations
     
     
-    def get_fermi_levels(self,pressure_range=(-20,10)):
+    def get_fermi_levels(self,pressure_range=(-20,10),npoints=50):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -114,7 +114,7 @@ class PartialPressureAnalysis:
             List of Fermi level values
         """
         res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
-                                                                  self.temperature,pressure_range=pressure_range)
+                                                                  self.temperature,pressure_range=pressure_range,npoints=npoints)
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
