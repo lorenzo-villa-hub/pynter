@@ -7,41 +7,32 @@ Created on Fri Feb 21 10:59:10 2020
 """
 
 from pymatgen.io.vasp.inputs import Kpoints, Poscar, Potcar, VaspInput, Incar
+from pynter.vasp.__init__ import load_vasp_default
+import os
+
+homedir = os.getenv("HOME")
+cfgfile = os.path.join(homedir,'.pynter','vasp.yml')
+
 
 class DefaultInputs:
     """
     Class to generate VASP input files with default parameters. Use with extreme care.    
     """
     
-    def __init__(self,structure=None):
+    def __init__(self,structure=None,cfgfile=cfgfile):
         """
         Parameters
         ----------
         structure : Pymatgen Structure object. The default is None. If no Structure is given only default INCAR can be generated.
+        cfgfile : File with default VASP parameters. The default is "~./pynter.vasp.yml".
         """
-        self._structure = structure if structure else None       
-        self.default_potcar_symbols =  {
-           'Ac': 'Ac', 'Ag': 'Ag', 'Al': 'Al', 'Ar': 'Ar', 'As': 'As',
-           'Au': 'Au', 'B': 'B', 'Ba': 'Ba_sv', 'Be': 'Be_sv', 'Bi': 'Bi',
-           'Br': 'Br', 'C': 'C', 'Ca': 'Ca_sv', 'Cd': 'Cd', 'Ce': 'Ce',
-           'Cl': 'Cl', 'Co': 'Co', 'Cr': 'Cr_pv', 'Cs': 'Cs_sv', 'Cu': 'Cu_pv',
-           'Dy': 'Dy_3', 'Er': 'Er_3', 'Eu': 'Eu', 'F': 'F', 'Fe': 'Fe_pv',
-           'Ga': 'Ga_d', 'Gd': 'Gd', 'Ge': 'Ge_d', 'H': 'H', 'He': 'He', 
-           'Hf': 'Hf_pv', 'Hg': 'Hg', 'Ho': 'Ho_3', 'I': 'I', 'In': 'In_d',
-           'Ir': 'Ir', 'K': 'K_sv', 'Kr': 'Kr', 'La': 'La', 'Li': 'Li_sv', 
-           'Lu': 'Lu_3', 'Mg': 'Mg_pv', 'Mn': 'Mn_pv', 'Mo': 'Mo_pv', 'N': 'N',
-           'Na': 'Na', 'Nb': 'Nb_pv', 'Nd': 'Nd_3', 'Ne': 'Ne', 'Ni': 'Ni_pv',
-           'Np': 'Np', 'O': 'O', 'Os': 'Os_pv', 'P': 'P', 'Pa': 'Pa', 'Pb': 'Pb_d', 
-           'Pd': 'Pd', 'Pm': 'Pm_3', 'Pr': 'Pr_3', 'Pt': 'Pt', 'Pu': 'Pu',
-           'Rb': 'Rb_sv', 'Re': 'Re_pv', 'Rh': 'Rh_pv', 'Ru': 'Ru_pv', 'S': 'S',
-           'Sb': 'Sb', 'Sc': 'Sc_sv', 'Se': 'Se', 'Si': 'Si', 'Sm': 'Sm_3', 
-           'Sn': 'Sn_d', 'Sr': 'Sr_sv', 'Ta': 'Ta_pv', 'Tb': 'Tb_3', 'Tc': 'Tc_pv',
-           'Te': 'Te', 'Th': 'Th', 'Ti': 'Ti_pv', 'Tl': 'Tl_d', 'Tm': 'Tm_3', 
-           'U': 'U', 'V': 'V_pv', 'W': 'W_pv', 'Xe': 'Xe', 'Y': 'Y_sv', 
-           'Yb': 'Yb_2', 'Zn': 'Zn', 'Zr': 'Zr_sv'
-           }
-        self.potcar_symbols = [self.default_potcar_symbols[el.symbol] for el in self.structure.composition.elements]
-
+        self._structure = structure if structure else None 
+        defaults = load_vasp_default(cfgfile=cfgfile)
+        
+        self.default_potcar_symbols =  defaults['default_potcar_symbols']
+        if self.structure:
+            self.potcar_symbols = [self.default_potcar_symbols[el.symbol] for el in self.structure.composition.elements]
+        self.incar_default_flags = defaults['incar_default']
         
     @property
     def structure(self):
@@ -72,26 +63,9 @@ class DefaultInputs:
         """
         system = self.structure.composition.reduced_formula if self.structure else 'No system info'
           
-        incar_default_flags = {               
-                "IBRION": 2,
-                "NSW": 0,
-                "ISIF": 2,
-                "EDIFFG": -0.05,
-                "ISPIN": 1,
-                "LWAVE": ".TRUE.",
-                "LCHARG": ".TRUE.",
-                "LORBIT":10,
-                "ENCUT": 550,
-                "EDIFF": 1e-06,
-                "ISMEAR": 0,
-                "SIGMA": 0.05,
-                "NELM": 200,
-                "ALGO": "Normal",
-                "AMIX": 0.2,
-                "LREAL": ".FALSE.",
-                "SYSTEM": system                   
-                }
-        
+        incar_default_flags = self.incar_default_flags              
+        incar_default_flags["SYSTEM"] = system                   
+                     
         if xc == 'PBE':
             incar_default_flags.update({
                     "#### Default PBE: system" : system , 
