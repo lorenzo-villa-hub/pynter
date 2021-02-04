@@ -1,15 +1,15 @@
 HPC:
-  hostname: lichtenberg
-  localdir: /nfshome/villa/local-data
-  workdir: /work/scratch/lv51dypu
+  hostname: 
+  localdir: 
+  workdir: 
 
-API_KEY: DSR45TfHVuyuB1WvP1
+API_KEY: 
 
 job_settings:
-    project_id: '01136'
+    project_id:
     name: no_name
     array_size: 
-    email: villa@mm.tu-darmstadt.de
+    email: 
     nodes: 4
     cores_per_node: 24
     output_filename: out.%j
@@ -22,7 +22,7 @@ job_settings:
     - intel/2019.3
     - intelmpi/2019.3
     - fftw/3.3.8
-    path_exe: "/home/lv51dypu/vasp-5-3-3"
+    path_exe: 
     add_stop_array: true
     add_automation: 
     add_lines_header: 
