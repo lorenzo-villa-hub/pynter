@@ -554,7 +554,7 @@ class PDHandler:
         return plt
 
 
-    def get_stability_diagram(self,elements):
+    def get_stability_diagram(self,elements,size=None):
         """
         Method to get stability diagram with 'get_chempot_range_map_plot' method in pymatgen
 

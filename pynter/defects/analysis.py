@@ -89,8 +89,40 @@ class DefectsAnalysis:
         
         return names
     
-   
-    def filter_entries(self,entries):
+    
+    def filter_entries(self,entries=None,elements=None,get_intrinsic=True,names=None,**kwargs):
+        
+        sel_entries = entries if entries else self.entries.copy()
+        ent = sel_entries.copy()
+        for e in ent:
+            if e not in entries:
+                sel_entries.remove(e)
+ 
+        ent = sel_entries.copy()       
+        elements = [Element(el) for el in elements]
+        for e in ent:
+            flt_el = elements.copy()
+            if get_intrinsic:
+                for el in e.bulk_structure.composition.elements:
+                    flt_el.append(el)
+            for el in e.delta_atoms:
+                if el in flt_el:
+                    select = True
+                else:
+                    select = False
+                    break
+            if not select:
+                sel_entries.remove(e)       
+        
+        ent = sel_entries.copy()
+        for e in ent:
+            if e.name not in names:
+                sel_entries.remove(e)
+                
+        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+        
+        
+    def filter_entries_back(self,entries):
         """
         Returns another DefectsAnalysis object containing only the given entries
 
