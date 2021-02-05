@@ -90,112 +90,76 @@ class DefectsAnalysis:
         return names
     
     
-    def filter_entries(self,entries=None,elements=None,get_intrinsic=True,names=None,**kwargs):
-        
-        sel_entries = entries if entries else self.entries.copy()
-        ent = sel_entries.copy()
-        for e in ent:
-            if e not in entries:
-                sel_entries.remove(e)
- 
-        ent = sel_entries.copy()       
-        elements = [Element(el) for el in elements]
-        for e in ent:
-            flt_el = elements.copy()
-            if get_intrinsic:
-                for el in e.bulk_structure.composition.elements:
-                    flt_el.append(el)
-            for el in e.delta_atoms:
-                if el in flt_el:
-                    select = True
-                else:
-                    select = False
-                    break
-            if not select:
-                sel_entries.remove(e)       
-        
-        ent = sel_entries.copy()
-        for e in ent:
-            if e.name not in names:
-                sel_entries.remove(e)
-                
-        return DefectsAnalysis(entries, self.vbm, self.band_gap)
-        
-        
-    def filter_entries_back(self,entries):
+    def filter_entries(self,entries=None,entry_class=None,elements=None,get_intrinsic=True,names=None,**kwargs):
         """
-        Returns another DefectsAnalysis object containing only the given entries
+        Filter entries based on different criteria. Return another DefectsAnalysis object.
 
         Parameters
         ----------
         entries : (list)
             List of defect entries.
-
-        Returns
-        -------
-        DefectsAnalysis object.
-        """
-        entries = []
-        for e in self.entries:
-            if e in entries:
-                entries.append(e)
-        return DefectsAnalysis(entries, self.vbm, self.band_gap)
-    
-    
-    def filter_entries_by_elements(self,elements,get_intrinsic=True):
-        """
-        Returns another DefectsAnalysis object containing only entries 
-        whose names are in the list.
-
-        Parameters
-        ----------
+        entry_class : (str), optional
+            Class name of the entry. "SingleDefectEntry" or "DefectComplexEntry".
+        elements : (list), optional
+            List of symbols of elements that need to belong to the defect specie.
+            If None this criterion is ignored, if is an empty list the elements 
+            belonging to the bulk structure will be considered if get_intrinsic is True.
+            The default is None.
+        get_intrinsic : (bool), optional
+            If elements is not None add the intrinsic elements to the list of selected elements.
+            The default is True.
         names : (list)
             List of entry names.
+        **kwargs : (dict)
+            Criterion based on attributes or methods of defect entry (e.g. charge=1).
 
         Returns
         -------
         DefectsAnalysis object.
-        """
-        entries = []
-        elements = [Element(el) for el in elements]
 
-                
-        for e in self.entries:
-            flt_el = elements.copy()
-            if get_intrinsic:
-                for el in e.bulk_structure.composition.elements:
-                    flt_el.append(el)
-            for el in e.delta_atoms:
-                if el in flt_el:
-                    select = True
-                else:
-                    select = False
-                    break
-            if select:
-                entries.append(e)
-                
-        return DefectsAnalysis(entries, self.vbm, self.band_gap)
-    
-    
-    def filter_entries_by_name(self,names):
         """
-        Returns another DefectsAnalysis object containing only entries 
-        whose names are in the list.
-
-        Parameters
-        ----------
-        names : (list)
-            List of entry names.
-
-        Returns
-        -------
-        DefectsAnalysis object.
-        """
-        entries = []
-        for e in self.entries:
-            if e.name in names:
-                entries.append(e)
-        return DefectsAnalysis(entries, self.vbm, self.band_gap)
+        sel_entries = entries if entries else self.entries.copy()
+            
+        if entry_class:
+            ent = sel_entries.copy() 
+            for e in ent:
+                if e.classname != entry_class:
+                    sel_entries.remove(e)
+        
+        if elements is not None:
+            ent = sel_entries.copy()       
+            elements = [Element(el) for el in elements]
+            for e in ent:
+                flt_el = elements.copy()
+                if get_intrinsic:
+                    for el in e.bulk_structure.composition.elements:
+                        flt_el.append(el)
+                for el in e.delta_atoms:
+                    if el in flt_el:
+                        select = True
+                    else:
+                        select = False
+                        break
+                if not select:
+                    sel_entries.remove(e)       
+        
+        if names:
+            ent = sel_entries.copy()
+            for e in ent:
+                if e.name not in names:
+                    sel_entries.remove(e)
+        
+        for feature in kwargs:
+            ent = sel_entries.copy()
+            for e in ent:
+                try:
+                    attr = getattr(e,feature) ()
+                except:
+                    attr = getattr(e,feature)
+                if attr != kwargs[feature]:
+                    sel_entries.remove(e)
+                    
+        return DefectsAnalysis(sel_entries, self.vbm, self.band_gap)
     
     
     def find_entries_by_type_and_specie(self,dtype,dspecie):
