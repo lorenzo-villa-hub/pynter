@@ -10,6 +10,28 @@ from pynter.defects.analysis import DefectsAnalysis
 from pynter.phase_diagram.experimental import ChempotExperimental
 
 
+class Conductivity:
+
+    def __init__(self,mobilities):
+        self.mobilities = mobilities
+        
+    def get_conductivity(self,carrier_concentrations,defect_concentrations,temperature=300,ignore_multiplicity=False):
+        e = 1.60217662e-19
+        mob = self.mobilities
+        cc = carrier_concentrations
+        sigma_el = e * (mob['holes']*cc[0]+ mob['electrons']*cc[1])
+        dc = defect_concentrations
+        sigma_ionic = 0
+        for d in dc:
+            if ignore_multiplicity:
+                dname = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
+            else:
+                dname = d['name']
+            sigma_ionic += mob[dname] * d['conc'] * abs(d['charge']) * e *1e06 #concentrations need to be in 1/m**3
+        sigma = sigma_el + sigma_ionic
+        
+        return sigma
+
 
 class PartialPressureAnalysis:
     """
@@ -129,7 +151,6 @@ class PartialPressureAnalysis:
         return partial_pressures, fermi_levels
     
 
-    
 
 
 
