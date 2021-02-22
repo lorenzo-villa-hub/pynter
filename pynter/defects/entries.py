@@ -344,13 +344,16 @@ class DefectComplexEntry:
     
     @property
     def name(self):
-        names = []
-        for d in self.defect_list:
-            stripped = d.name.split('_mult', 1)[0]
-            names.append(stripped)
-        name = '-'.join(names)
+        name = '-'.join(self.defect_list_names)
         name = name + '_mult%i' %self.multiplicity
         return name
+    
+    @property
+    def defect_list_names(self):
+        names = []
+        for d in self.defect_list:
+            names.append(d.name.split('_mult', 1)[0])
+        return names
     
     @property
     def delta_atoms(self):
