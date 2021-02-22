@@ -315,19 +315,19 @@ class DefectsAnalysis:
         """
         concentrations = []
         if frozen_defect_concentrations:
-            total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level)#,frozen_defect_concentrations=None)
+            total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
             frozen_conc = frozen_defect_concentrations
             # strip multiplicity part  
             for n in total_conc:
-                new_key = '_'.join([s for s in n.split('_') if 'mult' not in s])
+                new_key = n.split('_mult', 1)[0]
                 total_conc[new_key] = total_conc.pop(n)
             for n in frozen_conc:
-                new_key = '_'.join([s for s in n.split('_') if 'mult' not in s])
+                new_key = n.split('_mult', 1)[0]
                 frozen_conc[new_key] = frozen_conc.pop(n)
         for e in self.entries:
             # frozen defects approach
             if frozen_defect_concentrations:
-                name = '_'.join([s for s in e.name.split('_') if 'mult' not in s])
+                name = e.name.split('_mult', 1)[0]
                 #handle defect complex case
                 if e.classname == 'DefectComplexEntry':
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
@@ -499,11 +499,10 @@ class DefectsAnalysis:
         def _get_total_q(ef):
             
             # get groups D1 and D2
-            qd_tot = 0
-            dc = self.defect_concentrations(chemical_potentials,temperature,fermi_level=ef,
-                                        frozen_defect_concentrations=frozen_defect_concentrations)
-            for d in dc:
-                qd_tot += d['charge'] * d['conc']
+            qd_tot = sum([
+                d['charge'] * d['conc']
+                for d in self.defect_concentrations(chemical_potentials,temperature,ef,
+                                                    frozen_defect_concentrations)])
 
             #external fixed defects - D3
             for d_ext in external_defects:
