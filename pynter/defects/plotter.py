@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
 
 class PartialPressurePlotter:
-    
+    """
+    Class to plot oxygen partial pressure dependencies
+    """
     def __init__(self,xlim=(1e-20,1e08)):
         
         self.xlim = xlim
@@ -28,6 +30,8 @@ class PartialPressurePlotter:
             list with partial pressure values.
         defect_concentrations : (list or dict)
             Defect concentrations in the same format as the output of DefectsAnalysis. 
+        carrier_concentrations : (list)
+            List of tuples with intrinsic carriers concentrations (holes,electrons).
         defect_indexes : (list), optional
             List of indexes of the entry that need to be included in the plot. If None 
             all defect entries are included. The default is None.
@@ -71,7 +75,61 @@ class PartialPressurePlotter:
         
         return plt
         
+
+    def plot_conductivity(self,partial_pressures,conductivities,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
+        """
+        Plot conductivity as a function of the oxygen partial pressure.
+
+        Parameters
+        ----------
+        partial_pressures : (list)
+            list with partial pressure values.
+        conductivities : (dict or list)
+            If is a dict multiples lines will be plotted, with labels as keys and conductivity list
+            as values. If is a list only one line is plotted with label taken from the "label" argument.
+        new_figure : (bool), optional
+            Initialize a new matplotlib figure. The default is True.
+        label : (str), optional
+            Label for the data. The default is None.
+        size : (tuple), optional
+            Size of the matplotlib figure. The default is (12,8).
+        xlim : (tuple), optional
+            Range of x-axis. The default is (1e-20,1e08).
+        ylim : (tuple), optional
+            Range of y-axis. The default is None.
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        if not label:
+            label = '$\sigma$'
+        matplotlib.rcParams.update({'font.size': 22})
+        if new_figure:
+            plt.figure(figsize=(size))
+        if isinstance(conductivities,dict):
+            for name,sigma in conductivities.items():
+                p = partial_pressures
+                plt.plot(p,sigma,linewidth=4,marker='s',label=name)
+        else:
+            p,sigma = partial_pressures, conductivities
+            plt.plot(p,sigma,linewidth=4,marker='s',label=label)
+        plt.xscale('log')
+    #    plt.yscale('log')
+        xlim = xlim if xlim else self.xlim
+        plt.xlim(xlim)
+        if ylim:
+            plt.ylim(ylim)
+        plt.xlabel('Oxygen partial pressure (atm)')
+        plt.ylabel('Conductivity (S/m)')
+        plt.legend()
+        if new_figure:
+            plt.grid()
+        
+        return plt
    
+    
     def plot_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
         """
         Plot Fermi level as a function of the oxygen partial pressure.
@@ -89,8 +147,6 @@ class PartialPressurePlotter:
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
             Label for the data. The default is None.
-        pressure_range : (tuple), optional
-            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
         size : (tuple), optional
             Size of the matplotlib figure. The default is (12,8).
         xlim : (tuple), optional
@@ -144,12 +200,22 @@ class PartialPressurePlotter:
         p = partial_pressures
         dc = defect_concentrations
         h = [cr[0] for cr in carrier_concentrations] 
-        n = [cr[1] for cr in carrier_concentrations] 
+        n = [cr[1] for cr in carrier_concentrations]
+        previous_charge = None
         for i in range(0,len(defect_concentrations[0])):
             if filter_defects is False or (defect_indexes is not None and i in defect_indexes):
                 conc = [c[i]['conc'] for c in defect_concentrations]
+                charges = [c[i]['charge'] for c in defect_concentrations]
                 label_txt = self._get_formatted_legend(dc[0][i]['name'])
-                label_txt = self._format_legend_with_charge(label_txt,dc[0][i]['charge'])
+                if concentrations_output == 'all':
+                    label_txt = self._format_legend_with_charge(label_txt,dc[0][i]['charge'])
+                elif concentrations_output == 'stable':
+                    for q in charges:
+                        if q != previous_charge:
+                            previous_charge = q
+                            label_charge = '+' + str(q) if q > 0 else str(q)
+                            index = charges.index(q)
+                            plt.text(p[index],conc[index],label_charge,clip_on=True)
                 plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
