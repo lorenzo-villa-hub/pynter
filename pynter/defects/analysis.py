@@ -300,52 +300,104 @@ class DefectsAnalysis:
                             
         return charge_transition_levels
     
-    
-    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.):
+
+    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
+                              frozen_defect_concentrations=None):
         """
-        Give list of all concentrations at specified efermi
-        args:
-            chemical_potentials = {Element: number} is a dictionary of chemical potentials  
-            temperature = temperature to produce concentrations from
-            fermi_level: (float) is fermi level relative to valence band maximum
-                Default efermi = 0 = VBM energy
-        returns:
+        Give list of all concentrations at specified efermi.
+        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
+        is normalized starting from the input fixed concentration as:
+            C = C_eq * (Ctot_frozen/Ctot_eq)
+        while for DefectComplexEntry this is applied for every single defect specie which
+        is composing the complex (needs to be present in computed entries):
+            C = C_eq * prod(Ctot_frozen(i)/Ctot_eq(i))
+            
+        Parameters
+        ----------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
             list of dictionaries of defect concentrations
         """
         concentrations = []
-        for dfct in self.entries:
-            concentrations.append({
-                'conc':
-                dfct.defect_concentration(
-                    self.vbm, chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=fermi_level),
-                'name':
-                dfct.name,
-                'charge':
-                dfct.charge
-            })
+        if frozen_defect_concentrations:
+            total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
+            frozen_conc = frozen_defect_concentrations
+            total_conc_keys = list(total_conc.keys()) #to avoid errors when rewriting dict keys without multiplicity
+            frozen_conc_keys = list(frozen_conc.keys())
+            # strip multiplicity part  
+            for n in total_conc_keys:
+                new_key = n.split('_mult', 1)[0]
+                total_conc[new_key] = total_conc.pop(n)
+            for n in frozen_conc_keys:
+                new_key = n.split('_mult', 1)[0]
+                frozen_conc[new_key] = frozen_conc.pop(n)
+        for e in self.entries:
+            # frozen defects approach
+            if frozen_defect_concentrations:
+                name = e.name.split('_mult', 1)[0]
+                #handle defect complex case
+                if e.classname == 'DefectComplexEntry':
+                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
+                    defect_list_names = e.defect_list_names                        
+                    for dname in defect_list_names:
+                        if dname in frozen_conc.keys():
+                            if dname in total_conc.keys():
+                                c = c * (frozen_conc[dname] / total_conc[dname])
+                            else:
+                                print(f'Warning: frozen defect with name {dname} is not in defect entries')
+                #handle single defect case
+                else:
+                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
+                    if name in frozen_conc.keys():
+                        c = c * (frozen_conc[name] / total_conc[name])
+                d = {'conc':c,'name':e.name,'charge':e.charge}
+                concentrations.append(d)
+            
+            else:
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
+                d = {'conc':c,'name':e.name,'charge':e.charge}
+                concentrations.append(d)
+            
 
         return concentrations
-    
 
-    def defect_concentrations_stable_charges(self, chemical_potentials, temperature=300, fermi_level=0.):
+
+    def defect_concentrations_stable_charges(self, chemical_potentials, temperature=300, fermi_level=0.,
+                                             frozen_defect_concentrations=None):
         """
         Give list of concentrations of defects in their stable charge state at a specified efermi.
 
         Parameters
         ----------
-        chemical_potentials : (Dict)
-            Dictionary of chemical potentials.
-        temperature : (float), optional
-            Temperature. The default is 300.
-        fermi_level : (float), optional
-            Position of the Fermi level. The default is 0 (vbm).
-
-        Returns
-        -------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
         conc_stable : (list)
             List of dictionaries with concentrations of defects with stable charge states at a given efermi.
         """
-        concentrations = self.defect_concentrations(chemical_potentials,temperature=temperature,fermi_level=fermi_level)
+        concentrations = self.defect_concentrations(chemical_potentials,temperature,fermi_level,
+                                                    frozen_defect_concentrations)
         stable_charges = self.stable_charges(chemical_potentials,fermi_level=fermi_level)
         conc_stable = []
         for c in concentrations:
@@ -358,21 +410,26 @@ class DefectsAnalysis:
         return conc_stable
 
 
-    def defect_concentrations_total(self, chemical_potentials, temperature=300, fermi_level=0.):
+    def defect_concentrations_total(self, chemical_potentials, temperature=300, fermi_level=0.,
+                                    frozen_defect_concentrations=None):
         """
         Calculate the sum of the defect concentrations in every charge state for every defect specie.
 
         Parameters
         ----------
-        chemical_potentials : (Dict)
-            Dictionary of chemical potentials.
-        temperature : (float), optional
-            Temperature. The default is 300.
-        fermi_level : (float), optional
-            Position of the Fermi level. The default is 0 (vbm).
-
-        Returns
-        -------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
         total_concentrations : (Dict)
             Dictionary with names of the defect species as keys and total concentrations as values.
 
@@ -381,8 +438,8 @@ class DefectsAnalysis:
         total_concentrations = {}
         for name in self.names:
             total_concentrations[name] = 0
-            for d in self.defect_concentrations(chemical_potentials=chemical_potentials,
-                                                temperature=temperature,fermi_level=fermi_level):
+            for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
+                                                    frozen_defect_concentrations):
                 if d['name'] == name:
                     total_concentrations[name] += d['conc']
         
@@ -414,69 +471,23 @@ class DefectsAnalysis:
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
             return qd_tot
 
-        return bisect(_get_total_q, -1., self.band_gap + 1.)
+        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=1e-03)
             
-
-    def _get_frozen_charge(self,frozen_defect_concentrations, chemical_potentials, temperature, fermi_level,ignore_multiplicity):
-        
-        conc = self.defect_concentrations(chemical_potentials,temperature,fermi_level)
-        total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level)
-        frozen_conc = frozen_defect_concentrations
-        if ignore_multiplicity:
-            for d in conc:
-                d['name'] = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
-            total_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : total_conc[n] for n in total_conc}
-            frozen_conc  = {'_'.join([s for s in n.split('_') if 'mult' not in s]) : frozen_conc[n] for n in frozen_conc}
-
-        qd_tot = 0
-        for d in conc:
-            name = d['name'] 
-            entry = self.find_entry_by_name_and_charge(name,d['charge'])
-            c = d['conc']
-            #handle defect complex case
-            if entry.__class__.__name__ == 'DefectComplexEntry': 
-                complex_elements = [d.site.specie.symbol for d in entry.defect_list]
-                for el in complex_elements:
-                    for name in frozen_conc.keys():
-                        if el in name:
-                            if name in total_conc.keys():
-                                c = c * (frozen_conc[name] / total_conc[name])
-                            else:
-                                print(f'Warning: Defect with name {name} is not in defect entries and will not affect the calculation')
-                qd_tot += d['charge'] * c
-            
-            #handle single defect case
-            else: 
-                # D1 group
-                if name in frozen_conc.keys():
-                    if name in total_conc.keys():
-                        qd_tot += d['charge'] * d['conc'] * (frozen_conc[name] / total_conc[name])
-                    else:
-                        print(f'Warning: Defect with name {name} is not in defect entries and will not affect the calculation')
-                # D2 group
-                else: 
-                    qd_tot += d['charge'] * d['conc']
-                
-        return qd_tot
-        
         
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
-                                        external_defects=[], temperature=300,ignore_multiplicity=False):
+                                        external_defects=[], temperature=300):
+        
+        # Since last defect_concentrations update could be integrated easily with equilibrium_fermi_level.
+        # I kept 2 different functions to limit confusions and facilitate integrations with old notebooks
         """
-        Solve charge neutrality in non-equilibrium conditions. The contribution to the total charge concentration
-        of the defects can arise from 3 different contributions (groups):
+        Solve charge neutrality in non-equilibrium conditions (external contributions). The contribution to the
+        total charge concentration of the defects can arise from 3 different contributions (groups):
             - D1 : frozen defects with defect specie present in defect entries
             - D2 : normal defects with defect specie present in defect entries
             - D3 : external defects not present in defect entries, with fixed concentration and charge
-            
-        The group D1 is the less straightforward. Frozen defects can also be relative to another system and another temperature,
-        but only the ones with names found in the defect entries will be computed. 
-        This part will account for a fixed installed distribution of intrisic defects that are allowed to 
-        change their charge state. One example would be to equilibrate the system with concentrations
-        of intrinsic defects installed in another phase at a higher temperature, that are considered constant 
-        (kinetically trapped) as the temperature lowers and the phases changes. The variation of the charge states is 
-        accounted for in the solution of the charge neutrality by defining a charge state distribution for every defect
-        specie, which depends of the fermi level. 
+        
+        In group D1 the defect concentration of the single charge is calculating accounting for the 
+        input fixed (frozen) concentration value (see defect_concentrations function). 
         If a defect entry is not found in group D1 is considered to belong to group D2. The number of elements of 
         D1 U D2 will be equal to the muber of defect entries.
         The charge concentration associated to group D2 is treated as in the "equilibrium_fermi_level" function.
@@ -484,9 +495,10 @@ class DefectsAnalysis:
         
         Parameters
         ----------
-        frozen_defect_concentrations : (list)
-            List of defect concentrations. Most likely generated with the defect_concentrations() method. It is not
-            recommended to generate this manually.
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
         chemical_potentials : (Dict)
             Dictionary of chemical potentials in the format {Element('el'):chempot}.
         bulk_dos : (CompleteDos object)
@@ -508,17 +520,19 @@ class DefectsAnalysis:
         def _get_total_q(ef):
             
             # get groups D1 and D2
-            qd_tot = self._get_frozen_charge(frozen_defect_concentrations, chemical_potentials,temperature,ef,ignore_multiplicity)
+            qd_tot = sum([
+                d['charge'] * d['conc']
+                for d in self.defect_concentrations(chemical_potentials,temperature,ef,
+                                                    frozen_defect_concentrations)])
 
             #external fixed defects - D3
             for d_ext in external_defects:
                 qd_tot += d_ext['charge']*d_ext['conc']
                 
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
-
             return qd_tot
                        
-        return bisect(_get_total_q, -1., self.band_gap + 1.)
+        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=1e-03)
             
      
     def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False):

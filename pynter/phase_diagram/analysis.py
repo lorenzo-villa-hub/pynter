@@ -8,6 +8,7 @@ from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pynter.tools.format import format_composition
+import copy
 
 class Reservoirs:
     
@@ -59,7 +60,7 @@ class Reservoirs:
         return self.res_dict.items()
 
     def copy(self):
-        return Reservoirs(self.res_dict.copy(),phase_diagram=self.phase_diagram,are_chempots_delta=self.are_chempots_delta)
+        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.phase_diagram,are_chempots_delta=self.are_chempots_delta)
     
     def as_dict(self):
         """
@@ -151,6 +152,31 @@ class Reservoirs:
         else:
             d = json.load(path_or_string)
         return Reservoirs.from_dict(d)
+
+
+    def filter_reservoirs(self,elements=None):
+        """
+        Get new Reservoir object filtering the chempots dictionary.
+
+        Parameters
+        ----------
+        elements : (list), optional
+            List of element symbols. The default is None.
+
+        Returns
+        -------
+        res : 
+            Reservoirs object.
+        """
+        res = self.copy()
+        filtered_dict = res.res_dict
+        if elements:
+            d = filtered_dict.copy()
+            for r in list(d):
+                for el in list(d[r]):
+                    if el.symbol not in elements:
+                        del filtered_dict[r][el]        
+        return res
 
 
     def get_referenced_chempots(self):
