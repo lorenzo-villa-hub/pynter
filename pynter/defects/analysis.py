@@ -304,24 +304,42 @@ class DefectsAnalysis:
     def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
                               frozen_defect_concentrations=None):
         """
-        Give list of all concentrations at specified efermi
-        args:
-            chemical_potentials = {Element: number} is a dictionary of chemical potentials  
-            temperature = temperature to produce concentrations from
-            fermi_level: (float) is fermi level relative to valence band maximum
-                Default efermi = 0 = VBM energy
-        returns:
+        Give list of all concentrations at specified efermi.
+        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
+        is normalized starting from the input fixed concentration as:
+            C = C_eq * (Ctot_frozen/Ctot_eq)
+        while for DefectComplexEntry this is applied for every single defect specie which
+        is composing the complex (needs to be present in computed entries):
+            C = C_eq * prod(Ctot_frozen(i)/Ctot_eq(i))
+            
+        Parameters
+        ----------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
             list of dictionaries of defect concentrations
         """
         concentrations = []
         if frozen_defect_concentrations:
             total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
             frozen_conc = frozen_defect_concentrations
+            total_conc_keys = list(total_conc.keys()) #to avoid errors when rewriting dict keys without multiplicity
+            frozen_conc_keys = list(frozen_conc.keys())
             # strip multiplicity part  
-            for n in total_conc:
+            for n in total_conc_keys:
                 new_key = n.split('_mult', 1)[0]
                 total_conc[new_key] = total_conc.pop(n)
-            for n in frozen_conc:
+            for n in frozen_conc_keys:
                 new_key = n.split('_mult', 1)[0]
                 frozen_conc[new_key] = frozen_conc.pop(n)
         for e in self.entries:
@@ -362,15 +380,19 @@ class DefectsAnalysis:
 
         Parameters
         ----------
-        chemical_potentials : (Dict)
-            Dictionary of chemical potentials.
-        temperature : (float), optional
-            Temperature. The default is 300.
-        fermi_level : (float), optional
-            Position of the Fermi level. The default is 0 (vbm).
-
-        Returns
-        -------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
         conc_stable : (list)
             List of dictionaries with concentrations of defects with stable charge states at a given efermi.
         """
@@ -395,15 +417,19 @@ class DefectsAnalysis:
 
         Parameters
         ----------
-        chemical_potentials : (Dict)
-            Dictionary of chemical potentials.
-        temperature : (float), optional
-            Temperature. The default is 300.
-        fermi_level : (float), optional
-            Position of the Fermi level. The default is 0 (vbm).
-
-        Returns
-        -------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
         total_concentrations : (Dict)
             Dictionary with names of the defect species as keys and total concentrations as values.
 
@@ -459,15 +485,9 @@ class DefectsAnalysis:
             - D1 : frozen defects with defect specie present in defect entries
             - D2 : normal defects with defect specie present in defect entries
             - D3 : external defects not present in defect entries, with fixed concentration and charge
-            
-        The group D1 is the less straightforward. Frozen defects can also be relative to another system and another temperature,
-        but only the ones with names found in the defect entries will be computed. 
-        This part will account for a fixed installed distribution of intrisic defects that are allowed to 
-        change their charge state. One example would be to equilibrate the system with concentrations
-        of intrinsic defects installed in another phase at a higher temperature, that are considered constant 
-        (kinetically trapped) as the temperature lowers and the phases changes. The variation of the charge states is 
-        accounted for in the solution of the charge neutrality by defining a charge state distribution for every defect
-        specie, which depends of the fermi level. 
+        
+        In group D1 the defect concentration of the single charge is calculating accounting for the 
+        input fixed (frozen) concentration value (see defect_concentrations function). 
         If a defect entry is not found in group D1 is considered to belong to group D2. The number of elements of 
         D1 U D2 will be equal to the muber of defect entries.
         The charge concentration associated to group D2 is treated as in the "equilibrium_fermi_level" function.
