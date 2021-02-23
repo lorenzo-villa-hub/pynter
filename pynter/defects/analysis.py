@@ -480,8 +480,8 @@ class DefectsAnalysis:
         # Since last defect_concentrations update could be integrated easily with equilibrium_fermi_level.
         # I kept 2 different functions to limit confusions and facilitate integrations with old notebooks
         """
-        Solve charge neutrality in non-equilibrium conditions. The contribution to the total charge concentration
-        of the defects can arise from 3 different contributions (groups):
+        Solve charge neutrality in non-equilibrium conditions (external contributions). The contribution to the
+        total charge concentration of the defects can arise from 3 different contributions (groups):
             - D1 : frozen defects with defect specie present in defect entries
             - D2 : normal defects with defect specie present in defect entries
             - D3 : external defects not present in defect entries, with fixed concentration and charge
@@ -495,9 +495,10 @@ class DefectsAnalysis:
         
         Parameters
         ----------
-        frozen_defect_concentrations : (list)
-            List of defect concentrations. Most likely generated with the defect_concentrations() method. It is not
-            recommended to generate this manually.
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
         chemical_potentials : (Dict)
             Dictionary of chemical potentials in the format {Element('el'):chempot}.
         bulk_dos : (CompleteDos object)
