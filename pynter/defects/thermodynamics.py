@@ -70,7 +70,8 @@ class PartialPressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature,frozen_defect_concentrations=None,external_defects=[]):
+    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature,
+                 frozen_defect_concentrations=None,external_defects=[],extrinsic_chempots=None):
         """
         Parameters
         ----------
@@ -90,6 +91,8 @@ class PartialPressureAnalysis:
             needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+        extrinsic_chempots : (dict)
+            Dictionary with chemical potentials of elements not belonging to the PD ({Element:chempot}). The default is None.
         """
         self.da = defects_analysis
         self.pd = phase_diagram
@@ -98,6 +101,7 @@ class PartialPressureAnalysis:
         self.temperature = temperature
         self.frozen_defect_concentrations = frozen_defect_concentrations if frozen_defect_concentrations else None
         self.external_defects = external_defects if external_defects else []
+        self.extrinsic_chempots = extrinsic_chempots
     
     
     def get_concentrations(self,pressure_range=(-20,10),concentrations_output='all',npoints=30,get_fermi_levels=False,temperature=None):
@@ -115,10 +119,12 @@ class PartialPressureAnalysis:
                 "total": The output is the sum of the concentration in every charge for each specie.
                 The default is 'all'.
         npoints : (int), optional
-            Number of partial pressure points to compute.
+            Number of partial pressure points to compute. 
         get_fermi_levels : (bool), optional
             If True also the fermi levels are returned. Useful to compute both concentrations and fermi levels 
-            in one single step.
+            in one single step. The default is False
+        temperature : (float), optional
+            Temperature in Kelvin. If None self.temperature is used. The default is None.
 
         Returns
         -------
@@ -130,16 +136,16 @@ class PartialPressureAnalysis:
         carrier_concentrations : (list)
             List of tuples with intrinsic carriers concentrations (holes,electrons).
         """
-        
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
-                                                                  self.temperature,pressure_range=pressure_range,npoints=npoints)
+        T = temperature if temperature else self.temperature
+        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T,
+                                                                    pressure_range=pressure_range,npoints=npoints,
+                                                                    extrinsic_chempots=self.extrinsic_chempots)
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
         if get_fermi_levels:
             fermi_levels=[]
         dos = self.bulk_dos
-        T = temperature if temperature else self.temperature
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
@@ -183,6 +189,8 @@ class PartialPressureAnalysis:
             Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
         npoints : (int), optional
             Number of partial pressure points to compute.
+        temperature : (float), optional
+            Temperature in Kelvin. If None self.temperature is used. The default is None.
 
         Returns
         -------
@@ -190,14 +198,15 @@ class PartialPressureAnalysis:
             List of partial pressure values.
         conductivities : (list)
             List of conductivity values (in S/m).
-        """        
+        """      
+        T = temperature if temperature else self.temperature
         cnd = Conductivity(mobilities)
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
-                                                    self.temperature,pressure_range=pressure_range,npoints=npoints)
+        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T,
+                                                                    pressure_range=pressure_range,npoints=npoints,
+                                                                    extrinsic_chempots=self.extrinsic_chempots)
         partial_pressures = list(res.keys())
         conductivities = []
         dos = self.bulk_dos
-        T = temperature if temperature else self.temperature
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
@@ -221,6 +230,8 @@ class PartialPressureAnalysis:
             Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
         npoints : (int), optional
             Number of partial pressure points to compute.
+        temperature : (float), optional
+            Temperature in Kelvin. If None self.temperature is used. The default is None.
             
         Returns
         -------
@@ -229,12 +240,13 @@ class PartialPressureAnalysis:
         fermi_levels : (list)
             List of Fermi level values
         """
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,
-                                                                  self.temperature,pressure_range=pressure_range,npoints=npoints)
+        T = temperature if temperature else self.temperature
+        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T,
+                                                                    pressure_range=pressure_range,npoints=npoints,
+                                                                    extrinsic_chempots=self.extrinsic_chempots)
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
-        T = temperature if temperature else self.temperature
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
@@ -281,7 +293,8 @@ class PartialPressureAnalysis:
         T1 = initial_temperature
         T2 = final_temperature
         res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T1,
-                                                                    pressure_range=pressure_range,npoints=npoints)
+                                                                    pressure_range=pressure_range,npoints=npoints,
+                                                                    extrinsic_chempots=self.extrinsic_chempots)
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos

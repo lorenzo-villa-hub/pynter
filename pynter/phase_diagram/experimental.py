@@ -54,7 +54,8 @@ class ChempotExperimental:
         
     
     
-    def chempots_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
+    def chempots_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,extrinsic_chempots=None,
+                                        pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
         """
         Generate Reservoirs object with a set of different chemical potentials starting from a range of oxygen partial pressure.
         The code distinguishes between 2-component and 3-component phase diagrams.
@@ -62,6 +63,8 @@ class ChempotExperimental:
         with target composition.
         In the case of a 3-comp PD the set of chemical potentials is obtained first calculating the boundary phases starting
         from the constant value of muO, then the arithmetic average between this two points in the stability diagram is taken.
+        In the case where there are some extrinsic elements not belonging to the PD, they must be added in the extrinsic_chempots
+        dictionary ({Element:chempot}). The value of delta_mu_O will be subtracted to the input value at each partial pressure.
         
         Parameters
         ----------
@@ -71,6 +74,8 @@ class ChempotExperimental:
             Pymatgen Composition object.
         temperature : (float), optional
             Temperature value. If None the value with which the class is initialized is taken. The default is None.
+        extrinsic_chempots : (dict)
+            Dictionary with chemical potentials of elements not belonging to the PD ({Element:chempot}). The default is None.
         pressure_range : (tuple), optional
             Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
         npoints : (int), optional
@@ -110,6 +115,9 @@ class ChempotExperimental:
                     chempots[el] = np.mean(np.array([mu[el] for mu in res.values()]))
                 
             chempots_abs = ca.get_chempots_abs(chempots)
+            if extrinsic_chempots:
+                for el in extrinsic_chempots:
+                    chempots_abs[el] = extrinsic_chempots[el] - muO
             if get_pressures_as_strings:
                 p = "%.1g" % p
                 p = str(p)

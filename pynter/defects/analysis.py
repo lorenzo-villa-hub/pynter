@@ -201,7 +201,7 @@ class DefectsAnalysis:
     def binding_energy(self,name,fermi_level=0):
         """
         Args:
-            name (string): name of defect complex as assigned in SingleDefectData object
+            name (string): name of defect complex as assigned in defect entry object
             fermi_level (float): Fermi level at which binding energy needs to be computed
         Returns:
             binding_energy (float)
@@ -821,11 +821,12 @@ class DefectsAnalysis:
         ef = np.arange(xlim[0],xlim[1]+0.1,(xlim[1]-xlim[0])/200)        
         binding_energy = np.zeros(len(ef))
         
-        names = []
-        for e in self.entries:
-            if e.classname == 'DefectComplexEntry':
-                if e.name not in names:
-                    names.append(e.name)
+        if not names:
+            names = []
+            for e in self.entries:
+                if e.classname == 'DefectComplexEntry':
+                    if e.name not in names:
+                        names.append(e.name)
         
         # getting binding energy at different fermi levels for every name in list
         for name in names:
