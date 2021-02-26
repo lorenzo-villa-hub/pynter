@@ -232,7 +232,8 @@ class ScriptHandler:
             if self.array_size:
                 f.write('\n')
                 f.write('if [ ! -f POSCAR_initial ] ; then\n')
-                f.write()
+                f.write('    cp POSCAR POSCAR_initial\n')
+                f.write('fi\n')
                 f.write('if [ -f CONTCAR ]\n')
                 f.write('then\n')
                 f.write('    cp CONTCAR POSCAR\n') # KEEP THE TAB !)
