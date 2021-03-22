@@ -71,7 +71,7 @@ class PartialPressureAnalysis:
     """
     
     def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature,
-                 frozen_defect_concentrations=None,external_defects=[],extrinsic_chempots=None):
+                 frozen_defect_concentrations=None,external_defects=[],extrinsic_chempots_range=None):
         """
         Parameters
         ----------
@@ -91,8 +91,8 @@ class PartialPressureAnalysis:
             needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
-        extrinsic_chempots : (dict)
-            Dictionary with chemical potentials of elements not belonging to the PD ({Element:chempot}). The default is None.
+        extrinsic_chempots_range : (dict)
+            Dictionary with chemical potentials of elements not belonging to the PD ({Element:(O_poor_chempot,O_rich_chempot)}). 
         """
         self.da = defects_analysis
         self.pd = phase_diagram
@@ -101,7 +101,7 @@ class PartialPressureAnalysis:
         self.temperature = temperature
         self.frozen_defect_concentrations = frozen_defect_concentrations if frozen_defect_concentrations else None
         self.external_defects = external_defects if external_defects else []
-        self.extrinsic_chempots = extrinsic_chempots
+        self.extrinsic_chempots_range = extrinsic_chempots_range
     
     
     def get_concentrations(self,pressure_range=(-20,10),concentrations_output='all',npoints=30,get_fermi_levels=False,temperature=None):
@@ -137,9 +137,7 @@ class PartialPressureAnalysis:
             List of tuples with intrinsic carriers concentrations (holes,electrons).
         """
         T = temperature if temperature else self.temperature
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T,
-                                                                    pressure_range=pressure_range,npoints=npoints,
-                                                                    extrinsic_chempots=self.extrinsic_chempots)
+        res = self._get_reservoirs(T, pressure_range, npoints)
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
@@ -201,9 +199,7 @@ class PartialPressureAnalysis:
         """      
         T = temperature if temperature else self.temperature
         cnd = Conductivity(mobilities)
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T,
-                                                                    pressure_range=pressure_range,npoints=npoints,
-                                                                    extrinsic_chempots=self.extrinsic_chempots)
+        res = self._get_reservoirs(T, pressure_range, npoints)
         partial_pressures = list(res.keys())
         conductivities = []
         dos = self.bulk_dos
@@ -241,9 +237,7 @@ class PartialPressureAnalysis:
             List of Fermi level values
         """
         T = temperature if temperature else self.temperature
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T,
-                                                                    pressure_range=pressure_range,npoints=npoints,
-                                                                    extrinsic_chempots=self.extrinsic_chempots)
+        res = self._get_reservoirs(T, pressure_range, npoints)
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
@@ -292,9 +286,8 @@ class PartialPressureAnalysis:
         
         T1 = initial_temperature
         T2 = final_temperature
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=T1,
-                                                                    pressure_range=pressure_range,npoints=npoints,
-                                                                    extrinsic_chempots=self.extrinsic_chempots)
+        res = self._get_reservoirs(T1, pressure_range, npoints)
+
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
@@ -329,6 +322,8 @@ class PartialPressureAnalysis:
                 
         
 
-
-
-
+    def _get_reservoirs(self,temperature,pressure_range,npoints):
+        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=temperature,
+                                                                    pressure_range=pressure_range,npoints=npoints,
+                                                                    extrinsic_chempots_range=self.extrinsic_chempots_range)    
+        return res

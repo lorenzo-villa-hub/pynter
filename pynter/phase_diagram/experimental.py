@@ -54,8 +54,9 @@ class ChempotExperimental:
         
     
     
-    def chempots_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,extrinsic_chempots=None,
-                                        pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
+    def chempots_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,
+                                        extrinsic_chempots_range=None,pressure_range=(-20,10),npoints=50,
+                                        get_pressures_as_strings=False):
         """
         Generate Reservoirs object with a set of different chemical potentials starting from a range of oxygen partial pressure.
         The code distinguishes between 2-component and 3-component phase diagrams.
@@ -74,8 +75,9 @@ class ChempotExperimental:
             Pymatgen Composition object.
         temperature : (float), optional
             Temperature value. If None the value with which the class is initialized is taken. The default is None.
-        extrinsic_chempots : (dict)
-            Dictionary with chemical potentials of elements not belonging to the PD ({Element:chempot}). The default is None.
+        extrinsic_chempots_range : (dict)
+            Dictionary with chemical potentials of elements not belonging to the PD ({Element:(O_poor_chempot,O_rich_chempot)}). 
+            The default is None.
         pressure_range : (tuple), optional
             Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
         npoints : (int), optional
@@ -96,7 +98,9 @@ class ChempotExperimental:
         partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
         mu_standard = self.oxygen_standard_chempot(temperature)
         
+        i = 0
         for p in partial_pressures:
+            i += 1
             muO = self.chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p) #delta value
             fixed_chempot = {Element('O'):muO} 
             
@@ -115,15 +119,18 @@ class ChempotExperimental:
                     chempots[el] = np.mean(np.array([mu[el] for mu in res.values()]))
                 
             chempots_abs = ca.get_chempots_abs(chempots)
-            if extrinsic_chempots:
-                for el in extrinsic_chempots:
-                    chempots_abs[el] = extrinsic_chempots[el] - muO
+            
+            if extrinsic_chempots_range:
+                for el in extrinsic_chempots_range:
+                    mu_el_O_poor,mu_el_O_rich = extrinsic_chempots_range[el][0], extrinsic_chempots_range[el][1]
+                    chempots_abs[el] = mu_el_O_poor + ((mu_el_O_rich - mu_el_O_poor)/npoints)*i 
+                        
             if get_pressures_as_strings:
                 p = "%.1g" % p
                 p = str(p)
             reservoirs[p] = chempots_abs
     
-        
+            
         return Reservoirs(reservoirs,phase_diagram=pd,are_chempots_delta=False)
                                 
         
