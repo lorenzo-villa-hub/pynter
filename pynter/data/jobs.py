@@ -419,7 +419,7 @@ class VaspJob(Job):
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
-        return VaspJob(path,inputs,job_settings,outputs)
+        return VaspJob(path,inputs,job_settings,outputs,job_script_filename)
 
 
     @staticmethod
@@ -901,7 +901,7 @@ class VaspNEBJob(Job):
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
-        return VaspNEBJob(path,inputs,job_settings,outputs)
+        return VaspNEBJob(path,inputs,job_settings,outputs,job_script_filename)
 
 
     @staticmethod
