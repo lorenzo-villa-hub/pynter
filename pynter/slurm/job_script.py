@@ -24,6 +24,7 @@ class ScriptHandler:
             error_filename: (str) Filename of error file \n
             timelimit: (int) Time limit in hours \n
             memory_per_cpu:(int) Memory settings
+            partition (str) Partition
             processor: (str) CPU architecture
             modules: (list) List of modules to be loaded
             path_exe: (str) Path to executable \n             
@@ -117,7 +118,13 @@ class ScriptHandler:
         if line:
             line = line[-1]
             d['memory_per_cpu'] = int(line.replace(string,'').replace('\n',''))
-            
+        
+        string = '#SBATCH -p '
+        line = grep(string,file)
+        if line:
+            line = line[-1]
+            d['partition'] = line.replace(string,'').replace('\n','')        
+        
         string = '#SBATCH -C '
         line = grep(string,file)
         if line:
@@ -180,6 +187,7 @@ class ScriptHandler:
         parser.add_argument('-err','--error',help='Error filename',required=False,default=self.error_filename,type=str,metavar='',dest='error_filename')
         parser.add_argument('-t','--timelimit',help='Timelimit, default is 24:00:00',required=False,default=self.timelimit,type=str,metavar='',dest='timelimit')
         parser.add_argument('-M','--memory-per-cpu',help='Memory per cpu, default is 2400',required=False,default=self.memory_per_cpu,type=int,metavar='',dest='memory_per_cpu')
+        parser.add_argument('-p','--partition',help='(Partition)',required=False,default=self.partition,type=str,metavar='',dest='partition')
         parser.add_argument('-C','--processor',help='(avx or avx2, default is avx2)',required=False,default=self.processor,type=str,metavar='',dest='processor')
         parser.add_argument('-ml','--modules',action='append',help="Modules to load, default are 'intel/2019.2','intel/2019.3','intelmpi/2019.3','fftw/3.3.8'" ,required=False,default=self.modules,type=str,metavar='',dest='modules')
         parser.add_argument('-x','--exe',help='Path to executable, default is "/home/lv51dypu/vasp-5-3-3"',required=False,default=self.path_exe,type=str,metavar='',dest='path_exe')
@@ -292,10 +300,13 @@ class ScriptHandler:
             f.write('#SBATCH --output=%s\n' %self.output_filename)
             f.write('#SBATCH --error=%s\n' %self.error_filename)
             f.write('#SBATCH --time=%s\n' %self.timelimit)
-            f.write('#SBATCH -p deflt\n')
+            f.write('#SBATCH -p %s\n' %self.partition)
             f.write('#SBATCH --exclusive\n')
             f.write('#SBATCH --mem-per-cpu=%i\n' %self.memory_per_cpu)
-            f.write('#SBATCH -C %s\n' %self.processor)
+            if self.processor:
+                f.write('#SBATCH -C %s\n' %self.processor)
+            f.write('\n')
+            f.write('module purge\n')
             if self.modules:
                 f.writelines([' '.join(['ml', m , '\n']) for m in self.modules])
             if self.add_lines_header:
