@@ -5,11 +5,12 @@ Created on Mon Oct 12 15:40:26 2020
 
 @author: villa
 """
-
+import pynter
 import re
 import os
 import os.path as op
 import json
+import pkgutil
 
 
 def change_file (input_file , output_file=None, back_up_file = True,
@@ -67,6 +68,20 @@ def change_file (input_file , output_file=None, back_up_file = True,
     
     return
     
+
+def explore_packages(path):
+    """
+    Return package names contained in a path
+    """
+    names = []
+    for sm in pkgutil.walk_packages([path]):
+        names.append(sm[1])
+        
+    return names
+    
+def explore_pynter_packages():
+    path = pynter.__path__[0]
+    return explore_packages(path)
 
 
 def get_object_from_json(cls,path_or_string):
