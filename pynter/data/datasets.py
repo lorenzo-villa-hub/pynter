@@ -536,7 +536,7 @@ class Dataset:
             return sorted_jobs
             
 
-    def select_jobs(self,jobs=None,names=None,groups=None,common_node=None,complex_features=None,**kwargs):
+    def select_jobs(self,jobs=None,names=None,groups=None,common_group=None,common_node=None,complex_features=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
@@ -551,6 +551,8 @@ class Dataset:
             Job name. The default is None.
         groups : (list), optional
             List of groups that jobs need to belong to. The default is None.
+        common_group : (str), optional
+            String that needs to be present in the group. The default is None.
         common_node : (str), optional
             String that needs to be present in the node. The default is None.
         complex_features : (list of tuples) , optional
@@ -569,20 +571,27 @@ class Dataset:
         """
         sel_jobs = jobs.copy() if jobs else self.jobs.copy() 
         jobs = sel_jobs.copy()
-        for j in jobs:
-            if names:
+        
+        if names:
+            for j in jobs:
                 if j.name not in names:
                     sel_jobs.remove(j)
         
-        jobs = sel_jobs.copy()
-        for j in jobs:
-            if groups:
+        if groups:
+            jobs = sel_jobs.copy()
+            for j in jobs:
                 if j.group not in groups:
                     sel_jobs.remove(j)
 
-        jobs = sel_jobs.copy()
-        for j in jobs:
-            if common_node:
+        if common_group:
+            jobs = sel_jobs.copy()
+            for j in jobs:
+                if common_group not in j.group:
+                    sel_jobs.remove(j)
+
+        if common_node:
+            jobs = sel_jobs.copy()
+            for j in jobs:
                 if common_node not in j.nodes:
                     sel_jobs.remove(j)
         

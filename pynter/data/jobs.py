@@ -593,6 +593,28 @@ class VaspJob(Job):
             
 
     @property
+    def is_hybrid(self):
+        """Returns True when "LHFCALC" is present and equal to True in incar""" 
+        is_hybrid = False
+        incar = self.incar
+        if 'LHFCALC' in incar.keys():
+            if incar['LHFCALC'] is True:
+                is_hybrid = True
+        
+        return is_hybrid
+
+    @property
+    def is_hubbard(self):
+        """Returns True if "LDAUU" tag is present in incar"""
+        is_hubbard = False
+        incar = self.incar
+        if 'LDAUU' in incar.keys():
+            is_hubbard = True
+        
+        return is_hubbard
+
+
+    @property
     def nelectrons(self):
         """
         Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
