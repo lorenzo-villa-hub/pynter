@@ -664,10 +664,19 @@ class VaspJob(Job):
         return
     
     
-    def get_outputs(self,sync=False,get_output_properties=True):
+    def get_outputs(self,sync=False,get_output_properties=True,**kwargs):
         """
         Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
         read with Pymatgen
+
+        Parameters
+        ----------
+        sync : (float), optional
+            Sync data from hpc. The default is False.
+        get_output_properties : (float), optional
+            Parse output properties from Vasprun. The default is True.
+        **kwargs : (dict)
+            Arguments for the Vasprun class in pymatgen.
         """
         if sync:
             self.sync_from_hpc()
@@ -675,7 +684,7 @@ class VaspJob(Job):
         outputs = {}
         if op.isfile(op.join(path,'vasprun.xml')):
             try:
-                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'))
+                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
             except:
                 print('Warning: Reading of vasprun.xml in "%s" failed'%path)
                 outputs['Vasprun'] = None

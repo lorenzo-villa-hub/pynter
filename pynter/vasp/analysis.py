@@ -9,6 +9,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter
 from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.analysis.eos import EOS
+from pynter.vasp.plotter import plot_spd_dos
 
 matplotlib.rcParams.update({'font.size': 15})
 
@@ -27,7 +28,7 @@ class JobAnalysis:
         
         self.job = job
         
-    def plot_dos(self,xlim=(-3,3),stack=False):
+    def plot_dos(self,xlim=(-3,3),**kwargs):
         """
         Plot DOS from data in vasprun.xml with Pymatgen
         """
@@ -36,13 +37,7 @@ class JobAnalysis:
         os.chdir(job.path)
         if job.is_converged:   
             complete_dos = job.computed_entry.data['complete_dos']
-            partial_dos = complete_dos.get_spd_dos()        
-            dos_plotter = DosPlotter(stack=stack)
-            dos_plotter.add_dos('Total',complete_dos)
-            for orbital in partial_dos:
-                dos_plotter.add_dos(orbital,partial_dos[orbital])
-            eg = job.energy_gap
-            plt = dos_plotter.get_plot(xlim=(xlim[0],eg+xlim[1]))
+            plt = plot_spd_dos(complete_dos,xlim,**kwargs)
         else:
             raise ValueError(f'Job %s is not converged' %self.job.name)
         os.chdir(wdir)
