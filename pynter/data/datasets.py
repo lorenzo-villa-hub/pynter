@@ -401,7 +401,7 @@ class Dataset:
         return
 
     
-    def jobs_table(self,jobs=[],properties_to_display=[]):
+    def jobs_table(self,jobs=[],display=[]):
         """
         Create a pandas DataFrame object to display the jobs in the dataset.
 
@@ -409,7 +409,7 @@ class Dataset:
         ----------
         jobs : (list), optional
             List of jobs to display in the table. The default is []. If [] the attribute "jobs" is used.
-        properties_to_display : (list), optional
+        display : (list), optional
             List of kwargs with methods in the Job class. The properties referred to these will be added
             to the table. See self.get_job_feature for more details. The default is [].
 
@@ -428,7 +428,7 @@ class Dataset:
             d['group'] = j.group
             d['nodes'] = j.nodes
             d['is_converged'] = j.is_converged
-            for feature in properties_to_display:
+            for feature in display:
                 if isinstance(feature,list):
                     key = feature[0]
                     for k in feature[1:]:
@@ -504,7 +504,7 @@ class Dataset:
         return
 
 
-    def sort_jobs(self,jobs_to_sort=None,feature='name',reset=True):
+    def sort_jobs(self,jobs_to_sort=None,feature='name',reset=True,reverse=False):
         """
         Sort jobs according to the target feature. If list of jobs is not given
         and reset is True the attribute self.jobs is rewritten with the sorted list.
@@ -517,6 +517,8 @@ class Dataset:
             Feature to use to sort the list (see self.get_job_feature). The default is 'name'.
         reset : (bool), optional
             Reset the self.jobs attribute if jobs_to_sort is None. The default is True.
+        reverse : (bool), optional
+            Reverse the order in the list. The default is False.
 
         Returns
         -------
@@ -524,7 +526,7 @@ class Dataset:
             List of sorted Job objects.
         """
         jobs = jobs_to_sort if jobs_to_sort else self.jobs
-        sorted_jobs = sorted(jobs, key=lambda x: self.get_job_feature(x,feature))
+        sorted_jobs = sorted(jobs, key=lambda x: self.get_job_feature(x,feature),reverse=reverse)
 
         if not jobs_to_sort:
             if reset:
