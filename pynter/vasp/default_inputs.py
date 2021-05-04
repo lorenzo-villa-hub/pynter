@@ -49,7 +49,7 @@ class DefaultInputs:
         Parameters
         ----------
         xc : (str), optional
-            Which functional to use('PBE','PBE+U','HSE06' available). The default is 'PBE'.
+            Which functional to use('PBE','PBE+U','LDA','LDA+U',HSE06' available). The default is 'PBE'.
         ldauu : (List), optional
             List of integers for U parameter to be given in order as required by VASP. The default is None. If None no 'LDAUU' flag is written.
         aexx : (Int), optional
@@ -66,14 +66,14 @@ class DefaultInputs:
         incar_default_flags = self.incar_default_flags              
         incar_default_flags["SYSTEM"] = system                   
                      
-        if xc == 'PBE':
+        if xc == 'PBE' or xc == 'LDA':
             incar_default_flags.update({
-                    "#### Default PBE: system" : system , 
+                    f"#### Default {xc}: system" : system , 
                     "ISYM":2})
             
-        if xc == 'PBE+U':
+        if xc == 'PBE+U' or 'LDA+U':
             incar_default_flags.update({
-                    "#### Default PBE+U: system" : system,                 
+                    f"#### Default {xc}: system" : system,                 
                     "ISYM":2,
                     "LDAU" : ".TRUE.",
                     "LDAUTYPE": 2,
