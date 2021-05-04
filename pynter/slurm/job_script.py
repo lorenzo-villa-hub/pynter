@@ -58,7 +58,7 @@ class ScriptHandler:
         d = {}
         file = op.join(path,filename)
         
-        string = '#SBATCH -A project'
+        string = '#SBATCH -A '
         line = grep(string,file)
         if line:
             line = line[-1]
@@ -287,7 +287,7 @@ class ScriptHandler:
         with open(complete_path,'w') as f:
             
             f.write('#!/bin/sh\n')
-            f.write('#SBATCH -A project%s\n' %self.project_id)
+            f.write('#SBATCH -A %s\n' %self.project_id)
             f.write('#SBATCH --job-name=%s\n' %self.name)
             if self.array_size:
                 f.write('#SBATCH --array=1-%i%%1\n' %self.array_size)
