@@ -71,7 +71,7 @@ class DefaultInputs:
                     f"#### Default {xc}: system" : system , 
                     "ISYM":2})
             
-        if xc == 'PBE+U' or 'LDA+U':
+        if xc == 'PBE+U' or xc == 'LDA+U':
             incar_default_flags.update({
                     f"#### Default {xc}: system" : system,                 
                     "ISYM":2,
