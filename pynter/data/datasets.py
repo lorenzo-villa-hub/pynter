@@ -314,15 +314,15 @@ class Dataset:
         return
  
 
-    def create_job(self,job_class,group='',nodes='',inputs=None,job_settings=None,
+    def create_job(self,cls,group='',nodes='',inputs=None,job_settings=None,
                    outputs=None,job_script_filename='job.sh',name=None):
         """
         Create Job object and add it to the dataset
 
         Parameters
         ----------
-        job_class : (str) 
-            Name of the job class. For now available only 'VaspJob'.
+        cls : (str) 
+            Job class.
         group : (str), optional
             Name of the group to which the job belongs. The default is ''.
         nodes : (str), optional
@@ -339,11 +339,8 @@ class Dataset:
             Name of the job. If None the name is searched in the job script.
         """
         
-        path = op.join(self.path,group,nodes)
-        module = importlib.import_module("pynter.data.jobs")
-        jobclass = getattr(module, job_class)
-        
-        job = jobclass(path=path,inputs=inputs,job_settings=job_settings,outputs=outputs,
+        path = op.join(self.path,group,nodes)        
+        job = cls(path=path,inputs=inputs,job_settings=job_settings,outputs=outputs,
                        job_script_filename=job_script_filename,name=name)
         job.group = group
         job.nodes = nodes
