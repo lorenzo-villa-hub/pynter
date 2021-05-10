@@ -2,13 +2,12 @@
 import os
 import os.path as op
 import operator
-from pynter.data.jobs import VaspJob, VaspNEBJob
+from pynter.vasp.jobs import VaspJob, VaspNEBJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import importlib
 import json
-from glob import glob
-
+from monty.json import MontyDecoder
 
 def _check_job_script(job_script_filenames,files):
     """ Check if job script names are in a list of files. Can be either a str or list of str"""
@@ -173,10 +172,7 @@ class Dataset:
         name = d['name']
         jobs = []
         for j in d['jobs']:
-            job_class = j['@class']
-            module = importlib.import_module(j['@module'])
-            jobclass = getattr(module, job_class)
-            jobs.append(jobclass.from_dict(j))
+            jobs.append(MontyDecoder().process_decoded(j))
         sort_by_name = d['sort_by_name']
         
         return cls(jobs,path,name,sort_by_name)

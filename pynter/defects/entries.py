@@ -8,17 +8,12 @@ Created on Fri Dec 11 14:33:12 2020
 
 
 import numpy as np
-from scipy.optimize import bisect
+import importlib
 from pymatgen.analysis.defects.utils import kb
-from pymatgen.core.structure import Structure, PeriodicSite, Lattice
-from pymatgen.core.periodic_table import Element
-from pymatgen.electronic_structure.dos import FermiDos
+from pymatgen.core.structure import Structure
 from pymatgen.analysis.defects.core import *
-import matplotlib
-import matplotlib.pyplot as plt
-from pynter.defects.pmg_dos import FermiDosCarriersInfo
 from pynter.defects.utils import *
-from monty.json import MontyDecoder, MSONable
+from monty.json import MontyDecoder
 
 
 def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,multiplicity=None):

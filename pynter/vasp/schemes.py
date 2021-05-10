@@ -9,13 +9,10 @@ import os
 import os.path as op
 import numpy as np
 from pymatgen.core.periodic_table import Element
-from pymatgen.core.structure import Structure
 from pymatgen.symmetry.bandstructure import HighSymmKpath
-from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints, Potcar
+from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
 from pynter.vasp.default_inputs import DefaultInputs
-from pynter.slurm.job_script import ScriptHandler
-from pynter.data.jobs import VaspJob, VaspNEBJob
-from pynter.data.datasets import Dataset
+from pynter.vasp.jobs import VaspJob, VaspNEBJob
 
 
 class InputSets:
