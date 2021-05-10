@@ -7,9 +7,32 @@ from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import importlib
 import json
+from glob import glob
 
 
-def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None):
+def _check_job_script(job_script_filenames,files):
+    """ Check if job script names are in a list of files. Can be either a str or list of str"""
+    check = False
+    if isinstance(job_script_filenames,str):    
+        if job_script_filenames in files:
+            check= True
+            job_script_filename = job_script_filenames
+        else:
+            job_script_filename = None
+    elif isinstance(job_script_filenames,list):
+        job_script_filename = None
+        for s in job_script_filenames:
+            if s in files:
+                check = True
+                job_script_filename = s
+
+    else:
+        raise ValueError('job_script_filenames must be a string or a list of strings')
+
+    return check,job_script_filename
+
+
+def find_jobs(path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder contained jobs are selected based on the presence of the file job_script_filename
@@ -18,8 +41,9 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=T
     ----------
     path : (str)
         Parent directory.
-    job_script_filename : (str), optional
-        Filename of job bash script. The default is 'job.sh'.
+    job_script_filenames : (str or list), optional
+        Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
+        file names are present. The default is 'job.sh'.
     sort_by_name : (bool), optional
         Sort list of jobs by attribute "name". The default is True.
     jobs_kwargs : (dict), optional
@@ -32,23 +56,25 @@ def find_jobs(path,job_script_filename='job.sh',sort_by_name=True,load_outputs=T
         List of Job objects.
 
     """
-    jobs = []
+    jobs = []    
     for root , dirs, files in os.walk(path):
-        if files != [] and job_script_filename in files:
-            if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
-                path = op.abspath(root)
-                if jobs_kwargs:
-                    kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
-                else:
-                    kwargs = {}
-                j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
-                j.job_script_filename = job_script_filename
-                jobs.append(j)
-            elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
-                path = op.abspath(root)
-                j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
-                j.job_script_filename = job_script_filename
-                jobs.append(j)
+        if files != []:
+            check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)
+            if check_job_script:
+                if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
+                    path = op.abspath(root)
+                    if jobs_kwargs:
+                        kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
+                    else:
+                        kwargs = {}
+                    j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
+                    j.job_script_filename = job_script_filename
+                    jobs.append(j)
+                elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
+                    path = op.abspath(root)
+                    j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
+                    j.job_script_filename = job_script_filename
+                    jobs.append(j)
     if sort_by_name:
         jobs = sorted(jobs, key=operator.attrgetter('name'))
                 
@@ -182,7 +208,7 @@ class Dataset:
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filename='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None): 
+    def from_directory(path=None,job_script_filenames='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -191,8 +217,9 @@ class Dataset:
         ----------
         path : (str)
             Parent directory of the dataset. If None the current wdir is used.
-        job_script_filename : (str), optional
-            Filename of job bash script. The default is 'job.sh'.
+       job_script_filenames : (str or list), optional
+            Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
+            file names are present. The default is 'job.sh'.
         sort_by_name : (bool), optional
             Sort list of jobs by attribute "name". The default is True.
         jobs_kwargs : (dict), optional
@@ -200,12 +227,12 @@ class Dataset:
             from directory for each job class.
         """
         path = path if path else os.getcwd()
-        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=False,
+        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort_by_name=False,
                          load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) # names are sorted in __init__ method
-     
-        return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
-
         
+        return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
+    
+    
     @property
     def groups(self):
         """Directory names of the first subdirectories in the dataset path."""
@@ -264,7 +291,7 @@ class Dataset:
         return
 
     
-    def add_jobs_from_directory(self,path,job_script_filename='job.sh',sort_by_name=True,load_outputs=True,regroup=True):
+    def add_jobs_from_directory(self,path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=True,regroup=True):
         """
         Add jobs to the Dataset searching all folders and subfolders contained in given path. 
         Jobs are selected based on where the job bash script is present. 
@@ -274,15 +301,16 @@ class Dataset:
         ----------
         path : (str)
             Parent directory of the dataset.
-        job_script_filename : (str), optional
-            Filename of job bash script. The default is 'job.sh'.
+       job_script_filenames : (str or list), optional
+            Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
+            file names are present. The default is 'job.sh'.
         sort_by_name : (bool), optional
             Sort list of jobs by attribute "name". The default is True.
         regroup : (bool), optional
             Regroup jobs after adding new jobs list, self.path is set to the commonpath. The default is True.
         """        
         path = op.abspath(path)
-        jobs = find_jobs(path,job_script_filename=job_script_filename,sort_by_name=sort_by_name,load_outputs=load_outputs)
+        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort_by_name=sort_by_name,load_outputs=load_outputs)
         self.add_jobs(jobs,False)
         if regroup:
             commonpath = op.commonpath([path,self.path])
@@ -290,15 +318,15 @@ class Dataset:
         return
  
 
-    def create_job(self,job_class,group='',nodes='',inputs=None,job_settings=None,
+    def create_job(self,cls,group='',nodes='',inputs=None,job_settings=None,
                    outputs=None,job_script_filename='job.sh',name=None):
         """
         Create Job object and add it to the dataset
 
         Parameters
         ----------
-        job_class : (str) 
-            Name of the job class. For now available only 'VaspJob'.
+        cls : (str) 
+            Job class.
         group : (str), optional
             Name of the group to which the job belongs. The default is ''.
         nodes : (str), optional
@@ -315,11 +343,8 @@ class Dataset:
             Name of the job. If None the name is searched in the job script.
         """
         
-        path = op.join(self.path,group,nodes)
-        module = importlib.import_module("pynter.data.jobs")
-        jobclass = getattr(module, job_class)
-        
-        job = jobclass(path=path,inputs=inputs,job_settings=job_settings,outputs=outputs,
+        path = op.join(self.path,group,nodes)        
+        job = cls(path=path,inputs=inputs,job_settings=job_settings,outputs=outputs,
                        job_script_filename=job_script_filename,name=name)
         job.group = group
         job.nodes = nodes

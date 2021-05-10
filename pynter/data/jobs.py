@@ -13,7 +13,6 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import grep_list
-from pynter.data.database.creator import VaspJobDrone
 import importlib
 import numpy as np
 import json
@@ -749,6 +748,8 @@ class VaspJob(Job):
         drone: 
             VaspJobDrone object that contains all attributes of VaspToDbTaskDrone.
         """
+        from pynter.data.database.creator import VaspJobDrone
+        
         drone = VaspJobDrone(self,**kwargs)
         if get_doc_only:
             return drone.get_task_doc_from_files()
