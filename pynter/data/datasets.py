@@ -20,12 +20,12 @@ def _check_job_script(job_script_filenames,files):
         else:
             job_script_filename = None
     elif isinstance(job_script_filenames,list):
+        job_script_filename = None
         for s in job_script_filenames:
             if s in files:
                 check = True
                 job_script_filename = s
-            else:
-                job_script_filename = None
+
     else:
         raise ValueError('job_script_filenames must be a string or a list of strings')
 
