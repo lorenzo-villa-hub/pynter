@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import os.path as op
 import time
 from glob import glob
 from datetime import datetime
@@ -12,6 +13,8 @@ config = load_config()
 hostname = config['HPC']['hostname']
 workdir = config['HPC']['workdir']
 localdir = config['HPC']['localdir']
+workdir = op.join(workdir,'')  #ensure backslash at the end
+localdir = op.join(localdir,'')
 
 homedir = os.getenv("HOME")
 wdir = os.path.join(homedir,'.sync_hpc')
@@ -19,7 +22,7 @@ if not os.path.exists(wdir):
     os.makedirs(wdir)
 os.chdir(wdir)
 
-command = f"rsync -r -uavzh --exclude 'core.*' -e ssh {hostname}:{workdir}/*  {localdir}"
+command = f"rsync -r -uavzh --exclude='core.*' --exclude='WAVECAR' -e ssh {hostname}:{workdir}  {localdir}"
 command = command.split() #subprocess.run() takes a list with the arguments of the command
 
 def job(command):

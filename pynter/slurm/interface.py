@@ -136,11 +136,14 @@ class HPCInterface:
         """        
         remotedir = remotedir if remotedir else self.workdir
         localdir = localdir if localdir else self.localdir
+        localdir = op.abspath(localdir)
+        remotedir = op.join(remotedir,'')  #ensure backslash at the end
+        localdir = op.join(localdir,'')
         
         localcmd = 'mkdir -p %s' %localdir
         run_local(localcmd)
         
-        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir}/ {localdir}/ "
+        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir} {localdir} "
         print(cmd)
         stdout,stderr = run_local(cmd)
         return stdout,stderr
@@ -165,13 +168,14 @@ class HPCInterface:
         stderr : (str)
             Error.
         """        
-        localdir = localdir if localdir else self.localdir
+        localdir = localdir if localdir else self.localdir 
         remotedir = remotedir if remotedir else self.workdir
-        
-        #the wildcard makes it sync all the contained folders/files and not the folder itself
         localdir = op.abspath(localdir)
+        localdir = op.join(localdir,'')  #ensure backslash at the end
+        remotedir = op.join(remotedir,'')
+        
         self.mkdir(remotedir,printout=False)
-        cmd = f"rsync -r -uavzh -e ssh  {localdir}/ {self.hostname}:{remotedir}/ "
+        cmd = f"rsync -r -uavzh -e ssh  {localdir} {self.hostname}:{remotedir} "
         print(cmd)
         stdout,stderr = run_local(cmd)
 
