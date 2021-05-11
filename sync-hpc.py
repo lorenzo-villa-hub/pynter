@@ -3,7 +3,6 @@
 import os
 import os.path as op
 import time
-from glob import glob
 from datetime import datetime
 import subprocess
 import schedule

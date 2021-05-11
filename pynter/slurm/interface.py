@@ -143,7 +143,7 @@ class HPCInterface:
         localcmd = 'mkdir -p %s' %localdir
         run_local(localcmd)
         
-        cmd = f"rsync -r -uavzh -e ssh {self.hostname}:{remotedir} {localdir} "
+        cmd = f"rsync -r -uavzh --exclude='core.*' --exclude='WAVECAR' -e ssh {self.hostname}:{remotedir} {localdir} "
         print(cmd)
         stdout,stderr = run_local(cmd)
         return stdout,stderr
@@ -175,7 +175,7 @@ class HPCInterface:
         remotedir = op.join(remotedir,'')
         
         self.mkdir(remotedir,printout=False)
-        cmd = f"rsync -r -uavzh -e ssh  {localdir} {self.hostname}:{remotedir} "
+        cmd = f"rsync -r -uavzh --exclude='core.*' --exclude='WAVECAR' -e ssh  {localdir} {self.hostname}:{remotedir} "
         print(cmd)
         stdout,stderr = run_local(cmd)
 
