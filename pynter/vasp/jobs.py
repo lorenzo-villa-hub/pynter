@@ -113,7 +113,7 @@ class VaspJob(Job):
         
     
     @staticmethod
-    def from_directory(path,job_script_filename='job.sh',load_outputs=True,**kwargs):
+    def from_directory(path=None,job_script_filename='job.sh',load_outputs=True,**kwargs):
         """
         Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
         Output files are read usign Pymatgen Vasprun class.
@@ -122,7 +122,7 @@ class VaspJob(Job):
         Parameters
         ----------
         path : (str)
-            Path were job data is stored.
+            Path were job data is stored. If None the current wdir is used. The default is None.
         job_script_filename : (str), optional
             Filename of job script. The default is 'job.sh'.
         kwargs : (dict)
@@ -132,7 +132,7 @@ class VaspJob(Job):
         VaspJob object.
         
         """
-                
+        path = path if path else os.getcwd()
         inputs = VaspInput.from_directory(path)
         outputs = {}
         if load_outputs:
