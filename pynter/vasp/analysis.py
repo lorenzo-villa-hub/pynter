@@ -4,10 +4,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.core.periodic_table import Element
-from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.core.structure import Structure
-from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter
-from pymatgen.electronic_structure.bandstructure import BandStructure
+from pymatgen.electronic_structure.plotter import BSDOSPlotter
 from pymatgen.analysis.eos import EOS
 from pynter.vasp.plotter import plot_spd_dos
 
