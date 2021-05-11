@@ -613,7 +613,7 @@ class VaspNEBJob(Job):
     
     
     @staticmethod
-    def from_directory(path,job_script_filename='job.sh',load_outputs=True):
+    def from_directory(path=None,job_script_filename='job.sh',load_outputs=True):
         """
         Builds VaspNEBjob object from data stored in a directory. Inputs dict is constructed
         by reading with Pymatgen INCAR, KPOINTS and POTCAR and creating a series of Structure 
@@ -625,7 +625,7 @@ class VaspNEBJob(Job):
         Parameters
         ----------
         path : (str)
-            Path were job data is stored.
+            Path were job data is stored. If None the current wdir is used. The default is None.
         job_script_filename : (str), optional
             Filename of job script. The default is 'job.sh'.
 
@@ -636,6 +636,7 @@ class VaspNEBJob(Job):
         """                
         inputs = {}
         structures = []
+        path = path if path else os.getcwd()
         path = op.abspath(path)
         dirs = [d[0] for d in os.walk(path)]
         for d in dirs:
