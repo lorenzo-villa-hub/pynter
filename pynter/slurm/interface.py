@@ -115,7 +115,7 @@ class HPCInterface:
         return stdout, stderr
     
 
-    def rsync_from_hpc(self,remotedir=None,localdir=None):
+    def rsync_from_hpc(self,remotedir=None,localdir=None,exclude=None,dry_run=False):
         """
         Sync folders from HPC to local machine. The command "rsync" is used. With this function all
         the folders contained in the remote dir are synched to the local dir.
@@ -126,6 +126,10 @@ class HPCInterface:
             Remote directory. The default is None. If None the one in config.yml file is used.
         localdir : (str), optional
             Local directory. The default is None. If None the one in config.yml file is used.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
 
         Returns
         -------
@@ -143,13 +147,20 @@ class HPCInterface:
         localcmd = 'mkdir -p %s' %localdir
         run_local(localcmd)
         
-        cmd = f"rsync -r -uavzh --exclude='core.*' --exclude='WAVECAR' -e ssh {self.hostname}:{remotedir} {localdir} "
+        cmd = "rsync -r -uavzh " #keep the spaces
+        if dry_run:
+            cmd += "--dry-run "
+        if exclude:
+            for s in exclude:
+                cmd += f"--exclude='{s}' " 
+        cmd += f"-e ssh {self.hostname}:{remotedir} {localdir} "
+        
         print(cmd)
         stdout,stderr = run_local(cmd)
         return stdout,stderr
 
 
-    def rsync_to_hpc(self,localdir=None,remotedir=None):
+    def rsync_to_hpc(self,localdir=None,remotedir=None,exclude=None,dry_run=False):
         """
         Sync folders from local machine to HPC. The command "rsync" is used. With this function all
         the folders contained in the local dir are synched to the remote dir.
@@ -160,6 +171,10 @@ class HPCInterface:
             Local directory. The default is None. If None the one in config.yml file is used.
         remotedir : (str), optional
             Remote directory. The default is None. If None the one in config.yml file is used.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
 
         Returns
         -------
@@ -175,7 +190,15 @@ class HPCInterface:
         remotedir = op.join(remotedir,'')
         
         self.mkdir(remotedir,printout=False)
-        cmd = f"rsync -r -uavzh --exclude='core.*' --exclude='WAVECAR' -e ssh  {localdir} {self.hostname}:{remotedir} "
+        
+        cmd = "rsync -r -uavzh " #keep the spaces
+        if dry_run:
+            cmd += "--dry-run "
+        if exclude:
+            for s in exclude:
+                cmd += f"--exclude='{s}' "
+        cmd += f"-e ssh  {localdir} {self.hostname}:{remotedir} "
+        
         print(cmd)
         stdout,stderr = run_local(cmd)
 

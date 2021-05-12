@@ -193,7 +193,7 @@ class Job:
         return stdout,stderr
     
 
-    def sync_from_hpc(self,stdouts=False):
+    def sync_from_hpc(self,stdouts=False,exclude=None,dry_run=False):
         """
         Sync job data from HPC to local machine
 
@@ -201,6 +201,10 @@ class Job:
         ----------
         stdouts : (bool), optional
             Return output and error strings. The default is False.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
 
         Returns
         -------
@@ -213,14 +217,14 @@ class Job:
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path 
-        stdout,stderr = hpc.rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir)
+        stdout,stderr = hpc.rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
             return
         
         
-    def sync_to_hpc(self,stdouts=False):
+    def sync_to_hpc(self,stdouts=False,exclude=None,dry_run=False):
         """
         Sync job data from local machine to HPC
 
@@ -228,6 +232,10 @@ class Job:
         ----------
         stdouts : (bool), optional
             Return output and error strings. The default is False.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
 
         Returns
         -------
@@ -240,7 +248,7 @@ class Job:
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path 
-        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc)
+        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:

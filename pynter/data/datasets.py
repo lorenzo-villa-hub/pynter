@@ -641,7 +641,7 @@ class Dataset:
         return sel_jobs
 
 
-    def sync_dataset_from_hpc(self,stdouts=False):
+    def sync_dataset_from_hpc(self,stdouts=False,exclude=None,dry_run=False):
         """
         Sync Dataset project folder from HPC to local machine
 
@@ -649,6 +649,10 @@ class Dataset:
         ----------
         stdouts : (bool), optional
             Return output and error strings. The default is False.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
 
         Returns
         -------
@@ -660,14 +664,14 @@ class Dataset:
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path 
-        stdout,stderr = hpc.rsync_from_hpc(localdir=localdir,remotedir=self.path_in_hpc)
+        stdout,stderr = hpc.rsync_from_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
             return
 
 
-    def sync_dataset_to_hpc(self,stdouts=False):
+    def sync_dataset_to_hpc(self,stdouts=False,exclude=None,dry_run=False):
         """
         Sync Dataset project folder from local machine to HPC
 
@@ -675,6 +679,10 @@ class Dataset:
         ----------
         stdouts : (bool), optional
             Return output and error strings. The default is False.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
 
         Returns
         -------
@@ -686,7 +694,7 @@ class Dataset:
         hpc = HPCInterface()
         abs_path = op.abspath(self.path)
         localdir = abs_path 
-        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc)
+        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
