@@ -113,7 +113,7 @@ class VaspJob(Job):
         
     
     @staticmethod
-    def from_directory(path=None,job_script_filename='job.sh',load_outputs=True,**kwargs):
+    def from_directory(path=None,job_script_filename=None,load_outputs=True,**kwargs):
         """
         Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
         Output files are read usign Pymatgen Vasprun class.
@@ -124,7 +124,7 @@ class VaspJob(Job):
         path : (str)
             Path were job data is stored. If None the current wdir is used. The default is None.
         job_script_filename : (str), optional
-            Filename of job script. The default is 'job.sh'.
+            Filename of job script. The default is set in the config file.
         kwargs : (dict)
             Arguments to pass to Vasprun parser.
         Returns
@@ -143,6 +143,7 @@ class VaspJob(Job):
                     print('Warning: Reading of vasprun.xml in "%s" failed'%path)
                     outputs['Vasprun'] = None
         
+        job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
@@ -613,7 +614,7 @@ class VaspNEBJob(Job):
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filename='job.sh',load_outputs=True):
+    def from_directory(path=None,job_script_filename=None,load_outputs=True):
         """
         Builds VaspNEBjob object from data stored in a directory. Inputs dict is constructed
         by reading with Pymatgen INCAR, KPOINTS and POTCAR and creating a series of Structure 
@@ -627,7 +628,7 @@ class VaspNEBJob(Job):
         path : (str)
             Path were job data is stored. If None the current wdir is used. The default is None.
         job_script_filename : (str), optional
-            Filename of job script. The default is 'job.sh'.
+            Filename of job script. The default is set in the config file.
 
         Returns
         -------
@@ -658,7 +659,8 @@ class VaspNEBJob(Job):
             except:
                 print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
                 outputs['NEBAnalysis'] = None
-            
+        
+        job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
