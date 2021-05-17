@@ -39,7 +39,7 @@ def plot_bs_elt_projected(bs,**kwargs):
     Parameters
     ----------
     bs : 
-        BandStructureSymmLine object, most likely generaten from Vasprun or BSVasprun.
+        BandStructureSymmLine object, most likely generated from Vasprun or BSVasprun.
     **kwargs : (dict)
         Arguments for the get_elt_projected_plots_color function in BSPlotter in pymatgen.
 
@@ -51,6 +51,32 @@ def plot_bs_elt_projected(bs,**kwargs):
     plotter = BSPlotterProjected(bs)
     plt = plotter.get_elt_projected_plots_color(**kwargs)
     
+    return plt
+
+
+def plot_dos_bs(dos,bs,**kwargs):
+    """
+    Plot DOS and BS with pymatgen's BSDOSPlotter class.
+
+    Parameters
+    ----------
+    dos : 
+        Dos object.
+    bs : 
+        BandStructureSymmLine object, most likely generated from Vasprun or BSVasprun..
+    **kwargs : (dict)
+        Arguments to pass to BSDOSPlotter class.
+
+    Returns
+    -------
+    plt : 
+        Matplotlib object.
+    """
+    if 'bs_projection' not in kwargs.keys(): # setting default projections to None
+        kwargs['bs_projection'] = None
+    if 'dos_projection' not in kwargs.keys():
+        kwargs['dos_projection'] = None
+    plt = BSDOSPlotter(**kwargs).get_plot(bs,dos)
     return plt
 
 
@@ -104,7 +130,7 @@ def plot_element_dos(complete_dos,xlim=(-3,3),**kwargs):
         Matplotlib object.
     """
     d = complete_dos.get_element_dos()        
-    plt = plot_dos_dict(complete_dos, d, **kwargs)
+    plt = plot_dos_dict(complete_dos, d, xlim, **kwargs)
     
     return plt
 
@@ -128,7 +154,7 @@ def plot_spd_dos(complete_dos,xlim=(-3,3),**kwargs):
         Matplotlib object.
     """
     d = complete_dos.get_spd_dos()        
-    plt = plot_dos_dict(complete_dos, d, **kwargs)
+    plt = plot_dos_dict(complete_dos, d, xlim, **kwargs)
     
     return plt
 

@@ -11,53 +11,6 @@ from pynter.vasp.plotter import plot_spd_dos
 matplotlib.rcParams.update({'font.size': 15})
 
 
-class JobAnalysis:
-    
-    def __init__(self,job):
-        """
-        Class to analyse a VaspJob object
-
-        Parameters
-        ----------
-        job : 
-            Job object
-        """
-        
-        self.job = job
-        
-    def plot_dos(self,xlim=(-3,3),**kwargs):
-        """
-        Plot DOS from data in vasprun.xml with Pymatgen
-        """
-        job = self.job
-        wdir = os.getcwd()
-        os.chdir(job.path)
-        if job.is_converged:   
-            complete_dos = job.computed_entry.data['complete_dos']
-            plt = plot_spd_dos(complete_dos,xlim,**kwargs)
-        else:
-            raise ValueError(f'Job %s is not converged' %self.job.name)
-        os.chdir(wdir)
-        return plt
-
-
-    def plot_dos_bs(self,bs_projection=None,dos_projection=None):
-        """
-        Plot DOS and BS from data in vasprun.xml with Pymatgen
-        """
-        job = self.job
-        wdir = os.getcwd()
-        os.chdir(job.path)
-        if job.is_converged:
-            bs = job.band_structure
-            dos = job.computed_entry.data['complete_dos']
-            plt = BSDOSPlotter(bs_projection=bs_projection,dos_projection=dos_projection).get_plot(bs,dos)           
-        else:
-            raise ValueError(f'Job %s is not converged' %self.name)
-        os.chdir(wdir)
-        return plt
-
-
 class DatasetAnalysis:
     
     def __init__(self,jobs):
