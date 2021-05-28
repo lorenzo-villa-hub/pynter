@@ -535,7 +535,7 @@ class DefectsAnalysis:
         return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=1e-03)
             
      
-    def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False):
+    def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False,display=[]):
         """
         Get DataFrame to display entries. 
 
@@ -577,6 +577,13 @@ class DefectsAnalysis:
                 d['delta atoms'] = e.delta_atoms
             d['charge'] = e.charge
             d['multiplicity'] = e.multiplicity
+            if display:
+                for feature in display:
+                    try:
+                        attr = getattr(e,feature) ()
+                    except:
+                        attr = getattr(e,feature)
+                    d[feature] = attr
             table.append(d)
         df = pd.DataFrame(table,index=index)
         if pretty:
