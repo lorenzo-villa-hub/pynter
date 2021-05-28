@@ -21,6 +21,11 @@ import json
 from glob import glob
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
+import warnings
+from pymatgen.io.vasp.inputs import UnknownPotcarWarning
+
+warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
+
 
 class VaspJob(Job):
  

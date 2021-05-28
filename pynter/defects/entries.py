@@ -9,7 +9,7 @@ Created on Fri Dec 11 14:33:12 2020
 
 import numpy as np
 import importlib
-from pymatgen.analysis.defects.utils import kb
+from pymatgen.core.units import kb
 from pymatgen.core.structure import Structure
 from pymatgen.analysis.defects.core import *
 from pynter.defects.utils import *
