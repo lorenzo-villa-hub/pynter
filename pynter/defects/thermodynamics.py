@@ -70,8 +70,8 @@ class PartialPressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,phase_diagram,target_comp,bulk_dos,temperature,
-                 frozen_defect_concentrations=None,external_defects=[],extrinsic_chempots_range=None):
+    def __init__(self,defects_analysis,bulk_dos,frozen_defect_concentrations=None,
+                 external_defects=[],extrinsic_chempots_range=None):
         """
         Parameters
         ----------
@@ -95,16 +95,13 @@ class PartialPressureAnalysis:
             Dictionary with chemical potentials of elements not belonging to the PD ({Element:(O_poor_chempot,O_rich_chempot)}). 
         """
         self.da = defects_analysis
-        self.pd = phase_diagram
-        self.target_comp = target_comp
         self.bulk_dos = bulk_dos
-        self.temperature = temperature
         self.frozen_defect_concentrations = frozen_defect_concentrations if frozen_defect_concentrations else None
         self.external_defects = external_defects if external_defects else []
         self.extrinsic_chempots_range = extrinsic_chempots_range
     
     
-    def get_concentrations(self,pressure_range=(-20,10),concentrations_output='all',npoints=30,get_fermi_levels=False,temperature=None):
+    def get_concentrations(self,reservoirs,concentrations_output='all',get_fermi_levels=False,temperature=None):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -136,8 +133,8 @@ class PartialPressureAnalysis:
         carrier_concentrations : (list)
             List of tuples with intrinsic carriers concentrations (holes,electrons).
         """
-        T = temperature if temperature else self.temperature
-        res = self._get_reservoirs(T, pressure_range, npoints)
+        T = temperature if temperature else reservoirs.temperature
+        res = reservoirs
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
@@ -171,7 +168,7 @@ class PartialPressureAnalysis:
             return partial_pressures, defect_concentrations, carrier_concentrations
     
     
-    def get_conductivities(self,mobilities,ignore_multiplicity=True,pressure_range=(-20,10),npoints=30,temperature=None):
+    def get_conductivities(self,reservoirs,mobilities,ignore_multiplicity=True,temperature=None):
         """
         Calculate conductivity as a function of oxygen partial pressure.
 
@@ -197,9 +194,9 @@ class PartialPressureAnalysis:
         conductivities : (list)
             List of conductivity values (in S/m).
         """      
-        T = temperature if temperature else self.temperature
+        T = temperature if temperature else reservoirs.temperature
         cnd = Conductivity(mobilities)
-        res = self._get_reservoirs(T, pressure_range, npoints)
+        res = reservoirs
         partial_pressures = list(res.keys())
         conductivities = []
         dos = self.bulk_dos
@@ -216,7 +213,8 @@ class PartialPressureAnalysis:
             conductivities.append(sigma)
         return partial_pressures, conductivities
     
-    def get_fermi_levels(self,pressure_range=(-20,10),npoints=30,temperature=None):
+    
+    def get_fermi_levels(self,reservoirs,temperature=None):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -236,8 +234,8 @@ class PartialPressureAnalysis:
         fermi_levels : (list)
             List of Fermi level values
         """
-        T = temperature if temperature else self.temperature
-        res = self._get_reservoirs(T, pressure_range, npoints)
+        T = temperature if temperature else reservoirs.temperature
+        res = reservoirs
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
@@ -253,8 +251,8 @@ class PartialPressureAnalysis:
         return partial_pressures, fermi_levels
     
 
-    def get_quenched_fermi_levels(self,initial_temperature,final_temperature,quenched_species=None,ignore_multiplicity=True,
-                                  pressure_range=(-20,10),npoints=30):
+    def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
+                                  quenched_species=None,ignore_multiplicity=True):
         """
         Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
         It is possible to select which defect species to quench and which ones are free to equilibrate.
@@ -286,8 +284,10 @@ class PartialPressureAnalysis:
         
         T1 = initial_temperature
         T2 = final_temperature
-        res = self._get_reservoirs(T1, pressure_range, npoints)
-
+        res = reservoirs
+        if hasattr(res,'temperature'):
+            if res.temperature != T1:
+                print('Warning: PressureReservoirs temperature is not set to the initial quenching temperature')
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
@@ -319,11 +319,3 @@ class PartialPressureAnalysis:
             fermi_levels.append(quenched_mue)
             
         return partial_pressures, fermi_levels
-                
-        
-
-    def _get_reservoirs(self,temperature,pressure_range,npoints):
-        res = ChempotExperimental().chempots_partial_pressure_range(self.pd,self.target_comp,temperature=temperature,
-                                                                    pressure_range=pressure_range,npoints=npoints,
-                                                                    extrinsic_chempots_range=self.extrinsic_chempots_range)    
-        return res

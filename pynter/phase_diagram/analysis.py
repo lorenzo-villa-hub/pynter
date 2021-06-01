@@ -262,7 +262,64 @@ class Reservoirs:
         self.are_chempots_delta = True
         return    
     
-       
+    
+class PressureReservoirs(Reservoirs):
+    """
+    Subclass of Reservoirs which contains temperature information. Useful for partial pressure analysis. 
+    """
+    def __init__(self,res_dict,temperature,phase_diagram=None,are_chempots_delta=False):
+        super().__init__(res_dict,phase_diagram,are_chempots_delta)
+        self.temperature = temperature
+        self.pressures = list(self.res_dict.keys())
+        
+        
+    def as_dict(self):
+        """
+        Json-serializable dict representation of a Reservoirs object. The Pymatgen element 
+        is expressed with the symbol of the element.
+
+        Returns
+        -------
+        dict
+            Json-serializable dict of a Reservoirs object.
+        """
+        d = {}
+        d['@module'] = self.__class__.__module__
+        d['@class'] = self.__class__.__name__
+        d['res_dict'] = {}
+        for res,chempots in self.res_dict.items():
+            d['res_dict'][res] = {}
+            for el in chempots:
+                d['res_dict'][res][el.symbol] = chempots[el]
+        d['temperature'] = self.temperature
+        d['phase_diagram'] = self.phase_diagram.as_dict()
+        d['are_chempots_delta'] = self.are_chempots_delta
+        return d
+
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Constructor of Reservoirs object from dictionary representation.
+        
+        Parameters
+        ----------
+        d : dict
+        
+        Returns
+        -------
+        Reservoirs object.
+        """
+        res_dict = {}
+        for res,chempots in d['res_dict'].items():
+            res_dict[res] = {Element(el):chempots[el] for el in chempots}
+        temperature = d['temperature']
+        phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
+        are_chempots_delta = d['are_chempots_delta']
+            
+        return cls(res_dict,temperature,phase_diagram,are_chempots_delta)
+
+    
+    
 class ChempotAnalysis:
     
     def __init__(self,phase_diagram):

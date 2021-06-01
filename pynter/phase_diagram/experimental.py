@@ -8,7 +8,7 @@ Created on Wed Mar 18 13:12:05 2020
 
 import numpy as np
 from pymatgen.core.periodic_table import Element
-from pynter.phase_diagram.analysis import ChempotAnalysis, Reservoirs, PDHandler
+from pynter.phase_diagram.analysis import ChempotAnalysis, Reservoirs, PDHandler, PressureReservoirs
 
 class ChempotExperimental:
     
@@ -131,7 +131,7 @@ class ChempotExperimental:
             reservoirs[p] = chempots_abs
     
             
-        return Reservoirs(reservoirs,phase_diagram=pd,are_chempots_delta=False)
+        return PressureReservoirs(reservoirs,temperature,phase_diagram=pd,are_chempots_delta=False)
                                 
         
     def oxygen_partial_pressure_range(self,chempots,phase_diagram=None,oxygen_ref=None,temperature=None,
@@ -181,9 +181,9 @@ class ChempotExperimental:
                 p = str(p)
             reservoirs[p] = mu
         
-        return Reservoirs(reservoirs,phase_diagram,are_chempots_delta=False)
-            
-        
+        return PressureReservoirs(reservoirs,temperature,phase_diagram,are_chempots_delta=False)
+
+    
     def oxygen_standard_chempot(self,temperature=None):
         """
         Get value of oxygen delta mu standard (mu_0(T,Po)) at a speficic temperature
