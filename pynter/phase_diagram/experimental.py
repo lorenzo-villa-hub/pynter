@@ -54,7 +54,7 @@ class ChempotExperimental:
         
     
     
-    def chempots_partial_pressure_range(self,phase_diagram,target_comp,temperature=None,
+    def get_pressure_reservoirs_from_pd(self,phase_diagram,target_comp,temperature=None,
                                         extrinsic_chempots_range=None,pressure_range=(-20,10),npoints=50,
                                         get_pressures_as_strings=False):
         """
@@ -88,7 +88,7 @@ class ChempotExperimental:
         Returns
         -------
         reservoirs
-            Reservoirs object. The dictionary is organized as {partial_pressure:chempots}.
+            PressureReservoirs object. The dictionary is organized as {partial_pressure:chempots}.
 
         """
         chempots = {}
@@ -133,23 +133,17 @@ class ChempotExperimental:
             
         return PressureReservoirs(reservoirs,temperature,phase_diagram=pd,are_chempots_delta=False)
                                 
-        
-    def oxygen_partial_pressure_range(self,chempots,phase_diagram=None,oxygen_ref=None,temperature=None,
-                                      pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
+
+    def get_oxygen_pressure_reservoirs(self,oxygen_ref,temperature=None,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
         """
-        Get Reservoirs object for a range of oxygen partial pressure. The chemical potentials that
-        are not of the oxygen element are kept constant.
+        Get PressureReservoirs object for oxygen starting from the reference value.
 
         Parameters
         ----------
-        chempots : (dict)
-            Staring dictionary of chemical potentials in the format {Element:value}.
-        phase_diagram : (PhaseDiagram), optional
-            PhaseDiagram object to determine reference chemical potential for oxygen. The default is None.
-        oxygen_ref : (float), optional
-            If PhaseDiagram is not provided the reference value for the oxygen chemical potential is needed. The default is None.
+        oxygen_ref : (float)
+            Absolute chempot of oxygen at 0K.
         temperature : (float), optional
-            Temperature value. If None the value with which the class is initialized is taken. The default is None.
+            Temperature.
         pressure_range : (tuple), optional
             Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
         npoints : (int), optional
@@ -159,33 +153,9 @@ class ChempotExperimental:
 
         Returns
         -------
-        reservoirs
-            Reservoirs object. The dictionary is organized as {partial_pressure:chempots}.
+        PressureReservoirs object
 
-        """   
-        reservoirs = {}
-        temperature = temperature if temperature else self.temperature
-        partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
-        mu_standard = self.oxygen_standard_chempot(temperature)
-        if phase_diagram:
-            muO_ref = PDHandler(phase_diagram).get_chempots_reference()[Element('O')]
-        else:
-            muO_ref = oxygen_ref
-        
-        for p in partial_pressures:
-            mu = chempots.copy()
-            muO = self.chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p)
-            mu.update({Element('O'):muO_ref + muO})
-            if get_pressures_as_strings:
-                p = "%.1g" % p
-                p = str(p)
-            reservoirs[p] = mu
-        
-        return PressureReservoirs(reservoirs,temperature,phase_diagram,are_chempots_delta=False)
-
-
-    def get_oxygen_reservoirs(self,oxygen_ref,temperature=None,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
-        
+        """
         reservoirs = {}
         temperature = temperature if temperature else self.temperature
         partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)

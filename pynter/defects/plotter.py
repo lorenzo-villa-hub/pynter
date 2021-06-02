@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
 
-class PartialPressurePlotter:
+class PressurePlotter:
     """
     Class to plot oxygen partial pressure dependencies
     """

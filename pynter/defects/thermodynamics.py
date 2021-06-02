@@ -65,7 +65,7 @@ class Conductivity:
         return sigma
 
 
-class PartialPressureAnalysis:
+class PressureAnalysis:
     """
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
@@ -105,8 +105,6 @@ class PartialPressureAnalysis:
                 "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
                 "total": The output is the sum of the concentration in every charge for each specie.
                 The default is 'all'.
-        npoints : (int), optional
-            Number of partial pressure points to compute. 
         get_fermi_levels : (bool), optional
             If True also the fermi levels are returned. Useful to compute both concentrations and fermi levels 
             in one single step. The default is False
@@ -123,8 +121,13 @@ class PartialPressureAnalysis:
         carrier_concentrations : (list)
             List of tuples with intrinsic carriers concentrations (holes,electrons).
         """
-        T = temperature if temperature else reservoirs.temperature
         res = reservoirs
+        if temperature:
+            T = temperature
+        elif hasattr(res,'temperature'):
+            T = res.temperature
+        else:
+            raise ValueError('Temperature needs to be provided or to be present ad attribute in PressureReservoirs object')
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
@@ -182,9 +185,14 @@ class PartialPressureAnalysis:
         conductivities : (list)
             List of conductivity values (in S/m).
         """      
-        T = temperature if temperature else reservoirs.temperature
-        cnd = Conductivity(mobilities)
         res = reservoirs
+        if temperature:
+            T = temperature
+        elif hasattr(res,'temperature'):
+            T = res.temperature
+        else:
+            raise ValueError('Temperature needs to be provided or to be present ad attribute in PressureReservoirs object')
+        cnd = Conductivity(mobilities)
         partial_pressures = list(res.keys())
         conductivities = []
         dos = self.bulk_dos
@@ -220,8 +228,13 @@ class PartialPressureAnalysis:
         fermi_levels : (list)
             List of Fermi level values
         """
-        T = temperature if temperature else reservoirs.temperature
         res = reservoirs
+        if temperature:
+            T = temperature
+        elif hasattr(res,'temperature'):
+            T = res.temperature
+        else:
+            raise ValueError('Temperature needs to be provided or to be present ad attribute in PressureReservoirs object')
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos

@@ -12,7 +12,7 @@ import copy
 
 class Reservoirs:
     
-    def __init__(self,res_dict,phase_diagram=None,are_chempots_delta=False):
+    def __init__(self,res_dict,phase_diagram=None,mu_refs=None,are_chempots_delta=False):
         """
         Class to handle dictionaries of chemical potentials. Works almost completely like a python dictionary.
 
@@ -26,7 +26,14 @@ class Reservoirs:
             Set this variable to True if chempots in dictionary are referenced values. The default is False.
         """
         self.res_dict = res_dict
-        self.phase_diagram = phase_diagram if phase_diagram else None
+        self.pd = phase_diagram if phase_diagram else None
+        if self.pd:
+            self.mu_refs = PDHandler(self.pd).get_chempots_reference()
+        elif mu_refs:
+            self.mu_refs = mu_refs
+        else:
+            self.mu_refs = mu_refs
+            print('Warning: Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible')
         self.are_chempots_delta = are_chempots_delta
 
 
@@ -60,7 +67,7 @@ class Reservoirs:
         return self.res_dict.items()
 
     def copy(self):
-        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.phase_diagram,are_chempots_delta=self.are_chempots_delta)
+        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.pd,are_chempots_delta=self.are_chempots_delta)
     
     def as_dict(self):
         """
@@ -80,7 +87,8 @@ class Reservoirs:
             d['res_dict'][res] = {}
             for el in chempots:
                 d['res_dict'][res][el.symbol] = chempots[el]
-        d['phase_diagram'] = self.phase_diagram.as_dict()
+        d['phase_diagram'] = self.pd.as_dict() if self.pd else None
+        d['mu_refs'] = self.mu_refs 
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 
@@ -124,10 +132,14 @@ class Reservoirs:
         res_dict = {}
         for res,chempots in d['res_dict'].items():
             res_dict[res] = {Element(el):chempots[el] for el in chempots}
-        phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
+        if 'phase_diagram' in d.keys() and d['phase_diagram'] is not None:
+            phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
+        else:
+            phase_diagram = None
+        mu_refs = d['mu_refs'] if 'mu_refs' in d.keys() else None
         are_chempots_delta = d['are_chempots_delta']
             
-        return cls(res_dict,phase_diagram,are_chempots_delta)
+        return cls(res_dict,phase_diagram,mu_refs,are_chempots_delta)
 
 
     @staticmethod
@@ -179,41 +191,24 @@ class Reservoirs:
         return res
 
 
-    def get_referenced_chempots(self):
+    def get_absolute_res_values(self):
         """ 
-        Convert values of chempots from absolute to referenced 
-        based on the information in the PhaseDiagram
+        Return values of chempots from referenced to absolute 
         """
-        chempots_delta = {}
-        ca = ChempotAnalysis(self.phase_diagram)
+        if self.are_chempots_delta:
+            return self._get_absolute_res()
+        else:
+            raise ValueError('Chemical potential values are already absolute')
+                
+
+    def get_referenced_res_values(self):
+        """ 
+        Return values of chempots from absolute to referenced 
+        """
         if self.are_chempots_delta:
             raise ValueError('Chemical potential values are already with respect to reference')
         else:
-            for res,chem in self.res_dict.items():
-                chempots_delta[res] = ca.get_chempots_delta(chem)
-        return chempots_delta
-    
-    
-    def get_absolute_chempots(self):
-        """ 
-        Convert values of chempots from referenced to absolute 
-        based on the information in the PhaseDiagram
-        """
-        chempots_abs = {}
-        ca = ChempotAnalysis(self.phase_diagram)
-        if self.are_chempots_delta:
-            for res,chem in self.res_dict.items():
-                chempots_abs[res] = ca.get_chempots_abs(chem)
-        else:
-            raise ValueError('Chemical potential values are already absolute')
-        return chempots_abs
-                
-
-    def get_reference_chempots_values(self):
-        """
-        Get dictionary with values of reference chemical potentials based on data in the PhaseDiagram
-        """
-        return PDHandler(self.phase_diagram).get_chempots_reference()
+            return self._get_referenced_res()
 
     
     def get_dataframe(self,format_compositions=False,all_math=False):
@@ -243,25 +238,45 @@ class Reservoirs:
         return df
         
      
-    def set_chempots_to_absolute(self):
+    def set_to_absolute(self):
         """
         Set reservoir dictionary to absolute values of chempots.
         """
-        new_res_dict = self.get_absolute_chempots()
+        new_res_dict = self.get_absolute_res_values()
         self.res_dict = new_res_dict
         self.are_chempots_delta = False
         return
 
         
-    def set_chempots_to_reference(self):
+    def set_to_referenced(self):
         """
         Set reservoir dictionary to referenced values of chempots.
         """
-        new_res_dict = self.get_referenced_chempots()
+        new_res_dict = self.get_referenced_res_values()
         self.res_dict = new_res_dict
         self.are_chempots_delta = True
         return    
     
+
+    def _get_absolute_chempots(self,chem):
+        return {el:chem[el] + self.mu_refs[el] for el in chem}
+        
+    def _get_referenced_chempots(self,chem):
+        return {el:chem[el] - self.mu_refs[el] for el in chem}
+
+    def _get_absolute_res(self):
+        res_abs = {}
+        for r,chem in self.items():
+            res_abs[r] = self._get_absolute_chempots(chem)
+        return res_abs
+
+    def _get_referenced_res(self):
+        res_delta = {}
+        for r,chem in self.items():
+            res_delta[r] = self._get_referenced_chempots(chem)
+        return res_delta
+                
+
     
 class PressureReservoirs(Reservoirs):
     """
