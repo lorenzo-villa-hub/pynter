@@ -183,6 +183,24 @@ class ChempotExperimental:
         
         return PressureReservoirs(reservoirs,temperature,phase_diagram,are_chempots_delta=False)
 
+
+    def get_oxygen_reservoirs(self,oxygen_ref,temperature=None,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
+        
+        reservoirs = {}
+        temperature = temperature if temperature else self.temperature
+        partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
+        mu_standard = self.oxygen_standard_chempot(temperature)
+        for p in partial_pressures:
+            mu = {}
+            muO = self.chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p)
+            mu.update({Element('O'):oxygen_ref + muO})
+            if get_pressures_as_strings:
+                p = "%.1g" % p
+                p = str(p)
+            reservoirs[p] = mu
+        
+        return PressureReservoirs(reservoirs,temperature,phase_diagram=None,are_chempots_delta=False)
+    
     
     def oxygen_standard_chempot(self,temperature=None):
         """

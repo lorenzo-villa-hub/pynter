@@ -70,35 +70,25 @@ class PartialPressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,bulk_dos,frozen_defect_concentrations=None,
-                 external_defects=[],extrinsic_chempots_range=None):
+    def __init__(self,defects_analysis,bulk_dos,frozen_defect_concentrations=None,external_defects=[]):
         """
         Parameters
         ----------
         defects_analysis :
             DefectsAnalysis object.
-        phase_diagram : 
-            Pymatgen PhaseDiagram object.
-        target_comp : 
-            Pymatgen Composition object.
         bulk_dos : 
             Pymatgen Dos object.
-        temperature : (float), optional
-            Temperature in Kelvin. The default is 300K.
         frozen_defect_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations. The multiplicity part in the string is not
             needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
-        extrinsic_chempots_range : (dict)
-            Dictionary with chemical potentials of elements not belonging to the PD ({Element:(O_poor_chempot,O_rich_chempot)}). 
         """
         self.da = defects_analysis
         self.bulk_dos = bulk_dos
         self.frozen_defect_concentrations = frozen_defect_concentrations if frozen_defect_concentrations else None
         self.external_defects = external_defects if external_defects else []
-        self.extrinsic_chempots_range = extrinsic_chempots_range
     
     
     def get_concentrations(self,reservoirs,concentrations_output='all',get_fermi_levels=False,temperature=None):
@@ -107,8 +97,8 @@ class PartialPressureAnalysis:
 
         Parameters
         ----------
-        pressure_range : (tuple), optional
-            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
+        reservoirs : (dict, Reservoirs or PressureReservoirs)
+            Object with partial pressure values as keys and chempots dictionary as values.
         concentrations_output : (str), optional
             Type of output for defect concentrations:
                 "all": The output is the concentration of every defect entry.
@@ -121,7 +111,7 @@ class PartialPressureAnalysis:
             If True also the fermi levels are returned. Useful to compute both concentrations and fermi levels 
             in one single step. The default is False
         temperature : (float), optional
-            Temperature in Kelvin. If None self.temperature is used. The default is None.
+            Temperature in Kelvin. If None reservoirs.temperature is used. The default is None.
 
         Returns
         -------
@@ -174,16 +164,14 @@ class PartialPressureAnalysis:
 
         Parameters
         ----------
+        reservoirs : (dict, Reservoirs or PressureReservoirs)
+            Object with partial pressure values as keys and chempots dictionary as values.
         mobilities : (dict)
             Dictionary with mobility values for the defect species. 
             Keys must contain "electrons", "holes" and the defect specie name (with
             the possibility to exclude the multiplicity part of the string).
         ignore_multiplicity : (bool), optional
             If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
-        pressure_range : (tuple), optional
-            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
-        npoints : (int), optional
-            Number of partial pressure points to compute.
         temperature : (float), optional
             Temperature in Kelvin. If None self.temperature is used. The default is None.
 
@@ -220,10 +208,8 @@ class PartialPressureAnalysis:
 
         Parameters
         ----------
-        pressure_range : (tuple), optional
-            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
-        npoints : (int), optional
-            Number of partial pressure points to compute.
+        reservoirs : (dict, Reservoirs or PressureReservoirs)
+            Object with partial pressure values as keys and chempots dictionary as values.
         temperature : (float), optional
             Temperature in Kelvin. If None self.temperature is used. The default is None.
             
@@ -260,6 +246,8 @@ class PartialPressureAnalysis:
 
         Parameters
         ----------
+        reservoirs : (dict, Reservoirs or PressureReservoirs)
+            Object with partial pressure values as keys and chempots dictionary as values.
         initial_temperature : (float)
             Value of initial temperature (K).
         final_temperature : (float)
@@ -269,10 +257,6 @@ class PartialPressureAnalysis:
             If None all defect species are quenched.The default is None.
         ignore_multiplicity : (bool), optional
             If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
-        pressure_range : (tuple), optional
-            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
-        npoints : (int), optional
-            Number of partial pressure points to compute.
 
         Returns
         -------
