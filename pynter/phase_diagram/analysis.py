@@ -282,7 +282,7 @@ class PressureReservoirs(Reservoirs):
     """
     Subclass of Reservoirs which contains temperature information. Useful for partial pressure analysis. 
     """
-    def __init__(self,res_dict,temperature,phase_diagram=None,are_chempots_delta=False):
+    def __init__(self,res_dict,temperature=None,phase_diagram=None,are_chempots_delta=False):
         super().__init__(res_dict,phase_diagram,are_chempots_delta)
         self.temperature = temperature
         self.pressures = list(self.res_dict.keys())
@@ -290,13 +290,13 @@ class PressureReservoirs(Reservoirs):
         
     def as_dict(self):
         """
-        Json-serializable dict representation of a Reservoirs object. The Pymatgen element 
+        Json-serializable dict representation of a PressureReservoirs object. The Pymatgen element 
         is expressed with the symbol of the element.
 
         Returns
         -------
         dict
-            Json-serializable dict of a Reservoirs object.
+            Json-serializable dict of a PressureReservoirs object.
         """
         d = {}
         d['@module'] = self.__class__.__module__
@@ -307,14 +307,15 @@ class PressureReservoirs(Reservoirs):
             for el in chempots:
                 d['res_dict'][res][el.symbol] = chempots[el]
         d['temperature'] = self.temperature
-        d['phase_diagram'] = self.phase_diagram.as_dict()
+        d['phase_diagram'] = self.pd.as_dict() if self.pd else None
+        d['mu_refs'] = self.mu_refs 
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 
     @classmethod
     def from_dict(cls,d):
         """
-        Constructor of Reservoirs object from dictionary representation.
+        Constructor of PressureReservoirs object from dictionary representation.
         
         Parameters
         ----------
@@ -322,16 +323,20 @@ class PressureReservoirs(Reservoirs):
         
         Returns
         -------
-        Reservoirs object.
+        PressureReservoirs object.
         """
         res_dict = {}
         for res,chempots in d['res_dict'].items():
             res_dict[res] = {Element(el):chempots[el] for el in chempots}
-        temperature = d['temperature']
-        phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
+        temperature = d['temperature'] if 'temperature' in d.keys() else None
+        if 'phase_diagram' in d.keys() and d['phase_diagram'] is not None:
+            phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
+        else:
+            phase_diagram = None
+        mu_refs = d['mu_refs'] if 'mu_refs' in d.keys() else None
         are_chempots_delta = d['are_chempots_delta']
             
-        return cls(res_dict,temperature,phase_diagram,are_chempots_delta)
+        return cls(res_dict,temperature,phase_diagram,mu_refs,are_chempots_delta)
 
     
     
