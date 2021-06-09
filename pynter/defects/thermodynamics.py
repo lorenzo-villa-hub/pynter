@@ -8,8 +8,10 @@ Created on Thu Jan 14 14:48:55 2021
 
 from pynter.defects.analysis import DefectsAnalysis
 from pynter.phase_diagram.experimental import ChempotExperimental
+from pynter.tools.utils import save_object_as_json, get_object_from_json
 import copy
-
+import os.path as op
+import json
 
 class Conductivity:
     """
@@ -316,3 +318,26 @@ class PressureAnalysis:
             fermi_levels.append(quenched_mue)
             
         return partial_pressures, fermi_levels
+
+
+    def get_thermo_data(self,**kwargs):
+        d = {}
+        for k,v in kwargs.items():
+            d[k] = v
+        return d
+
+
+    def read_thermo_data(self,path_or_string):
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return d
+    
+    
+    def save_thermo_data(self,d,path):
+        with open(path,'w') as file:
+            json.dump(d,file)
+        return 
+
