@@ -19,19 +19,20 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,partial_pressures,defect_concentrations,carrier_concentrations,
-                            defect_indexes=None,concentrations_output='all',size=(12,8),xlim=None,ylim=None):
+    def plot_concentrations(self,thermodata,defect_indexes=None,concentrations_output='all',size=(12,8),xlim=None,ylim=None):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
         Parameters
         ----------
-        partial_pressures : (list)
-            list with partial pressure values.
-        defect_concentrations : (list or dict)
-            Defect concentrations in the same format as the output of DefectsAnalysis. 
-        carrier_concentrations : (list)
-            List of tuples with intrinsic carriers concentrations (holes,electrons).
+        thermodata: (dict)
+            Dict that contains the thermodynamic data:
+                partial_pressures : (list)
+                    list with partial pressure values.
+                defect_concentrations : (list or dict)
+                    Defect concentrations in the same format as the output of DefectsAnalysis. 
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
         defect_indexes : (list), optional
             List of indexes of the entry that need to be included in the plot. If None 
             all defect entries are included. The default is None.
@@ -55,7 +56,7 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        p,dc,cc = partial_pressures,defect_concentrations,carrier_concentrations
+        p,dc,cc = thermodata['partial_pressures'],thermodata['defect_concentrations'],thermodata['carrier_concentrations']
         matplotlib.rcParams.update({'font.size': 22})
         if concentrations_output == 'all' or concentrations_output == 'stable':
             plt = self._plot_conc(p,dc,cc,defect_indexes,concentrations_output,size)
@@ -76,17 +77,19 @@ class PressurePlotter:
         return plt
         
 
-    def plot_conductivity(self,partial_pressures,conductivities,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
+    def plot_conductivity(self,thermodata,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
         """
         Plot conductivity as a function of the oxygen partial pressure.
 
         Parameters
         ----------
-        partial_pressures : (list)
-            list with partial pressure values.
-        conductivities : (dict or list)
-            If is a dict multiples lines will be plotted, with labels as keys and conductivity list
-            as values. If is a list only one line is plotted with label taken from the "label" argument.
+        thermodata: (dict)
+            Dict that contains the thermodynamic data:
+                partial_pressures : (list)
+                    list with partial pressure values.
+                conductivities : (dict or list)
+                    If is a dict multiples lines will be plotted, with labels as keys and conductivity list
+                    as values. If is a list only one line is plotted with label taken from the "label" argument.
         new_figure : (bool), optional
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
@@ -103,6 +106,7 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
+        partial_pressures,conductivities = thermodata['partial_pressures'], thermodata['conductivities']
         if not label:
             label = '$\sigma$'
         matplotlib.rcParams.update({'font.size': 22})

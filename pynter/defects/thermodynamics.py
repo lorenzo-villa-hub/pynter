@@ -93,7 +93,7 @@ class PressureAnalysis:
         self.external_defects = external_defects if external_defects else []
     
     
-    def get_concentrations(self,reservoirs,concentrations_output='all',get_fermi_levels=False,temperature=None):
+    def get_concentrations(self,reservoirs,concentrations_output='all',temperature=None):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -115,13 +115,17 @@ class PressureAnalysis:
 
         Returns
         -------
-        partial_pressures : (list)
-            List of partial pressure values.
-        defect_concentrations : (list)
-            If the output is set to "all" is a list of list of dictionaries with "name", "charge", "conc" as keys. 
-            If the output is "all" is a list of dictionaries with names as keys and conc as values. 
-        carrier_concentrations : (list)
-            List of tuples with intrinsic carriers concentrations (holes,electrons).
+        thermodata: (dict)
+            Dict that contains the thermodynamic data:
+                partial_pressures : (list)
+                    List of partial pressure values.
+                defect_concentrations : (list)
+                    If the output is set to "all" is a list of list of dictionaries with "name", "charge", "conc" as keys. 
+                    If the output is "all" is a list of dictionaries with names as keys and conc as values. 
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                fermi_levels : (list)
+                    list of Fermi level values
         """
         res = reservoirs
         if temperature:
@@ -133,8 +137,7 @@ class PressureAnalysis:
         partial_pressures = list(res.keys())
         defect_concentrations = []
         carrier_concentrations = []
-        if get_fermi_levels:
-            fermi_levels=[]
+        fermi_levels=[]
         dos = self.bulk_dos
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
@@ -154,13 +157,15 @@ class PressureAnalysis:
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             defect_concentrations.append(conc)
             carrier_concentrations.append(carriers)
-            if get_fermi_levels:
-                fermi_levels.append(mue)
+            fermi_levels.append(mue)
         
-        if get_fermi_levels:
-            return partial_pressures, defect_concentrations, carrier_concentrations, fermi_levels
-        else:
-            return partial_pressures, defect_concentrations, carrier_concentrations
+        thermodata = {}
+        thermodata['partial_pressures'] = partial_pressures 
+        thermodata['defect_concentrations'] = defect_concentrations 
+        thermodata['carrier_concentrations'] = carrier_concentrations
+        thermodata['fermi_levels'] = fermi_levels
+        
+        return thermodata
     
     
     def get_conductivities(self,reservoirs,mobilities,ignore_multiplicity=True,temperature=None):
@@ -182,10 +187,12 @@ class PressureAnalysis:
 
         Returns
         -------
-        partial_pressures : (list)
-            List of partial pressure values.
-        conductivities : (list)
-            List of conductivity values (in S/m).
+        thermodata: (dict)
+            Dict that contains the thermodynamic data:
+                partial_pressures : (list)
+                    List of partial pressure values.
+                conductivities : (list)
+                    List of conductivity values (in S/m).
         """      
         res = reservoirs
         if temperature:
@@ -209,7 +216,12 @@ class PressureAnalysis:
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             sigma = cnd.get_conductivity(carriers, conc)
             conductivities.append(sigma)
-        return partial_pressures, conductivities
+        
+        thermodata={}
+        thermodata['partial_pressures'] = partial_pressures
+        thermodata['conductivities'] = conductivities
+        
+        return thermodata
     
     
     def get_fermi_levels(self,reservoirs,temperature=None):
@@ -225,10 +237,12 @@ class PressureAnalysis:
             
         Returns
         -------
-        partial_pressures : (list)
-            List of partial pressure values.
-        fermi_levels : (list)
-            List of Fermi level values
+        thermodata: (dict)
+            Dict that contains the thermodynamic data:
+                partial_pressures : (list)
+                    List of partial pressure values.
+                fermi_levels : (list)
+                    List of Fermi level values
         """
         res = reservoirs
         if temperature:
@@ -248,8 +262,12 @@ class PressureAnalysis:
             else:
                 mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
             fermi_levels.append(mue)
-            
-        return partial_pressures, fermi_levels
+        
+        thermodata = {}
+        thermodata['partial_pressures'] = partial_pressures
+        thermodata['fermi_levels'] = fermi_levels
+        
+        return thermodata
     
 
     def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
@@ -275,10 +293,12 @@ class PressureAnalysis:
 
         Returns
         -------
-        partial_pressures : (list)
-            List of partial pressure values.
-        fermi_levels : (list)
-            List of Fermi level values
+        thermodata: (dict)
+            Dict that contains the thermodynamic data:
+                partial_pressures : (list)
+                    List of partial pressure values.
+                fermi_levels : (list)
+                    List of Fermi level values
         """
         
         T1 = initial_temperature
@@ -317,14 +337,11 @@ class PressureAnalysis:
             quenched_mue = self.da.non_equilibrium_fermi_level(quenched_concentrations,mu,dos,ext_df,temperature=T2)
             fermi_levels.append(quenched_mue)
             
-        return partial_pressures, fermi_levels
-
-
-    def get_thermo_data(self,**kwargs):
-        d = {}
-        for k,v in kwargs.items():
-            d[k] = v
-        return d
+        thermodata = {}
+        thermodata['partial_pressures'] = partial_pressures
+        thermodata['fermi_levels'] = fermi_levels
+        
+        return thermodata
 
 
     def read_thermo_data(self,path_or_string):
