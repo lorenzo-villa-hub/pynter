@@ -362,22 +362,6 @@ class PressureAnalysis:
         return thermodata
 
 
-    def read_thermo_data(self,path_or_string):
-        if op.isfile(path_or_string):
-            with open(path_or_string) as file:
-                d = json.load(file)
-        else:
-            d = json.load(path_or_string)
-        return d
-    
-    
-    def save_thermo_data(self,d,path):
-        with open(path,'w') as file:
-            json.dump(d,file)
-        return 
-
-
-
 class ThermoData:
     
     "Class to handle defect thermodynamics data"
@@ -495,6 +479,19 @@ class ThermoData:
     
     
     def get_specific_pressures(self,p_values):
+        """
+        Get ThermoData object only for specific pressure values. The closest pressure value
+        present in list is chosen for each provided value.
+
+        Parameters
+        ----------
+        p_values : (list)
+            List of partial pressure values.
+
+        Returns
+        -------
+        ThermoData object
+        """
         seldata = {}
         for p in p_values:
             pressures = self.partial_pressures
@@ -503,7 +500,14 @@ class ThermoData:
             for k,v in self.data.items():
                 for e in v:
                     if v.index(e) == index:
-                        seldata[k] = e
-                    
-        return seldata
+                        if k not in seldata.keys():
+                            seldata[k] = []
+                        seldata[k].append(e)
+        
+        temperature = self.temperature if self.temperature else None
+        
+
+        name = self.name + 'p_' + '-'.join([str(p) for p in p_values]) if self.name else None
+            
+        return ThermoData(seldata,temperature=temperature,name=name)
         

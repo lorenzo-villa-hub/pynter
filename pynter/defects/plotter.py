@@ -9,7 +9,21 @@ Created on Wed Feb 17 15:24:29 2021
 import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
+import pandas as pd
 
+class ConcPlotter:
+    
+    def __init__(self,concentrations,format_names=True):
+        self.conc = concentrations
+        self.format = format_names
+        
+        if isinstance(self.conc,list):
+            self.df = pd.DataFrame(self.conc)
+        elif isinstance(self.conc,dict):
+            self.df = pd.Series(self.conc)
+    
+    
+    
 class PressurePlotter:
     """
     Class to plot oxygen partial pressure dependencies
