@@ -12,6 +12,8 @@ from pynter.tools.utils import save_object_as_json, get_object_from_json
 import copy
 import os.path as op
 import json
+from monty.json import MontyDecoder
+import os
 
 class Conductivity:
     """
@@ -93,7 +95,7 @@ class PressureAnalysis:
         self.external_defects = external_defects if external_defects else []
     
     
-    def get_concentrations(self,reservoirs,concentrations_output='all',temperature=None):
+    def get_concentrations(self,reservoirs,concentrations_output='all',temperature=None,name=None):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -112,11 +114,13 @@ class PressureAnalysis:
             in one single step. The default is False
         temperature : (float), optional
             Temperature in Kelvin. If None reservoirs.temperature is used. The default is None.
+        name : (str), optional
+            Name to assign to ThermoData.
 
         Returns
         -------
-        thermodata: (dict)
-            Dict that contains the thermodynamic data:
+        Thermodata : (thermoData)
+            ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
                 defect_concentrations : (list)
@@ -165,10 +169,12 @@ class PressureAnalysis:
         thermodata['carrier_concentrations'] = carrier_concentrations
         thermodata['fermi_levels'] = fermi_levels
         
+        thermodata = ThermoData(thermodata,temperature=temperature,name=name)
+        
         return thermodata
     
     
-    def get_conductivities(self,reservoirs,mobilities,ignore_multiplicity=True,temperature=None):
+    def get_conductivities(self,reservoirs,mobilities,ignore_multiplicity=True,temperature=None,name=None):
         """
         Calculate conductivity as a function of oxygen partial pressure.
 
@@ -184,11 +190,13 @@ class PressureAnalysis:
             If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
         temperature : (float), optional
             Temperature in Kelvin. If None self.temperature is used. The default is None.
+        name : (str), optional
+            Name to assign to ThermoData.
 
         Returns
         -------
-        thermodata: (dict)
-            Dict that contains the thermodynamic data:
+        Thermodata : (thermoData)
+            ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
                 conductivities : (list)
@@ -221,10 +229,12 @@ class PressureAnalysis:
         thermodata['partial_pressures'] = partial_pressures
         thermodata['conductivities'] = conductivities
         
+        thermodata = ThermoData(thermodata,temperature=temperature,name=name)
+        
         return thermodata
     
     
-    def get_fermi_levels(self,reservoirs,temperature=None):
+    def get_fermi_levels(self,reservoirs,temperature=None,name=None):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -234,11 +244,13 @@ class PressureAnalysis:
             Object with partial pressure values as keys and chempots dictionary as values.
         temperature : (float), optional
             Temperature in Kelvin. If None self.temperature is used. The default is None.
+        name : (str), optional
+            Name to assign to ThermoData.
             
         Returns
         -------
-        thermodata: (dict)
-            Dict that contains the thermodynamic data:
+        Thermodata : (thermoData)
+            ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
                 fermi_levels : (list)
@@ -267,11 +279,13 @@ class PressureAnalysis:
         thermodata['partial_pressures'] = partial_pressures
         thermodata['fermi_levels'] = fermi_levels
         
+        thermodata = ThermoData(thermodata,temperature=temperature,name=name)
+        
         return thermodata
     
 
     def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
-                                  quenched_species=None,ignore_multiplicity=True):
+                                  quenched_species=None,ignore_multiplicity=True,name=None):
         """
         Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
         It is possible to select which defect species to quench and which ones are free to equilibrate.
@@ -290,11 +304,13 @@ class PressureAnalysis:
             If None all defect species are quenched.The default is None.
         ignore_multiplicity : (bool), optional
             If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
+        name : (str), optional
+            Name to assign to ThermoData.
 
         Returns
         -------
-        thermodata: (dict)
-            Dict that contains the thermodynamic data:
+        Thermodata : (thermoData)
+            ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
                 fermi_levels : (list)
@@ -341,6 +357,8 @@ class PressureAnalysis:
         thermodata['partial_pressures'] = partial_pressures
         thermodata['fermi_levels'] = fermi_levels
         
+        thermodata = ThermoData(thermodata,temperature=(initial_temperature,final_temperature),name=name)
+        
         return thermodata
 
 
@@ -358,3 +376,134 @@ class PressureAnalysis:
             json.dump(d,file)
         return 
 
+
+
+class ThermoData:
+    
+    "Class to handle defect thermodynamics data"
+    
+    def __init__(self,thermodata,temperature=None,name=None):
+        """
+        Class that handles dict of defect thermodynamics data.
+        
+        Parameters
+        ----------
+        thermodata : (dict)
+            Dict that contains the thermodynamic data, typically output from PressureAnalysis class.
+            Keys of the dict are set as attributes of ThermoData.
+            The items of the dict usually can be:
+                partial_pressures : (list)
+                    List of partial pressure values.
+                defect_concentrations : (list)
+                    If the output is set to "all" is a list of list of dictionaries with "name", "charge", "conc" as keys. 
+                    If the output is "all" is a list of dictionaries with names as keys and conc as values. 
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                fermi_levels : (list)
+                    list of Fermi level values.
+        temperature : (float), optional
+            Temperature at which the data is computed. The default is None.
+        name : (str), optional
+            Name to assign to ThermoData. The default is None.
+        """
+        self.data = thermodata  
+        self.temperature = temperature if temperature else None
+        self.name = name if name else None
+        for k,v in thermodata.items():
+            setattr(self, k, v)
+        
+        
+    def as_dict(self):
+        """
+        Returns:
+            Json-serializable dict representation of ThermoData
+        """
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "thermodata": self.data,
+             "temperature": self.temperature,
+             "name": self.name
+             }
+        return d        
+
+    def to_json(self,path=None):
+        """
+        Save ThermoData object as json string or file
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file.  If None the name of ThermoData is used as filename.
+
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+        """
+        if not path:
+            path = op.join(os.getcwd(),f'thermodata_{self.name}.json')
+        d = self.as_dict()
+        print(path)
+        with open(path,'w') as file:
+            json.dump(d,file)
+        return
+ 
+
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Reconstitute a ThermoData object from a dict representation created using
+        as_dict().
+
+        Args:
+            d (dict): dict representation of ThermoData.
+
+        Returns:
+            ThermoData object
+        """
+        if 'thermodata' in d.keys():
+            data = d['thermodata']
+            temperature = d['temperature']
+            name = d['name']
+        else:
+            data = d # recover old 
+        return cls(data,temperature,name)
+     
+         
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build ThermoData object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        ThermoData object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return ThermoData.from_dict(d)
+    
+    
+    def get_specific_pressures(self,p_values):
+        seldata = {}
+        for p in p_values:
+            pressures = self.partial_pressures
+            p_sel = min(pressures, key=lambda x:abs(x-p))
+            index = pressures.index(p_sel)
+            for k,v in self.data.items():
+                for e in v:
+                    if v.index(e) == index:
+                        seldata[k] = e
+                    
+        return seldata
+        

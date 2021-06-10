@@ -25,8 +25,8 @@ class PressurePlotter:
 
         Parameters
         ----------
-        thermodata: (dict)
-            Dict that contains the thermodynamic data:
+        thermodata: (ThermoData)
+            ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     list with partial pressure values.
                 defect_concentrations : (list or dict)
@@ -56,7 +56,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        p,dc,cc = thermodata['partial_pressures'],thermodata['defect_concentrations'],thermodata['carrier_concentrations']
+        td = thermodata.data
+        p,dc,cc = td['partial_pressures'],td['defect_concentrations'],td['carrier_concentrations']
         matplotlib.rcParams.update({'font.size': 22})
         if concentrations_output == 'all' or concentrations_output == 'stable':
             plt = self._plot_conc(p,dc,cc,defect_indexes,concentrations_output,size)
@@ -83,8 +84,8 @@ class PressurePlotter:
 
         Parameters
         ----------
-        thermodata: (dict)
-            Dict that contains the thermodynamic data:
+        thermodata: (ThermoData)
+            ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     list with partial pressure values.
                 conductivities : (dict or list)
@@ -106,7 +107,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        partial_pressures,conductivities = thermodata['partial_pressures'], thermodata['conductivities']
+        td = thermodata.data
+        partial_pressures,conductivities = td['partial_pressures'], td['conductivities']
         if not label:
             label = '$\sigma$'
         matplotlib.rcParams.update({'font.size': 22})
@@ -309,4 +311,4 @@ class PressurePlotter:
                         label += base + sub_str
             
             return label
-    
+          
