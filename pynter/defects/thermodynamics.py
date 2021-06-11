@@ -429,7 +429,6 @@ class ThermoData:
         if not path:
             path = op.join(os.getcwd(),f'thermodata_{self.name}.json')
         d = self.as_dict()
-        print(path)
         with open(path,'w') as file:
             json.dump(d,file)
         return
