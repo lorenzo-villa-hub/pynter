@@ -9,7 +9,131 @@ Created on Wed Feb 17 15:24:29 2021
 import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
+import pandas as pd
 
+class ConcPlotter:
+
+    def __init__(self,concentrations,format_names=True):
+        """
+        Class to visualize concentrations dictionaries with pd.DataFrame and 
+        pd.Series (fortotal concentrations).
+
+        Parameters
+        ----------
+        concentrations : (list or dict)
+            Concentrations can be in different formats: list of dict for "all" and 
+            "stable_charges" and dict for "total".
+        format_names : (bool), optional
+            Format names with latex symbols. The default is True.
+        """
+        self.conc = concentrations
+        self.format = format_names
+        
+        if isinstance(self.conc,list):
+            self.dftype = 'dataframe'
+            self.df = pd.DataFrame(self.conc)
+            if self.format:
+                self.format_names()
+        elif isinstance(self.conc,dict):
+            self.dftype = 'series'
+            self.df = pd.Series(self.conc,name='Total Concentrations')
+            if self.format:
+                self.format_names()
+    
+
+    def __print__(self):
+        return self.df.__print__()
+    
+    def __repr__(self):
+        return self.df.__repr__()
+
+    def copy(self):
+        return self.df.copy()
+
+
+    def format_names(self):
+        """
+        Format names with latex symbols.
+        """
+        format_legend = PressurePlotter()._get_formatted_legend
+        df = self.df
+        if self.dftype == 'dataframe':
+            df.name = df.name.map(format_legend)
+            df.charge = df.charge.astype(str)
+            df.name = df[['name', 'charge']].agg(','.join, axis=1)
+        elif self.dftype == 'series':
+            df.index = df.index.map(format_legend)
+        
+        self.df = df     
+        return 
+    
+    
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),title=None,**kwargs):
+        """
+        Bar plot of concentrations with pd.DataFrame.plot
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e13,1e40).
+        ylim : (tuple), optional
+            Limit of y-axis in plot. The default is (1e13,1e40).
+        **kwargs : (dict)
+            Kwargs to pass to df.plot().
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        if conc_range:
+            df = self.limit_conc_range(conc_range,reset_df=False)
+        else:
+            df = self.df
+        if self.dftype == 'dataframe':
+            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,legend=None,**kwargs)
+            plt.xlabel('Name , Charge')
+        elif self.dftype == 'series':
+            ax = df.plot(kind='bar',logy=True,ylim=ylim)
+        plt.ylabel('Concentrations(cm$^{-3}$)')
+        plt.grid()
+        if title:
+            plt.title(title)
+        return plt
+
+
+    def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
+        """
+        Limit df to a concentration range
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e10,1e40).
+        reset_df : (bool), optional
+            Reset df attribute or return a new df. The default is False.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if reset_df:
+            if self.dftype == 'dataframe':
+                self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
+            elif self.dftype == 'series':
+                self.df = self.df.between(conc_range[0],conc_range[1])
+            return
+        else:
+            df = self.df.copy()
+            if self.dftype == 'dataframe':
+                df = df[df.conc.between(conc_range[0],conc_range[1])]
+            elif self.dftype == 'series':
+                df = df[df.between(conc_range[0],conc_range[1])]
+            return df 
+    
+    
+    
 class PressurePlotter:
     """
     Class to plot oxygen partial pressure dependencies
@@ -19,19 +143,20 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,partial_pressures,defect_concentrations,carrier_concentrations,
-                            defect_indexes=None,concentrations_output='all',size=(12,8),xlim=None,ylim=None):
+    def plot_concentrations(self,thermodata,defect_indexes=None,concentrations_output='all',size=(12,8),xlim=None,ylim=None):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
         Parameters
         ----------
-        partial_pressures : (list)
-            list with partial pressure values.
-        defect_concentrations : (list or dict)
-            Defect concentrations in the same format as the output of DefectsAnalysis. 
-        carrier_concentrations : (list)
-            List of tuples with intrinsic carriers concentrations (holes,electrons).
+        thermodata: (ThermoData)
+            ThermoData object that contains the thermodynamic data:
+                partial_pressures : (list)
+                    list with partial pressure values.
+                defect_concentrations : (list or dict)
+                    Defect concentrations in the same format as the output of DefectsAnalysis. 
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
         defect_indexes : (list), optional
             List of indexes of the entry that need to be included in the plot. If None 
             all defect entries are included. The default is None.
@@ -55,7 +180,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        p,dc,cc = partial_pressures,defect_concentrations,carrier_concentrations
+        td = thermodata.data
+        p,dc,cc = td['partial_pressures'],td['defect_concentrations'],td['carrier_concentrations']
         matplotlib.rcParams.update({'font.size': 22})
         if concentrations_output == 'all' or concentrations_output == 'stable':
             plt = self._plot_conc(p,dc,cc,defect_indexes,concentrations_output,size)
@@ -76,17 +202,19 @@ class PressurePlotter:
         return plt
         
 
-    def plot_conductivity(self,partial_pressures,conductivities,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
+    def plot_conductivity(self,thermodata,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
         """
         Plot conductivity as a function of the oxygen partial pressure.
 
         Parameters
         ----------
-        partial_pressures : (list)
-            list with partial pressure values.
-        conductivities : (dict or list)
-            If is a dict multiples lines will be plotted, with labels as keys and conductivity list
-            as values. If is a list only one line is plotted with label taken from the "label" argument.
+        thermodata: (ThermoData)
+            ThermoData object that contains the thermodynamic data:
+                partial_pressures : (list)
+                    list with partial pressure values.
+                conductivities : (dict or list)
+                    If is a dict multiples lines will be plotted, with labels as keys and conductivity list
+                    as values. If is a list only one line is plotted with label taken from the "label" argument.
         new_figure : (bool), optional
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
@@ -103,6 +231,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
+        td = thermodata.data
+        partial_pressures,conductivities = td['partial_pressures'], td['conductivities']
         if not label:
             label = '$\sigma$'
         matplotlib.rcParams.update({'font.size': 22})
@@ -305,4 +435,4 @@ class PressurePlotter:
                         label += base + sub_str
             
             return label
-    
+          
