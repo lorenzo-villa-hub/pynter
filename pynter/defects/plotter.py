@@ -12,15 +12,125 @@ from pymatgen.util.plotting import pretty_plot
 import pandas as pd
 
 class ConcPlotter:
-    
+
     def __init__(self,concentrations,format_names=True):
+        """
+        Class to visualize concentrations dictionaries with pd.DataFrame and 
+        pd.Series (fortotal concentrations).
+
+        Parameters
+        ----------
+        concentrations : (list or dict)
+            Concentrations can be in different formats: list of dict for "all" and 
+            "stable_charges" and dict for "total".
+        format_names : (bool), optional
+            Format names with latex symbols. The default is True.
+        """
         self.conc = concentrations
         self.format = format_names
         
         if isinstance(self.conc,list):
+            self.dftype = 'dataframe'
             self.df = pd.DataFrame(self.conc)
+            if self.format:
+                self.format_names()
         elif isinstance(self.conc,dict):
-            self.df = pd.Series(self.conc)
+            self.dftype = 'series'
+            self.df = pd.Series(self.conc,name='Total Concentrations')
+            if self.format:
+                self.format_names()
+    
+
+    def __print__(self):
+        return self.df.__print__()
+    
+    def __repr__(self):
+        return self.df.__repr__()
+
+    def copy(self):
+        return self.df.copy()
+
+
+    def format_names(self):
+        """
+        Format names with latex symbols.
+        """
+        format_legend = PressurePlotter()._get_formatted_legend
+        df = self.df
+        if self.dftype == 'dataframe':
+            df.name = df.name.map(format_legend)
+            df.charge = df.charge.astype(str)
+            df.name = df[['name', 'charge']].agg(','.join, axis=1)
+        elif self.dftype == 'series':
+            df.index = df.index.map(format_legend)
+        
+        self.df = df     
+        return 
+    
+    
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),title=None,**kwargs):
+        """
+        Bar plot of concentrations with pd.DataFrame.plot
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e13,1e40).
+        ylim : (tuple), optional
+            Limit of y-axis in plot. The default is (1e13,1e40).
+        **kwargs : (dict)
+            Kwargs to pass to df.plot().
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        if conc_range:
+            df = self.limit_conc_range(conc_range,reset_df=False)
+        else:
+            df = self.df
+        if self.dftype == 'dataframe':
+            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,legend=None,**kwargs)
+            plt.xlabel('Name , Charge')
+        elif self.dftype == 'series':
+            ax = df.plot(kind='bar',logy=True,ylim=ylim)
+        plt.ylabel('Concentrations(cm$^{-3}$)')
+        plt.grid()
+        if title:
+            plt.title(title)
+        return plt
+
+
+    def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
+        """
+        Limit df to a concentration range
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e10,1e40).
+        reset_df : (bool), optional
+            Reset df attribute or return a new df. The default is False.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if reset_df:
+            if self.dftype == 'dataframe':
+                self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
+            elif self.dftype == 'series':
+                self.df = self.df.between(conc_range[0],conc_range[1])
+            return
+        else:
+            df = self.df.copy()
+            if self.dftype == 'dataframe':
+                df = df[df.conc.between(conc_range[0],conc_range[1])]
+            elif self.dftype == 'series':
+                df = df[df.between(conc_range[0],conc_range[1])]
+            return df 
     
     
     

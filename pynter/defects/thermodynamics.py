@@ -383,6 +383,8 @@ class ThermoData:
                     If the output is "all" is a list of dictionaries with names as keys and conc as values. 
                 carrier_concentrations : (list)
                     List of tuples with intrinsic carriers concentrations (holes,electrons).
+                conductivities : (list)
+                    List of conductivity values (in S/m).
                 fermi_levels : (list)
                     list of Fermi level values.
         temperature : (float), optional
