@@ -453,6 +453,8 @@ class ThermoData:
             name = d['name']
         else:
             data = d # recover old 
+            temperature = None
+            name = None
         return cls(data,temperature,name)
      
          
