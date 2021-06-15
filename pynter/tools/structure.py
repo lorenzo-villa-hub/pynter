@@ -73,11 +73,18 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
     return is_site_in_structure_coords,index
 
 
-def view_structure_with_ase(structure):
+def view_structure_with_ase(structures):
     """
-    Visualize the Structure object with the ASE. First the Structure object is converted into an
-    ase Atom object, the "view" is used to visualize it.
+    Visualize a Structure object or a list of Structure objects with the ASE. 
+    First the Structure objects are converted into an ase Atom object, then "view" is used to visualize them.
     """
-    atoms = AseAtomsAdaptor.get_atoms(structure)
+    if type(structures) == list:
+        atoms=[]
+        for s in structures:
+            atoms.append(AseAtomsAdaptor.get_atoms(s))
+    else:
+        atoms = AseAtomsAdaptor.get_atoms(structures)
     view(atoms)
     return
+
+
