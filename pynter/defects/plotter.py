@@ -68,7 +68,7 @@ class ConcPlotter:
         return 
     
     
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),title=None,**kwargs):
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),**kwargs):
         """
         Bar plot of concentrations with pd.DataFrame.plot
 
@@ -91,14 +91,11 @@ class ConcPlotter:
         else:
             df = self.df
         if self.dftype == 'dataframe':
-            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,legend=None,**kwargs)
-            plt.xlabel('Name , Charge')
+            df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,xlabel='Name , Charge',
+                    ylabel='Concentrations(cm$^{-3}$)',legend=None,**kwargs)
         elif self.dftype == 'series':
-            ax = df.plot(kind='bar',logy=True,ylim=ylim)
-        plt.ylabel('Concentrations(cm$^{-3}$)')
-        plt.grid()
-        if title:
-            plt.title(title)
+            df.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
+
         return plt
 
 
