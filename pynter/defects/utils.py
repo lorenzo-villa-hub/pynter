@@ -55,6 +55,45 @@ def create_interstitial_supercells(structure,element,size=2):
     return interstitials
 
 
+def create_vacancy_structures(structure,elements=None,supercell_size=None):
+    """
+    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    elements : (str), optional
+        Symbol of the elements for which vacancies are needed.
+        If None all of the elements are considered. The default is None.
+    supercell_size : (int or numpy array), optional
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. The default is None.
+
+    Returns
+    -------
+    vac_structures : (dict)
+        Dictionary with vacancy types as keys and structures as values.
+
+    """
+    vac_structures={}
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    if not elements:
+        elements = [el.symbol for el in bulk_structure.composition.elements]
+    
+    for el in bulk_structure.composition.elements:
+        s = bulk_structure.copy()
+        for site in s.sites:
+            if el.symbol in elements:
+                if site.specie == el:
+                    s.remove_sites([bulk_structure.index(site)])
+                    vac_structures[f'{el.symbol}'] = s
+                    break
+
+    return vac_structures
+
 
 def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     """
