@@ -95,6 +95,45 @@ def create_vacancy_structures(structure,elements=None,supercell_size=None):
     return vac_structures
 
 
+def create_substitution_structures(structure,replace,supercell_size=1):
+    """
+    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    replace : (str), optional
+        Dict with element symbol of specie to be replaced as keys and element 
+        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
+    supercell_size : (int or numpy array), optional
+        Input for the generate_defect_structure function of the Substitution class.
+
+    Returns
+    -------
+    sub_structures : (dict)
+        Dictionary with substitution types as keys and structures as values.
+
+    """
+    sub_structures={}
+    bulk_structure = structure.copy()
+    
+    for el_to_sub in replace:
+        for el in bulk_structure.composition.elements:
+            s = bulk_structure.copy()
+            for site in s.sites:
+                if el.symbol == el_to_sub:
+                    if site.specie == el:
+                        sub_site = site
+                        sub_el = replace[el.symbol]
+                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
+                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
+                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
+                        break
+
+    return sub_structures
+
+
 def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     """
     Function to find defect comparing defect and bulk structure (Pymatgen objects). 
