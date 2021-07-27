@@ -22,6 +22,9 @@ class Reservoirs:
             Dictionary with reservoir names as key and dictionaries of chemical potentials as values.
         phase_diagram : (PhaseDiagram object), optional
             PhaseDiagram object (Pymatgen), useful to convert absolute chempots in referenced chempots. The default is None.
+        mu_refs : (dict)
+            Dictionary with chemical potentials of reference elements ({Element:chempot}). If the PhaseDiagram is provided
+            mu_refs is taken from the mu_refs attribute. 
         are_chempots_delta : (bool), optional
             Set this variable to True if chempots in dictionary are referenced values. The default is False.
         """
@@ -88,7 +91,8 @@ class Reservoirs:
             for el in chempots:
                 d['res_dict'][res][el.symbol] = chempots[el]
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
-        d['mu_refs'] = self.mu_refs 
+        if self.mu_refs:
+            d['mu_refs'] = {el.symbol:chem for el,chem in self.mu_refs.items()}
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 
@@ -137,6 +141,8 @@ class Reservoirs:
         else:
             phase_diagram = None
         mu_refs = d['mu_refs'] if 'mu_refs' in d.keys() else None
+        if mu_refs:
+            mu_refs = {Element(el):chem for el,chem in mu_refs.items()}
         are_chempots_delta = d['are_chempots_delta']
             
         return cls(res_dict,phase_diagram,mu_refs,are_chempots_delta)
