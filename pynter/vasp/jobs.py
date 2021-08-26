@@ -433,8 +433,9 @@ class VaspJob(Job):
 
         Parameters
         ----------
-        get_band_structure : (bool), optional
-            Get BandStructure object from vasprun. The default is False.
+        get_band_structure : (bool or dict), optional
+            Get BandStructure object from vasprun. The default is False. If is a dict the BS is 
+            read and the kwargs in the dict are used in the pymatgen function.
         data : (list), optional
             List of attributes of Vasprun to parse in ComputedStructureEntry. The default is None.
         """                
@@ -456,8 +457,14 @@ class VaspJob(Job):
                 for attr in optional_attributes:
                     value = self.computed_entry.data[attr]
                     setattr(self,attr,value)
-
-        self._band_structure = self._get_band_structure() if kwargs['get_band_structure'] else None
+        
+        if kwargs['get_band_structure']:
+            if type(kwargs['get_band_structure']) == dict:
+                self._band_structure = self._get_band_structure(**kwargs['get_band_structure'])
+            else:
+                self._band_structure = self._get_band_structure()
+        else:
+            None
         
         return
 
@@ -508,10 +515,10 @@ class VaspJob(Job):
         return
 
 
-    def _get_band_structure(self):
+    def _get_band_structure(self,**kwargs):
         """Get BandStructure objects from Vasprun"""
         if self.vasprun:
-            return self.vasprun.get_band_structure(kpoints_filename=op.join(self.path,'KPOINTS'))
+            return self.vasprun.get_band_structure(kpoints_filename=op.join(self.path,'KPOINTS'),**kwargs)
         else:
             return None
             
