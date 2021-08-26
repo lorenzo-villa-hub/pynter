@@ -118,6 +118,47 @@ class InputSets:
         return vaspjob  
 
 
+    def hse_bs(self,kpoints_bs=None,setname='HSE-BS',pathname='HSE-BS',**kwargs):
+        """
+        Set up band structure calculation with HSE
+        
+        Parameters
+        ----------
+        kpoints_bs : (Pymatgen Kpoints object) , optional
+            Pymatgen Kpoints object for the path in BS calculation. The default is None. If None the default high symmetry path \n
+            from Pymatgen class HighSymmKpath is obtained from the input Structure with 10 points between high symm k-points.
+        kwargs : (dict), optional
+            Kwargs for get_kpoints_bs_default in DefaultInputs
+        """
+        vaspjob = self.hse_scf(setname,pathname)
+        if kpoints_bs:
+            kpoints = kpoints_bs
+        else:
+            kpoints = DefaultInputs(self.structure).get_kpoints_bs_default(hybrid_mode=True,**kwargs)
+        vaspjob.inputs['KPOINTS'] = kpoints
+        return vaspjob
+
+    def hse_dos(self,kmesh=3,setname='HSE-DOS',pathname='HSE-DOS'):
+        """
+        Set up DOS calculation with HSE
+
+        Parameters
+        ----------
+        kmesh : (Int), optional
+            Multiplier for coefficients of the k-mesh for the DOS with respect to first step SCF calculation. The default is 3.
+        """
+        vaspjob = self.hse_scf(setname,pathname)
+        vaspjob.incar['NEDOS'] = 2000
+        vaspjob.incar['ISMEAR'] = -5        
+        # multiply by 3 coeff of k-mesh
+        kpoints = vaspjob.inputs['KPOINTS']
+        style, kpts, kpts_shift = kpoints.style, kpoints.kpts, kpoints.kpts_shift
+        kpts_new = []
+        kpts_new.append([k*kmesh for k in kpts[0]])
+        kpoints = Kpoints(style=style,kpts=kpts_new,kpts_shift=kpts_shift)
+        vaspjob.inputs['KPOINTS'] = kpoints
+        return vaspjob        
+
     def hse_ionic_rel(self,setname='HSE-rel',pathname='HSE-rel'):
         """
         Set up ionic relaxation with HSE
@@ -152,6 +193,7 @@ class InputSets:
         vaspjob.incar['LHFCALC'] = '.TRUE.'
         vaspjob.incar['ISYM'] = 3  
         vaspjob.job_settings['timelimit'] = '72:00:00'
+        vaspjob.job_settings['partition'] = 'test7d'
         return vaspjob
 
     def hse_scf_gamma(self,setname='HSE-SCF-Gamma',pathname='HSE-SCF-Gamma'):
@@ -184,7 +226,7 @@ class InputSets:
         return vaspjob
 
 
-    def pbe_bs(self,kpoints_bs=None,setname='PBE-BS',pathname='PBE-BS'):
+    def pbe_bs(self,kpoints_bs=None,setname='PBE-BS',pathname='PBE-BS',**kwargs):
         """
         Set up band structure calculation with PBE
         
@@ -192,7 +234,9 @@ class InputSets:
         ----------
         kpoints_bs : (Pymatgen Kpoints object) , optional
             Pymatgen Kpoints object for the path in BS calculation. The default is None. If None the default high symmetry path \n
-            from Pymatgen class HighSymmKpath is obtained from the input Structure with 10 points between high symm k-points. '
+            from Pymatgen class HighSymmKpath is obtained from the input Structure with 10 points between high symm k-points.
+        kwargs : (dict), optional
+            Kwargs for get_kpoints_bs_default in DefaultInputs
         """
         vaspjob = self.pbe_scf(setname,pathname)
         vaspjob.incar['ICHARG'] = 11
@@ -202,7 +246,7 @@ class InputSets:
         if kpoints_bs:
             kpoints = kpoints_bs
         else:
-            kpoints = Kpoints().automatic_linemode(10,HighSymmKpath(self.structure))
+            kpoints = DefaultInputs(self.structure).get_kpoints_bs_default(**kwargs)
         vaspjob.inputs['KPOINTS'] = kpoints
         return vaspjob
 

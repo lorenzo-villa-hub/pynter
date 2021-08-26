@@ -9,6 +9,8 @@ Created on Fri Feb 21 10:59:10 2020
 from pymatgen.io.vasp.inputs import Kpoints, Poscar, Potcar, VaspInput, Incar
 from pynter.vasp.__init__ import load_vasp_default
 import os
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.symmetry.bandstructure import HighSymmKpath
 
 homedir = os.getenv("HOME")
 cfgfile = os.path.join(homedir,'.pynter','vasp.yml')
@@ -150,6 +152,64 @@ class DefaultInputs:
             raise ValueError('Structure object needs to be given to obtain pymatgen automatic kpoint mesh')
          
         return Kpoints().automatic_gamma_density(structure,kppa)
+    
+  
+    def get_kpoints_bs_default(self,divisions=10,hybrid_mode=False,kppa=1000):
+        """
+        Get Pymatgen Kpoints object for band structure calculations.
+        The default high symmetry path for PBE from Pymatgen class HighSymmKpath is obtained from 
+        the input Structure with 10 points between high symm k-points.
+        For Hybrid BS the calculations need to be selfconsistent, the KPOINTS file is a list of single kpoints.
+        The irriducible kpoints with weight != 0 are obtained with Pymatgen's SpaceGroupAnalyzer.
+        The additional points with weight = 0 on the high symm path are obtained with the HighSymmPath class
+        like for the PBE case.'
+
+        Parameters
+        ----------
+        divisions : int, optional
+            Number of points in between high symmetry points. The default is 10.
+        hybrid_mode : (bool), optional
+            Kpoints for hybrid calculation. The default is False.
+        kppa : (Int), optional
+            Value of k-points density per atom to generate automatic k-mesh as done by Pymatgen. The default is 1000.
+
+        Returns
+        -------
+        Pymatgen Kpoint object.
+        """
+        if hybrid_mode: 
+            # code copy/pasted (slightly adjusted) from pymatgen.io.vasp.sets.MPHSEBSSet
+            # The whole input set was not needed but only the kpoints generation in the kpoints @property
+            kpts = []
+            weights = []  
+            all_labels = []  
+            structure = self.structure
+    
+            # for both modes, include the Uniform mesh w/standard weights
+            grid = Kpoints().automatic_gamma_density(structure, kppa).kpts
+            ir_kpts = SpacegroupAnalyzer(structure, symprec=0.1).get_ir_reciprocal_mesh(grid[0])
+            for k in ir_kpts:
+                kpts.append(k[0])
+                weights.append(int(k[1]))
+                all_labels.append('')
+       
+            #add the symmetry lines w/zero weight
+            kpath = HighSymmKpath(structure)
+            frac_k_points, labels = kpath.get_kpoints(line_density=divisions,coords_are_cartesian=False)
+
+            for k, f in enumerate(frac_k_points):
+                kpts.append(f)
+                weights.append(0.0)
+                all_labels.append(labels[k])
+    
+            comment = "HSE run along symmetry lines"   
+            kpoints =  Kpoints(comment=comment,style=Kpoints.supported_modes.Reciprocal,num_kpts=len(kpts),
+                kpts=kpts,kpts_weights=weights,labels=all_labels)
+
+        else:
+            kpoints = Kpoints().automatic_linemode(10,HighSymmKpath(self.structure))
+    
+        return kpoints
     
     
     def get_poscar(self):
