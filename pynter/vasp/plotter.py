@@ -31,7 +31,7 @@ def plot_bs(bs,**kwargs):
     return plt
 
 
-def plot_bs_elt_projected(bs,**kwargs):
+def plot_bs_elt_projected(bs,legend=True,**kwargs):
     """
     Get element projected BS color plot with pymatgen. Note that vasprun.xml needs to
     be parsed with parse_projected_eigen set to True.
@@ -40,6 +40,8 @@ def plot_bs_elt_projected(bs,**kwargs):
     ----------
     bs : 
         BandStructureSymmLine object, most likely generated from Vasprun or BSVasprun.
+    legend: (bool or dict)
+        Get colors legend. If is a dict it is passed as kwargs in plt.legend(**kwargs)
     **kwargs : (dict)
         Arguments for the get_elt_projected_plots_color function in BSPlotter in pymatgen.
 
@@ -51,6 +53,19 @@ def plot_bs_elt_projected(bs,**kwargs):
     plotter = BSPlotterProjected(bs)
     plt = plotter.get_elt_projected_plots_color(**kwargs)
     
+    import matplotlib.patches as mpatches
+    colors = ['red','green','blue']
+    patches = []
+    if legend:
+        if 'elt_ordered' not in kwargs.keys():
+            elt_ordered = plotter._bs.structure.composition.elements
+        for elt in elt_ordered:
+            el = elt.symbol
+            patches.append(mpatches.Patch(color=colors[elt_ordered.index(elt)],label=el))
+    if type(legend) == dict:
+        plt.legend(handles=patches,**legend)
+    else:
+        plt.legend(handles=patches)
     return plt
 
 
