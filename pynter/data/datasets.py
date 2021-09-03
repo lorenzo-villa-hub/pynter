@@ -559,7 +559,27 @@ class Dataset:
             return sorted_jobs
             
 
-    def select_jobs(self,jobs=None,names=None,groups=None,common_group=None,common_node=None,complex_features=None,**kwargs):
+    def _remove(self,att,filt,exclude=False,force_iter=False):
+        check = False
+        if exclude:
+            if type(filt) == list or force_iter:
+                if att in filt:
+                    check = True
+            else:
+                if att == filt:
+                    check = True
+        
+        else:
+            if type(filt) == list or force_iter:
+                if att not in filt:
+                    check = True
+            else:
+                if att != filt:
+                    check = True 
+        return check
+
+    def select_jobs(self,jobs=None,exclude=False,names=None,groups=None,common_group=None,
+                    common_node=None,complex_features=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
@@ -597,25 +617,25 @@ class Dataset:
         
         if names:
             for j in jobs:
-                if j.name not in names:
+                if self._remove(j.name,names,exclude):
                     sel_jobs.remove(j)
         
         if groups:
             jobs = sel_jobs.copy()
             for j in jobs:
-                if j.group not in groups:
+                if self._remove(j.group,groups,exclude):
                     sel_jobs.remove(j)
 
         if common_group:
             jobs = sel_jobs.copy()
             for j in jobs:
-                if common_group not in j.group:
+                if self._remove(common_group,j.group,exclude,force_iter=True):
                     sel_jobs.remove(j)
 
         if common_node:
             jobs = sel_jobs.copy()
             for j in jobs:
-                if common_node not in j.nodes:
+                if self._remove(common_node,j.nodes,exclude,force_iter=True):
                     sel_jobs.remove(j)
         
         if complex_features:
@@ -625,14 +645,14 @@ class Dataset:
                 jobs = sel_jobs.copy()
                 for j in jobs:
                     job_feature = self.get_job_feature(j,feature_name)
-                    if job_feature != feature_value:
+                    if self._remove(job_feature,feature_value,exclude):
                         sel_jobs.remove(j)
 
         for feature in kwargs:
             jobs = sel_jobs.copy()
             for j in jobs:
                 job_feature = self.get_job_feature(j,feature)
-                if job_feature != kwargs[feature]:
+                if self._remove(job_feature,kwargs[feature],exclude):
                     sel_jobs.remove(j)
          
         if len(sel_jobs) == 1:
