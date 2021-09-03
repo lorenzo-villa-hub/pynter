@@ -32,7 +32,7 @@ class Job:
                 
         self.path = path if path else os.getcwd()
         self.inputs = inputs
-        self.job_settings = job_settings
+        self.job_settings = job_settings.copy()
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
         
