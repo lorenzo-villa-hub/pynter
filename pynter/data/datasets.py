@@ -397,20 +397,20 @@ class Dataset:
             return attr
 
 
-    def get_jobs_inputs(self):
+    def get_jobs_inputs(self,**kwargs):
         """Read inputs for all jobs from the data stored in the respective directories"""
         for j in self.jobs:
-            j.get_inputs()
+            j.get_inputs(**kwargs)
         return
 
-    def get_jobs_outputs(self,update_only=False):
+    def get_jobs_outputs(self,update_only=False,**kwargs):
         """Read output for all jobs from the data stored in respective directories"""
         for j in self.jobs:
             if update_only:
                 if not j.outputs:
-                    j.get_outputs()
+                    j.get_outputs(**kwargs)
             else:
-                j.get_outputs()
+                j.get_outputs(**kwargs)
         return
             
     def get_jobs_output_properties(self,**kwargs):
