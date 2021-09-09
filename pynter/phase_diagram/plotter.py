@@ -37,7 +37,7 @@ class PDPlotterAdder:
         self.size = size
         
     
-    def add_points(self,points,size=1,label_size=1,color='',edgecolor='k',label_color='k',linewidths=3,**kwargs):
+    def add_points(self,points,size=1,label_size=1,color=[],edgecolor='k',label_color='k',linewidths=3,**kwargs):
         """
         Add points to plot.
 
