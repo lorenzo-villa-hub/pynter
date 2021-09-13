@@ -559,23 +559,14 @@ class Dataset:
             return sorted_jobs
             
 
-    def _remove(self,att,filt,exclude=False,force_iter=False):
+    def _remove(self,att,filt,force_iter=False):
         check = False
-        if exclude:
-            if type(filt) == list or force_iter:
-                if att in filt:
-                    check = True
-            else:
-                if att == filt:
-                    check = True
-        
+        if type(filt) == list or force_iter:
+            if att not in filt:
+                check = True
         else:
-            if type(filt) == list or force_iter:
-                if att not in filt:
-                    check = True
-            else:
-                if att != filt:
-                    check = True 
+            if att != filt:
+                check = True 
         return check
 
     def select_jobs(self,jobs=None,exclude=False,names=None,groups=None,common_group=None,
@@ -609,33 +600,34 @@ class Dataset:
 
         Returns
         -------
-        sel_jobs : (list)
+        output_jobs : (list)
             List with filtered jobs. If list has one element only the element is returned.
         """
-        sel_jobs = jobs.copy() if jobs else self.jobs.copy() 
-        jobs = sel_jobs.copy()
+        input_jobs = jobs.copy() if jobs else self.jobs.copy() 
+        sel_jobs = input_jobs.copy()
         
+        jobs = sel_jobs.copy()
         if names:
             for j in jobs:
-                if self._remove(j.name,names,exclude):
+                if j.name not in names:
                     sel_jobs.remove(j)
         
         if groups:
             jobs = sel_jobs.copy()
             for j in jobs:
-                if self._remove(j.group,groups,exclude):
+                if j.group not in groups:
                     sel_jobs.remove(j)
 
         if common_group:
             jobs = sel_jobs.copy()
             for j in jobs:
-                if self._remove(common_group,j.group,exclude,force_iter=True):
+                if common_group not in j.group:
                     sel_jobs.remove(j)
 
         if common_node:
             jobs = sel_jobs.copy()
             for j in jobs:
-                if self._remove(common_node,j.nodes,exclude,force_iter=True):
+                if common_node not in j.nodes:
                     sel_jobs.remove(j)
         
         if complex_features:
@@ -645,20 +637,29 @@ class Dataset:
                 jobs = sel_jobs.copy()
                 for j in jobs:
                     job_feature = self.get_job_feature(j,feature_name)
-                    if self._remove(job_feature,feature_value,exclude):
+                    if job_feature != feature_value:
                         sel_jobs.remove(j)
 
         for feature in kwargs:
             jobs = sel_jobs.copy()
             for j in jobs:
                 job_feature = self.get_job_feature(j,feature)
-                if self._remove(job_feature,kwargs[feature],exclude):
+                if job_feature != kwargs[feature]:
                     sel_jobs.remove(j)
-         
-        if len(sel_jobs) == 1:
-            sel_jobs = sel_jobs[0]
+        
+        output_jobs = []
+        for j in input_jobs:
+            if exclude:
+                if j not in sel_jobs:
+                    output_jobs.append(j)
+            else:
+                if j in sel_jobs:
+                    output_jobs.append(j)    
+        
+        if len(output_jobs) == 1:
+            output_jobs = output_jobs[0]
             
-        return sel_jobs
+        return output_jobs
 
 
     def sync_dataset_from_hpc(self,stdouts=False,exclude=None,dry_run=False):
