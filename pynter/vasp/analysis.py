@@ -56,7 +56,7 @@ class DatasetAnalysis:
         return plt, eos_fit
 
 
-    def plot_convergence_encut(self,title=None,delta=1e-03):
+    def plot_convergence_encut(self,title=None,delta=1e-03,get_value=False):
         """
         Plot total energy convergence with respect to ENCUT
 
@@ -66,11 +66,13 @@ class DatasetAnalysis:
             Plot title. The default is None.
         delta : (float), optional
             Value of delta E for energy convergence. The default is 1e-03.
+        get_value : (bool)
+            Return also converged cutoff value.
 
         Returns
         -------
         plt : 
-            Matplotlib object.
+            Matplotlib object. Returns a tuple with converged cutoff value if get_value is True.
         """
         plt.figure(figsize=(10,8))
         cutoff_max = 0
@@ -84,15 +86,35 @@ class DatasetAnalysis:
         E0 = energies[cutoff_max]
         cutoffs = [c for c in energies.keys()]
         deltas = [E0 - e for e in energies.values()]
+        
+        convergence = False
+        for i in range(0,len(cutoffs)):
+            if i != 0:
+                if i != len(cutoffs)-1:
+                    if abs(deltas[i] - deltas[i-1]) < delta and abs(deltas[i] - deltas[i+1]) < delta:
+                        convergence = True
+                else:
+                    if abs(deltas[i] - deltas[i-1]) < delta:
+                        convergence = True       
+                if convergence:
+                    conv_cutoff = cutoffs[i]
+                    conv_delta = deltas[i]
+                    break
+        
+        if not convergence:
+            print(f'Convergence not reached for delta E = {delta}')    
 
         plt.plot(cutoffs,deltas,'o--',markersize=10)
-        plt.axhline(y=delta,ls='-',color='k')
-        plt.axhline(y=-1*delta,ls='-',color='k')
+        if convergence:
+            plt.scatter(conv_cutoff,conv_delta, color=[], edgecolor='r', linewidths=3, s=450)
         plt.xlabel('PW cutoff (eV)')
         plt.ylabel('Energy difference (eV/atom)')
         plt.grid()
 
-        return plt         
+        if get_value:
+            return plt,conv_cutoff
+        else:
+            return plt         
 
         
     def plot_fractional_charge(self,reference='electrons',name='',new_figure=True,legend_out=False):
