@@ -364,8 +364,17 @@ class PressurePlotter:
         return plt
     
     
-    def _format_legend_with_charge(self,label,charge):
-        
+    def _format_legend_with_charge(self,fulllabel,charge):
+        # handling entry label case
+        if '(' in fulllabel:
+            fulllabel = fulllabel.split('(')
+            label = fulllabel[0]
+            entry_label = '('+fulllabel[1]
+            print(entry_label)
+        else:
+            label = fulllabel
+            entry_label = ''
+            
         mod_label = label[:-1]
         if charge < 0:
             for i in range(0,abs(charge)):
@@ -383,11 +392,21 @@ class PressurePlotter:
             mod_label = mod_label + "}"
         
         mod_label = mod_label + "$"
-        return mod_label
-    
-
-    def _get_formatted_legend(self,name):
         
+        return mod_label + entry_label
+    
+    
+    def _get_formatted_legend(self,fullname):
+        # handling label case
+        if '(' in fullname:
+            fullname = fullname.split('(')
+            name = fullname[0]
+            extra_label = '('+fullname[1]
+            print(extra_label)
+        else:
+            name = fullname
+            extra_label = ''
+        # single defect    
         if '-' not in [c for c in name]:        
             flds = name.split('_')
             if 'Vac' == flds[0]:
@@ -404,8 +423,8 @@ class PressurePlotter:
                 base = name
                 sub_str = ''
     
-            return  base + sub_str
-        
+            return  base + sub_str + extra_label
+        # defect complex
         else:
             label = ''
             names = name.split('-')
@@ -430,6 +449,6 @@ class PressurePlotter:
                         label += base + sub_str + '-'
                     else:
                         label += base + sub_str
-            
-            return label
+
+            return label + extra_label
           
