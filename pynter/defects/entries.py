@@ -254,7 +254,7 @@ class SingleDefectEntry:
         bulk_structure = Structure.from_dict(d['bulk_structure'])
         energy_diff = d['energy_diff']
         corrections = d['corrections']
-        label = d['label']
+        label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
         return cls(defect,bulk_structure,energy_diff,corrections,label)
 
 
@@ -526,7 +526,7 @@ class DefectComplexEntry:
         corrections = d['corrections']
         charge = d['charge']
         multiplicity = d['multiplicity']
-        label = d['label']
+        label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
         return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,label)
     
     
