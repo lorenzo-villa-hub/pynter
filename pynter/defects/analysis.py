@@ -552,6 +552,8 @@ class DefectsAnalysis:
             Only entries whose name is on the list will be displayed. The default is None.
         include_bulk: (bool), optional
             Include bulk composition and space group for each entry in DataFrame.
+        display: (list)
+            List of strings with defect entry attributes or method results to display.
 
         Returns
         -------
