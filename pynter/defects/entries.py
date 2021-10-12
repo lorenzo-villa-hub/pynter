@@ -16,7 +16,7 @@ from pynter.defects.utils import *
 from monty.json import MontyDecoder
 
 
-def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,multiplicity=None):
+def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,multiplicity=None,label=None):
     """
     Get defect entry from VaspJob objects of defect and bulk calculation.
     The defect_finder method is used to determine if the defect site is single or 
@@ -38,6 +38,8 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
         Multiplicity of defect within the supercell. The default is None.
         If not provided, for single defects it is determined by pymatgen with symmetry analysis,
         for a defect complex is set to 1.
+    label : (str), optional
+        Additional label to add to defect specie. Does not influence non equilibrium calculations.
 
     Returns
     -------
@@ -48,9 +50,9 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
     bulk_structure = job_bulk.final_structure
     defects = defect_finder(defect_structure,bulk_structure)
     if isinstance(defects,list):
-        entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity)
+        entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,label)
     else:
-        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity)
+        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,label)
         
     return entry
 
@@ -58,7 +60,7 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
 
 class SingleDefectEntry:
     
-    def __init__(self,defect,bulk_structure,energy_diff,corrections):
+    def __init__(self,defect,bulk_structure,energy_diff,corrections,label=None):
         """
         Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
 
@@ -67,13 +69,16 @@ class SingleDefectEntry:
             bulk_structure: Pymatgen Structure without any defects
             energy_diff (float): difference btw energy of defect structure and energy of pure structure
             corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
-                                added to the defect formation energy.                           
+                                added to the defect formation energy.     
+            label : (str), optional
+                Additional label to add to defect specie. Does not influence non equilibrium calculations.
         """        
         self._defect = defect 
         self._bulk_structure = bulk_structure
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
-
+        self._label = label        
+        
 
     @property
     def defect(self):
@@ -106,7 +111,14 @@ class SingleDefectEntry:
     
     @property
     def name(self):
-        return self.defect.name
+        name = self.defect.name 
+        if self.label:
+            name += f"({self.label})"
+        return name
+
+    @property
+    def label(self):
+        return self._label
 
     @property
     def delta_atoms(self):
@@ -124,7 +136,7 @@ class SingleDefectEntry:
 
 
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,label=None):
         """
         Generate SingleDefectEntry object from VaspJob objects.
 
@@ -142,7 +154,8 @@ class SingleDefectEntry:
         multiplicity : (int), optional
             Multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
-
+        label : (str), optional
+            Additional label to add to defect specie. Does not influence non equilibrium calculations.
         Returns
         -------
         SingleDefectEntry
@@ -152,11 +165,12 @@ class SingleDefectEntry:
         energy_diff = job_defect.final_energy - job_bulk.final_energy
         charge = job_defect.charge
         
-        return SingleDefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,charge,multiplicity)
+        return SingleDefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, 
+                                                 corrections,charge,multiplicity,label)
 
 
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,label=None):
         """
         Generate SingleDefectEntry object from Structure objects.
 
@@ -176,6 +190,8 @@ class SingleDefectEntry:
         multiplicity : (int), optional
             multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+        label : (str), optional
+            Additional label to add to defect specie. Does not influence non equilibrium calculations.
 
         Returns
         -------
@@ -186,7 +202,7 @@ class SingleDefectEntry:
         defect_class = getattr(module,dtype)
         defect = defect_class(bulk_structure,dsite,charge,multiplicity=multiplicity)
         
-        return SingleDefectEntry(defect, bulk_structure, energy_diff, corrections)
+        return SingleDefectEntry(defect, bulk_structure, energy_diff, corrections,label)
 
 
     def __repr__(self):
@@ -217,7 +233,8 @@ class SingleDefectEntry:
              "defect": self.defect.as_dict(),
              "bulk_structure": self.bulk_structure.as_dict(),
              "energy_diff": self.energy_diff,
-             "corrections": self.corrections
+             "corrections": self.corrections,
+             "label": self.label
              }
         return d        
 
@@ -237,7 +254,12 @@ class SingleDefectEntry:
         bulk_structure = Structure.from_dict(d['bulk_structure'])
         energy_diff = d['energy_diff']
         corrections = d['corrections']
-        return cls(defect,bulk_structure,energy_diff,corrections)
+        label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
+        return cls(defect,bulk_structure,energy_diff,corrections,label)
+
+
+    def copy(self):
+        return SingleDefectEntry(self.defect, self.bulk_structure, self.energy_diff, self.corrections,self.label)
 
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
@@ -284,21 +306,23 @@ class SingleDefectEntry:
     
 class DefectComplexEntry:
     
-    def __init__(self,defect_list,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None):
+    def __init__(self,defect_list,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,label=None):
         """
         Initializes the data of a defect complex. Inspired from the DefectEntry class in pymatgen (pmg).
 
         Args:
-            defect: Pymatgen defect object (Vacancy, Interstitial or Substitution)
+            defect_list: list Pymatgen defect objects (Vacancy, Interstitial or Substitution)
             bulk_structure: Pymatgen Structure without any defects
             energy_diff (float): difference btw energy of defect structure and energy of pure structure
             corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
                                 added to the defect formation energy.   
             charge : (int), optional
                 Charge of the defect system. The default is 0.
-                multiplicity : (int), optional
+            multiplicity : (int), optional
                 multiplicity of defect within the supercell. The default is None.
                 If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+            label : (str), optional
+                Additional label to add to defect specie. Does not influence non equilibrium calculations.
         """        
         self._defect_list = defect_list 
         self._bulk_structure = bulk_structure
@@ -306,6 +330,7 @@ class DefectComplexEntry:
         self._corrections = corrections if corrections else {}
         self._charge = int(charge)
         self._multiplicity = multiplicity if multiplicity else 1
+        self._label = label 
 
 
     @property
@@ -341,7 +366,13 @@ class DefectComplexEntry:
     def name(self):
         name = '-'.join(self.defect_list_names)
         name = name + '_mult%i' %self.multiplicity
+        if self.label:
+            name += f"({self.label})"
         return name
+    
+    @property
+    def label(self):
+        return self._label
     
     @property
     def defect_list_names(self):
@@ -372,7 +403,7 @@ class DefectComplexEntry:
   
     
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,label=None):
         """
         Generate DefectComplexEntry object from VaspJob objects.
 
@@ -400,11 +431,12 @@ class DefectComplexEntry:
         energy_diff = job_defect.final_energy - job_bulk.final_energy
         charge = job_defect.charge
         
-        return DefectComplexEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,charge,multiplicity)
+        return DefectComplexEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,
+                                                  charge,multiplicity,label)
         
     
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,label=None):
         """
         Generate DefectComplexEntry object from Structure objects.
 
@@ -437,7 +469,7 @@ class DefectComplexEntry:
             defect = defect_class(bulk_structure,dsite,charge=charge,multiplicity=1)
             defect_list.append(defect)
         
-        return DefectComplexEntry(defect_list, bulk_structure, energy_diff, corrections, charge, multiplicity)
+        return DefectComplexEntry(defect_list, bulk_structure, energy_diff, corrections, charge, multiplicity,label)
     
     
     def __repr__(self):
@@ -471,7 +503,8 @@ class DefectComplexEntry:
              "energy_diff": self.energy_diff,
              "corrections": self.corrections,
              "charge": self.charge,
-             "multiplicity": self.multiplicity
+             "multiplicity": self.multiplicity,
+             "label": self.label
              }
         return d        
 
@@ -493,7 +526,8 @@ class DefectComplexEntry:
         corrections = d['corrections']
         charge = d['charge']
         multiplicity = d['multiplicity']
-        return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity)
+        label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
+        return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,label)
     
     
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):

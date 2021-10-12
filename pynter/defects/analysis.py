@@ -312,6 +312,8 @@ class DefectsAnalysis:
         is composing the complex (needs to be present in computed entries):
             C = C_eq * prod(Ctot_frozen(i)/Ctot_eq(i))
             
+        Labels and multiplicities are ignored when accounting for the defect species equilibrium.
+            
         Parameters
         ----------
         chemical_potentials: (dict)
@@ -342,6 +344,7 @@ class DefectsAnalysis:
             for n in frozen_conc_keys:
                 new_key = n.split('_mult', 1)[0]
                 frozen_conc[new_key] = frozen_conc.pop(n)
+        #print(total_conc)
         for e in self.entries:
             # frozen defects approach
             if frozen_defect_concentrations:
@@ -377,6 +380,8 @@ class DefectsAnalysis:
                                              frozen_defect_concentrations=None):
         """
         Give list of concentrations of defects in their stable charge state at a specified efermi.
+        Entry labels are ignored, defects of same type but with different labels are treated as 
+        the same defect species.
 
         Parameters
         ----------
@@ -414,6 +419,7 @@ class DefectsAnalysis:
                                     frozen_defect_concentrations=None):
         """
         Calculate the sum of the defect concentrations in every charge state for every defect specie.
+        Different multiplicities and labels are all summed up together.
 
         Parameters
         ----------
@@ -437,10 +443,11 @@ class DefectsAnalysis:
         
         total_concentrations = {}
         for name in self.names:
+            name = name.split('_mult')[0]
             total_concentrations[name] = 0
             for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
                                                     frozen_defect_concentrations):
-                if d['name'] == name:
+                if d['name'].split('_mult')[0] == name:
                     total_concentrations[name] += d['conc']
         
         return total_concentrations
@@ -545,6 +552,8 @@ class DefectsAnalysis:
             Only entries whose name is on the list will be displayed. The default is None.
         include_bulk: (bool), optional
             Include bulk composition and space group for each entry in DataFrame.
+        display: (list)
+            List of strings with defect entry attributes or method results to display.
 
         Returns
         -------
@@ -753,8 +762,16 @@ class DefectsAnalysis:
         return plt
      
 
-    def _get_formatted_legend(self,name):
-        
+    def _get_formatted_legend(self,fullname):
+        # handling label case
+        if '(' in fullname:
+            fullname = fullname.split('(')
+            name = fullname[0]
+            entry_label = '('+fullname[1]
+        else:
+            name = fullname
+            entry_label = ''
+        # single defect    
         if '-' not in [c for c in name]:        
             flds = name.split('_')
             if 'Vac' == flds[0]:
@@ -771,8 +788,8 @@ class DefectsAnalysis:
                 base = name
                 sub_str = ''
     
-            return  base + sub_str
-        
+            return  base + sub_str + entry_label
+        # defect complex
         else:
             label = ''
             names = name.split('-')
@@ -797,8 +814,8 @@ class DefectsAnalysis:
                         label += base + sub_str + '-'
                     else:
                         label += base + sub_str
-            
-            return label
+
+            return label + entry_label
     
     
     def plot_binding_energies(self, names=None, xlim=None, ylim=None, size=1,format_legend=True):
