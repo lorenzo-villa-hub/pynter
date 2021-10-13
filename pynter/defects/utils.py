@@ -9,6 +9,7 @@ Created on Mon Oct 12 15:27:33 2020
 from pymatgen.analysis.defects.utils import StructureMotifInterstitial
 import numpy as np
 from pymatgen.core.sites import PeriodicSite
+from pymatgen.core.periodic_table import Element
 from pymatgen.io.vasp.inputs import Poscar
 from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
 from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, Substitution, Defect
@@ -134,6 +135,66 @@ def create_substitution_structures(structure,replace,supercell_size=1):
     return sub_structures
 
 
+def create_def_structure_for_visualization(structure_defect,structure_bulk,sort_to_bulk=False,tol=1e-03):
+    """
+    Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
+    in the vacant site the element of same row and next group on the periodic table.
+    If sort_to_bulk is True the Sites are sorted to match the Bulk structure.
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    sort_to_bulk : (bool)
+        Sort Sites of the defect structure to match the order of coordinates in the bulk structure
+        (useful if the non-relaxed defect structure is not available). 
+        If False only the dummy atoms are inserted and not further changes are made.
+    tol: (float)
+        Tolerance for fractional coordinates comparison.
+
+    Returns
+    -------
+    new_structure (Pymatgen Structure object)
+        Structure with dummy atoms as vacancies and interstitials in the bottom.
+        The order of the Sites follow the order of the Bulk structure.
+
+    """
+    df = structure_defect
+    bk = structure_bulk
+    extra_sites=[]
+
+    dfs = defect_finder(df,bk,tol=tol)
+    for dsite,dtype in dfs:
+        if dtype == 'Vacancy':
+            check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
+            el = dsite.specie
+            species = Element.from_row_and_group(el.row, el.group+1)
+            df.insert(i=i,species=species,coords=dsite.frac_coords,validate_proximity=True)
+        elif dtype == 'Interstitial' and sort_to_bulk:
+            extra_sites.append(dsite)
+    # reorder to match bulk, useful if you don't have non-relaxed defect structure
+    if sort_to_bulk:
+        indexes = []
+        new_sites=[]
+        for s in df:
+            check,index = is_site_in_structure_coords(s,bk,tol=tol)
+            if check:
+                indexes.append(index)
+        for w in range(0,len(bk)):
+            new_sites.insert(indexes[w],df[w])
+        for s in extra_sites:
+            new_sites.append(s)
+            
+        new_structure = df.copy()
+        new_structure._sites = new_sites  
+    # In this case only dummy atoms are inserted, no further changes
+    else:
+        new_structure = df.copy()
+    return new_structure
+        
+
 def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     """
     Function to find defect comparing defect and bulk structure (Pymatgen objects). 
@@ -158,8 +219,8 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     defects = []
     
     for s in df:
-        if is_site_in_structure_coords(s,bk)[0]:
-            if is_site_in_structure(s,bk)[0] == False:
+        if is_site_in_structure_coords(s,bk,tol=tol)[0]:
+            if is_site_in_structure(s,bk,tol=tol)[0] == False:
                 dsite = s
                 dtype = 'Substitution'
                 defects.append((dsite,dtype))
@@ -169,7 +230,7 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03):
             defects.append((dsite,dtype))
             
     for s in bk:
-        if is_site_in_structure_coords(s,df)[0] == False:
+        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
             dsite = s
             dtype = 'Vacancy'
             defects.append((dsite,dtype))
@@ -410,10 +471,7 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
                                   gamma, get_plot)
     
     return corr
-    
-    
-    
-    
+        
     
     
     

@@ -11,40 +11,6 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 
 
-
-def get_coords_index(coords,structure,coords_are_cartesian=False,tol=1e-03):
-    """
-    Check if coords are present Structure. 
-
-    Parameters
-    ----------
-    coords : (array)
-        Numpy array with coordinates.
-    structure : (Structure)
-        Pymatgen Structure object.
-    coords_are_cartesian : (bool)
-        Set to True if you are providing coordinates in cartesian coordinates. The default is False.
-    tol : (float), optional
-        Tolerance for fractional coordinates. The default is 1e-03.
-
-    Returns
-    -------
-    is_site_in_structure : (bool)
-    index : (int)
-        Index of site in structure in case site is_site_in_structure returns True
-        If False index will be None.
-    """
-    are_coords_in_structure = False
-    for s in structure:
-        site_coords = s.coords if coords_are_cartesian else s.frac_coords
-        if np.allclose(coords,site_coords,rtol=tol):
-            are_coords_in_structure = True
-            index = structure.index(s)
-            return are_coords_in_structure,index
-    index=None
-    return are_coords_in_structure,index
-
-
 def is_site_in_structure(site,structure,tol=1e-03):
     """
     Check if Site is part of the Structure list. This function is needed because 
@@ -69,7 +35,7 @@ def is_site_in_structure(site,structure,tol=1e-03):
     """
     is_site_in_structure = False
     for s in structure:
-        if np.allclose(site.frac_coords,s.frac_coords,rtol=tol) and site.specie.symbol == s.specie.symbol:
+        if np.allclose(site.frac_coords,s.frac_coords,atol=tol) and site.specie.symbol == s.specie.symbol:
             is_site_in_structure = True
             index = structure.index(s)
             return is_site_in_structure,index
@@ -99,7 +65,7 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
     """
     is_site_in_structure_coords = False
     for s in structure:
-        if np.allclose(site.frac_coords,s.frac_coords,rtol=tol):
+        if np.allclose(site.frac_coords,s.frac_coords,atol=tol):
             is_site_in_structure_coords = True
             index = structure.index(s)
             return is_site_in_structure_coords,index
