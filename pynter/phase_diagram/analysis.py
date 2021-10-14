@@ -30,10 +30,10 @@ class Reservoirs:
         """
         self.res_dict = res_dict
         self.pd = phase_diagram if phase_diagram else None
-        if self.pd:
-            self.mu_refs = PDHandler(self.pd).get_chempots_reference()
-        elif mu_refs:
+        if mu_refs:
             self.mu_refs = mu_refs
+        elif self.pd:
+            self.mu_refs = PDHandler(self.pd).get_chempots_reference()
         else:
             self.mu_refs = mu_refs
             print('Warning: Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible')
