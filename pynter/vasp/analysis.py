@@ -116,6 +116,64 @@ class DatasetAnalysis:
         else:
             return plt         
 
+
+    def plot_convergence_kpoint(self,title=None,delta=1e-03,get_value=False):
+            """
+            Plot total energy convergence with respect to K-Point Mesh.
+            
+            Parameters
+            ----------
+            title : (str), optional
+                Plot title. The default is None.
+            delta : (float), optional
+                Value of delta E for energy convergence. The default is 1e-03.
+            get_value : (bool)
+                Return also converged cutoff value.
+            Returns
+            -------
+            plt :
+                Matplotlib object. Returns a tuple with converged cutoff value if get_value is True.
+            """
+            plt.figure(figsize=(10,8))
+            kpoint_sum_max = 0
+            energies = {}
+            for j in self.jobs:
+                kpoint = j.kpoints.kpts[0]
+                kpoint_label = 'x'.join([str(k) for k in kpoint])
+                kpoint_sum = len(j.computed_entry.data['actual_kpoints']) #count total number of kpoints
+                if kpoint_sum > kpoint_sum_max:
+                    kpoint_sum_max = kpoint_sum
+                    kpoint_max = kpoint_label
+                energies[kpoint_label] = j.final_energy/len(j.initial_structure)
+    
+            E0 = energies[kpoint_max]
+            kpoints = [c for c in energies.keys()]
+            deltas = [-E0 + e for e in energies.values()]
+    
+            convergence = False
+            for i in range(0,len(kpoints)):
+                if i != 0:
+                    if i != len(kpoints)-1:
+                        if abs(deltas[i] - deltas[i-1]) < delta and abs(deltas[i] - deltas[i+1]) < delta:
+                            convergence = True
+                    else:
+                        if abs(deltas[i] - deltas[i-1]) < delta:
+                            convergence = True
+                    if convergence:
+                        conv_kpoint = kpoints[i]
+                        conv_delta = deltas[i]
+                        break
+    
+            if not convergence:
+                print(f'Convergence not reached for delta E = {delta}')
+    
+            plt.plot(kpoints,deltas,'o--',markersize=10)
+            if convergence:
+                plt.scatter(conv_kpoint,conv_delta, color=[], edgecolor='r', linewidths=3, s=450)
+            plt.xlabel('K-Point Mesh')
+            plt.ylabel('Energy difference (eV/atom)')
+            plt.grid()
+
         
     def plot_fractional_charge(self,reference='electrons',name='',new_figure=True,legend_out=False):
         """

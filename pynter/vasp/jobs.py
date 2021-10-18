@@ -441,7 +441,8 @@ class VaspJob(Job):
         """                
         self._is_converged = self._get_convergence()
         
-        self._default_data_computed_entry = ['final_energy','structures','eigenvalue_band_properties'] # default imports from Vasprun
+        self._default_data_computed_entry = ['final_energy','structures','eigenvalue_band_properties',
+                                             'parameters','actual_kpoints'] # default imports from Vasprun
 
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:
