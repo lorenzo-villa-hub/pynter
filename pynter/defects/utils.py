@@ -346,7 +346,7 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
 
 def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar,path_to_bulk_outcar,dielectric_tensor,
                            charge,defect_type=None,defect_specie=None,defect_site=None,sampling_radius=None,gamma=None,
-                           get_plot=False):
+                           tol=1e-03,get_plot=False):
     """
     Get Kumagai correction with Pymatgen.
 
@@ -377,6 +377,8 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
         use Wigner-Seitz radius of defect supercell, so this is default value.
     gamma (float): convergence parameter for gamma function.
                     Code will automatically determine this if set to None.
+    tol : (float)
+        Tolerance for comparing sites and defect_finder function. The default is 1e-03.
     get_plot : (bool), optional
         Get Matplotlib object with plot. The default is False.
 
@@ -387,12 +389,12 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
     """
     
     if not defect_site and not defect_type and not defect_specie:
-        defect_site, defect_type = defect_finder(structure_defect, structure_bulk)
+        defect_site, defect_type = defect_finder(structure_defect, structure_bulk, tol=tol)
         defect_specie = defect_site.specie.symbol
    
     site_matching_indices = []
     for site in structure_defect:
-        site_in_str ,index_bulk = is_site_in_structure(site, structure_bulk)
+        site_in_str ,index_bulk = is_site_in_structure_coords(site, structure_bulk,tol=tol)
         if site_in_str:
             site_matching_indices.append([index_bulk,structure_defect.index(site)])
         else:
@@ -412,7 +414,7 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
     
     module = importlib.import_module("pymatgen.analysis.defects.core")
     defect_class = getattr(module,defect_type)
-    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=None)
+    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=1)
     defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
 
     kumagai = KumagaiCorrection(dielectric_tensor,sampling_radius,gamma)
@@ -470,7 +472,7 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
     
     corr = get_kumagai_correction(structure_defect, structure_bulk, path_to_defect_outcar, path_to_bulk_outcar,
                                   dielectric_tensor, charge, defect_type, defect_specie, defect_site, sampling_radius,
-                                  gamma, get_plot)
+                                  gamma, tol, get_plot)
     
     return corr
         
