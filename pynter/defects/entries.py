@@ -16,7 +16,7 @@ from pynter.defects.utils import *
 from monty.json import MontyDecoder
 
 
-def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,multiplicity=None,label=None):
+def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,tol=1e-03,multiplicity=None,label=None):
     """
     Get defect entry from VaspJob objects of defect and bulk calculation.
     The defect_finder method is used to determine if the defect site is single or 
@@ -38,6 +38,8 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
         Multiplicity of defect within the supercell. The default is None.
         If not provided, for single defects it is determined by pymatgen with symmetry analysis,
         for a defect complex is set to 1.
+    tol : (float)
+        Tolerance for defect_finder function. The default is 1e-03.
     label : (str), optional
         Additional label to add to defect specie. Does not influence non equilibrium calculations.
 
@@ -48,7 +50,7 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
     """
     defect_structure = defect_structure if defect_structure else job_defect.initial_structure
     bulk_structure = job_bulk.final_structure
-    defects = defect_finder(defect_structure,bulk_structure)
+    defects = defect_finder(defect_structure,bulk_structure,tol)
     if isinstance(defects,list):
         entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,label)
     else:

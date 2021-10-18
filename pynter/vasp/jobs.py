@@ -21,6 +21,7 @@ import json
 from glob import glob
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
+from pynter.slurm.interface import HPCInterface
 import warnings
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
@@ -46,7 +47,8 @@ class VaspJob(Job):
                 
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-             "path": self.path,
+            # "path": self.path, # old path version in dict 
+             "path_relative":self.path_relative,
              "inputs": self.inputs.as_dict(),             
              "job_settings": self.job_settings,
              "job_script_filename":self.job_script_filename,
@@ -96,7 +98,11 @@ class VaspJob(Job):
         -------
         VaspJob object
         """
-        path = d['path']
+        #ensure compatibility with old path format
+        if 'path_relative' in d.keys() and d['path_relative']:
+            path = HPCInterface().localdir + d['path_relative']
+        elif 'path' in d.keys():
+            path = d['path']
         inputs = VaspInput.from_dict(d['inputs'])
         job_settings = d['job_settings']
         job_script_filename = d['job_script_filename']
@@ -558,7 +564,8 @@ class VaspNEBJob(Job):
         
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-             "path": self.path,             
+            # "path": self.path, # old path version in dict 
+             "path_relative":self.path_relative,           
              "job_settings": self.job_settings,
              "job_script_filename":self.job_script_filename,
              "name":self.name}
@@ -604,7 +611,11 @@ class VaspNEBJob(Job):
     @staticmethod
     def from_dict(d):
 
-        path = d['path']
+        #ensure compatibility with old path format
+        if 'path_relative' in d.keys() and d['path_relative']:
+            path = HPCInterface().localdir + d['path_relative']
+        elif 'path' in d.keys():
+            path = d['path']
         inputs = {}
         inputs["structures"] = [Structure.from_dict(s) for s in d['inputs']['structures']]
         inputs["INCAR"] = Incar.from_dict(d['inputs']['INCAR'])

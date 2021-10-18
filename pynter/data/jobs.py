@@ -38,9 +38,9 @@ class Job:
         
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
-        self._path_relative = op.abspath(self.path).replace(self._localdir,'')
+        self.path_relative = op.abspath(self.path).replace(self._localdir,'')
         
-        self.path_in_hpc = self._workdir + self._path_relative
+        self.path_in_hpc = self._workdir + self.path_relative
         
         
         if outputs:

@@ -426,7 +426,7 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
     
     
 def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defect_site=None,sampling_radius=None,
-                                     gamma=None,get_plot=False):
+                                     gamma=None,tol=1e-03,get_plot=False):
     """
     Get Kumagai corrections from VaspJob objects.
 
@@ -445,6 +445,8 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
         use Wigner-Seitz radius of defect supercell, so this is default value.
     gamma (float): convergence parameter for gamma function.
                     Code will automatically determine this if set to None.
+    tol : (float)
+        Tolerance for defect_finder function. The default is 1e-03.
     get_plot : (bool), optional
         Get Matplotlib object with plot. The default is False.
 
@@ -461,7 +463,7 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
     path_to_bulk_outcar = op.join(job_bulk.path)
     
     if not defect_site:
-        defect_site, defect_type = defect_finder(structure_defect, structure_bulk)
+        defect_site, defect_type = defect_finder(structure_defect, structure_bulk,tol)
         defect_specie = defect_site.specie.symbol
     
     charge = job_defect.charge
