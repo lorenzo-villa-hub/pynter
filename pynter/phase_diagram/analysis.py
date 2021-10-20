@@ -85,11 +85,7 @@ class Reservoirs:
         d = {}
         d['@module'] = self.__class__.__module__
         d['@class'] = self.__class__.__name__
-        d['res_dict'] = {}
-        for res,chempots in self.res_dict.items():
-            d['res_dict'][res] = {}
-            for el in chempots:
-                d['res_dict'][res][el.symbol] = chempots[el]
+        d['res_dict'] = self._get_res_dict_with_symbols()
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
         if self.mu_refs:
             d['mu_refs'] = {el.symbol:chem for el,chem in self.mu_refs.items()}
@@ -217,7 +213,7 @@ class Reservoirs:
             return self._get_referenced_res()
 
     
-    def get_dataframe(self,format_compositions=False,all_math=False):
+    def get_dataframe(self,format_compositions=False,all_math=False,ndecimals=None):
         """
         Get DataFrame object of the dictionary of reservoirs
 
@@ -227,13 +223,16 @@ class Reservoirs:
             Get Latex format of compositions. The default is False.
         all_math : (bool), optional
             Get all characters in composition written in Latex's math format. The default is False.
+        ndecimals : (int), optional
+            Number of decimals to round the chemical potentials, if None the numbers are not changed.
+            The default is None.
 
         Returns
         -------
         df : 
             DataFrame object.
         """
-        df = DataFrame(self.res_dict)
+        df = DataFrame(self._get_res_dict_with_symbols())
         df = df.transpose()
         if format_compositions:
             new_index = []
@@ -241,6 +240,8 @@ class Reservoirs:
                 new_string = format_composition(string,all_math=all_math)
                 new_index.append(new_string)
             df.index = new_index
+        if ndecimals:
+            df = df.round(decimals=ndecimals)
         return df
         
      
@@ -282,6 +283,13 @@ class Reservoirs:
             res_delta[r] = self._get_referenced_chempots(chem)
         return res_delta
                 
+    def _get_res_dict_with_symbols(self):
+        new_dict = {}
+        for res,chempots in self.res_dict.items():
+            new_dict[res] = {}
+            for el in chempots:
+                new_dict[res][el.symbol] = chempots[el]
+        return new_dict
 
     
 class PressureReservoirs(Reservoirs):
