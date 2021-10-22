@@ -26,7 +26,7 @@ class DefaultInputs:
         Parameters
         ----------
         structure : Pymatgen Structure object. The default is None. If no Structure is given only default INCAR can be generated.
-        cfgfile : File with default VASP parameters. The default is "~./pynter.vasp.yml".
+        cfgfile : File with default VASP parameters. The default is "~/.pynter.vasp.yml".
         """
         self._structure = structure if structure else None 
         defaults = load_vasp_default(cfgfile=cfgfile)

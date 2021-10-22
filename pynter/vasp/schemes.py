@@ -13,7 +13,7 @@ from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
 from pynter.vasp.default_inputs import DefaultInputs
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
-from pynter.defects.utils import create_vacancy_structures
+from pynter.defects.utils import create_vacancy_structures, create_substitution_structures
 
 
 class InputSets:
@@ -885,6 +885,58 @@ class Schemes(InputSets):
 
 class AdvancedSchemes(Schemes):
     
+    def substitutions_pbe_relaxation(self,replace_dict,supercell_size=1,automation=False,locpot=False,rel_scheme='default'):
+        """
+        Generate jobs for default vacancies calculation scheme with PBE.
+
+        Parameters
+        ----------
+        replace_dict : (dict)
+            Dictionary which indicates the substitution types and the relative charge states list.
+            Needs to be in this format:
+                {'<new_el>-on-<old_el>':[q0,q1,q2]}, where <new_el> and <old_el> are the symbols of the element to be added and
+                the element to be substituted with, respectively. [q0,q1,q2] is the list of corrisponding charge states for this substitution.
+            The format of the substitution string is the same that is generated from the function "create_substitutiion_structures".
+        supercell_size : (int or numpy array), optional
+            Input for the make_supercell function of the Structure class. The default is 1 (the structure is not modified).
+        automation : (bool)
+            Add default automation string: 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'.
+        locpot : (bool), optional
+            Add 'LVTOT=True' in INCAR. The default is False.
+        rel_scheme : (str), optional
+            Relaxation scheme to use with PBE. 'default for pbe_relaxation and 
+            'gamma' pbe_relaxation_gamma. The default is 'default'.
+
+        Returns
+        -------
+        jobs : (list)
+            List of VaspJob objects.
+        """
+        jobs = []
+        structure = self.structure
+        replace = {}
+        for k,v in replace_dict.items():
+            new_k,new_v = k.split('-on-')[1],k.split('-on-')[0]
+            replace[new_k] = new_v
+        sub_structures = create_substitution_structures(structure,replace,supercell_size=supercell_size)
+        if automation:
+            self.job_settings['add_automation'] = 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'
+        for n,st in sub_structures.items():
+            charge_states = replace_dict[n]
+            schemes_q = Schemes(path=self.path,structure=st,incar_settings=self.incar_settings,
+                                job_settings=self.job_settings,name=n,add_parent_folder=True)
+            charge_jobs = schemes_q.charge_states(charge_states,locpot)
+            for jq in charge_jobs:
+                schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)
+                if rel_scheme == 'default':
+                    rel_jobs = schemes_rel.pbe_relaxation()
+                elif rel_scheme == 'gamma':
+                    rel_jobs = schemes_rel.pbe_relaxation_gamma()
+                for jrel in rel_jobs:
+                        jobs.append(jrel)
+        return jobs
+    
+
     def vacancies_pbe_relaxation(self,el_dict,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
         """
         Generate jobs for default vacancies calculation scheme with PBE.
