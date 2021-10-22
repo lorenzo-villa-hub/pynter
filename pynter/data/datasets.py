@@ -114,7 +114,7 @@ class Dataset:
 
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
-        self._path_relative = self.path.replace(self._localdir,'')
+        self.path_relative = self.path.replace(self._localdir,'')
         
         self.path_in_hpc = self._workdir + self._path_relative
 
@@ -132,7 +132,8 @@ class Dataset:
     def as_dict(self,**kwargs):
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-             "path":self.path,
+             #"path":self.path, old path version in dict
+             "path_relative":self.path_relative,
              "name":self.name,
              "jobs":[j.as_dict(**kwargs) for j in self.jobs],
              "sort_by_name":self.sort_by_name}
@@ -168,7 +169,11 @@ class Dataset:
     
     @classmethod
     def from_dict(cls,d):
-        path = d['path']
+        #ensure compatibility with old path format
+        if 'path_relative' in d.keys() and d['path_relative']:
+            path = HPCInterface().localdir + d['path_relative']
+        elif 'path' in d.keys():
+            path = d['path']
         name = d['name']
         jobs = []
         for j in d['jobs']:
