@@ -116,7 +116,7 @@ class Dataset:
         self._workdir = HPCInterface().workdir
         self.path_relative = self.path.replace(self._localdir,'')
         
-        self.path_in_hpc = self._workdir + self._path_relative
+        self.path_in_hpc = self._workdir + self.path_relative
 
 
     def __str__(self):     
