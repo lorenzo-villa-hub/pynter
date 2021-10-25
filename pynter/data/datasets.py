@@ -427,7 +427,7 @@ class Dataset:
         return
 
     
-    def jobs_table(self,jobs=[],display=[]):
+    def jobs_table(self,jobs=[],status=False,display=[]):
         """
         Create a pandas DataFrame object to display the jobs in the dataset.
 
@@ -435,6 +435,8 @@ class Dataset:
         ----------
         jobs : (list), optional
             List of jobs to display in the table. The default is []. If [] the attribute "jobs" is used.
+        status : (bool), optional
+            Display job status in table.
         display : (list), optional
             List of kwargs with methods in the Job class. The properties referred to these will be added
             to the table. See self.get_job_feature for more details. The default is [].
@@ -447,6 +449,8 @@ class Dataset:
         jobs = jobs if jobs else self.jobs                           
         table = []
         index = []
+        if status:
+            stdout,stderr = HPCInterface().qstat(printout=False)
         for j in jobs:
             index.append(j.name)
             d = {}
@@ -454,6 +458,8 @@ class Dataset:
             d['group'] = j.group
             d['nodes'] = j.nodes
             d['is_converged'] = j.is_converged
+            if status:
+                d['status'] = j.get_status_from_queue(stdout)
             for feature in display:
                 if isinstance(feature,list):
                     key = feature[0]

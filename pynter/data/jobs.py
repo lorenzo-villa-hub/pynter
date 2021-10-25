@@ -255,17 +255,15 @@ class Job:
             return
 
 
-    def status(self):
+    def get_status_from_queue(self,stdout):     
         """
-        Get job status from HPC. 
+        Get Job status from stdout of qstat command in HPC.
 
         Returns
         -------
         status : (str)
             Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
         """
-        hpc = HPCInterface()
-        stdout,stderr = hpc.qstat(printout=False)
         queue = stdout.splitlines()
         job_lines = grep_list(self.name,queue)
         if job_lines == []:
@@ -283,10 +281,24 @@ class Job:
                 status = 'COMPLETED'
             
         return status
+
+
+    def status(self):
+        """
+        Get job status from HPC. Gets queue from HPC and gets Job status from the queue.
+
+        Returns
+        -------
+        status : (str)
+            Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
+        """
+        hpc = HPCInterface()
+        stdout,stderr = hpc.qstat(printout=False)
+        status = self.get_status_from_queue(stdout)            
+        return status
  
            
     @abstractmethod
     def write_input():
         pass
         
-     
