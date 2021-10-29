@@ -11,7 +11,7 @@ from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 
 
-def is_site_in_structure(site,structure,tol=1e-03):
+def is_site_in_structure_old(site,structure,tol=1e-03):
     """
     Check if Site is part of the Structure list. This function is needed because 
     sometimes doing a simple check ("site in structure") doesn't work. This function performes
@@ -43,7 +43,38 @@ def is_site_in_structure(site,structure,tol=1e-03):
     return is_site_in_structure,index
 
 
-def is_site_in_structure_coords(site,structure,tol=1e-03):
+def is_site_in_structure(site,structure,tol=1e-03):
+    """
+    Check if Site is part of the Structure list. This function is needed because 
+    sometimes doing a simple check ("site in structure") doesn't work. This function performes
+    a check on the coordinates and the element on the site. Therefore it is more reliable.
+
+    Parameters
+    ----------
+    site : (Site)
+        PeriodicSite or Site object.
+    structure : (Structure)
+        Pymatgen Structure object.
+    tol : (float), optional
+        Tolerance for fractional coordinates. The default is 1e-03.
+
+    Returns
+    -------
+    is_site_in_structure : (bool)
+    index : (int)
+        Index of site in structure in case site is_site_in_structure returns True
+        If False index will be None.
+    """
+    l = site.lattice
+    tol = np.sqrt(l.a**2 + l.b**2 + l.c**2) * tol 
+    for s in structure:
+        if s.distance(site) <= tol and site.specie.symbol == s.specie.symbol:
+            index = structure.index(s)
+            return True,index
+    return False,None
+
+
+def is_site_in_structure_coords_old(site,structure,tol=1e-03):
     """
     Check if Site coordinates are prensent in the Structure list. 
 
@@ -71,6 +102,35 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
             return is_site_in_structure_coords,index
     index=None
     return is_site_in_structure_coords,index
+
+
+def is_site_in_structure_coords(site,structure,tol=1e-03):
+    """
+    Check if Site coordinates are prensent in the Structure list. 
+
+    Parameters
+    ----------
+    site : (Site)
+        PeriodicSite or Site object.
+    structure : (Structure)
+        Pymatgen Structure object.
+    tol : (float), optional
+        Tolerance for site distance. The default is 1e-03.
+
+    Returns
+    -------
+    is_site_in_structure_coords : (bool)
+    index : (int)
+        Index of site in structure in case site is_site_in_structure_coords returns True
+        If False index will be None.
+    """
+    l = site.lattice
+    tol = np.sqrt(l.a**2 + l.b**2 + l.c**2) * tol #input is normalized with respect to lattice vector
+    for s in structure:
+        if s.distance(site) <= tol:
+            index = structure.index(s)
+            return True, index
+    return False,None
 
 
 def view_structure_with_ase(structures):

@@ -135,7 +135,7 @@ def create_substitution_structures(structure,replace,supercell_size=1):
     return sub_structures
 
 
-def create_def_structure_for_visualization(structure_defect,structure_bulk,sort_to_bulk=False,tol=1e-03):
+def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,validate_proximity=True,sort_to_bulk=False,tol=1e-03):
     """
     Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
     in the vacant site the element of same row and next group on the periodic table.
@@ -147,6 +147,11 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,sort_
         Defect structure.
     structure_bulk : (Pymatgen Structure object)
         Bulk structure.
+    defects : (tuple or list). 
+        Tuple or list of tuples in the format (defect_site,defect_type)
+        The format is the same as the output of defect_finder.
+    validate_proximity : (bool)
+        Check if inserted site is too close to an existing site. Defaults to True.
     sort_to_bulk : (bool)
         Sort Sites of the defect structure to match the order of coordinates in the bulk structure
         (useful if the non-relaxed defect structure is not available). 
@@ -161,17 +166,23 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,sort_
         The order of the Sites follow the order of the Bulk structure.
 
     """
-    df = structure_defect
-    bk = structure_bulk
+    df = structure_defect.copy()
+    bk = structure_bulk.copy()
     extra_sites=[]
-
-    dfs = defect_finder(df,bk,tol=tol)
+    if defects:
+        dfs = defects
+    else:
+        dfs = defect_finder(df,bk,tol=tol)
+    
+    # handle single defect case
+    if not isinstance(dfs,list):
+        dfs = [dfs] 
     for dsite,dtype in dfs:
         if dtype == 'Vacancy':
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
             species = Element.from_row_and_group(el.row, el.group+1)
-            df.insert(i=i,species=species,coords=dsite.frac_coords,validate_proximity=True)
+            df.insert(i=i,species=species,coords=dsite.frac_coords,validate_proximity=validate_proximity)
         elif dtype == 'Interstitial' and sort_to_bulk:
             extra_sites.append(dsite)
     # reorder to match bulk, useful if you don't have non-relaxed defect structure
@@ -194,6 +205,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,sort_
         new_structure = df.copy()
     return new_structure
         
+
 
 def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     """
