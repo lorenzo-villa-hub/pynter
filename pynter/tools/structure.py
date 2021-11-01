@@ -107,7 +107,10 @@ def _is_site_in_structure_coords_old(site,structure,tol=1e-03):
 
 def is_site_in_structure_coords(site,structure,tol=1e-03):
     """
-    Check if Site coordinates are prensent in the Structure list. 
+    Check if Site coordinates are prensent in the Structure. Calculates distance between target site and 
+    each site in reference structure, takes the minimum value and returns True if is within a tolerance.
+    The periodicity is accounted for (considering the lattice associated to the PeriodicSite.
+    The tolerance is normalized with respect to lattice vector size. 
 
     Parameters
     ----------
@@ -116,7 +119,9 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
     structure : (Structure)
         Pymatgen Structure object.
     tol : (float), optional
-        Tolerance for site distance. The default is 1e-03.
+        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
+        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
+        The default is 1e-03.
 
     Returns
     -------
