@@ -16,7 +16,7 @@ from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, 
 from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
 import os.path as op
 import importlib
-from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords
+from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords
 
 def create_interstitial_supercells(structure,element,size=2):
     
@@ -135,7 +135,7 @@ def create_substitution_structures(structure,replace,supercell_size=1):
     return sub_structures
 
 
-def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,validate_proximity=True,sort_to_bulk=False,tol=1e-03):
+def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,sort_to_bulk=False,tol=1e-03):
     """
     Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
     in the vacant site the element of same row and next group on the periodic table.
@@ -149,15 +149,15 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
         Bulk structure.
     defects : (tuple or list). 
         Tuple or list of tuples in the format (defect_site,defect_type)
-        The format is the same as the output of defect_finder.
-    validate_proximity : (bool)
-        Check if inserted site is too close to an existing site. Defaults to True.
+        The format is the same as the output of defect_finder. If None defect_finder is used. The default is None.
     sort_to_bulk : (bool)
         Sort Sites of the defect structure to match the order of coordinates in the bulk structure
         (useful if the non-relaxed defect structure is not available). 
         If False only the dummy atoms are inserted and not further changes are made.
     tol: (float)
-        Tolerance for fractional coordinates comparison.
+        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
+        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
+        The default is 1e-03.
 
     Returns
     -------
@@ -182,24 +182,12 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
             species = Element.from_row_and_group(el.row, el.group+1)
-            df.insert(i=i,species=species,coords=dsite.frac_coords,validate_proximity=validate_proximity)
+            df.insert(i=i,species=species,coords=dsite.frac_coords)
         elif dtype == 'Interstitial' and sort_to_bulk:
             extra_sites.append(dsite)
     # reorder to match bulk, useful if you don't have non-relaxed defect structure
     if sort_to_bulk:
-        indexes = []
-        new_sites=[]
-        for s in df:
-            check,index = is_site_in_structure_coords(s,bk,tol=tol)
-            if check:
-                indexes.append(index)
-        for w in range(0,len(bk)):
-            new_sites.insert(indexes[w],df[w])
-        for s in extra_sites:
-            new_sites.append(s)
-            
-        new_structure = df.copy()
-        new_structure._sites = new_sites  
+        new_structure = sort_sites_to_ref_coords(df, bk, extra_sites,tol=tol)
     # In this case only dummy atoms are inserted, no further changes
     else:
         new_structure = df.copy()
