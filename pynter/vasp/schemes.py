@@ -986,7 +986,7 @@ class AdvancedSchemes(Schemes):
     
 class NEBSchemes:
     
-    def __init__(self,path,structures,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None):
+    def __init__(self,path,structures,incar_settings=None,kpoints=None,potcar=None,job_settings=None,name=None,add_parent_folder=False):
         """
         Parameters
         ----------
@@ -1006,6 +1006,8 @@ class NEBSchemes:
             None the value will be: 'no_name'.
         name : (str), optional
             Name for the system to set up scheme for. The default is None.
+        add_parent_folder : (bool), optional
+            Add folder to the path names like the name of the InputSets. Default is False.
         """
         
         self.path = path
@@ -1021,6 +1023,8 @@ class NEBSchemes:
         if 'name' in self.job_settings.keys() and self.name:
             self.job_settings['name'] = self.name
 
+        if add_parent_folder:
+            self.path = op.join(self.path,self.name)
 
         for key in ['KPAR','NCORE','NPAR']:
             if key in self.incar_settings:
