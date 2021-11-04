@@ -300,7 +300,8 @@ class ScriptHandler:
             f.write('#SBATCH --output=%s\n' %self.output_filename)
             f.write('#SBATCH --error=%s\n' %self.error_filename)
             f.write('#SBATCH --time=%s\n' %self.timelimit)
-            f.write('#SBATCH -p %s\n' %self.partition)
+            if self.partition:
+                f.write('#SBATCH -p %s\n' %self.partition)
             f.write('#SBATCH --exclusive\n')
             f.write('#SBATCH --mem-per-cpu=%i\n' %self.memory_per_cpu)
             if self.processor:

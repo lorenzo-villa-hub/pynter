@@ -63,7 +63,7 @@ config = {
           'error_filename': 'err.%j',
           'timelimit': '24:00:00',
           'memory_per_cpu': 3500,
-          'partition':'test24',
+          'partition': None,
           'processor': None,
           'modules': ['intel/2020.2','intelmpi/2020.2','fftw/3.3.8'],
           'path_exe': path_exe,
