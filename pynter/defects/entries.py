@@ -59,6 +59,61 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
     return entry
 
 
+def get_formatted_legend(fullname):
+    # handling label case
+    if '(' in fullname:
+        fullname = fullname.split('(')
+        name = fullname[0]
+        entry_label = '('+fullname[1]
+    else:
+        name = fullname
+        entry_label = ''
+    # single defect    
+    if '-' not in [c for c in name]:        
+        flds = name.split('_')
+        if 'Vac' == flds[0]:
+            base = '$V'
+            sub_str = '_{' + flds[1] + '}$'
+        elif 'Sub' == flds[0]:
+            flds = name.split('_')
+            base = '$' + flds[1]
+            sub_str = '_{' + flds[3] + '}$'
+        elif 'Int' == flds[0]:
+            base = '$' + flds[1]
+            sub_str = '_{int}$'
+        else:
+            base = name
+            sub_str = ''
+
+        return  base + sub_str + entry_label
+    # defect complex
+    else:
+        label = ''
+        names = name.split('-')
+        for name in names:
+            flds = name.split('_')
+            if '-' not in flds:
+                if 'Vac' == flds[0]:
+                    base = '$V'
+                    sub_str = '_{' + flds[1] + '}$'
+                elif 'Sub' == flds[0]:
+                    flds = name.split('_')
+                    base = '$' + flds[1]
+                    sub_str = '_{' + flds[3] + '}$'
+                elif 'Int' == flds[0]:
+                    base = '$' + flds[1]
+                    sub_str = '_{int}$'
+                else:
+                    base = name
+                    sub_str = ''
+        
+                if names.index(name) != (len(names) - 1):
+                    label += base + sub_str + '-'
+                else:
+                    label += base + sub_str
+
+        return label + entry_label
+
 
 class SingleDefectEntry:
     

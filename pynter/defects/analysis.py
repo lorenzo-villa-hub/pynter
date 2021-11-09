@@ -11,7 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pynter.defects.pmg_dos import FermiDosCarriersInfo
 from pynter.defects.utils import get_delta_atoms
-from pynter.defects.entries import SingleDefectEntry
+from pynter.defects.entries import SingleDefectEntry, DefectComplexEntry, get_formatted_legend
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 
@@ -20,7 +20,7 @@ class DefectsAnalysis:
     """ 
     Class to compute defect properties starting from single calculations of defects
     Args:
-        entries (list): A list of SingleDefectEntry objects
+        entries (list): A list of SingleDefectEntry or DefectComplexEntry objects.
         vbm (float): Valence Band energy to use for all defect entries.
             NOTE if using band shifting-type correction then this VBM
             should still be that of the GGA calculation
@@ -763,59 +763,7 @@ class DefectsAnalysis:
      
 
     def _get_formatted_legend(self,fullname):
-        # handling label case
-        if '(' in fullname:
-            fullname = fullname.split('(')
-            name = fullname[0]
-            entry_label = '('+fullname[1]
-        else:
-            name = fullname
-            entry_label = ''
-        # single defect    
-        if '-' not in [c for c in name]:        
-            flds = name.split('_')
-            if 'Vac' == flds[0]:
-                base = '$V'
-                sub_str = '_{' + flds[1] + '}$'
-            elif 'Sub' == flds[0]:
-                flds = name.split('_')
-                base = '$' + flds[1]
-                sub_str = '_{' + flds[3] + '}$'
-            elif 'Int' == flds[0]:
-                base = '$' + flds[1]
-                sub_str = '_{int}$'
-            else:
-                base = name
-                sub_str = ''
-    
-            return  base + sub_str + entry_label
-        # defect complex
-        else:
-            label = ''
-            names = name.split('-')
-            for name in names:
-                flds = name.split('_')
-                if '-' not in flds:
-                    if 'Vac' == flds[0]:
-                        base = '$V'
-                        sub_str = '_{' + flds[1] + '}$'
-                    elif 'Sub' == flds[0]:
-                        flds = name.split('_')
-                        base = '$' + flds[1]
-                        sub_str = '_{' + flds[3] + '}$'
-                    elif 'Int' == flds[0]:
-                        base = '$' + flds[1]
-                        sub_str = '_{int}$'
-                    else:
-                        base = name
-                        sub_str = ''
-            
-                    if names.index(name) != (len(names) - 1):
-                        label += base + sub_str + '-'
-                    else:
-                        label += base + sub_str
-
-            return label + entry_label
+            return get_formatted_legend(fullname)
     
     
     def plot_binding_energies(self, names=None, xlim=None, ylim=None, size=1,format_legend=True):
