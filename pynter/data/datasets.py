@@ -580,7 +580,8 @@ class Dataset:
                 check = True 
         return check
 
-    def select_jobs(self,jobs=None,exclude=False,names=None,groups=None,common_group=None,
+
+    def select_jobs(self,jobs=None,mode='and',exclude=False,names=None,groups=None,common_group=None,
                     common_node=None,complex_features=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
@@ -592,8 +593,12 @@ class Dataset:
         ----------
         jobs : (list), optional
             List of Jobs to search, if None the self.jobs is used. The default is None.
-        names : (str), optional
-            Job name. The default is None.
+        mode : (str), optional
+            Filtering mode, aviavilable are: 'and' and 'or'. The default is 'and'. 
+        exclude : (bool), optional
+            Exclude the jobs satisfying the criteria instead of selecting them.
+        names : (list), optional
+            List of Job names. The default is None.
         groups : (list), optional
             List of groups that jobs need to belong to. The default is None.
         common_group : (str), optional
@@ -615,48 +620,63 @@ class Dataset:
             List with filtered jobs. If list has one element only the element is returned.
         """
         input_jobs = jobs.copy() if jobs else self.jobs.copy() 
-        sel_jobs = input_jobs.copy()
         
-        jobs = sel_jobs.copy()
+        sel_jobs = []
+        jobs = input_jobs.copy()
         if names:
             for j in jobs:
-                if j.name not in names:
-                    sel_jobs.remove(j)
+                if j.name in names:
+                    sel_jobs.append(j)
         
         if groups:
-            jobs = sel_jobs.copy()
+            if sel_jobs and mode=='and':
+                jobs = sel_jobs.copy()
+                sel_jobs = []
             for j in jobs:
-                if j.group not in groups:
-                    sel_jobs.remove(j)
+                if j.group in groups:
+                    if j not in sel_jobs:
+                        sel_jobs.append(j)
 
         if common_group:
-            jobs = sel_jobs.copy()
+            if sel_jobs and mode=='and':
+                jobs = sel_jobs.copy()
+                sel_jobs = []
             for j in jobs:
-                if common_group not in j.group:
-                    sel_jobs.remove(j)
+                if common_group in j.group:
+                    if j not in sel_jobs:
+                        sel_jobs.append(j)
 
         if common_node:
-            jobs = sel_jobs.copy()
+            if sel_jobs and mode=='and':
+                jobs = sel_jobs.copy()
+                sel_jobs = []
             for j in jobs:
-                if common_node not in j.nodes:
-                    sel_jobs.remove(j)
+                if common_node in j.nodes:
+                    if j not in sel_jobs:
+                        sel_jobs.append(j)
         
         if complex_features:
+            if sel_jobs and mode=='and':
+                jobs = sel_jobs.copy()
+                sel_jobs = []
             for feature in complex_features:
                 feature_name = feature[0]
                 feature_value = feature[1]
-                jobs = sel_jobs.copy()
                 for j in jobs:
                     job_feature = self.get_job_feature(j,feature_name)
-                    if job_feature != feature_value:
-                        sel_jobs.remove(j)
+                    if job_feature == feature_value:
+                        if j not in sel_jobs:
+                            sel_jobs.append(j)
 
         for feature in kwargs:
-            jobs = sel_jobs.copy()
+            if sel_jobs and mode=='and':
+                jobs = sel_jobs.copy()
+                sel_jobs = []
             for j in jobs:
                 job_feature = self.get_job_feature(j,feature)
-                if job_feature != kwargs[feature]:
-                    sel_jobs.remove(j)
+                if job_feature == kwargs[feature]:
+                    if j not in sel_jobs:
+                        sel_jobs.append(j)        
         
         output_jobs = []
         for j in input_jobs:
