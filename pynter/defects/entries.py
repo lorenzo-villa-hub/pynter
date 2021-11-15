@@ -16,7 +16,7 @@ from pynter.defects.utils import *
 from monty.json import MontyDecoder
 
 
-def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,tol=1e-03,multiplicity=None,label=None):
+def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,tol=1e-03,multiplicity=None,data=None,label=None):
     """
     Get defect entry from VaspJob objects of defect and bulk calculation.
     The defect_finder method is used to determine if the defect site is single or 
@@ -50,11 +50,11 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
     """
     defect_structure = defect_structure if defect_structure else job_defect.initial_structure
     bulk_structure = job_bulk.final_structure
-    defects = defect_finder(defect_structure,bulk_structure,tol)
+    defects = defect_finder(defect_structure,bulk_structure,tol=tol)
     if isinstance(defects,list):
-        entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,label)
+        entry = DefectComplexEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,data,label,tol=tol)
     else:
-        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,label)
+        entry = SingleDefectEntry.from_jobs(job_defect,job_bulk,corrections,defect_structure,multiplicity,data,label,tol=tol)
         
     return entry
 
@@ -117,7 +117,7 @@ def get_formatted_legend(fullname):
 
 class SingleDefectEntry:
     
-    def __init__(self,defect,bulk_structure,energy_diff,corrections,label=None):
+    def __init__(self,defect,bulk_structure,energy_diff,corrections,data=None,label=None):
         """
         Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
 
@@ -134,6 +134,7 @@ class SingleDefectEntry:
         self._bulk_structure = bulk_structure
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
+        self._data = data if data else {}
         self._label = label        
         
 
@@ -152,6 +153,15 @@ class SingleDefectEntry:
     @property
     def corrections(self):
         return self._corrections
+    
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self,data):
+        self._data = data
+        return 
 
     @property
     def charge(self):
@@ -176,6 +186,10 @@ class SingleDefectEntry:
     @property
     def label(self):
         return self._label
+    
+    @property
+    def symbol(self):
+        return get_formatted_legend(self.name)
 
     @property
     def delta_atoms(self):
@@ -193,7 +207,7 @@ class SingleDefectEntry:
 
 
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,label=None):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,data=None,label=None,tol=1e-03):
         """
         Generate SingleDefectEntry object from VaspJob objects.
 
@@ -223,11 +237,11 @@ class SingleDefectEntry:
         charge = job_defect.charge
         
         return SingleDefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, 
-                                                 corrections,charge,multiplicity,label)
+                                                 corrections,charge,multiplicity,data,label,tol=tol)
 
 
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,label=None):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,data=None,label=None,tol=1e-03):
         """
         Generate SingleDefectEntry object from Structure objects.
 
@@ -254,24 +268,25 @@ class SingleDefectEntry:
         -------
         SingleDefectEntry
         """
-        dsite,dtype = defect_finder(defect_structure, bulk_structure)
+        dsite,dtype = defect_finder(defect_structure, bulk_structure,tol=tol)
         module = importlib.import_module("pymatgen.analysis.defects.core")
         defect_class = getattr(module,dtype)
         defect = defect_class(bulk_structure,dsite,charge,multiplicity=multiplicity)
         
-        return SingleDefectEntry(defect, bulk_structure, energy_diff, corrections,label)
+        return SingleDefectEntry(defect, bulk_structure, energy_diff, corrections,data,label)
 
 
     def __repr__(self):
         output = [
             "SingleDefectEntry :",
-            "Defect = %s %s %s" %(self.defect.__class__.__name__,self.defect.site.specie.symbol,self.defect.site.frac_coords.__str__()),
-            "Bulk System = %s" %self.bulk_structure.composition,
-            "Energy = %.4f" %self.energy_diff,
-            "Corrections = %.4f" %sum([v for v in self.corrections.values()]),
-            "Charge = %i" %self.charge,
-            "Multiplicity = %i" %self.multiplicity,
-            "Name = %s" %self.name,
+            "Defect: %s %s %s" %(self.defect.__class__.__name__,self.defect.site.specie.symbol,self.defect.site.frac_coords.__str__()),
+            "Bulk System: %s" %self.bulk_structure.composition,
+            "Energy: %.4f" %self.energy_diff,
+            "Corrections: %.4f" %sum([v for v in self.corrections.values()]),
+            "Charge: %i" %self.charge,
+            "Multiplicity: %i" %self.multiplicity,
+            "Data: %s" %self.data.keys(),
+            "Name: %s" %self.name,
             "\n"
             ]
         return "\n".join(output)
@@ -291,6 +306,7 @@ class SingleDefectEntry:
              "bulk_structure": self.bulk_structure.as_dict(),
              "energy_diff": self.energy_diff,
              "corrections": self.corrections,
+             "data": self.data,
              "label": self.label
              }
         return d        
@@ -311,12 +327,13 @@ class SingleDefectEntry:
         bulk_structure = Structure.from_dict(d['bulk_structure'])
         energy_diff = d['energy_diff']
         corrections = d['corrections']
+        data = d['data'] if 'data' in d.keys() else None # ensure compatibility with old dictionaries
         label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
-        return cls(defect,bulk_structure,energy_diff,corrections,label)
+        return cls(defect,bulk_structure,energy_diff,corrections,data,label)
 
 
     def copy(self):
-        return SingleDefectEntry(self.defect, self.bulk_structure, self.energy_diff, self.corrections,self.label)
+        return SingleDefectEntry(self.defect, self.bulk_structure, self.energy_diff, self.corrections, self.data, self.label)
 
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
@@ -360,10 +377,36 @@ class SingleDefectEntry:
         return conc
     
     
+    def relaxation_volume(self,stress_bulk,bulk_modulus):
+        """
+        Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
+        in the "data" dictionary with realtive "stress" key.
+
+        Parameters
+        ----------
+        stress_bulk : (np.array)
+            Stresses of bulk calculation.
+        bulk_modulus : (float)
+            Bulk modulus in GPa.
+
+        Returns
+        -------
+        rel_volume : (float)
+            Relaxation volume in A°^3.
+        """
+        stress_d = self.data['stress']
+        bulk_modulus = bulk_modulus*10 # from GPa to kbar
+        bulk_volume = self.bulk_structure.lattice.volume
+        stress = np.array(stress_d) - np.array(stress_bulk) # residual stress -> defect - bulk
+        pressure = np.trace(stress)/3
+        rel_volume = -1*(pressure/bulk_modulus)*bulk_volume #sign is inverted with respect to VASP output
+        
+        return rel_volume
+
     
 class DefectComplexEntry:
     
-    def __init__(self,defect_list,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,label=None):
+    def __init__(self,defect_list,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,data=None,label=None):
         """
         Initializes the data of a defect complex. Inspired from the DefectEntry class in pymatgen (pmg).
 
@@ -387,6 +430,7 @@ class DefectComplexEntry:
         self._corrections = corrections if corrections else {}
         self._charge = int(charge)
         self._multiplicity = multiplicity if multiplicity else 1
+        self._data = data if data else {}
         self._label = label 
 
 
@@ -405,6 +449,15 @@ class DefectComplexEntry:
     @property
     def corrections(self):
         return self._corrections
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self,data):
+        self._data = data
+        return 
 
     @property
     def charge(self):
@@ -430,6 +483,10 @@ class DefectComplexEntry:
     @property
     def label(self):
         return self._label
+    
+    @property
+    def symbol(self):
+        return get_formatted_legend(self.name)
     
     @property
     def defect_list_names(self):
@@ -460,7 +517,7 @@ class DefectComplexEntry:
   
     
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,label=None):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,data=None,label=None,tol=1e-03):
         """
         Generate DefectComplexEntry object from VaspJob objects.
 
@@ -489,11 +546,11 @@ class DefectComplexEntry:
         charge = job_defect.charge
         
         return DefectComplexEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,
-                                                  charge,multiplicity,label)
+                                                  charge,multiplicity,data,label,tol=tol)
         
     
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,label=None):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,data=None,label=None,tol=1e-03):
         """
         Generate DefectComplexEntry object from Structure objects.
 
@@ -519,27 +576,28 @@ class DefectComplexEntry:
         DefectComplexEntry
         """
         defect_list = []
-        defects = defect_finder(defect_structure, bulk_structure)
+        defects = defect_finder(defect_structure, bulk_structure,tol=tol)
         for dsite,dtype in defects:
             module = importlib.import_module("pynter.defects.pmg_defects_core") #modified pymatgen version with corrected multiplicity bug in super().init for Interstitials
             defect_class = getattr(module,dtype)
             defect = defect_class(bulk_structure,dsite,charge=charge,multiplicity=1)
             defect_list.append(defect)
         
-        return DefectComplexEntry(defect_list, bulk_structure, energy_diff, corrections, charge, multiplicity,label)
+        return DefectComplexEntry(defect_list, bulk_structure, energy_diff, corrections, charge, multiplicity,data,label)
     
     
     def __repr__(self):
         defect_list_string = [(d.__class__.__name__,d.site.specie.symbol,d.site.frac_coords.__str__()) for d in self.defect_list]
         output = [
             "DefectComplexEntry :",
-            f"Defects =  {defect_list_string}",
-            "Bulk System = %s" %self.bulk_structure.composition,
-            "Energy = %.4f" %self.energy_diff,
-            "Corrections = %.4f" %sum([v for v in self.corrections.values()]),
-            "Charge = %i" %self.charge,
-            f"Multiplicity = {self.multiplicity}",
-            "Name = %s" %self.name,
+            f"Defects:  {defect_list_string}",
+            "Bulk System: %s" %self.bulk_structure.composition,
+            "Energy: %.4f" %self.energy_diff,
+            "Corrections: %.4f" %sum([v for v in self.corrections.values()]),
+            "Charge: %i" %self.charge,
+            f"Multiplicity: {self.multiplicity}",
+            "Data: %s" %self.data.keys(),
+            "Name: %s" %self.name,
             "\n"
             ]
         return "\n".join(output)
@@ -561,6 +619,7 @@ class DefectComplexEntry:
              "corrections": self.corrections,
              "charge": self.charge,
              "multiplicity": self.multiplicity,
+             "data": self.data,
              "label": self.label
              }
         return d        
@@ -583,8 +642,9 @@ class DefectComplexEntry:
         corrections = d['corrections']
         charge = d['charge']
         multiplicity = d['multiplicity']
+        data = d['data'] if 'data' in d.keys() else None # ensure compatibility with old dictionaries
         label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
-        return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,label)
+        return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,data,label)
     
     
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
@@ -611,6 +671,7 @@ class DefectComplexEntry:
         
         return formation_energy
     
+    
     def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
         """
         Compute the defect concentration for a temperature and Fermi level.
@@ -628,4 +689,29 @@ class DefectComplexEntry:
         return conc    
     
     
+    def relaxation_volume(self,stress_bulk,bulk_modulus):
+        """
+        Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
+        in the "data" dictionary with realtive "stress" key.
+
+        Parameters
+        ----------
+        stress_bulk : (np.array)
+            Stresses of bulk calculation.
+        bulk_modulus : (float)
+            Bulk modulus in GPa.
+
+        Returns
+        -------
+        rel_volume : (float)
+            Relaxation volume in A°^3.
+        """
+        stress_d = self.data['stress']
+        bulk_modulus = bulk_modulus*10 # from GPa to kbar
+        bulk_volume = self.bulk_structure.lattice.volume
+        stress = np.array(stress_d) - np.array(stress_bulk) # residual stress -> defect - bulk
+        pressure = np.trace(stress)/3
+        rel_volume = -1*(pressure/bulk_modulus)*bulk_volume #sign is inverted with respect to VASP output
+        
+        return rel_volume
     

@@ -572,7 +572,7 @@ class DefectsAnalysis:
         index = []
         table = []
         for e in entries:
-            symbol = self._get_formatted_legend(e.name)
+            symbol = e.symbol
             if pretty:
                 index.append(symbol)
             else:
@@ -899,8 +899,8 @@ class DefectsAnalysis:
         plt.ylim(ylim)
         plt.ylabel('Energy(eV)',fontsize=20*size)  
         
-        return plt
-   
+        return plt  
+    
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """
