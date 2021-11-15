@@ -570,17 +570,6 @@ class Dataset:
             return sorted_jobs
             
 
-    def _remove(self,att,filt,force_iter=False):
-        check = False
-        if type(filt) == list or force_iter:
-            if att not in filt:
-                check = True
-        else:
-            if att != filt:
-                check = True 
-        return check
-
-
     def select_jobs(self,jobs=None,mode='and',exclude=False,names=None,groups=None,common_group=None,
                     common_node=None,complex_features=None,**kwargs):
         """
@@ -609,10 +598,12 @@ class Dataset:
             List of properties that need to be satisfied.
             To use when the property of interest is stored in a dictionary.
             The first element of the tuple indentifies the property (see self.get_job_feature),
-            the second corrisponds to the target value.
+            the second corrisponds to the target value. To address more than one condition 
+            relative to the same property, use lists or tuples.
         **kwargs : (dict)
-            Properties that the jobs need to satisfy. Keys are referred to methods 
-            present in the relative Job class.
+            Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
+            present in the relative Job class. To address more than one condition relative to
+            the same attribute, use lists or tuples (e.g. charge=[0,1]).
 
         Returns
         -------
@@ -664,7 +655,11 @@ class Dataset:
                 feature_value = feature[1]
                 for j in jobs:
                     job_feature = self.get_job_feature(j,feature_name)
-                    if job_feature == feature_value:
+                    if type(feature_value) in [list,tuple]:
+                        for v in feature_value:
+                            if job_feature == v:
+                                sel_jobs.append(j)
+                    elif job_feature == feature_value:
                         if j not in sel_jobs:
                             sel_jobs.append(j)
 
@@ -674,7 +669,12 @@ class Dataset:
                 sel_jobs = []
             for j in jobs:
                 job_feature = self.get_job_feature(j,feature)
-                if job_feature == kwargs[feature]:
+                if type(kwargs[feature]) in [list,tuple]:
+                    for v in kwargs[feature]:
+                        if job_feature == v:
+                            if j not in sel_jobs:
+                                sel_jobs.append(j)
+                elif job_feature == kwargs[feature]:
                     if j not in sel_jobs:
                         sel_jobs.append(j)        
         
