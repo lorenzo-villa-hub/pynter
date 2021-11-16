@@ -10,6 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
 import pandas as pd
+from pynter.defects.entries import get_formatted_legend, format_legend_with_charge
 
 class ConcPlotter:
 
@@ -55,7 +56,7 @@ class ConcPlotter:
         """
         Format names with latex symbols.
         """
-        format_legend = PressurePlotter()._get_formatted_legend
+        format_legend = get_formatted_legend
         df = self.df
         if self.dftype == 'dataframe':
             df.name = df.name.map(format_legend)
@@ -333,9 +334,9 @@ class PressurePlotter:
             if filter_defects is False or (defect_indexes is not None and i in defect_indexes):
                 conc = [c[i]['conc'] for c in defect_concentrations]
                 charges = [c[i]['charge'] for c in defect_concentrations]
-                label_txt = self._get_formatted_legend(dc[0][i]['name'])
+                label_txt = get_formatted_legend(dc[0][i]['name'])
                 if concentrations_output == 'all':
-                    label_txt = self._format_legend_with_charge(label_txt,dc[0][i]['charge'])
+                    label_txt = format_legend_with_charge(label_txt,dc[0][i]['charge'])
                 elif concentrations_output == 'stable':
                     for q in charges:
                         if q != previous_charge:
@@ -357,98 +358,9 @@ class PressurePlotter:
         n = [cr[1] for cr in carrier_concentrations] 
         for name in defect_concentrations[0]:
             conc = [c[name] for c in defect_concentrations]
-            label_txt = self._get_formatted_legend(name)
+            label_txt = get_formatted_legend(name)
             plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
         return plt
     
-    
-    def _format_legend_with_charge(self,fulllabel,charge):
-        # handling entry label case
-        if '(' in fulllabel:
-            fulllabel = fulllabel.split('(')
-            label = fulllabel[0]
-            entry_label = '('+fulllabel[1]
-            print(entry_label)
-        else:
-            label = fulllabel
-            entry_label = ''
-            
-        mod_label = label[:-1]
-        if charge < 0:
-            for i in range(0,abs(charge)):
-                if i == 0:
-                    mod_label = mod_label + "^{"
-                mod_label = mod_label + "°"
-            mod_label = mod_label + "}"
-        elif charge == 0:
-            mod_label = mod_label + "^{x}"
-        elif charge > 0:
-            for i in range(0,charge):
-                if i == 0:
-                    mod_label = mod_label + "^{"
-                mod_label = mod_label + "'"
-            mod_label = mod_label + "}"
-        
-        mod_label = mod_label + "$"
-        
-        return mod_label + entry_label
-    
-    
-    def _get_formatted_legend(self,fullname):
-        # handling label case
-        if '(' in fullname:
-            fullname = fullname.split('(')
-            name = fullname[0]
-            extra_label = '('+fullname[1]
-            print(extra_label)
-        else:
-            name = fullname
-            extra_label = ''
-        # single defect    
-        if '-' not in [c for c in name]:        
-            flds = name.split('_')
-            if 'Vac' == flds[0]:
-                base = '$V'
-                sub_str = '_{' + flds[1] + '}$'
-            elif 'Sub' == flds[0]:
-                flds = name.split('_')
-                base = '$' + flds[1]
-                sub_str = '_{' + flds[3] + '}$'
-            elif 'Int' == flds[0]:
-                base = '$' + flds[1]
-                sub_str = '_{int}$'
-            else:
-                base = name
-                sub_str = ''
-    
-            return  base + sub_str + extra_label
-        # defect complex
-        else:
-            label = ''
-            names = name.split('-')
-            for name in names:
-                flds = name.split('_')
-                if '-' not in flds:
-                    if 'Vac' == flds[0]:
-                        base = '$V'
-                        sub_str = '_{' + flds[1] + '}$'
-                    elif 'Sub' == flds[0]:
-                        flds = name.split('_')
-                        base = '$' + flds[1]
-                        sub_str = '_{' + flds[3] + '}$'
-                    elif 'Int' == flds[0]:
-                        base = '$' + flds[1]
-                        sub_str = '_{int}$'
-                    else:
-                        base = name
-                        sub_str = ''
-            
-                    if names.index(name) != (len(names) - 1):
-                        label += base + sub_str + '-'
-                    else:
-                        label += base + sub_str
-
-            return label + extra_label
-          

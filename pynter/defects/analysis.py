@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from pynter.defects.pmg_dos import FermiDosCarriersInfo
 from pynter.defects.utils import get_delta_atoms
 from pynter.defects.entries import SingleDefectEntry, DefectComplexEntry, get_formatted_legend
+from pynter.tools.utils import get_object_feature
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 
@@ -588,11 +589,13 @@ class DefectsAnalysis:
             d['multiplicity'] = e.multiplicity
             if display:
                 for feature in display:
-                    try:
-                        attr = getattr(e,feature) ()
-                    except:
-                        attr = getattr(e,feature)
-                    d[feature] = attr
+                    if isinstance(feature,list):
+                        key = feature[0]
+                        for k in feature[1:]:
+                            key = key + '["%s"]'%k
+                    else:
+                        key = feature
+                    d[key] = get_object_feature(e,feature)
             table.append(d)
         df = pd.DataFrame(table,index=index)
         if pretty:
@@ -900,16 +903,7 @@ class DefectsAnalysis:
         plt.ylabel('Energy(eV)',fontsize=20*size)  
         
         return plt  
-    
-    
-    def plot_relaxation_volumes(self,stress_bulk,bulk_modulus):
-        rel_volumes = {}
-        for e in self.entries:
-            rel_volumes[e.symbol] = e.relaxation_volume(stress_bulk,bulk_modulus)            
-        df = pd.Series(rel_volumes)
-        plt = df.plot.bar(rot=0).get_figure()
-        return plt
-    
+            
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """

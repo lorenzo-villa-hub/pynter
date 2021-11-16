@@ -84,6 +84,41 @@ def explore_pynter_packages():
     return explore_packages(path)            
 
 
+def get_object_feature(obj,feature):
+    """
+    Get value of attribute or method of a generic Object.
+    If feature is a single method only the string with the method's name is required.
+    If the target feature is stored in a dictionary (or dict of dictionaries), a list of this format needs to be provided:
+        ["method_name",key1,key2,...] - This will identify the value of Object.method[key1][key2][...] .
+
+    Parameters
+    ----------
+    obj : (object)
+        Generic object.
+    feature : (str or list)
+        Method or attribute of Job class for which the value is needed.
+    """
+    if isinstance(feature,list):
+        met = feature[0]
+        try:
+            attr = getattr(obj,met) ()
+        except:
+            attr = getattr(obj,met)                
+        for k in feature[1:]:
+            if isinstance(attr[k],dict):
+                attr = attr[k]
+            else:
+                return attr[k]
+            
+    else:
+        met = feature
+        try:
+            attr = getattr(obj,met) ()
+        except:
+            attr = getattr(obj,met)
+        return attr
+
+
 def get_object_from_json(cls,path_or_string):
     """
     Build class object from json file or string. The class must posses the 'from_dict' method.
