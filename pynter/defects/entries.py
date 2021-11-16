@@ -6,7 +6,7 @@ Created on Fri Dec 11 14:33:12 2020
 @author: villa
 """
 
-
+from abc import abstractmethod
 import numpy as np
 import importlib
 from pymatgen.core.units import kb
@@ -59,91 +59,20 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
     return entry
 
 
-def get_formatted_legend(fullname):
-    # handling label case
-    if '(' in fullname:
-        fullname = fullname.split('(')
-        name = fullname[0]
-        entry_label = '('+fullname[1]
-    else:
-        name = fullname
-        entry_label = ''
-    # single defect    
-    if '-' not in [c for c in name]:        
-        flds = name.split('_')
-        if 'Vac' == flds[0]:
-            base = '$V'
-            sub_str = '_{' + flds[1] + '}$'
-        elif 'Sub' == flds[0]:
-            flds = name.split('_')
-            base = '$' + flds[1]
-            sub_str = '_{' + flds[3] + '}$'
-        elif 'Int' == flds[0]:
-            base = '$' + flds[1]
-            sub_str = '_{int}$'
-        else:
-            base = name
-            sub_str = ''
-
-        return  base + sub_str + entry_label
-    # defect complex
-    else:
-        label = ''
-        names = name.split('-')
-        for name in names:
-            flds = name.split('_')
-            if '-' not in flds:
-                if 'Vac' == flds[0]:
-                    base = '$V'
-                    sub_str = '_{' + flds[1] + '}$'
-                elif 'Sub' == flds[0]:
-                    flds = name.split('_')
-                    base = '$' + flds[1]
-                    sub_str = '_{' + flds[3] + '}$'
-                elif 'Int' == flds[0]:
-                    base = '$' + flds[1]
-                    sub_str = '_{int}$'
-                else:
-                    base = name
-                    sub_str = ''
-        
-                if names.index(name) != (len(names) - 1):
-                    label += base + sub_str + '-'
-                else:
-                    label += base + sub_str
-
-        return label + entry_label
-
-
-class SingleDefectEntry:
+class GenericDefectEntry:
     
-    def __init__(self,defect,bulk_structure,energy_diff,corrections,data=None,label=None):
+    def __init__(self,bulk_structure,energy_diff,corrections,data,label):
         """
-        Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
-
-        Args:
-            defect: Pymatgen defect object (Vacancy, Interstitial or Substitution)
-            bulk_structure: Pymatgen Structure without any defects
-            energy_diff (float): difference btw energy of defect structure and energy of pure structure
-            corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
-                                added to the defect formation energy.     
-            data : (dict), optional
-                Store additional data in dict format.
-            label : (str), optional
-                Additional label to add to defect specie. Does not influence non equilibrium calculations.
-        """        
-        self._defect = defect 
+        Abstract class for generic defect entry. Not meant to be addressed directly.
+        Possibile defect entry computations are at the bottom of this class.
+        """
         self._bulk_structure = bulk_structure
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
         self._data = data if data else {}
-        self._label = label        
-        
+        self._label = label 
+   
 
-    @property
-    def defect(self):
-        return self._defect
-        
     @property
     def bulk_structure(self):
         return self._bulk_structure
@@ -166,6 +95,121 @@ class SingleDefectEntry:
         return 
 
     @property
+    def label(self):
+        return self._label
+    
+    @property
+    def symbol(self):
+        return get_formatted_legend(self.name)
+
+    @property
+    def classname(self):
+        return self.__class__.__name__    
+        
+    @abstractmethod
+    def __repr__(self):
+        pass
+    
+    def __str__(self):
+        return self.__repr__()
+
+
+    def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
+        """
+        Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
+        Args:
+            vbm(float): Valence band maximum of pure structure
+            chemical_potentials (dict): Dictionary of elemental chemical potential values.
+                Keys are Element objects within the defect structure's composition.
+                Values are float numbers equal to the atomic chemical potential for that element.
+            fermi_level (float):  Value corresponding to the electron chemical potential.
+            """
+            
+        formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
+                       sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 
+                        ) 
+        
+        if chemical_potentials:
+            chempot_correction = -1 * sum([self.delta_atoms[el]*chemical_potentials[el] for el in self.delta_atoms])
+        else:
+            chempot_correction = 0
+            
+        formation_energy = formation_energy + chempot_correction
+        
+        return formation_energy
+    
+    
+    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
+        """
+        Compute the defect concentration for a temperature and Fermi level.
+        Args:
+            temperature:
+                the temperature in K
+            fermi_level:
+                the fermi level in eV (with respect to the VBM)
+        Returns:
+            defects concentration in cm^-3
+        """
+        n = self.multiplicity * 1e24 / self.bulk_structure.volume
+        conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
+                          (kb * temperature))
+        return conc
+    
+    
+    def relaxation_volume(self,stress_bulk,bulk_modulus):
+        """
+        Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
+        in the "data" dictionary with realtive "stress" key.
+
+        Parameters
+        ----------
+        stress_bulk : (np.array)
+            Stresses of bulk calculation.
+        bulk_modulus : (float)
+            Bulk modulus in GPa.
+
+        Returns
+        -------
+        rel_volume : (float)
+            Relaxation volume in A°^3.
+        """
+        stress_d = self.data['stress']
+        bulk_modulus = bulk_modulus*10 # from GPa to kbar
+        bulk_volume = self.bulk_structure.lattice.volume
+        stress = np.array(stress_d) - np.array(stress_bulk) # residual stress -> defect - bulk
+        pressure = np.trace(stress)/3
+        rel_volume = -1*(pressure/bulk_modulus)*bulk_volume #sign is inverted with respect to VASP output
+        
+        return rel_volume
+
+
+
+class SingleDefectEntry(GenericDefectEntry):
+    
+    def __init__(self,defect,bulk_structure,energy_diff,corrections,data=None,label=None):
+        """
+        Initializes the data of a single defect. Inspired from the DefectEntry class in pymatgen (pmg).
+
+        Args:
+            defect: Pymatgen defect object (Vacancy, Interstitial or Substitution)
+            bulk_structure: Pymatgen Structure without any defects
+            energy_diff (float): difference btw energy of defect structure and energy of pure structure
+            corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
+                                added to the defect formation energy.     
+            data : (dict), optional
+                Store additional data in dict format.
+            label : (str), optional
+                Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        """        
+        self._defect = defect 
+        super().__init__(bulk_structure,energy_diff,corrections,data,label)
+      
+    
+    @property
+    def defect(self):
+        return self._defect        
+
+    @property
     def charge(self):
         return self.defect.charge
     
@@ -186,14 +230,6 @@ class SingleDefectEntry:
         return name
 
     @property
-    def label(self):
-        return self._label
-    
-    @property
-    def symbol(self):
-        return get_formatted_legend(self.name)
-
-    @property
     def delta_atoms(self):
         """
         Dictionary with Element as keys and particle difference between defect structure
@@ -202,10 +238,6 @@ class SingleDefectEntry:
         comp_defect = self.defect.defect_composition
         comp_bulk = self.bulk_structure.composition
         return get_delta_atoms_from_comp(comp_defect,comp_bulk)
-
-    @property
-    def classname(self):
-        return self.__class__.__name__
 
 
     @staticmethod
@@ -301,9 +333,6 @@ class SingleDefectEntry:
             ]
         return "\n".join(output)
     
-    def __str__(self):
-        return self.__repr__()
-
 
     def as_dict(self):
         """
@@ -346,77 +375,10 @@ class SingleDefectEntry:
         return SingleDefectEntry(self.defect, self.bulk_structure, self.energy_diff, self.corrections, self.data, self.label)
 
 
-    def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
-        """
-        Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
-        Args:
-            vbm(float): Valence band maximum of pure structure
-            chemical_potentials (dict): Dictionary of elemental chemical potential values.
-                Keys are Element objects within the defect structure's composition.
-                Values are float numbers equal to the atomic chemical potential for that element.
-            fermi_level (float):  Value corresponding to the electron chemical potential.
-            """
-            
-        formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
-                       sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 
-                        ) 
-        
-        if chemical_potentials:
-            chempot_correction = -1 * sum([self.delta_atoms[el]*chemical_potentials[el] for el in self.delta_atoms])
-        else:
-            chempot_correction = 0
-            
-        formation_energy = formation_energy + chempot_correction
-        
-        return formation_energy
     
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
-        """
-        Compute the defect concentration for a temperature and Fermi level.
-        Args:
-            temperature:
-                the temperature in K
-            fermi_level:
-                the fermi level in eV (with respect to the VBM)
-        Returns:
-            defects concentration in cm^-3
-        """
-        n = self.multiplicity * 1e24 / self.bulk_structure.volume
-        conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
-                          (kb * temperature))
-        return conc
+class DefectComplexEntry(GenericDefectEntry):
     
-    
-    def relaxation_volume(self,stress_bulk,bulk_modulus):
-        """
-        Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
-        in the "data" dictionary with realtive "stress" key.
-
-        Parameters
-        ----------
-        stress_bulk : (np.array)
-            Stresses of bulk calculation.
-        bulk_modulus : (float)
-            Bulk modulus in GPa.
-
-        Returns
-        -------
-        rel_volume : (float)
-            Relaxation volume in A°^3.
-        """
-        stress_d = self.data['stress']
-        bulk_modulus = bulk_modulus*10 # from GPa to kbar
-        bulk_volume = self.bulk_structure.lattice.volume
-        stress = np.array(stress_d) - np.array(stress_bulk) # residual stress -> defect - bulk
-        pressure = np.trace(stress)/3
-        rel_volume = -1*(pressure/bulk_modulus)*bulk_volume #sign is inverted with respect to VASP output
-        
-        return rel_volume
-
-    
-class DefectComplexEntry:
-    
-    def __init__(self,defect_list,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,data=None,label=None):
+    def __init__(self,defect_list,bulk_structure,energy_diff,corrections,charge=0,multiplicity=1,data=None,label=None):
         """
         Initializes the data of a defect complex. Inspired from the DefectEntry class in pymatgen (pmg).
 
@@ -429,48 +391,22 @@ class DefectComplexEntry:
             charge : (int), optional
                 Charge of the defect system. The default is 0.
             multiplicity : (int), optional
-                multiplicity of defect within the supercell. The default is None.
-                If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+                multiplicity of defect within the supercell. The default is 1.
             data : (dict), optional
                 Store additional data in dict format.
             label : (str), optional
                 Additional label to add to defect specie. Does not influence non equilibrium calculations.
         """        
         self._defect_list = defect_list 
-        self._bulk_structure = bulk_structure
-        self._energy_diff = energy_diff
-        self._corrections = corrections if corrections else {}
         self._charge = int(charge)
-        self._multiplicity = multiplicity if multiplicity else 1
-        self._data = data if data else {}
-        self._label = label 
+        self._multiplicity = multiplicity
+        super().__init__(bulk_structure, energy_diff, corrections, data, label)
 
 
     @property
     def defect_list(self):
         return self._defect_list
         
-    @property
-    def bulk_structure(self):
-        return self._bulk_structure
-    
-    @property
-    def energy_diff(self):
-        return self._energy_diff
-    
-    @property
-    def corrections(self):
-        return self._corrections
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self,data):
-        self._data = data
-        return 
-
     @property
     def charge(self):
         return self._charge
@@ -491,15 +427,7 @@ class DefectComplexEntry:
         if self.label:
             name += f"({self.label})"
         return name
-    
-    @property
-    def label(self):
-        return self._label
-    
-    @property
-    def symbol(self):
-        return get_formatted_legend(self.name)
-    
+        
     @property
     def defect_list_names(self):
         names = []
@@ -521,11 +449,6 @@ class DefectComplexEntry:
                     da_global[e] = prec + da_single[e]
         
         return da_global
-
-
-    @property
-    def classname(self):
-        return self.__class__.__name__
   
     
     @staticmethod
@@ -625,10 +548,7 @@ class DefectComplexEntry:
             "\n"
             ]
         return "\n".join(output)
-    
-    def __str__(self):
-        return self.__repr__()
-    
+       
     
     def as_dict(self):
         """
@@ -671,71 +591,92 @@ class DefectComplexEntry:
         return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,data,label)
     
     
-    def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
-        """
-        Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
-        Args:
-            vbm(float): Valence band maximum of pure structure
-            chemical_potentials (dict): Dictionary of elemental chemical potential values.
-                Keys are Element objects within the defect structure's composition.
-                Values are float numbers equal to the atomic chemical potential for that element.
-            fermi_level (float):  Value corresponding to the electron chemical potential.
-            """
-            
-        formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
-                       sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 
-                        ) 
-        
-        if chemical_potentials:
-            chempot_correction = -1 * sum([self.delta_atoms[el]*chemical_potentials[el] for el in self.delta_atoms])
+
+# Latex formats for defect symbols    
+def get_formatted_legend(fullname):
+    # handling label case
+    if '(' in fullname:
+        fullname = fullname.split('(')
+        name = fullname[0]
+        entry_label = '('+fullname[1]
+    else:
+        name = fullname
+        entry_label = ''
+    # single defect    
+    if '-' not in [c for c in name]:        
+        flds = name.split('_')
+        if 'Vac' == flds[0]:
+            base = '$V'
+            sub_str = '_{' + flds[1] + '}$'
+        elif 'Sub' == flds[0]:
+            flds = name.split('_')
+            base = '$' + flds[1]
+            sub_str = '_{' + flds[3] + '}$'
+        elif 'Int' == flds[0]:
+            base = '$' + flds[1]
+            sub_str = '_{int}$'
         else:
-            chempot_correction = 0
+            base = name
+            sub_str = ''
+
+        return  base + sub_str + entry_label
+    # defect complex
+    else:
+        label = ''
+        names = name.split('-')
+        for name in names:
+            flds = name.split('_')
+            if '-' not in flds:
+                if 'Vac' == flds[0]:
+                    base = '$V'
+                    sub_str = '_{' + flds[1] + '}$'
+                elif 'Sub' == flds[0]:
+                    flds = name.split('_')
+                    base = '$' + flds[1]
+                    sub_str = '_{' + flds[3] + '}$'
+                elif 'Int' == flds[0]:
+                    base = '$' + flds[1]
+                    sub_str = '_{int}$'
+                else:
+                    base = name
+                    sub_str = ''
+        
+                if names.index(name) != (len(names) - 1):
+                    label += base + sub_str + '-'
+                else:
+                    label += base + sub_str
+
+        return label + entry_label
+
+
+    def format_legend_with_charge(self,fulllabel,charge):
+        # handling entry label case
+        if '(' in fulllabel:
+            fulllabel = fulllabel.split('(')
+            label = fulllabel[0]
+            entry_label = '('+fulllabel[1]
+            print(entry_label)
+        else:
+            label = fulllabel
+            entry_label = ''
             
-        formation_energy = formation_energy + chempot_correction
+        mod_label = label[:-1]
+        if charge < 0:
+            for i in range(0,abs(charge)):
+                if i == 0:
+                    mod_label = mod_label + "^{"
+                mod_label = mod_label + "°"
+            mod_label = mod_label + "}"
+        elif charge == 0:
+            mod_label = mod_label + "^{x}"
+        elif charge > 0:
+            for i in range(0,charge):
+                if i == 0:
+                    mod_label = mod_label + "^{"
+                mod_label = mod_label + "'"
+            mod_label = mod_label + "}"
         
-        return formation_energy
-    
-    
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
-        """
-        Compute the defect concentration for a temperature and Fermi level.
-        Args:
-            temperature:
-                the temperature in K
-            fermi_level:
-                the fermi level in eV (with respect to the VBM)
-        Returns:
-            defects concentration in cm^-3
-        """
-        n = self.multiplicity * 1e24 / self.bulk_structure.volume
-        conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
-                          (kb * temperature))
-        return conc    
-    
-    
-    def relaxation_volume(self,stress_bulk,bulk_modulus):
-        """
-        Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
-        in the "data" dictionary with realtive "stress" key.
-
-        Parameters
-        ----------
-        stress_bulk : (np.array)
-            Stresses of bulk calculation.
-        bulk_modulus : (float)
-            Bulk modulus in GPa.
-
-        Returns
-        -------
-        rel_volume : (float)
-            Relaxation volume in A°^3.
-        """
-        stress_d = self.data['stress']
-        bulk_modulus = bulk_modulus*10 # from GPa to kbar
-        bulk_volume = self.bulk_structure.lattice.volume
-        stress = np.array(stress_d) - np.array(stress_bulk) # residual stress -> defect - bulk
-        pressure = np.trace(stress)/3
-        rel_volume = -1*(pressure/bulk_modulus)*bulk_volume #sign is inverted with respect to VASP output
+        mod_label = mod_label + "$"
         
-        return rel_volume
-    
+        
+
