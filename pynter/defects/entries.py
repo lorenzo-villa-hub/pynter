@@ -14,6 +14,7 @@ from pymatgen.core.structure import Structure
 from pymatgen.analysis.defects.core import *
 from pynter.defects.utils import *
 from monty.json import MontyDecoder
+from pynter.defects.elasticity import Stresses
 
 
 def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=None,tol=1e-03,multiplicity=None,data=None,label=None):
@@ -156,10 +157,11 @@ class GenericDefectEntry:
         return conc
     
     
-    def relaxation_volume(self,stress_bulk,bulk_modulus):
+    def relaxation_volume(self,stress_bulk,bulk_modulus,add_corrections=True): #still to decide weather to keep this method
         """
         Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
-        in the "data" dictionary with realtive "stress" key.
+        in the "data" dictionary with realtive "stress" key. Duplicate of function that can be found in Stresses
+        class in elasticity module, added here for convenience.
 
         Parameters
         ----------
@@ -167,20 +169,16 @@ class GenericDefectEntry:
             Stresses of bulk calculation.
         bulk_modulus : (float)
             Bulk modulus in GPa.
+        add_corrections : (bool)
+            Add correction terms from "elastic_corrections" dict (if key is present in dict).
 
         Returns
         -------
         rel_volume : (float)
             Relaxation volume in A°^3.
         """
-        stress_d = self.data['stress']
-        bulk_modulus = bulk_modulus*10 # from GPa to kbar
-        bulk_volume = self.bulk_structure.lattice.volume
-        stress = np.array(stress_d) - np.array(stress_bulk) # residual stress -> defect - bulk
-        pressure = np.trace(stress)/3
-        rel_volume = -1*(pressure/bulk_modulus)*bulk_volume #sign is inverted with respect to VASP output
-        
-        return rel_volume
+        es = Stresses(stress_bulk)
+        return es.get_relaxation_volume(self, bulk_modulus)        
 
 
 
