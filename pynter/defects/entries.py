@@ -127,6 +127,8 @@ class SingleDefectEntry:
             energy_diff (float): difference btw energy of defect structure and energy of pure structure
             corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
                                 added to the defect formation energy.     
+            data : (dict), optional
+                Store additional data in dict format.
             label : (str), optional
                 Additional label to add to defect specie. Does not influence non equilibrium calculations.
         """        
@@ -225,8 +227,12 @@ class SingleDefectEntry:
         multiplicity : (int), optional
             Multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+        data : (dict), optional
+            Store additional data in dict format.
         label : (str), optional
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
         Returns
         -------
         SingleDefectEntry
@@ -261,8 +267,12 @@ class SingleDefectEntry:
         multiplicity : (int), optional
             multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+        data : (dict), optional
+            Store additional data in dict format.
         label : (str), optional
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
 
         Returns
         -------
@@ -421,6 +431,8 @@ class DefectComplexEntry:
             multiplicity : (int), optional
                 multiplicity of defect within the supercell. The default is None.
                 If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+            data : (dict), optional
+                Store additional data in dict format.
             label : (str), optional
                 Additional label to add to defect specie. Does not influence non equilibrium calculations.
         """        
@@ -535,6 +547,12 @@ class DefectComplexEntry:
         multiplicity : (int), optional
             Multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+        data : (dict), optional
+            Store additional data in dict format.
+        label : (str), optional
+            Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
 
         Returns
         -------
@@ -570,6 +588,12 @@ class DefectComplexEntry:
         multiplicity : (int), optional
             multiplicity of defect within the supercell. The default is None.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+        data : (dict), optional
+            Store additional data in dict format.
+        label : (str), optional
+            Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
 
         Returns
         -------

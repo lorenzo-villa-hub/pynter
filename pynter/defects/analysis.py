@@ -902,6 +902,15 @@ class DefectsAnalysis:
         return plt  
     
     
+    def plot_relaxation_volumes(self,stress_bulk,bulk_modulus):
+        rel_volumes = {}
+        for e in self.entries:
+            rel_volumes[e.symbol] = e.relaxation_volume(stress_bulk,bulk_modulus)            
+        df = pd.Series(rel_volumes)
+        plt = df.plot.bar(rot=0).get_figure()
+        return plt
+    
+    
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """
         Creating a dictionary with names of single defect entry as keys and
