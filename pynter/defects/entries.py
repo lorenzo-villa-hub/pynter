@@ -435,6 +435,10 @@ class DefectComplexEntry(GenericDefectEntry):
     
     @property
     def delta_atoms(self):
+        """
+        Dictionary with Element as keys and particle difference between defect structure
+        and bulk structure as values.
+        """
         comp_bulk = self.bulk_structure.composition
         da_global = None
         for d in self.defect_list:
@@ -467,7 +471,6 @@ class DefectComplexEntry(GenericDefectEntry):
             Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
         multiplicity : (int), optional
             Multiplicity of defect within the supercell. The default is 1.
-            If not provided is calculated by Pymatgen analysing the symmetry of the structure.
         data : (dict), optional
             Store additional data in dict format.
         label : (str), optional
@@ -508,7 +511,6 @@ class DefectComplexEntry(GenericDefectEntry):
             Charge of the defect system. The default is 0.
         multiplicity : (int), optional
             multiplicity of defect within the supercell. The default is 1.
-            If not provided is calculated by Pymatgen analysing the symmetry of the structure.
         data : (dict), optional
             Store additional data in dict format.
         label : (str), optional
