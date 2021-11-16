@@ -450,7 +450,7 @@ class DefectComplexEntry(GenericDefectEntry):
   
     
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=None,data=None,label=None,tol=1e-03):
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=1,data=None,label=None,tol=1e-03):
         """
         Generate DefectComplexEntry object from VaspJob objects.
 
@@ -466,7 +466,7 @@ class DefectComplexEntry(GenericDefectEntry):
         defect_structure : (Structure)
             Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
         multiplicity : (int), optional
-            Multiplicity of defect within the supercell. The default is None.
+            Multiplicity of defect within the supercell. The default is 1.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
         data : (dict), optional
             Store additional data in dict format.
@@ -489,7 +489,7 @@ class DefectComplexEntry(GenericDefectEntry):
         
     
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,data=None,label=None,tol=1e-03):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=1,data=None,label=None,tol=1e-03):
         """
         Generate DefectComplexEntry object from Structure objects.
 
@@ -507,7 +507,7 @@ class DefectComplexEntry(GenericDefectEntry):
         charge : (int), optional
             Charge of the defect system. The default is 0.
         multiplicity : (int), optional
-            multiplicity of defect within the supercell. The default is None.
+            multiplicity of defect within the supercell. The default is 1.
             If not provided is calculated by Pymatgen analysing the symmetry of the structure.
         data : (dict), optional
             Store additional data in dict format.
