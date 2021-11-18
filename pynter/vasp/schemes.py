@@ -1049,7 +1049,7 @@ class NEBSchemes:
             'EDIFF': 1e-05,
             'EDIFFG': -0.05,
             'ISIF': 2,
-            'NSW' : 25,
+            'NSW' : 100,
             'IMAGES' : self.images,
             'SPRING' : -5,
             'IOPT' : 0,
@@ -1089,8 +1089,8 @@ class NEBSchemes:
         """
         NEB scheme with 3 steps:
             - Step 1: preconvergence (SCF) of the images with EDIFF = 1e-04
-            - Step 2: NEB calculation with NSW = 25
-            - Step 3: CINEB with NSW = 25
+            - Step 2: NEB calculation with NSW = 100
+            - Step 3: CINEB with NSW = 100
         """
         scheme_name = scheme_name if scheme_name != None else 'NEB_comp'
         jobs = []
@@ -1109,11 +1109,11 @@ class NEBSchemes:
 
     def neb_complete_4step_pbe(self,scheme_name=None):
         """
-        NEB scheme with 3 steps:
+        NEB scheme with 4 steps:
             - Step 1: preconvergence (SCF) of the images with EDIFF = 1e-04
             - Step 2: NEB calculation with NSW = 10
-            - Step 3: NEB calculation with NSW = 25
-            - Step 4: CINEB with NSW = 25
+            - Step 3: NEB calculation with NSW = 100
+            - Step 4: CINEB with NSW = 100
         """
         scheme_name = scheme_name if scheme_name != None else 'NEB_comp'
         jobs = []
@@ -1125,7 +1125,7 @@ class NEBSchemes:
         step2.inputs['INCAR']['NSW'] = 10
         jobs.append(step2)
 
-        step3 = self.neb_pbe(scheme_name='NEB_3',stepnames=['3-NEB-NSW25'])
+        step3 = self.neb_pbe(scheme_name='NEB_3',stepnames=['3-NEB'])
         jobs.append(step3)
         
         step4 = self.cineb_pbe(scheme_name='NEB_4',stepnames=['4-CINEB'])
@@ -1137,7 +1137,7 @@ class NEBSchemes:
     def neb_pbe(self,scheme_name=None,stepnames=['NEB']):
         """
         Standard NEB job with PBE. The force convergence is set to 0.1 eV/A, relaxation in done with damped 
-        dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 25.
+        dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 200.
         """
         scheme_name = scheme_name if scheme_name != None else 'NEB'
         
@@ -1150,7 +1150,7 @@ class NEBSchemes:
             'EDIFF': 1e-04,
             'EDIFFG': -0.1,
             'ISIF': 2,
-            'NSW' : 25,
+            'NSW' : 100,
             'IMAGES' : self.images,
             'SPRING' : -5,
             'IOPT' : 0,
