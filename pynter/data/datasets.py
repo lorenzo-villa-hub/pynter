@@ -1,11 +1,9 @@
 
 import os
 import os.path as op
-import operator
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
-import importlib
 import json
 from monty.json import MontyDecoder
 from pynter.tools.utils import get_object_feature
@@ -76,8 +74,7 @@ def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,j
                     j.job_script_filename = job_script_filename
                     jobs.append(j)
     if sort:
-        jobs = sorted(jobs, key=operator.attrgetter('name'))
-       # jobs = Dataset().sort_jobs(jobs_to_sort=jobs,feature=sort)
+        jobs = Dataset().sort_jobs(jobs_to_sort=jobs,feature=sort)
                 
     return jobs
 
@@ -112,7 +109,7 @@ class Dataset:
         if jobs:
             self._group_jobs()
             if sort:
-                self.jobs = self.sort_jobs(feature=sort) #sorted(self.jobs, key=operator.attrgetter('name'))
+                self.sort_jobs(reset=True,feature=sort)
 
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
