@@ -179,7 +179,8 @@ class Dataset:
             jobs.append(MontyDecoder().process_decoded(j))
         if "sort_by_name" in d.keys(): #ensure compatibility with old dict
             sort = 'name' if d['sort_by_name'] else False
-        sort = d['sort']
+        else:
+            sort = d['sort']
         
         return cls(jobs,path,name,sort)
     
@@ -367,42 +368,7 @@ class Dataset:
             print('Job "%s" removed from Dataset'%j.name)
         return
         
-
-    # def get_job_feature(self,job,feature):
-    #     """
-    #     Get value of attribute or method of a target Job.
-    #     If feature is a single method only the string with the method's name is required.
-    #     If the target feature is stored in a dictionary (or dict of dictionaries), a list of this format needs to be provided:
-    #         ["method_name",key1,key2,...] - This will identify the value of Job.method[key1][key2][...] .
-
-    #     Parameters
-    #     ----------
-    #     job : (Job)
-    #         Job object.
-    #     feature : (str or list)
-    #         Method or attribute of Job class for which the value is needed.
-    #     """
-    #     if isinstance(feature,list):
-    #         met = feature[0]
-    #         try:
-    #             attr = getattr(job,met) ()
-    #         except:
-    #             attr = getattr(job,met)                
-    #         for k in feature[1:]:
-    #             if isinstance(attr[k],dict):
-    #                 attr = attr[k]
-    #             else:
-    #                 return attr[k]
-                
-    #     else:
-    #         met = feature
-    #         try:
-    #             attr = getattr(job,met) ()
-    #         except:
-    #             attr = getattr(job,met)
-    #         return attr
-
-
+    
     def get_jobs_inputs(self,**kwargs):
         """Read inputs for all jobs from the data stored in the respective directories"""
         for j in self.jobs:
@@ -564,6 +530,7 @@ class Dataset:
         if not jobs_to_sort:
             if reset:
                 self.jobs = sorted_jobs
+                self.sort = feature
                 return
             else:
                 return sorted_jobs
@@ -576,8 +543,8 @@ class Dataset:
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
-        parameters. When more than one criterion is present, all of them need to be 
-        satisfied for the job to be selected.
+        parameters. When more than one criterion is present, the arg "mode" 
+        determines the selection criterion.
 
         Parameters
         ----------
