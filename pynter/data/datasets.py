@@ -1,13 +1,12 @@
 
 import os
 import os.path as op
-import operator
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
-import importlib
 import json
 from monty.json import MontyDecoder
+from pynter.tools.utils import get_object_feature
 
 def _check_job_script(job_script_filenames,files):
     """ Check if job script names are in a list of files. Can be either a str or list of str"""
@@ -31,7 +30,7 @@ def _check_job_script(job_script_filenames,files):
     return check,job_script_filename
 
 
-def find_jobs(path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None):
+def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder contained jobs are selected based on the presence of the file job_script_filename
@@ -43,8 +42,8 @@ def find_jobs(path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=
     job_script_filenames : (str or list), optional
         Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
         file names are present. The default is 'job.sh'.
-    sort_by_name : (bool), optional
-        Sort list of jobs by attribute "name". The default is True.
+    sort : (str or list), optional
+        Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
     jobs_kwargs : (dict), optional
         Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
         from directory for each job class.
@@ -74,8 +73,8 @@ def find_jobs(path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=
                     j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
                     j.job_script_filename = job_script_filename
                     jobs.append(j)
-    if sort_by_name:
-        jobs = sorted(jobs, key=operator.attrgetter('name'))
+    if sort:
+        jobs = Dataset().sort_jobs(jobs_to_sort=jobs,feature=sort)
                 
     return jobs
 
@@ -83,7 +82,7 @@ def find_jobs(path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=
 
 class Dataset:
     
-    def __init__(self,jobs=None,path=None,name=None,sort_by_name=True): 
+    def __init__(self,jobs=None,path=None,name=None,sort='name'): 
         """
         Class to store sets of calculations
 
@@ -96,8 +95,8 @@ class Dataset:
             else the commonpath between the jobs is used. The default is None.
         name : (str), optional
             Name to assign to dataset. The default is None. If None the folder name is used.
-        sort_by_name : (bool), optional
-            Sort list of jobs based on Job names. The default is True.
+        sort : (str or list), optional
+            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
         """
         if jobs:
             path = op.commonpath([j.path for j in jobs])
@@ -105,12 +104,12 @@ class Dataset:
         else:
             self.path = op.abspath(path) if path else os.getcwd()
         self.name = name if name else op.basename(self.path)
-        self.sort_by_name = sort_by_name
+        self.sort = sort
         self.jobs = jobs
         if jobs:
             self._group_jobs()
-            if sort_by_name:
-                self.jobs = sorted(self.jobs, key=operator.attrgetter('name'))
+            if sort:
+                self.sort_jobs(reset=True,feature=sort)
 
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
@@ -136,7 +135,7 @@ class Dataset:
              "path_relative":self.path_relative,
              "name":self.name,
              "jobs":[j.as_dict(**kwargs) for j in self.jobs],
-             "sort_by_name":self.sort_by_name}
+             "sort":self.sort}
         return d
     
 
@@ -178,9 +177,11 @@ class Dataset:
         jobs = []
         for j in d['jobs']:
             jobs.append(MontyDecoder().process_decoded(j))
-        sort_by_name = d['sort_by_name']
+        if "sort_by_name" in d.keys(): #ensure compatibility with old dict
+            sort = 'name' if d['sort_by_name'] else False
+        sort = d['sort']
         
-        return cls(jobs,path,name,sort_by_name)
+        return cls(jobs,path,name,sort)
     
     
     @staticmethod
@@ -209,7 +210,7 @@ class Dataset:
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filenames='job.sh',sort_by_name=True,load_outputs=True,jobs_kwargs=None): 
+    def from_directory(path=None,job_script_filenames='job.sh',sort='name',load_outputs=True,jobs_kwargs=None): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -221,17 +222,17 @@ class Dataset:
        job_script_filenames : (str or list), optional
             Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
             file names are present. The default is 'job.sh'.
-        sort_by_name : (bool), optional
-            Sort list of jobs by attribute "name". The default is True.
+        sort : (str or list), optional
+            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
         jobs_kwargs : (dict), optional
             Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
             from directory for each job class.
         """
         path = path if path else os.getcwd()
-        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort_by_name=False,
+        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort='name',
                          load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) # names are sorted in __init__ method
         
-        return  Dataset(path=path,jobs=jobs,sort_by_name=sort_by_name)
+        return  Dataset(path=path,jobs=jobs,sort=sort)
     
     
     @property
@@ -292,7 +293,7 @@ class Dataset:
         return
 
     
-    def add_jobs_from_directory(self,path,job_script_filenames='job.sh',sort_by_name=True,load_outputs=True,regroup=True):
+    def add_jobs_from_directory(self,path,job_script_filenames='job.sh',sort='name',load_outputs=True,regroup=True):
         """
         Add jobs to the Dataset searching all folders and subfolders contained in given path. 
         Jobs are selected based on where the job bash script is present. 
@@ -305,13 +306,13 @@ class Dataset:
        job_script_filenames : (str or list), optional
             Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
             file names are present. The default is 'job.sh'.
-        sort_by_name : (bool), optional
-            Sort list of jobs by attribute "name". The default is True.
+        sort : (str or list), optional
+            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
         regroup : (bool), optional
             Regroup jobs after adding new jobs list, self.path is set to the commonpath. The default is True.
         """        
         path = op.abspath(path)
-        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort_by_name=sort_by_name,load_outputs=load_outputs)
+        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort=sort,load_outputs=load_outputs)
         self.add_jobs(jobs,False)
         if regroup:
             commonpath = op.commonpath([path,self.path])
@@ -367,39 +368,39 @@ class Dataset:
         return
         
 
-    def get_job_feature(self,job,feature):
-        """
-        Get value of attribute or method of a target Job.
-        If feature is a single method only the string with the method's name is required.
-        If the target feature is stored in a dictionary (or dict of dictionaries), a list of this format needs to be provided:
-            ["method_name",key1,key2,...] - This will identify the value of Job.method[key1][key2][...] .
+    # def get_job_feature(self,job,feature):
+    #     """
+    #     Get value of attribute or method of a target Job.
+    #     If feature is a single method only the string with the method's name is required.
+    #     If the target feature is stored in a dictionary (or dict of dictionaries), a list of this format needs to be provided:
+    #         ["method_name",key1,key2,...] - This will identify the value of Job.method[key1][key2][...] .
 
-        Parameters
-        ----------
-        job : (Job)
-            Job object.
-        feature : (str or list)
-            Method or attribute of Job class for which the value is needed.
-        """
-        if isinstance(feature,list):
-            met = feature[0]
-            try:
-                attr = getattr(job,met) ()
-            except:
-                attr = getattr(job,met)                
-            for k in feature[1:]:
-                if isinstance(attr[k],dict):
-                    attr = attr[k]
-                else:
-                    return attr[k]
+    #     Parameters
+    #     ----------
+    #     job : (Job)
+    #         Job object.
+    #     feature : (str or list)
+    #         Method or attribute of Job class for which the value is needed.
+    #     """
+    #     if isinstance(feature,list):
+    #         met = feature[0]
+    #         try:
+    #             attr = getattr(job,met) ()
+    #         except:
+    #             attr = getattr(job,met)                
+    #         for k in feature[1:]:
+    #             if isinstance(attr[k],dict):
+    #                 attr = attr[k]
+    #             else:
+    #                 return attr[k]
                 
-        else:
-            met = feature
-            try:
-                attr = getattr(job,met) ()
-            except:
-                attr = getattr(job,met)
-            return attr
+    #     else:
+    #         met = feature
+    #         try:
+    #             attr = getattr(job,met) ()
+    #         except:
+    #             attr = getattr(job,met)
+    #         return attr
 
 
     def get_jobs_inputs(self,**kwargs):
@@ -439,7 +440,7 @@ class Dataset:
             Display job status in table.
         display : (list), optional
             List of kwargs with methods in the Job class. The properties referred to these will be added
-            to the table. See self.get_job_feature for more details. The default is [].
+            to the table. See get_object_feature for more details. The default is [].
 
         Returns
         -------
@@ -467,7 +468,7 @@ class Dataset:
                         key = key + '["%s"]'%k
                 else:
                     key = feature
-                d[key] = self.get_job_feature(j,feature)
+                d[key] = get_object_feature(j,feature)
             table.append(d)
             
         df = pd.DataFrame(table,index=index)
@@ -546,7 +547,7 @@ class Dataset:
         jobs_to_sort : (list), optional
             List of Job objects. If None self.jobs is used. The default is None.
         feature : (str or list), optional
-            Feature to use to sort the list (see self.get_job_feature). The default is 'name'.
+            Feature to use to sort the list (see get_object_feature). The default is 'name'.
         reset : (bool), optional
             Reset the self.jobs attribute if jobs_to_sort is None. The default is True.
         reverse : (bool), optional
@@ -558,7 +559,7 @@ class Dataset:
             List of sorted Job objects.
         """
         jobs = jobs_to_sort if jobs_to_sort else self.jobs
-        sorted_jobs = sorted(jobs, key=lambda x: self.get_job_feature(x,feature),reverse=reverse)
+        sorted_jobs = sorted(jobs, key=lambda x: get_object_feature(x,feature),reverse=reverse)
 
         if not jobs_to_sort:
             if reset:
@@ -597,7 +598,7 @@ class Dataset:
         complex_features : (list of tuples) , optional
             List of properties that need to be satisfied.
             To use when the property of interest is stored in a dictionary.
-            The first element of the tuple indentifies the property (see self.get_job_feature),
+            The first element of the tuple indentifies the property (see get_object_feature),
             the second corrisponds to the target value. To address more than one condition 
             relative to the same property, use lists or tuples.
         **kwargs : (dict)
@@ -654,7 +655,7 @@ class Dataset:
                 feature_name = feature[0]
                 feature_value = feature[1]
                 for j in jobs:
-                    job_feature = self.get_job_feature(j,feature_name)
+                    job_feature = get_object_feature(j,feature_name)
                     if type(feature_value) in [list,tuple]:
                         for v in feature_value:
                             if job_feature == v:
@@ -668,7 +669,7 @@ class Dataset:
                 jobs = sel_jobs.copy()
                 sel_jobs = []
             for j in jobs:
-                job_feature = self.get_job_feature(j,feature)
+                job_feature = get_object_feature(j,feature)
                 if type(kwargs[feature]) in [list,tuple]:
                     for v in kwargs[feature]:
                         if job_feature == v:
