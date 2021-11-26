@@ -152,7 +152,7 @@ class HPCInterface:
             cmd += "--dry-run "
         if exclude:
             for s in exclude:
-                cmd += f"--exclude='{s}' " 
+                cmd += f'--exclude={s} ' 
         cmd += f"-e ssh {self.hostname}:{remotedir} {localdir} "
         
         print(cmd)
@@ -196,7 +196,7 @@ class HPCInterface:
             cmd += "--dry-run "
         if exclude:
             for s in exclude:
-                cmd += f"--exclude='{s}' "
+                cmd += f'--exclude={s} '
         cmd += f"-e ssh  {localdir} {self.hostname}:{remotedir} "
         
         print(cmd)
