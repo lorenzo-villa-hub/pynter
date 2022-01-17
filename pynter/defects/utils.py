@@ -440,8 +440,6 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
         Bulk calculation.
     dielectric_tensor : (array or float)
         Dielectric tensor, if is a float a diagonal matrix is constructed.
-    defect_site : (Site) , optional
-        Defect site. If None the defect site is found unsing defect_finder. The default is None.
     sampling_radius (float): radius (in Angstrom) which sites must be outside
         of to be included in the correction. Publication by Kumagai advises to
         use Wigner-Seitz radius of defect supercell, so this is default value.
@@ -463,10 +461,9 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
     structure_bulk = job_bulk.final_structure
     path_to_defect_outcar = op.join(job_defect.path)
     path_to_bulk_outcar = op.join(job_bulk.path)
-    
-    if not defect_site:
-        defect_site, defect_type = defect_finder(structure_defect, structure_bulk,tol)
-        defect_specie = defect_site.specie.symbol
+
+    defect_site, defect_type = defect_finder(structure_defect, structure_bulk,tol)
+    defect_specie = defect_site.specie.symbol
     
     charge = job_defect.charge
     
