@@ -139,7 +139,7 @@ class PDPlotterAdder:
         return plt
         
 
-    def add_reservoirs(self,reservoirs,elements,size=1,label_size=1,color='',edgecolor='k',label_color='k',linewidths=3,**kwargs):
+    def add_reservoirs(self,reservoirs,elements,size=1,label_size=1,color=[],edgecolor='k',label_color='k',linewidths=3,**kwargs):
         """
         
 
