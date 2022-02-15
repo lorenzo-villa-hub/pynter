@@ -649,34 +649,34 @@ def get_formatted_legend(fullname):
         return label + entry_label
 
 
-    def format_legend_with_charge(self,fulllabel,charge):
-        # handling entry label case
-        if '(' in fulllabel:
-            fulllabel = fulllabel.split('(')
-            label = fulllabel[0]
-            entry_label = '('+fulllabel[1]
-            print(entry_label)
-        else:
-            label = fulllabel
-            entry_label = ''
-            
-        mod_label = label[:-1]
-        if charge < 0:
-            for i in range(0,abs(charge)):
-                if i == 0:
-                    mod_label = mod_label + "^{"
-                mod_label = mod_label + "°"
-            mod_label = mod_label + "}"
-        elif charge == 0:
-            mod_label = mod_label + "^{x}"
-        elif charge > 0:
-            for i in range(0,charge):
-                if i == 0:
-                    mod_label = mod_label + "^{"
-                mod_label = mod_label + "'"
-            mod_label = mod_label + "}"
+def format_legend_with_charge(self,fulllabel,charge):
+    # handling entry label case
+    if '(' in fulllabel:
+        fulllabel = fulllabel.split('(')
+        label = fulllabel[0]
+        entry_label = '('+fulllabel[1]
+        print(entry_label)
+    else:
+        label = fulllabel
+        entry_label = ''
         
-        mod_label = mod_label + "$"
+    mod_label = label[:-1]
+    if charge < 0:
+        for i in range(0,abs(charge)):
+            if i == 0:
+                mod_label = mod_label + "^{"
+            mod_label = mod_label + "°"
+        mod_label = mod_label + "}"
+    elif charge == 0:
+        mod_label = mod_label + "^{x}"
+    elif charge > 0:
+        for i in range(0,charge):
+            if i == 0:
+                mod_label = mod_label + "^{"
+            mod_label = mod_label + "'"
+        mod_label = mod_label + "}"
+    
+    mod_label = mod_label + "$"
         
         
 
