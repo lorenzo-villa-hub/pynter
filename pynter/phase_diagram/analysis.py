@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
+from pymatgen.symmetry.groups import SpaceGroup
 from pynter.tools.format import format_composition
 import copy
 
@@ -603,6 +604,27 @@ class PDHandler:
         chempots_ref = {k: v for k, v in sorted(chempots_ref.items(), key=lambda item: item[0])}
         return chempots_ref
        
+
+    def get_dataframe(self):
+        """
+        Generate pandas DataFrame with columns 'Composition, Structure, Formation energy'.
+        To display a string for 'Structure' the entry needs to be a ComputedStructureEntry (see pymatgen docs).
+        """
+        phases = []
+        for e in self.pd.stable_entries:
+            d = {}
+            d['Composition'] = format_composition(e.composition.reduced_formula)
+            sg = SpaceGroup(e.structure.get_space_group_info()[0])
+            crystal_system, sg_string = sg.crystal_system , sg.to_latex_string()
+            if e.__class__.__name__ == 'ComputedStructureEntry':
+                d['Structure'] = f'{crystal_system.capitalize()} ({sg_string})'
+            else:
+                d['Structure'] = None
+            d['Formation energy p.a (eV)'] = np.around(self.pd.get_form_energy_per_atom(e),decimals=2)
+            phases.append(d)
+        df = DataFrame(phases)
+        return df
+
         
     def get_entries_from_comp(self,comp):
        """
