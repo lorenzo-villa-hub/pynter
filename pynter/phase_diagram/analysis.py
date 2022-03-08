@@ -220,6 +220,8 @@ class Reservoirs:
 
         Parameters
         ----------
+        format_labels : (bool), optional
+            Format labels of element chempots as \Delta \mu_{\text{"el"}}. The default is False.
         format_compositions : (bool), optional
             Get Latex format of compositions. The default is False.
         all_math : (bool), optional
@@ -285,6 +287,10 @@ class Reservoirs:
         return res_delta
                 
     def _get_res_dict_with_symbols(self,format_labels=False):
+        """
+        format_labels : (bool), optional
+            Format labels of element chempots as \Delta \mu_{\text{"el"}}. The default is False.
+        """
         new_dict = {}
         for res,chempots in self.res_dict.items():
             new_dict[res] = {}
