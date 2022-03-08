@@ -214,7 +214,7 @@ class Reservoirs:
             return self._get_referenced_res()
 
     
-    def get_dataframe(self,format_compositions=False,all_math=False,ndecimals=None):
+    def get_dataframe(self,format_labels=False,format_compositions=False,all_math=False,ndecimals=None):
         """
         Get DataFrame object of the dictionary of reservoirs
 
@@ -233,7 +233,7 @@ class Reservoirs:
         df : 
             DataFrame object.
         """
-        df = DataFrame(self._get_res_dict_with_symbols())
+        df = DataFrame(self._get_res_dict_with_symbols(format_labels=format_labels))
         df = df.transpose()
         if format_compositions:
             new_index = []
@@ -284,12 +284,16 @@ class Reservoirs:
             res_delta[r] = self._get_referenced_chempots(chem)
         return res_delta
                 
-    def _get_res_dict_with_symbols(self):
+    def _get_res_dict_with_symbols(self,format_labels=False):
         new_dict = {}
         for res,chempots in self.res_dict.items():
             new_dict[res] = {}
             for el in chempots:
-                new_dict[res][el.symbol] = chempots[el]
+                if format_labels:
+                    label = '$\Delta \mu_{\text{%s}}$' %el.symbol
+                else:
+                    label = el.symbol
+                new_dict[res][label] = chempots[el]
         return new_dict
 
     
