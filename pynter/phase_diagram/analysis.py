@@ -333,7 +333,7 @@ class PressureReservoirs(Reservoirs):
                 d['res_dict'][res][el.symbol] = chempots[el]
         d['temperature'] = self.temperature
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
-        d['mu_refs'] = self.mu_refs 
+        d['mu_refs'] = {el.symbol:chem for el,chem in self.mu_refs.items()} 
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 

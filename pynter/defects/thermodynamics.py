@@ -109,9 +109,6 @@ class PressureAnalysis:
                 "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
                 "total": The output is the sum of the concentration in every charge for each specie.
                 The default is 'all'.
-        get_fermi_levels : (bool), optional
-            If True also the fermi levels are returned. Useful to compute both concentrations and fermi levels 
-            in one single step. The default is False
         temperature : (float), optional
             Temperature in Kelvin. If None reservoirs.temperature is used. The default is None.
         name : (str), optional
