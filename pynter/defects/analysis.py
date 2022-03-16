@@ -345,16 +345,15 @@ class DefectsAnalysis:
             for n in frozen_conc_keys:
                 new_key = n.split('_mult', 1)[0]
                 frozen_conc[new_key] = frozen_conc.pop(n)
-        #print(total_conc)
+
         for e in self.entries:
             # frozen defects approach
             if frozen_defect_concentrations:
                 name = e.name.split('_mult', 1)[0]
                 #handle defect complex case
                 if e.classname == 'DefectComplexEntry':
-                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                    defect_list_names = e.defect_list_names                        
-                    for dname in defect_list_names:
+                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)                      
+                    for dname in e.defect_list_names:
                         if dname in frozen_conc.keys():
                             if dname in total_conc.keys():
                                 c = c * (frozen_conc[dname] / total_conc[dname])
@@ -364,7 +363,8 @@ class DefectsAnalysis:
                 else:
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
                     if name in frozen_conc.keys():
-                        c = c * (frozen_conc[name] / total_conc[name])
+                        if name in total_conc.keys():
+                            c = c * (frozen_conc[name] / total_conc[name])
                 d = {'conc':c,'name':e.name,'charge':e.charge}
                 concentrations.append(d)
             
