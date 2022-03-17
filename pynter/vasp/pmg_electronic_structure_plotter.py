@@ -122,7 +122,7 @@ class DosPlotter:
         """
         return jsanitize(self._doses)
 
-    def get_plot(self, xlim=None, ylim=None):
+    def get_plot(self, xlim=None, ylim=None, get_subplot=False):
         """
         Get a matplotlib plot showing the DOS.
 
@@ -142,7 +142,10 @@ class DosPlotter:
         y = None
         alldensities = []
         allenergies = []
+        
         plt = pretty_plot(12, 8)
+        if get_subplot: #custom
+            plt.subplot(1,2,2) #custom
 
         # Note that this complicated processing of energies is to allow for
         # stacked plots in matplotlib.
@@ -2119,7 +2122,7 @@ class BSDOSPlotter:
         self.rgb_legend = rgb_legend
         self.fig_size = fig_size
 
-    def get_plot(self, bs, dos=None):
+    def get_plot(self, bs, dos=None, draw_fermi=True):
         """
         Get a matplotlib plot object.
         Args:
@@ -2230,7 +2233,8 @@ class BSDOSPlotter:
                          family=self.font)
 
         # add BS fermi level line at E=0 and gridlines
-        bs_ax.hlines(y=0, xmin=0, xmax=x_distances_list[-1][-1], color="k", lw=2)
+        if draw_fermi:
+            bs_ax.hlines(y=0, xmin=0, xmax=x_distances_list[-1][-1], color="k", lw=2)
         bs_ax.set_yticks(np.arange(emin, emax + 1E-5, self.egrid_interval))
         bs_ax.set_yticklabels(np.arange(emin, emax + 1E-5, self.egrid_interval),
                               size=self.tick_fontsize)
@@ -2329,7 +2333,8 @@ class BSDOSPlotter:
             # set up the DOS x-axis and add Fermi level line
             dos_ax.set_xlim(dos_xmin, dos_xmax)
             dos_ax.set_xticklabels([])
-            dos_ax.hlines(y=0, xmin=dos_xmin, xmax=dos_xmax, color="k", lw=2)
+            if draw_fermi:
+                dos_ax.hlines(y=0, xmin=dos_xmin, xmax=dos_xmax, color="k", lw=2)
             dos_ax.set_xlabel('DOS', fontsize=self.axis_fontsize,
                               family=self.font)
 

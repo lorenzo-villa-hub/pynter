@@ -5,7 +5,8 @@ Created on Fri Apr 23 11:19:30 2021
 
 @author: villa
 """
-from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected
+#from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected  #original pymatgen
+from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected #modified version 
 from pymatgen.electronic_structure.bandstructure import BandStructure
 
 
@@ -69,7 +70,7 @@ def plot_bs_elt_projected(bs,legend=True,**kwargs):
     return plt
 
 
-def plot_dos_bs(dos,bs,**kwargs):
+def plot_dos_bs(dos,bs,draw_fermi=True,**kwargs):
     """
     Plot DOS and BS with pymatgen's BSDOSPlotter class.
 
@@ -91,7 +92,12 @@ def plot_dos_bs(dos,bs,**kwargs):
         kwargs['bs_projection'] = None
     if 'dos_projection' not in kwargs.keys():
         kwargs['dos_projection'] = None
-    plt = BSDOSPlotter(**kwargs).get_plot(bs,dos)
+    if draw_fermi:
+        plt = BSDOSPlotter(**kwargs).get_plot(bs,dos) # ensure that also original pymatgen function works
+    else:
+        plt = BSDOSPlotter(**kwargs).get_plot(bs,dos,draw_fermi=draw_fermi)
+        
+        
     return plt
 
 

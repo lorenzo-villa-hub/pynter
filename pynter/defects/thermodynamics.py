@@ -282,7 +282,8 @@ class PressureAnalysis:
     
 
     def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
-                                  quenched_species=None,ignore_multiplicity=True,name=None):
+                                  quenched_species=None,ignore_multiplicity=True,
+                                  get_final_concentrations='total',name=None):
         """
         Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
         It is possible to select which defect species to quench and which ones are free to equilibrate.
@@ -303,6 +304,9 @@ class PressureAnalysis:
             If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
         name : (str), optional
             Name to assign to ThermoData.
+        get_final_concentrations : (str or bool)
+            Save also defect and carrier concentrations after quenching. The defect concentrations output follows
+            the one defined in the get_concentrations function. If False concentrations are not written. The default is 'total'.
 
         Returns
         -------
@@ -322,6 +326,10 @@ class PressureAnalysis:
                 print('Warning: PressureReservoirs temperature is not set to the initial quenching temperature')
         partial_pressures = list(res.keys())
         fermi_levels = []
+        if get_final_concentrations:
+            final_defect_conc = []
+            final_carrier_conc = []
+            
         dos = self.bulk_dos
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
@@ -350,9 +358,25 @@ class PressureAnalysis:
             quenched_mue = self.da.non_equilibrium_fermi_level(quenched_concentrations,mu,dos,ext_df,temperature=T2)
             fermi_levels.append(quenched_mue)
             
+            if get_final_concentrations == 'all':
+                conc = self.da.defect_concentrations(mu,T2,quenched_mue,quenched_concentrations)
+            elif get_final_concentrations == 'total':
+                conc = self.da.defect_concentrations_total(mu,T2,quenched_mue,quenched_concentrations)
+            elif get_final_concentrations == 'stable':
+                conc = self.da.defect_concentrations_stable_charges(mu,T2,quenched_mue,quenched_concentrations)
+            else:
+                raise ValueError('concentrations output must be chosen between "all", "total", "stable"') 
+            carriers = self.da.carrier_concentrations(dos,temperature=T2,fermi_level=quenched_mue)
+            final_defect_conc.append(conc)
+            final_carrier_conc.append(carriers)
+                
+            
         thermodata = {}
         thermodata['partial_pressures'] = partial_pressures
         thermodata['fermi_levels'] = fermi_levels
+        if get_final_concentrations:
+            thermodata['defect_concentrations'] = final_defect_conc
+            thermodata['carrier_concentrations'] = final_carrier_conc
         
         thermodata = ThermoData(thermodata,temperature=(initial_temperature,final_temperature),name=name)
         
