@@ -25,8 +25,7 @@ class Conductivity:
         ----------
         mobilities : (dict)
             Dictionary with mobility values for the defect species. 
-            Keys must contain "electrons", "holes" and the defect specie name (with
-            the possibility to exclude the multiplicity part of the string).
+            Keys must contain "electrons", "holes" and the defect specie name.
         """
         self.mobilities = mobilities
         
@@ -79,8 +78,7 @@ class PressureAnalysis:
             Pymatgen Dos object.
         frozen_defect_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. The multiplicity part in the string is not
-            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+            format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
         """
@@ -176,8 +174,7 @@ class PressureAnalysis:
             Object with partial pressure values as keys and chempots dictionary as values.
         mobilities : (dict)
             Dictionary with mobility values for the defect species. 
-            Keys must contain "electrons", "holes" and the defect specie name (with
-            the possibility to exclude the multiplicity part of the string).
+            Keys must contain "electrons", "holes" and the defect specie name.
         temperature : (float), optional
             Temperature in Kelvin. If None self.temperature is used. The default is None.
         name : (str), optional
