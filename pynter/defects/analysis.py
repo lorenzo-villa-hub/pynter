@@ -333,17 +333,17 @@ class DefectsAnalysis:
         """
         concentrations = []
         if frozen_defect_concentrations:
-            total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
-            frozen_conc = frozen_defect_concentrations
-            total_conc_keys = list(total_conc.keys()) #to avoid errors when rewriting dict keys without multiplicity
-            frozen_conc_keys = list(frozen_conc.keys())
+            Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
+            Dfix = frozen_defect_concentrations
+            Dtot_keys = list(Dtot.keys()) #to avoid errors when rewriting dict keys without multiplicity
+            Dfix_keys = list(Dfix.keys())
             # strip multiplicity part  
-            for n in total_conc_keys:
+            for n in Dtot_keys:
                 new_key = n.split('_mult', 1)[0]
-                total_conc[new_key] = total_conc.pop(n)
-            for n in frozen_conc_keys:
+                Dtot[new_key] = Dtot.pop(n)
+            for n in Dfix_keys:
                 new_key = n.split('_mult', 1)[0]
-                frozen_conc[new_key] = frozen_conc.pop(n)
+                Dfix[new_key] = Dfix.pop(n)
 
         for e in self.entries:
             # frozen defects approach
@@ -353,17 +353,17 @@ class DefectsAnalysis:
                 if e.classname == 'DefectComplexEntry':
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)                      
                     for dname in e.defect_list_names:
-                        if dname in frozen_conc.keys():
-                            if dname in total_conc.keys():
-                                c = c * (frozen_conc[dname] / total_conc[dname])
+                        if dname in Dfix.keys():
+                            if dname in Dtot.keys():
+                                c = c * (Dfix[dname] / Dtot[dname])
                             else:
                                 print(f'Warning: frozen defect with name {dname} is not in defect entries')
                 #handle single defect case
                 else:
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                    if name in frozen_conc.keys():
-                        if name in total_conc.keys():
-                            c = c * (frozen_conc[name] / total_conc[name])
+                    if name in Dfix.keys():
+                        if name in Dtot.keys():
+                            c = c * (Dfix[name] / Dtot[name])
                 d = {'conc':c,'name':e.name,'charge':e.charge}
                 concentrations.append(d)
             
@@ -386,7 +386,7 @@ class DefectsAnalysis:
         is composing the complex (needs to be present in computed entries):
             C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
             
-        Labels and multiplicities are ignored when accounting for the defect species equilibrium.
+        Labels are ignored when accounting for the defect species equilibrium.
             
         Parameters
         ----------
@@ -409,20 +409,11 @@ class DefectsAnalysis:
         if frozen_defect_concentrations:
             Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
             Dfix = frozen_defect_concentrations
-            Dtot_keys = list(Dtot.keys()) #to avoid errors when rewriting dict keys without multiplicity
-            Dfix_keys = list(Dfix.keys())
-            # strip multiplicity part  
-            for n in Dtot_keys:
-                new_key = n.split('_mult', 1)[0]
-                Dtot[new_key] = Dtot.pop(n)
-            for n in Dfix_keys:
-                new_key = n.split('_mult', 1)[0]
-                Dfix[new_key] = Dfix.pop(n)
 
         for e in self.entries:
             # frozen defects approach
             if frozen_defect_concentrations:
-                name = e.name.split('_mult', 1)[0]
+                name = e.name.split('(')[0]
                 #handle defect complex case
                 if e.classname == 'DefectComplexEntry':
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)                      
@@ -467,8 +458,7 @@ class DefectsAnalysis:
             Fermi level relative to valence band maximum. The default is 0. 
         frozen_defect_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. The multiplicity part in the string is not
-            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+            format, values are the concentrations (ex {'Vac_Na':1e20}).
         
         Returns:
         --------
@@ -493,7 +483,7 @@ class DefectsAnalysis:
                                     frozen_defect_concentrations=None):
         """
         Calculate the sum of the defect concentrations in every charge state for every defect specie.
-        Different multiplicities and labels are all summed up together.
+        Different labels are all summed up together.
 
         Parameters
         ----------
@@ -505,8 +495,7 @@ class DefectsAnalysis:
             Fermi level relative to valence band maximum. The default is 0. 
         frozen_defect_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. The multiplicity part in the string is not
-            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+            format, values are the concentrations (ex {'Vac_Na':1e20}).
         
         Returns:
         --------
@@ -517,11 +506,11 @@ class DefectsAnalysis:
         
         total_concentrations = {}
         for name in self.names:
-            name = name.split('_mult')[0]
+            name = name.split('(')[0]
             total_concentrations[name] = 0
             for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
                                                     frozen_defect_concentrations):
-                if d['name'].split('_mult')[0] == name:
+                if d['name'].split('(')[0] == name:
                     total_concentrations[name] += d['conc']
         
         return total_concentrations
@@ -578,8 +567,7 @@ class DefectsAnalysis:
         ----------
         frozen_defect_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. The multiplicity part in the string is not
-            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+            format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         chemical_potentials : (Dict)
             Dictionary of chemical potentials in the format {Element('el'):chempot}.
         bulk_dos : (CompleteDos object)

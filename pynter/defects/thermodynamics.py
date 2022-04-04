@@ -31,7 +31,7 @@ class Conductivity:
         self.mobilities = mobilities
         
         
-    def get_conductivity(self,carrier_concentrations,defect_concentrations,temperature=300,ignore_multiplicity=True):
+    def get_conductivity(self,carrier_concentrations,defect_concentrations,temperature=300):
         """
         Calculate conductivity from the concentrations of electrons, holes and defects and their mobilities.
         
@@ -43,8 +43,6 @@ class Conductivity:
             Defect concentrations in the same format as the output of DefectsAnalysis. 
         temperature : float, optional
             Value of temperature. The default is 300.
-        ignore_multiplicity : (bool), optional
-            If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
 
         Returns
         -------
@@ -59,10 +57,7 @@ class Conductivity:
         dc = defect_concentrations
         sigma_ionic = 0
         for d in dc:
-            if ignore_multiplicity:
-                dname = '_'.join([s for s in d['name'].split('_') if 'mult' not in s])
-            else:
-                dname = d['name']
+            dname = d['name']
             sigma_ionic += mob[dname] * d['conc'] * abs(d['charge']) * e *1e06 #concentrations need to be in 1/m**3
         sigma = sigma_el + sigma_ionic
         
@@ -171,7 +166,7 @@ class PressureAnalysis:
         return thermodata
     
     
-    def get_conductivities(self,reservoirs,mobilities,ignore_multiplicity=True,temperature=None,name=None):
+    def get_conductivities(self,reservoirs,mobilities,temperature=None,name=None):
         """
         Calculate conductivity as a function of oxygen partial pressure.
 
@@ -183,8 +178,6 @@ class PressureAnalysis:
             Dictionary with mobility values for the defect species. 
             Keys must contain "electrons", "holes" and the defect specie name (with
             the possibility to exclude the multiplicity part of the string).
-        ignore_multiplicity : (bool), optional
-            If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
         temperature : (float), optional
             Temperature in Kelvin. If None self.temperature is used. The default is None.
         name : (str), optional
@@ -282,8 +275,7 @@ class PressureAnalysis:
     
 
     def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
-                                  quenched_species=None,ignore_multiplicity=True,
-                                  get_final_concentrations='total',name=None):
+                                  quenched_species=None,get_final_concentrations='total',name=None):
         """
         Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
         It is possible to select which defect species to quench and which ones are free to equilibrate.
@@ -298,10 +290,7 @@ class PressureAnalysis:
         final_temperature : (float)
             Value of final temperature (K).
         quenched_species : (list), optional
-            List of defect species to quench. The names can be without the multiplicity part if ignore_multiplicity is True. 
-            If None all defect species are quenched.The default is None.
-        ignore_multiplicity : (bool), optional
-            If True the multiplicity part in the keys of the concentrations is ignored. The default is True.
+            List of defect species to quench. If None all defect species are quenched.The default is None.
         name : (str), optional
             Name to assign to ThermoData.
         get_final_concentrations : (str or bool)
@@ -333,11 +322,6 @@ class PressureAnalysis:
         dos = self.bulk_dos
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
-        if ignore_multiplicity and quenched_species is not None:
-            qs = quenched_species.copy()
-            for n in qs:
-                new_key = n.split('_mult', 1)[0]
-                quenched_species[qs.index(n)] = new_key
                 
         for r,mu in res.items():
             if frozen_df or ext_df:
@@ -345,10 +329,6 @@ class PressureAnalysis:
             else:
                 mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1)
             c1 = self.da.defect_concentrations_total(mu,T1,mue,frozen_df)
-            if ignore_multiplicity:
-                for n in list(c1.keys()):
-                    new_key = n.split('_mult', 1)[0]
-                    c1[new_key] = c1.pop(n)
             if quenched_species is None:
                 quenched_concentrations = c1.copy()
             else:
