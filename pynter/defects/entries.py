@@ -222,7 +222,7 @@ class SingleDefectEntry(GenericDefectEntry):
     
     @property
     def name(self):
-        name = self.defect.name 
+        name = self.defect.name.split('_mult')[0]
         if self.label:
             name += f"({self.label})"
         return name
@@ -421,9 +421,10 @@ class DefectComplexEntry(GenericDefectEntry):
     @property
     def name(self):
         name = '-'.join(self.defect_list_names)
-        name = name + '_mult%i' %self.multiplicity
         if self.label:
             name += f"({self.label})"
+        # name = name + '_mult%i' %self.multiplicity
+
         return name
         
     @property
@@ -655,7 +656,6 @@ def format_legend_with_charge(self,fulllabel,charge):
         fulllabel = fulllabel.split('(')
         label = fulllabel[0]
         entry_label = '('+fulllabel[1]
-        print(entry_label)
     else:
         label = fulllabel
         entry_label = ''
