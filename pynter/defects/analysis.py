@@ -308,10 +308,10 @@ class DefectsAnalysis:
         Give list of all concentrations at specified efermi.
         If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
         is normalized starting from the input fixed concentration as:
-            C = C_eq * (Ctot_frozen/Ctot_eq)
+            C = C_eq * (Ctot_fix/Ctot_eq)
         while for DefectComplexEntry this is applied for every single defect specie which
         is composing the complex (needs to be present in computed entries):
-            C = C_eq * prod(Ctot_frozen(i)/Ctot_eq(i))
+            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
             
         Labels and multiplicities are ignored when accounting for the defect species equilibrium.
             
@@ -334,17 +334,17 @@ class DefectsAnalysis:
         """
         concentrations = []
         if frozen_defect_concentrations:
-            total_conc = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
-            frozen_conc = frozen_defect_concentrations
-            total_conc_keys = list(total_conc.keys()) #to avoid errors when rewriting dict keys without multiplicity
-            frozen_conc_keys = list(frozen_conc.keys())
+            Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
+            Dfix = frozen_defect_concentrations
+            Dtot_keys = list(Dtot.keys()) #to avoid errors when rewriting dict keys without multiplicity
+            Dfix_keys = list(Dfix.keys())
             # strip multiplicity part  
-            for n in total_conc_keys:
+            for n in Dtot_keys:
                 new_key = n.split('_mult', 1)[0]
-                total_conc[new_key] = total_conc.pop(n)
-            for n in frozen_conc_keys:
+                Dtot[new_key] = Dtot.pop(n)
+            for n in Dfix_keys:
                 new_key = n.split('_mult', 1)[0]
-                frozen_conc[new_key] = frozen_conc.pop(n)
+                Dfix[new_key] = Dfix.pop(n)
 
         for e in self.entries:
             # frozen defects approach
@@ -354,17 +354,17 @@ class DefectsAnalysis:
                 if e.classname == 'DefectComplexEntry':
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)                      
                     for dname in e.defect_list_names:
-                        if dname in frozen_conc.keys():
-                            if dname in total_conc.keys():
-                                c = c * (frozen_conc[dname] / total_conc[dname])
+                        if dname in Dfix.keys():
+                            if dname in Dtot.keys():
+                                c = c * (Dfix[dname] / Dtot[dname])
                             else:
                                 print(f'Warning: frozen defect with name {dname} is not in defect entries')
                 #handle single defect case
                 else:
                     c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                    if name in frozen_conc.keys():
-                        if name in total_conc.keys():
-                            c = c * (frozen_conc[name] / total_conc[name])
+                    if name in Dfix.keys():
+                        if name in Dtot.keys():
+                            c = c * (Dfix[name] / Dtot[name])
                 d = {'conc':c,'name':e.name,'charge':e.charge}
                 concentrations.append(d)
             
