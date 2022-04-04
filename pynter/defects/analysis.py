@@ -301,8 +301,7 @@ class DefectsAnalysis:
                             
         return charge_transition_levels
     
-
-    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
+    def _defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
                               frozen_defect_concentrations=None):
         """
         Give list of all concentrations at specified efermi.
@@ -365,6 +364,80 @@ class DefectsAnalysis:
                     if name in frozen_conc.keys():
                         if name in total_conc.keys():
                             c = c * (frozen_conc[name] / total_conc[name])
+                d = {'conc':c,'name':e.name,'charge':e.charge}
+                concentrations.append(d)
+            
+            else:
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
+                d = {'conc':c,'name':e.name,'charge':e.charge}
+                concentrations.append(d)
+            
+
+        return concentrations
+
+    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
+                              frozen_defect_concentrations=None):
+        """
+        Give list of all concentrations at specified efermi.
+        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
+        is normalized starting from the input fixed concentration as:
+            C = C_eq * (Ctot_fix/Ctot_eq)
+        while for DefectComplexEntry this is applied for every single defect specie which
+        is composing the complex (needs to be present in computed entries):
+            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
+            
+        Labels and multiplicities are ignored when accounting for the defect species equilibrium.
+            
+        Parameters
+        ----------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
+            list of dictionaries of defect concentrations
+        """
+        concentrations = []
+        if frozen_defect_concentrations:
+            Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
+            Dfix = frozen_defect_concentrations
+            Dtot_keys = list(Dtot.keys()) #to avoid errors when rewriting dict keys without multiplicity
+            Dfix_keys = list(Dfix.keys())
+            # strip multiplicity part  
+            for n in Dtot_keys:
+                new_key = n.split('_mult', 1)[0]
+                Dtot[new_key] = Dtot.pop(n)
+            for n in Dfix_keys:
+                new_key = n.split('_mult', 1)[0]
+                Dfix[new_key] = Dfix.pop(n)
+
+        for e in self.entries:
+            # frozen defects approach
+            if frozen_defect_concentrations:
+                name = e.name.split('_mult', 1)[0]
+                #handle defect complex case
+                if e.classname == 'DefectComplexEntry':
+                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)                      
+                    for dname in e.defect_list_names:
+                        if dname in Dfix.keys():
+                            if dname in Dtot.keys():
+                                c = c * (Dfix[dname] / Dtot[dname])
+                            else:
+                                print(f'Warning: frozen defect with name {dname} is not in defect entries')
+                #handle single defect case
+                else:
+                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
+                    if name in Dfix.keys():
+                        if name in Dtot.keys():
+                            c = c * (Dfix[name] / Dtot[name])
                 d = {'conc':c,'name':e.name,'charge':e.charge}
                 concentrations.append(d)
             
