@@ -279,7 +279,6 @@ class DefectsAnalysis:
         charge_transition_levels = {}
         for name in self.names:
             charge_transition_levels[name] = []
-
         if energy_range == None:
             energy_range = (-0.5,self.band_gap +0.5)
         
@@ -428,7 +427,6 @@ class DefectsAnalysis:
         --------
         total_concentrations : (Dict)
             Dictionary with names of the defect species as keys and total concentrations as values.
-
         """
         
         total_concentrations = {}
@@ -477,18 +475,15 @@ class DefectsAnalysis:
         # Since last defect_concentrations update could be integrated easily with equilibrium_fermi_level.
         # I kept 2 different functions to limit confusions and facilitate integrations with old notebooks
         """
-        Solve charge neutrality in non-equilibrium conditions (external contributions). The contribution to the
-        total charge concentration of the defects can arise from 3 different contributions (groups):
-            - D1 : frozen defects with defect specie present in defect entries
-            - D2 : normal defects with defect specie present in defect entries
-            - D3 : external defects not present in defect entries, with fixed concentration and charge
-        
-        In group D1 the defect concentration of the single charge is calculating accounting for the 
-        input fixed (frozen) concentration value (see defect_concentrations function). 
-        If a defect entry is not found in group D1 is considered to belong to group D2. The number of elements of 
-        D1 U D2 will be equal to the muber of defect entries.
-        The charge concentration associated to group D2 is treated as in the "equilibrium_fermi_level" function.
-        The charge concentration associated to group D3 is a number and thus not Fermi level dependent.
+        Solve charge neutrality in non-equilibrium conditions (when some concentrations are fixed).
+        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
+        is normalized starting from the input fixed concentration as:
+            C = C_eq * (Ctot_fix/Ctot_eq)
+        while for DefectComplexEntry this is applied for every single defect specie which
+        is composing the complex (needs to be present in computed entries):
+            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
+            
+        If external defects are present their charge concentrations are treated as d['charge']*d['conc'].
         
         Parameters
         ----------
@@ -607,7 +602,6 @@ class DefectsAnalysis:
         Returns:
             {name: [(charge,formation energy)] }
         """
-
         computed_charges = {}
         for d in self.entries:
             name = d.name
@@ -658,23 +652,16 @@ class DefectsAnalysis:
             matplotlib object
         """
         
-        matplotlib.rcParams.update({'font.size': 10*fontsize})
-        
-        # creating a dictionary with names of single defect entry as keys and
-        # a list of tuples (charge,formation_energy) as values
-        # Every defect name identifies a type of defect
+        matplotlib.rcParams.update({'font.size': 10*fontsize})        
         computed_charges = self.formation_energies(mu_elts,fermi_level=0)
         # sort by alphabetical order of name for the plot
         if order_legend:
-            computed_charges = {k: v for k, v in sorted(computed_charges.items(), key=lambda item: item[0])}
-                
+            computed_charges = {k: v for k, v in sorted(computed_charges.items(), key=lambda item: item[0])}                
         if xlim == None:
-            xlim = (-0.5,self.band_gap+0.5)
-        
+            xlim = (-0.5,self.band_gap+0.5)        
         npoints = 200
         step = abs(xlim[1]+0.1-xlim[0])/npoints
         x = np.arange(xlim[0],xlim[1]+0.1,step)
-
         try:
             if len(plotsize)==2:
                 pass
@@ -711,14 +698,12 @@ class DefectsAnalysis:
                     if q_previous != None:
                         x_star.append(x[i])
                         y_star.append(emin[i])
-                    q_previous = q_stable
-       
+                    q_previous = q_stable       
             # if format_legend is True get latex-like legend
             if format_legend:
                 label_txt = self._get_formatted_legend(name)
             else:
-                label_txt = name
-            
+                label_txt = name            
             if filter_names:
                 if name in filter_names:
                     plt.plot(x,emin,label=label_txt,linewidth=3)
@@ -729,16 +714,13 @@ class DefectsAnalysis:
                         
         plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
         plt.axvline(x=self.band_gap, linestyle='-', color='k',
-                    linewidth=2)
-        
+                    linewidth=2)        
         if fermi_level:
-            plt.axvline(x=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')        
-        
+            plt.axvline(x=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')                
         # shaded areas
         plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
         plt.axvspan(self.band_gap, xlim[1]+0.1, facecolor='k', alpha=0.2)
         plt.hlines(0,xlim[0],xlim[1]+0.1,colors='k',linestyles='dashed',alpha=0.5)
-
         plt.xlim(xlim)
         if ylim: 
             plt.ylim(ylim) 
@@ -772,25 +754,22 @@ class DefectsAnalysis:
                 Float multiplier to change plot size
             format_legend:
                 Bool for getting latex-like legend based on the name of defect entries
-        """
-        
+        Returns:
+            matplotlib object
+        """        
         plt.figure(figsize=(8*size,6*size))
         matplotlib.rcParams.update({'font.size': 10*1.8*size}) 
-        
-        # BINDING ENERGY
         if xlim==None:
             xlim = (-0.5,self.band_gap+0.5)
         # building array for x values (fermi level)    
         ef = np.arange(xlim[0],xlim[1]+0.1,(xlim[1]-xlim[0])/200)        
-        binding_energy = np.zeros(len(ef))
-        
+        binding_energy = np.zeros(len(ef))        
         if not names:
             names = []
             for e in self.entries:
                 if e.classname == 'DefectComplexEntry':
                     if e.name not in names:
-                        names.append(e.name)
-        
+                        names.append(e.name)        
         # getting binding energy at different fermi levels for every name in list
         for name in names:
             label = self._get_formatted_legend(name) if format_legend else name
@@ -800,8 +779,7 @@ class DefectsAnalysis:
             
         plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
         plt.axvline(x=self.band_gap, linestyle='-', color='k',
-                    linewidth=2)
-        
+                    linewidth=2)        
         # shaded areas
         plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
         plt.axvspan(self.band_gap, xlim[1], facecolor='k', alpha=0.2)
@@ -824,40 +802,31 @@ class DefectsAnalysis:
             fermi_level (float) : float to plot Fermi energy position
             size (float) : Float multiplier for plot size
             format_legend (bool): Bool for getting latex-like legend based on the name of defect entries 
-                
-        """
-        
-        plt.figure(figsize=(10*size,10*size)) 
-        
+        Returns:
+            matplotlib object                
+        """        
+        plt.figure(figsize=(10*size,10*size))         
         if ylim == None:
-            ylim = (-0.5,self.band_gap +0.5)
-        
+            ylim = (-0.5,self.band_gap +0.5)        
         charge_transition_levels = self.charge_transition_levels()
         number_defects = len(charge_transition_levels)   
         x_max = 10
         interval = x_max/(number_defects + 1)
-        x = np.arange(0,x_max,interval)
-        
+        x = np.arange(0,x_max,interval)        
         # position of x labels
         x_ticks_positions = []
         for i in range(0,len(x)-1):
-            x_ticks_positions.append((x[i+1]-x[i])/2 + x[i])    
-        
+            x_ticks_positions.append((x[i+1]-x[i])/2 + x[i])            
         x_ticks_labels = []
         for name in charge_transition_levels:
-            x_ticks_labels.append(name)
-        
+            x_ticks_labels.append(name)        
         # draw vertical lines to separte defect types
         for i in x:
             plt.axvline(x=i, linestyle='-', color='k', linewidth=1.2, alpha=1, zorder=1)
-
-        xlim = (x[0],x[-1])
-        
+        xlim = (x[0],x[-1])        
         #VBM and CBM shaded
         plt.axhspan(ylim[0], 0, facecolor='grey', alpha=0.9, zorder=2)
-        plt.axhspan(self.band_gap,ylim[1], facecolor = 'grey', alpha=0.9, zorder=2)
-        
-        
+        plt.axhspan(self.band_gap,ylim[1], facecolor = 'grey', alpha=0.9, zorder=2)                
         # plot CTL
         for i in range(0,len(x_ticks_labels)):
             name = x_ticks_labels[i]
@@ -869,20 +838,16 @@ class DefectsAnalysis:
                 label_charge = '(' + charge2 + '/' + charge1 + ')'
                 font_space = abs(ylim[1]-ylim[0]) / 100
                 if energy < ylim[1] and energy > ylim[0]:
-                    plt.text(x[i]+(interval/2)*2/number_defects ,energy+font_space,label_charge,fontsize=16*size)
-        
+                    plt.text(x[i]+(interval/2)*2/number_defects ,energy+font_space,label_charge,fontsize=16*size)        
         # format latex-like legend
         if format_legend:    
              for name in x_ticks_labels:            
-                x_ticks_labels[x_ticks_labels.index(name)] = self._get_formatted_legend(name)
-        
-        
+                x_ticks_labels[x_ticks_labels.index(name)] = self._get_formatted_legend(name)                
         if fermi_level:
             plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
         
         plt.text(x[-1]+interval/8,-0.3,'VB',fontsize=25*size)
         plt.text(x[-1]+interval/8,self.band_gap+0.2,'CB',fontsize=25*size)
-        
         plt.xticks(ticks=x_ticks_positions,labels=x_ticks_labels,fontsize = (25-number_defects)*size)
         plt.tick_params(axis='x',length=0,width=0)
         plt.yticks(fontsize=16*size)
@@ -908,9 +873,7 @@ class DefectsAnalysis:
         Returns:
             {name:(stable charge, formation energy)}
        """
-        
-        computed_charges = self.formation_energies(chemical_potentials,fermi_level=fermi_level)
-        
+        computed_charges = self.formation_energies(chemical_potentials,fermi_level=fermi_level)        
         stable_charges = {}
         for name in computed_charges:
             emin = 1e40
