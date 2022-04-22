@@ -441,7 +441,7 @@ class DefectsAnalysis:
         return total_concentrations
                     
             
-    def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature = 300):
+    def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature=300, xtol=1e-05):
         """
         Solve for the Fermi energy self-consistently as a function of T
         Observations are Defect concentrations, electron and hole conc
@@ -449,6 +449,7 @@ class DefectsAnalysis:
             temperature: Temperature to equilibrate fermi energies for
             chemical_potentials: dict of chemical potentials to use for calculation fermi level
             bulk_dos: bulk system dos (pymatgen Dos object)
+            xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
         Returns:
             Fermi energy dictated by charge neutrality
         """
@@ -466,11 +467,11 @@ class DefectsAnalysis:
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
             return qd_tot
 
-        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=1e-03)
+        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=xtol)
             
         
     def non_equilibrium_fermi_level(self, frozen_defect_concentrations, chemical_potentials, bulk_dos, 
-                                        external_defects=[], temperature=300):
+                                        external_defects=[], temperature=300, xtol=1e-05):
         
         # Since last defect_concentrations update could be integrated easily with equilibrium_fermi_level.
         # I kept 2 different functions to limit confusions and facilitate integrations with old notebooks
@@ -498,6 +499,7 @@ class DefectsAnalysis:
             List of external defect concentrations (not present in defect entries).
         temperature : (float), optional
             Temperature to equilibrate the system to. The default is 300.
+        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
 
         Returns
         -------
@@ -523,7 +525,7 @@ class DefectsAnalysis:
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
             return qd_tot
                        
-        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=1e-03)
+        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=xtol)
             
      
     def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False,display=[]):

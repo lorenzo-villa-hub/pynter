@@ -68,7 +68,7 @@ class PressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,bulk_dos,frozen_defect_concentrations=None,external_defects=[]):
+    def __init__(self,defects_analysis,bulk_dos,frozen_defect_concentrations=None,external_defects=[],xtol=1e-05):
         """
         Parameters
         ----------
@@ -81,11 +81,13 @@ class PressureAnalysis:
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
         """
         self.da = defects_analysis
         self.bulk_dos = bulk_dos
         self.frozen_defect_concentrations = frozen_defect_concentrations if frozen_defect_concentrations else None
         self.external_defects = external_defects if external_defects else []
+        self.xtol = xtol
     
     
     def get_concentrations(self,reservoirs,concentrations_output='all',temperature=None,name=None):
@@ -137,9 +139,9 @@ class PressureAnalysis:
         ext_df = self.external_defects
         for r,mu in res.items():
             if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T)
+                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
             else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
+                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
             if concentrations_output == 'all':
                 conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
             elif concentrations_output == 'total':
@@ -204,9 +206,9 @@ class PressureAnalysis:
         ext_df = self.external_defects
         for r,mu in res.items():
             if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T)
+                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
             else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
+                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
             conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             sigma = cnd.get_conductivity(carriers, conc)
@@ -236,7 +238,7 @@ class PressureAnalysis:
             
         Returns
         -------
-        Thermodata : (thermoData)
+        Thermodata : (ThermoData)
             ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
@@ -257,9 +259,9 @@ class PressureAnalysis:
         ext_df = self.external_defects
         for r,mu in res.items():
             if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T)
+                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
             else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T)
+                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
             fermi_levels.append(mue)
         
         thermodata = {}
@@ -322,9 +324,9 @@ class PressureAnalysis:
                 
         for r,mu in res.items():
             if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T1)
+                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T1,xtol=self.xtol)
             else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1)
+                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1,xtol=self.xtol)
             c1 = self.da.defect_concentrations_total(mu,T1,mue,frozen_df)
             if quenched_species is None:
                 quenched_concentrations = c1.copy()
@@ -332,7 +334,7 @@ class PressureAnalysis:
                 quenched_concentrations = copy.deepcopy(frozen_df) if frozen_df else {}
                 for k in quenched_species:
                     quenched_concentrations[k] = c1[k]
-            quenched_mue = self.da.non_equilibrium_fermi_level(quenched_concentrations,mu,dos,ext_df,temperature=T2)
+            quenched_mue = self.da.non_equilibrium_fermi_level(quenched_concentrations,mu,dos,ext_df,temperature=T2,xtol=self.xtol)
             fermi_levels.append(quenched_mue)
             
             if get_final_concentrations == 'all':
