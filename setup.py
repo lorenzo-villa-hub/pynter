@@ -105,6 +105,10 @@ vasp_default = {
   'NELM': 200,
   'NSW': 0,
   'SIGMA': 0.05},
+ 
+ 'computed_entry_default': ['final_energy','structures','eigenvalue_band_properties',
+                            'parameters','actual_kpoints'],
+ 
  'default_potcar_symbols': {'Ac': 'Ac',
   'Ag': 'Ag',
   'Al': 'Al',

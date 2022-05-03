@@ -22,6 +22,7 @@ from glob import glob
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
 from pynter.slurm.interface import HPCInterface
+from pynter.vasp.__init__ import load_vasp_default
 import warnings
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
@@ -369,6 +370,16 @@ class VaspJob(Job):
                            for el in self.initial_structure.composition])
         return nelect    
     
+    
+    @property
+    def stress(self):
+        """Residual stress of last ionic step"""
+        if 'ionic_steps' in self.computed_entry.data.keys():
+            return self.computed_entry.data['ionic_steps'][-1]['stress']
+        else:
+            print('Ionic steps data not present in ComputedStructureEntry')
+            return None
+
 
     def delete_output_files(self,safety=True):
         """
@@ -443,12 +454,13 @@ class VaspJob(Job):
             Get BandStructure object from vasprun. The default is False. If is a dict the BS is 
             read and the kwargs in the dict are used in the pymatgen function.
         data : (list), optional
-            List of attributes of Vasprun to parse in ComputedStructureEntry. The default is None.
+            List of attributes of Vasprun to parse in ComputedStructureEntry.
+            the attributes parsed by default are 'final_energy','structures','eigenvalue_band_properties',
+            'parameters','actual_kpoints','ionic_steps'. The default is None.
         """                
         self._is_converged = self._get_convergence()
         
-        self._default_data_computed_entry = ['final_energy','structures','eigenvalue_band_properties',
-                                             'parameters','actual_kpoints'] # default imports from Vasprun
+        self._default_data_computed_entry = load_vasp_default()['computed_entry_default'] # default imports from Vasprun
 
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:
