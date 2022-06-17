@@ -93,7 +93,7 @@ class PDPlotterAdder:
         return plt
     
 
-    def add_heatmap(self,comp,elements,color_label='$\Delta\mu_{O}$',**kwargs):
+    def add_heatmap(self,comp,elements,cbar_label='$\Delta\mu_{O}$',cbar_values=True,**kwargs):
         """
         Add heatmap that shows the value of the last chemical potential based on the values of the other two "free" 
         chemical potentials and the composition of interest. Currently works only for 3 component PDs.
@@ -104,8 +104,11 @@ class PDPlotterAdder:
             Composition of interest to compute the chemical potential.
         elements : (list)
             List of strings with elements with free chemical potentials. These will be converted in Element objects
-        color_label : (string), optional
+        cbar_label : (string), optional
             String with label of the colormap. The default is ''.
+        cbar_values : (tuple or bool), optional
+            Show max e min chempot values on colorbar. If tuple the values are used, if not the 
+            minimum chempot and 0 are used. The default is True.
         **kwargs : (dict)
             kwargs for "pcolormesh" function.
 
@@ -128,14 +131,22 @@ class PDPlotterAdder:
         X,Y = np.meshgrid(x,y)
         Z = f(X,Y)
 
-        plt.pcolormesh(X,Y,Z,vmax=0,**kwargs)
+        plt.pcolormesh(X,Y,Z,vmax=0,shading='auto',**kwargs)
 
         cbar = plt.colorbar()
-        cbar.ax.tick_params(labelsize='xx-large')
+       # cbar.ax.tick_params(labelsize='xx-large')
+        if cbar_values:
+            if isinstance(cbar_values,tuple):
+                cbar_min,cbar_max = cbar_values[0], cbar_values[1]
+            else:
+                cbar_min = np.around(Z.min(),decimals=1)        # colorbar min value - avoid going out of range
+                cbar_max = 0                                    # colorbar max value
+            plt.text(0.81,1.6,str(cbar_max),size=15)         # easier to show cbar labels as text
+            plt.text(0.73,-14.2,str(cbar_min),size=15)
         cbar.set_ticks([]) # comment if you want ticks
         cbar.ax.set_yticklabels('') # comment if you want tick labels
-        cbar.ax.set_ylabel(color_label,fontsize='xx-large')
-        
+        cbar.ax.set_ylabel(cbar_label,fontsize='xx-large')
+
         return plt
         
 
