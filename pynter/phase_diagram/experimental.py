@@ -52,6 +52,28 @@ class ChempotExperimental:
         chempot = mu0 + 0.5*kb*temperature*np.log(partial_pressure)
         return chempot
         
+
+    def get_oxygen_chempot_from_pO2(self,temperature=None,partial_pressure=None):
+        """
+        Get oxygen chemical potential (delta) from temperature and partial pressure
+
+        Parameters
+        ----------
+        temperature : (float), optional
+            Temperature. The default is None. If None the value initialized with the class is used.
+        partial_pressure : (float), optional
+            Partial pressure. The default is None. If None the value initialized with the class is used.
+
+        Returns
+        -------
+        (float)
+            Value of oxygen chemical potential (delta) at given T and p/p0.
+
+        """
+        temperature = temperature if temperature else self.temperature
+        partial_pressure = partial_pressure if partial_pressure else self.partial_pressure
+        muO = self.oxygen_standard_chempot(temperature)
+        return self.chempot_ideal_gas(muO,temperature,partial_pressure)        
     
     
     def get_pressure_reservoirs_from_pd(self,phase_diagram,target_comp,temperature=None,
