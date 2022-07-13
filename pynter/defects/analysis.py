@@ -892,9 +892,50 @@ class DefectsAnalysis:
         
             
 
+class DefConc:
+    
+    def __init__(self,name,charge,conc):
         
+        self.name = name
+        self.charge = charge 
+        self.conc = conc
         
+    def as_dict(self):
+        d = {}
+        d['name'] = self.name
+        d['charge'] = self.charge
+        d['conc'] = self.conc
+    
+    @classmethod
+    def from_dict(cls,d):
+        name = d['name']
+        charge = d['charge']
+        conc = d['conc']
         
+        return cls(name,charge,conc)
+
+        
+class Concentrations:
+    
+    def __init__(self,concentrations):
+        
+        self.concentrations = concentrations
+        d = {}
+        for c in self.concentrations:
+            general_name = c.name.split('(')[0]
+            if general_name not in d.keys():
+                d[general_name] = 0
+            d[general_name] += c.conc
+             
+        self.total = d
+        
+    def __len__(self):
+        return len(self.concentrations)
+        
+    def __iter__(self):
+        return self.concentrations.__iter__()
+    
+    
         
         
         
