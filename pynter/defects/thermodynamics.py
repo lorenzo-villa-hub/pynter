@@ -6,7 +6,7 @@ Created on Thu Jan 14 14:48:55 2021
 @author: villa
 """
 
-from pynter.defects.analysis import DefectsAnalysis
+from pynter.defects.analysis import DefectsAnalysis, DefectConcentrations
 from pynter.phase_diagram.experimental import ChempotExperimental
 from pynter.tools.utils import save_object_as_json, get_object_from_json
 import copy
@@ -90,7 +90,7 @@ class PressureAnalysis:
         self.xtol = xtol
     
     
-    def get_concentrations(self,reservoirs,concentrations_output='all',temperature=None,name=None):
+    def get_concentrations(self,reservoirs,temperature=None,name=None):
         """
         Calculate defect and carrier concentrations at different oxygen partial pressure values
 
@@ -98,12 +98,6 @@ class PressureAnalysis:
         ----------
         reservoirs : (dict, Reservoirs or PressureReservoirs)
             Object with partial pressure values as keys and chempots dictionary as values.
-        concentrations_output : (str), optional
-            Type of output for defect concentrations:
-                "all": The output is the concentration of every defect entry.
-                "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
-                "total": The output is the sum of the concentration in every charge for each specie.
-                The default is 'all'.
         temperature : (float), optional
             Temperature in Kelvin. If None reservoirs.temperature is used. The default is None.
         name : (str), optional
@@ -116,8 +110,7 @@ class PressureAnalysis:
                 partial_pressures : (list)
                     List of partial pressure values.
                 defect_concentrations : (list)
-                    If the output is set to "all" is a list of list of dictionaries with "name", "charge", "conc" as keys. 
-                    If the output is "all" is a list of dictionaries with names as keys and conc as values. 
+                    List of DefectConcentrations objects
                 carrier_concentrations : (list)
                     List of tuples with intrinsic carriers concentrations (holes,electrons).
                 fermi_levels : (list)
@@ -142,14 +135,7 @@ class PressureAnalysis:
                 mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
             else:
                 mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
-            if concentrations_output == 'all':
-                conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
-            elif concentrations_output == 'total':
-                conc = self.da.defect_concentrations_total(mu,T,mue,frozen_df)
-            elif concentrations_output == 'stable':
-                conc = self.da.defect_concentrations_stable_charges(mu,T,mue,frozen_df)
-            else:
-                raise ValueError('concentrations_output must be chosen between "all", "total", "stable"') 
+            conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             defect_concentrations.append(conc)
             carrier_concentrations.append(carriers)
@@ -274,7 +260,7 @@ class PressureAnalysis:
     
 
     def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
-                                  quenched_species=None,get_final_concentrations='total',name=None):
+                                  quenched_species=None,get_final_concentrations=True,name=None):
         """
         Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
         It is possible to select which defect species to quench and which ones are free to equilibrate.
@@ -292,9 +278,8 @@ class PressureAnalysis:
             List of defect species to quench. If None all defect species are quenched.The default is None.
         name : (str), optional
             Name to assign to ThermoData.
-        get_final_concentrations : (str or bool)
-            Save also defect and carrier concentrations after quenching. The defect concentrations output follows
-            the one defined in the get_concentrations function. If False concentrations are not written. The default is 'total'.
+        get_final_concentrations : (bool)
+            Save also defect and carrier concentrations after quenching. The default is True.
 
         Returns
         -------
@@ -327,7 +312,7 @@ class PressureAnalysis:
                 mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T1,xtol=self.xtol)
             else:
                 mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1,xtol=self.xtol)
-            c1 = self.da.defect_concentrations_total(mu,T1,mue,frozen_df)
+            c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).total
             if quenched_species is None:
                 quenched_concentrations = c1.copy()
             else:
@@ -337,14 +322,7 @@ class PressureAnalysis:
             quenched_mue = self.da.non_equilibrium_fermi_level(quenched_concentrations,mu,dos,ext_df,temperature=T2,xtol=self.xtol)
             fermi_levels.append(quenched_mue)
             
-            if get_final_concentrations == 'all':
-                conc = self.da.defect_concentrations(mu,T2,quenched_mue,quenched_concentrations)
-            elif get_final_concentrations == 'total':
-                conc = self.da.defect_concentrations_total(mu,T2,quenched_mue,quenched_concentrations)
-            elif get_final_concentrations == 'stable':
-                conc = self.da.defect_concentrations_stable_charges(mu,T2,quenched_mue,quenched_concentrations)
-            else:
-                raise ValueError('concentrations output must be chosen between "all", "total", "stable"') 
+            conc = self.da.defect_concentrations(mu,T2,quenched_mue,quenched_concentrations)
             carriers = self.da.carrier_concentrations(dos,temperature=T2,fermi_level=quenched_mue)
             final_defect_conc.append(conc)
             final_carrier_conc.append(carriers)
@@ -379,8 +357,7 @@ class ThermoData:
                 partial_pressures : (list)
                     List of partial pressure values.
                 defect_concentrations : (list)
-                    If the output is set to "all" is a list of list of dictionaries with "name", "charge", "conc" as keys. 
-                    If the output is "all" is a list of dictionaries with names as keys and conc as values. 
+                    List of DefectConcentrations objects.
                 carrier_concentrations : (list)
                     List of tuples with intrinsic carriers concentrations (holes,electrons).
                 conductivities : (list)
@@ -406,10 +383,11 @@ class ThermoData:
         """
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-             "thermodata": self.data,
+             "thermodata":self.data,    
              "temperature": self.temperature,
              "name": self.name
              }
+        d['thermodata']['defect_concentrations'] = [dc.as_dict() for dc in self.defect_concentrations]
         return d        
 
     def to_json(self,path=None):
@@ -447,7 +425,8 @@ class ThermoData:
             ThermoData object
         """
         if 'thermodata' in d.keys():
-            data = d['thermodata']
+            data = d['thermodata'].copy()
+            data['defect_concentrations'] = [DefectConcentrations.from_dict(dc) for dc in data['defect_concentrations']]
             temperature = d['temperature']
             name = d['name']
         else:
