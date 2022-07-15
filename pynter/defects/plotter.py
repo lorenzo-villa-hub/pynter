@@ -137,7 +137,7 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,thermodata,defect_indexes=None,output='all',size=(12,8),xlim=None,ylim=None):
+    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -161,7 +161,7 @@ class PressurePlotter:
                 "all": The output is the concentration of every defect entry.
                 "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
                 "total": The output is the sum of the concentration in every charge for each specie.
-                The default is 'all'.
+                The default is 'total'.
         size : (tuple), optional
             Size of the matplotlib figure. The default is (12,8).
         xlim : (tuple), optional

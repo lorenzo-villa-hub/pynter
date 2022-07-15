@@ -869,7 +869,7 @@ class SingleDefConc:
         
 class DefectConcentrations:
     
-    def __init__(self,concentrations):
+    def __init__(self,concentrations,get_old_format=False):
         """
         Class to store sets of defect concentrations (output of concentration calculations with DefectsAnalysis).
         List of SingleDefConc objects. Subscriptable like a list.
@@ -922,7 +922,13 @@ class DefectConcentrations:
 
     @classmethod 
     def from_dict(cls,d):
-        dc = [SingleDefConc.from_dict(c) for c in d]
+        try:
+            dc = [SingleDefConc.from_dict(c) for c in d]
+        except: # recover old thermodata with just total concentrations
+            dc = []
+            for k,v in d.items():
+                c = SingleDefConc(k,100,v) # charge if 100 to make it clear it's a dummy value that can't be used
+                dc.append(c)
         return cls(dc)
     
     @property
