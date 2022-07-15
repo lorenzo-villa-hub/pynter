@@ -91,7 +91,7 @@ class DefectsAnalysis:
         return names
     
     
-    def filter_entries(self,entries=None,entry_class=None,elements=None,get_intrinsic=True,names=None,**kwargs):
+    def filter_entries(self,exclude=False,mode='and',entries=None,entry_class=None,elements=None,names=None,**kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
@@ -103,12 +103,7 @@ class DefectsAnalysis:
             Class name of the entry. "SingleDefectEntry" or "DefectComplexEntry".
         elements : (list), optional
             List of symbols of elements that need to belong to the defect specie.
-            If None this criterion is ignored, if is an empty list the elements 
-            belonging to the bulk structure will be considered if get_intrinsic is True.
-            The default is None.
-        get_intrinsic : (bool), optional
-            If elements is not None add the intrinsic elements to the list of selected elements.
-            The default is True.
+            If None this criterion is ignored. The default is None.
         names : (list)
             List of entry names.
         **kwargs : (dict)
@@ -119,48 +114,57 @@ class DefectsAnalysis:
         DefectsAnalysis object.
 
         """
-        sel_entries = entries if entries else self.entries.copy()
-            
+        input_entries = entries if entries else self.entries 
+        ent = input_entries.copy()
+        sel_entries = []
         if entry_class:
-            ent = sel_entries.copy() 
+            if sel_entries and mode=='and':
+                ent = sel_entries.copy()
+                sel_entries = []
             for e in ent:
-                if e.classname != entry_class:
-                    sel_entries.remove(e)
+                if e.classname == entry_class:
+                    sel_entries.append(e)
         
         if elements is not None:
-            ent = sel_entries.copy()       
+            if sel_entries and mode=='and':
+                ent = sel_entries.copy()
+                sel_entries = []
             elements = [Element(el) for el in elements]
             for e in ent:
-                flt_el = elements.copy()
-                if get_intrinsic:
-                    for el in e.bulk_structure.composition.elements:
-                        flt_el.append(el)
+                select = False
                 for el in e.delta_atoms:
-                    if el in flt_el:
+                    if el in elements:
                         select = True
-                    else:
-                        select = False
-                        break
-                if not select:
-                    sel_entries.remove(e)       
+                if select:
+                    sel_entries.append(e)
         
         if names:
-            ent = sel_entries.copy()
+            if sel_entries and mode=='and':
+                ent = sel_entries.copy()
+                sel_entries = []
             for e in ent:
-                if e.name not in names:
-                    sel_entries.remove(e)
+                if e.name in names:
+                    sel_entries.append(e)
         
         for feature in kwargs:
-            ent = sel_entries.copy()
+            if sel_entries and mode=='and':
+                ent = sel_entries.copy()
+                sel_entries = []
             for e in ent:
-                try:
-                    attr = getattr(e,feature) ()
-                except:
-                    attr = getattr(e,feature)
-                if attr != kwargs[feature]:
-                    sel_entries.remove(e)
+                attr = get_object_feature(e,feature)
+                if attr == kwargs[feature]:
+                    sel_entries.append(e)        
+
+        output_entries = []
+        for e in input_entries:
+            if exclude:
+                if e not in sel_entries:
+                    output_entries.append(e)
+            else:
+                if e in sel_entries:
+                    output_entries.append(e) 
                     
-        return DefectsAnalysis(sel_entries, self.vbm, self.band_gap)
+        return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
     
     
     def find_entries_by_type_and_specie(self,dtype,dspecie):
@@ -333,7 +337,8 @@ class DefectsAnalysis:
         """
         concentrations = []
         if frozen_defect_concentrations:
-            Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
+            #Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
+            Dtot = self.defect_concentrations(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None).total
             Dfix = frozen_defect_concentrations
 
         for e in self.entries:
@@ -355,90 +360,16 @@ class DefectsAnalysis:
                     if name in Dfix.keys():
                         if name in Dtot.keys():
                             c = c * (Dfix[name] / Dtot[name])
-                d = {'conc':c,'name':e.name,'charge':e.charge}
-                concentrations.append(d)
+                defconc = SingleDefConc(name=e.name, charge=e.charge, conc=c)
+                concentrations.append(defconc)
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                d = {'conc':c,'name':e.name,'charge':e.charge}
-                concentrations.append(d)
+                defconc = SingleDefConc(name=e.name, charge=e.charge, conc=c)
+                concentrations.append(defconc)
             
 
-        return concentrations
-
-
-    def defect_concentrations_stable_charges(self, chemical_potentials, temperature=300, fermi_level=0.,
-                                             frozen_defect_concentrations=None):
-        """
-        Give list of concentrations of defects in their stable charge state at a specified efermi.
-        Entry labels are ignored, defects of same type but with different labels are treated as 
-        the same defect species.
-
-        Parameters
-        ----------
-        chemical_potentials: (dict)
-            Dictionary of chemical potentials ({Element: number})   
-        temperature: (float) 
-            Temperature to produce concentrations at.
-        fermi_level: (float) 
-            Fermi level relative to valence band maximum. The default is 0. 
-        frozen_defect_concentrations: (dict)
-            Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations (ex {'Vac_Na':1e20}).
-        
-        Returns:
-        --------
-        conc_stable : (list)
-            List of dictionaries with concentrations of defects with stable charge states at a given efermi.
-        """
-        concentrations = self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                                    frozen_defect_concentrations)
-        stable_charges = self.stable_charges(chemical_potentials,fermi_level=fermi_level)
-        conc_stable = []
-        for c in concentrations:
-            n = c['name']
-            q = c['charge']
-            for name in stable_charges:
-                charge = stable_charges[name][0]
-                if n == name and q == charge:
-                    conc_stable.append(c)
-        return conc_stable
-
-
-    def defect_concentrations_total(self, chemical_potentials, temperature=300, fermi_level=0.,
-                                    frozen_defect_concentrations=None):
-        """
-        Calculate the sum of the defect concentrations in every charge state for every defect specie.
-        Different labels are all summed up together.
-
-        Parameters
-        ----------
-        chemical_potentials: (dict)
-            Dictionary of chemical potentials ({Element: number})   
-        temperature: (float) 
-            Temperature to produce concentrations at.
-        fermi_level: (float) 
-            Fermi level relative to valence band maximum. The default is 0. 
-        frozen_defect_concentrations: (dict)
-            Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations (ex {'Vac_Na':1e20}).
-        
-        Returns:
-        --------
-        total_concentrations : (Dict)
-            Dictionary with names of the defect species as keys and total concentrations as values.
-        """
-        
-        total_concentrations = {}
-        for name in self.names:
-            name = name.split('(')[0]
-            total_concentrations[name] = 0
-            for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                                    frozen_defect_concentrations):
-                if d['name'].split('(')[0] == name:
-                    total_concentrations[name] += d['conc']
-        
-        return total_concentrations
+        return DefectConcentrations(concentrations)
                     
             
     def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature=300, xtol=1e-05):
@@ -460,7 +391,7 @@ class DefectsAnalysis:
         def _get_total_q(ef):
 
             qd_tot = sum([
-                d['charge'] * d['conc']
+                d.charge * d.conc
                 for d in self.defect_concentrations(
                     chemical_potentials=chemical_potentials, temperature=temperature, fermi_level=ef)
             ])
@@ -514,13 +445,13 @@ class DefectsAnalysis:
             
             # get groups D1 and D2
             qd_tot = sum([
-                d['charge'] * d['conc']
+                d.charge * d.conc
                 for d in self.defect_concentrations(chemical_potentials,temperature,ef,
                                                     frozen_defect_concentrations)])
 
             #external fixed defects - D3
             for d_ext in external_defects:
-                qd_tot += d_ext['charge']*d_ext['conc']
+                qd_tot += d_ext.charge * d_ext.conc
                 
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
             return qd_tot
@@ -892,11 +823,178 @@ class DefectsAnalysis:
         
             
 
+class SingleDefConc:
+    
+    def __init__(self,name,charge,conc):
+        """
+        Object to store defect concentrations data. Is also subscribtable like a dictionary.
+
+        Parameters
+        ----------
+        name : (str)
+            Name of defect specie.
+        charge : (int)
+            Charge of defect specie.
+        conc : (float)
+            Concentration value.
+        """
+        self.name = name
+        self.charge = charge 
+        self.conc = conc
+        
+    def __repr__(self):
+        return f"name={self.name},  charge={self.charge},  conc={self.conc}"
+    
+    def __print__(self):
+        return self.__repr__()
+    
+    def __getitem__(self,key):
+        return getattr(self,key)
+        
+    def as_dict(self):
+        d = {}
+        d['name'] = self.name
+        d['charge'] = self.charge
+        d['conc'] = self.conc
+        return d
+    
+    @classmethod
+    def from_dict(cls,d):
+        name = d['name']
+        charge = d['charge']
+        conc = d['conc']
+        
+        return cls(name,charge,conc)
+
+        
+class DefectConcentrations:
+    
+    def __init__(self,concentrations,get_old_format=False):
+        """
+        Class to store sets of defect concentrations (output of concentration calculations with DefectsAnalysis).
+        List of SingleDefConc objects. Subscriptable like a list.
+
+        Parameters
+        ----------
+        concentrations : (list)
+            List of SingleDefConc objects.
+        """
+        self.concentrations = concentrations
+        d = {}
+        # calculate total concentrations
+        for c in self.concentrations:
+            gname = c.name.split('(')[0] #name without label
+            if gname not in d.keys():
+                d[gname] = 0
+            d[gname] += c.conc    
+        self._total = d
+        # store stable concentrations
+        conc_stable = []
+        for n in self.names:
+            concs = self.filter_conc(name=n)
+            cmax = SingleDefConc('',0,0)
+            for c in concs:
+                if c.conc > cmax.conc:
+                    cmax = c
+            conc_stable.append(concs[concs.index(cmax)])
+        self._stable = conc_stable
         
         
+    def __len__(self):
+        return len(self.concentrations)
         
-        
-        
+    def __iter__(self):
+        return self.concentrations.__iter__()
+    
+    def __getitem__(self,i):
+        return self.concentrations[i]
+    
+    def __repr__(self):
+        return self.__print__()
+
+    def __print__(self):
+        return '['+ '\n'.join([c.__print__() for c in self.concentrations])+']'  
+
+   
+    def as_dict(self):
+        d = [c.as_dict() for c in self.concentrations]
+        return d
+
+    @classmethod 
+    def from_dict(cls,d):
+        try:
+            dc = [SingleDefConc.from_dict(c) for c in d]
+        except: # recover old thermodata with just total concentrations
+            dc = []
+            for k,v in d.items():
+                c = SingleDefConc(k,100,v) # charge if 100 to make it clear it's a dummy value that can't be used
+                dc.append(c)
+        return cls(dc)
+    
+    @property
+    def names(self):
+        """
+        List of names of all defect species
+        """
+        return list(self.total.keys())
+
+    @property
+    def stable(self):
+        """
+        Get concentrations of only stable charge states. List of SingleDefConc objects.
+        """
+        return self._stable    
+
+    @property
+    def total(self):
+        """
+        Get total concentrations for every defect specie. Format is a dict ({'name':conc})
+        """
+        return self._total
+
+    
+    def filter_conc(self,mode='and',exclude=False,**kwargs):
+        """
+        Filter concentrations based on different criteria.
+
+        Parameters
+        ----------
+        mode : (str), optional
+            Selection mode. available are 'and','or'. The default is 'and'.
+        exclude : (bool), optional
+            Exclude the entries matching the criteria. The default is False.
+        **kwargs : (dict)
+            Criteria for selection. They need to be attributes of SingleDefConc.
+
+        Returns
+        -------
+        output_concs : (list)
+            Filtered DefectConcentrations object.
+        """
+        sel_concs = []
+        input_concs = self.concentrations.copy()
+        concs = input_concs.copy()  
+        for k in kwargs:
+            if sel_concs and mode=='and':
+                concs = sel_concs.copy()
+                sel_concs = []
+            for c in concs:
+                feature = get_object_feature(c,k)
+                if feature == kwargs[k]:
+                    if c not in sel_concs:
+                        sel_concs.append(c)
+                        
+        output_concs = []
+        for c in input_concs:
+            if exclude:
+                if c not in sel_concs:
+                    output_concs.append(c)
+            else:
+                if c in sel_concs:
+                    output_concs.append(c)
+                    
+        return output_concs
+            
         
         
         

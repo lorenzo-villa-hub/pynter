@@ -650,7 +650,7 @@ def get_formatted_legend(fullname):
         return label + entry_label
 
 
-def format_legend_with_charge(self,fulllabel,charge):
+def format_legend_with_charge(fulllabel,charge):
     # handling entry label case
     if '(' in fulllabel:
         fulllabel = fulllabel.split('(')
@@ -677,6 +677,7 @@ def format_legend_with_charge(self,fulllabel,charge):
         mod_label = mod_label + "}"
     
     mod_label = mod_label + "$"
-        
+    
+    return mod_label
         
 

@@ -27,19 +27,13 @@ class ConcPlotter:
         format_names : (bool), optional
             Format names with latex symbols. The default is True.
         """
-        self.conc = concentrations
+        self.conc = concentrations.as_dict()
+        self.conc_total = concentrations.total
         self.format = format_names
-        
-        if isinstance(self.conc,list):
-            self.dftype = 'dataframe'
-            self.df = pd.DataFrame(self.conc)
-            if self.format:
-                self.format_names()
-        elif isinstance(self.conc,dict):
-            self.dftype = 'series'
-            self.df = pd.Series(self.conc,name='Total Concentrations')
-            if self.format:
-                self.format_names()
+        self.df = pd.DataFrame(self.conc)
+        self.series = pd.Series(self.conc_total,name='Total Concentrations')
+        if self.format:
+            self.format_names()
     
 
     def __print__(self):
@@ -58,18 +52,15 @@ class ConcPlotter:
         """
         format_legend = get_formatted_legend
         df = self.df
-        if self.dftype == 'dataframe':
-            df.name = df.name.map(format_legend)
-            df.charge = df.charge.astype(str)
-            df.name = df[['name', 'charge']].agg(','.join, axis=1)
-        elif self.dftype == 'series':
-            df.index = df.index.map(format_legend)
-        
+        df.name = df.name.map(format_legend)
+        df.charge = df.charge.astype(str)
+        df.name = df[['name', 'charge']].agg(','.join, axis=1)
+        self.series.index = self.series.index.map(format_legend)
         self.df = df     
         return 
     
     
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),**kwargs):
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),total=True,**kwargs):
         """
         Bar plot of concentrations with pd.DataFrame.plot
 
@@ -81,6 +72,8 @@ class ConcPlotter:
             Limit of y-axis in plot. The default is (1e13,1e40).
         **kwargs : (dict)
             Kwargs to pass to df.plot().
+        total : (bool), optional
+            plot total concentrations. The default is True.
 
         Returns
         -------
@@ -88,14 +81,20 @@ class ConcPlotter:
             Matplotlib object.
         """
         if conc_range:
-            df = self.limit_conc_range(conc_range,reset_df=False)
+            if total:
+                series = self.limit_conc_range(conc_range,reset_df=False)[1]
+            else:
+                df = self.limit_conc_range(conc_range,reset_df=False)[0]
         else:
-            df = self.df
-        if self.dftype == 'dataframe':
+            if total:
+                series = self.series
+            else:
+                df = self.df
+        if not total:
             df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,xlabel='Name , Charge',
                     ylabel='Concentrations(cm$^{-3}$)',legend=None,**kwargs)
-        elif self.dftype == 'series':
-            df.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
+        else:
+            series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
 
         return plt
 
@@ -113,22 +112,19 @@ class ConcPlotter:
 
         Returns
         -------
-        df : 
-            DataFrame object.
+        df, series : 
+            DataFrame object, Series object.
         """
         if reset_df:
-            if self.dftype == 'dataframe':
-                self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
-            elif self.dftype == 'series':
-                self.df = self.df.between(conc_range[0],conc_range[1])
+            self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
+            self.series = self.series.between(conc_range[0],conc_range[1])
             return
         else:
             df = self.df.copy()
-            if self.dftype == 'dataframe':
-                df = df[df.conc.between(conc_range[0],conc_range[1])]
-            elif self.dftype == 'series':
-                df = df[df.between(conc_range[0],conc_range[1])]
-            return df 
+            series = self.series.copy()
+            df = df[df.conc.between(conc_range[0],conc_range[1])]
+            series = series[series.between(conc_range[0],conc_range[1])]
+            return df , series
     
     
     
@@ -141,7 +137,7 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,thermodata,defect_indexes=None,concentrations_output='all',size=(12,8),xlim=None,ylim=None):
+    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -160,12 +156,12 @@ class PressurePlotter:
             all defect entries are included. The default is None.
         pressure_range : (tuple), optional
             Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
-        concentrations_output : (str), optional
+        output : (str), optional
             Type of output for defect concentrations:
                 "all": The output is the concentration of every defect entry.
                 "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
                 "total": The output is the sum of the concentration in every charge for each specie.
-                The default is 'all'.
+                The default is 'total'.
         size : (tuple), optional
             Size of the matplotlib figure. The default is (12,8).
         xlim : (tuple), optional
@@ -181,9 +177,9 @@ class PressurePlotter:
         td = thermodata.data
         p,dc,cc = td['partial_pressures'],td['defect_concentrations'],td['carrier_concentrations']
         matplotlib.rcParams.update({'font.size': 22})
-        if concentrations_output == 'all' or concentrations_output == 'stable':
-            plt = self._plot_conc(p,dc,cc,defect_indexes,concentrations_output,size)
-        elif concentrations_output == 'total':
+        if output == 'all' or output == 'stable':
+            plt = self._plot_conc(p,dc,cc,defect_indexes,output,size)
+        elif output == 'total':
             plt = self._plot_conc_total(p,dc,cc,size)
             
         plt.xscale('log')
@@ -321,23 +317,25 @@ class PressurePlotter:
     
     
     def _plot_conc(self,partial_pressures,defect_concentrations,carrier_concentrations,defect_indexes,
-                   concentrations_output,size):
+                   output,size):
         
         plt.figure(figsize=size)
         filter_defects = True if defect_indexes else False
         p = partial_pressures
         dc = defect_concentrations
+        if output == 'stable':
+            dc = dc.stable
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations]
         previous_charge = None
-        for i in range(0,len(defect_concentrations[0])):
+        for i in range(0,len(dc[0])):
             if filter_defects is False or (defect_indexes is not None and i in defect_indexes):
-                conc = [c[i]['conc'] for c in defect_concentrations]
-                charges = [c[i]['charge'] for c in defect_concentrations]
-                label_txt = get_formatted_legend(dc[0][i]['name'])
-                if concentrations_output == 'all':
-                    label_txt = format_legend_with_charge(label_txt,dc[0][i]['charge'])
-                elif concentrations_output == 'stable':
+                conc = [c[i].conc for c in dc]
+                charges = [c[i].charge for c in dc]
+                label_txt = get_formatted_legend(dc[0][i].name)
+                if output == 'all':
+                    label_txt = format_legend_with_charge(label_txt,dc[0][i].charge)
+                elif output == 'stable':
                     for q in charges:
                         if q != previous_charge:
                             previous_charge = q
@@ -352,12 +350,13 @@ class PressurePlotter:
     
     def _plot_conc_total(self,partial_pressures,defect_concentrations,carrier_concentrations,size):
         
+        dc = defect_concentrations
         plt.figure(figsize=size)
         p = partial_pressures
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations] 
-        for name in defect_concentrations[0]:
-            conc = [c[name] for c in defect_concentrations]
+        for name in dc[0].total:
+            conc = [c.total[name] for c in dc]
             label_txt = get_formatted_legend(name)
             plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
