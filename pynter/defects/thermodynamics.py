@@ -312,7 +312,7 @@ class PressureAnalysis:
                 mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T1,xtol=self.xtol)
             else:
                 mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1,xtol=self.xtol)
-            c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).total
+            c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).elemental
             if quenched_species is None:
                 quenched_concentrations = c1.copy()
             else:

@@ -60,7 +60,7 @@ class ConcPlotter:
         return 
     
     
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),total=True,**kwargs):
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,**kwargs):
         """
         Bar plot of concentrations with pd.DataFrame.plot
 
@@ -69,11 +69,11 @@ class ConcPlotter:
         conc_range : (tuple), optional
             Range of concentrations to include in df. The default is (1e13,1e40).
         ylim : (tuple), optional
-            Limit of y-axis in plot. The default is (1e13,1e40).
-        **kwargs : (dict)
-            Kwargs to pass to df.plot().
+            Limit of y-axis in plot. If None conc_range is used. The default is None.
         total : (bool), optional
             plot total concentrations. The default is True.
+        **kwargs : (dict)
+            Kwargs to pass to df.plot().
 
         Returns
         -------
@@ -81,15 +81,13 @@ class ConcPlotter:
             Matplotlib object.
         """
         if conc_range:
-            if total:
-                series = self.limit_conc_range(conc_range,reset_df=False)[1]
-            else:
-                df = self.limit_conc_range(conc_range,reset_df=False)[0]
+            if not ylim:
+                ylim = conc_range
+            series = self.limit_conc_range(conc_range,reset_df=False)[1]
+            df = self.limit_conc_range(conc_range,reset_df=False)[0]
         else:
-            if total:
-                series = self.series
-            else:
-                df = self.df
+            series = self.series
+            df = self.df
         if not total:
             df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,xlabel='Name , Charge',
                     ylabel='Concentrations(cm$^{-3}$)',legend=None,**kwargs)

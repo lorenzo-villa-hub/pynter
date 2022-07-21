@@ -305,7 +305,7 @@ class DefectsAnalysis:
         return charge_transition_levels
     
 
-    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
+    def _defect_concentrations_old(self, chemical_potentials, temperature=300, fermi_level=0.,
                               frozen_defect_concentrations=None):
         """
         Give list of all concentrations at specified efermi.
@@ -360,18 +360,122 @@ class DefectsAnalysis:
                     if name in Dfix.keys():
                         if name in Dtot.keys():
                             c = c * (Dfix[name] / Dtot[name])
-                defconc = SingleDefConc(name=e.name, charge=e.charge, conc=c)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
                 concentrations.append(defconc)
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                defconc = SingleDefConc(name=e.name, charge=e.charge, conc=c)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
                 concentrations.append(defconc)
             
 
         return DefectConcentrations(concentrations)
                     
+
+    def _convert_frozen_conc_format(self,frozen):
+        fconc = []
+        for k,v in frozen.items():
+            if 'Vac' in k:
+                elsymbol = k.split('_')[1]
+                el = Element(elsymbol)
+                fc = SingleDefConc(delta_atoms={el:-1},conc=v,name=k)
+            elif '_' not in k:
+                el = Element(k)
+                fc = SingleDefConc(delta_atoms={el:1},conc=v,name=k)
+            fconc.append(fc)
+        
+        return fconc
+
+
+    def _get_frozen_correction(self,e,frozen,dc):
+        corr = 1
+        eltot = None
+        for el,dne in e.delta_atoms.items():
+            for fc in frozen:
+                for elc,dnc in fc.delta_atoms.items():
+                    if elc == el and dnc< 0 and dne < 0 and f'Vac_{el.symbol}' in fc.name and f'Vac_{el.symbol}' in e.name: # ensure it's a vac and not sub
+                        eltot = dc.get_element_total(el,vacancy=True)
+                        corr = corr * (fc.conc/eltot)#**abs(dne)
+                        print(abs(dne))
+                        print(e.name,dc.filter_conc(name=e.name,charge=e.charge)[0].conc,fc.conc,eltot,corr)
+                    elif elc == el and dnc > 0 and dne > 0:
+                        eltot = dc.get_element_total(el,vacancy=False)
+                        corr = corr * (fc.conc/eltot)#**abs(dne)
+                        print(abs(dne))
+                        print(e.name,dc.filter_conc(name=e.name,charge=e.charge)[0].conc,fc.conc,eltot,corr)
+        print(corr)
+        return corr
             
+    
+
+    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
+                              frozen_defect_concentrations=None,per_unit_volume=True):
+        """
+        Give list of all concentrations at specified efermi.
+        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
+        is normalized starting from the input fixed concentration as:
+            C = C_eq * (Ctot_fix/Ctot_eq)
+        while for DefectComplexEntry this is applied for every single defect specie which
+        is composing the complex (needs to be present in computed entries):
+            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
+            
+        Labels are ignored when accounting for the defect species equilibrium.
+            
+        Parameters
+        ----------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({Element: number})   
+        temperature: (float) 
+            Temperature to produce concentrations at.
+        fermi_level: (float) 
+            Fermi level relative to valence band maximum. The default is 0. 
+        frozen_defect_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. The multiplicity part in the string is not
+            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        
+        Returns:
+        --------
+            list of dictionaries of defect concentrations
+        """
+        concentrations = []
+        if frozen_defect_concentrations:
+            dc = self.defect_concentrations(chemical_potentials,temperature,fermi_level,
+                                            frozen_defect_concentrations=None,per_unit_volume=per_unit_volume)
+            frozen = self._convert_frozen_conc_format(frozen_defect_concentrations)
+
+
+        for e in self.entries:
+            # frozen defects approach
+            if frozen_defect_concentrations:
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+                corr = self._get_frozen_correction(e,frozen,dc)
+                c = c * corr
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
+                concentrations.append(defconc)     
+        
+        # for e in self.entries:
+        #     # frozen defects approach
+        #     if frozen_defect_concentrations:
+        #         c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+        #         for el, deltan in e.delta_atoms.items():
+        #             for fc in frozen:
+        #                 if el in fc.delta_atoms.keys():
+        #                     vacancy = True if deltan < 0 else False
+        #                     eltot = dc.get_element_total(el,vacancy)
+        #                     c = c * (fc.conc/eltot) **abs(deltan)
+        #         defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
+        #         concentrations.append(defconc)
+            
+            else:
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
+                concentrations.append(defconc)
+            
+
+        return DefectConcentrations(concentrations)
+            
+ 
     def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature=300, xtol=1e-05):
         """
         Solve for the Fermi energy self-consistently as a function of T
@@ -825,7 +929,7 @@ class DefectsAnalysis:
 
 class SingleDefConc:
     
-    def __init__(self,name,charge,conc):
+    def __init__(self,**kwargs):
         """
         Object to store defect concentrations data. Is also subscribtable like a dictionary.
 
@@ -837,13 +941,17 @@ class SingleDefConc:
             Charge of defect specie.
         conc : (float)
             Concentration value.
+        delta_atoms : (dict)
+            Dictionary with Element as keys and particle difference as values ({Element:delta_n}).
         """
-        self.name = name
-        self.charge = charge 
-        self.conc = conc
+        for k,v in kwargs.items():
+            setattr(self, k, v)
         
     def __repr__(self):
-        return f"name={self.name},  charge={self.charge},  conc={self.conc}"
+        s = ''
+        for k,v in sorted(vars(self).items(), key=lambda x: x[0]):
+            s += f"{k}={v},  "            
+        return s
     
     def __print__(self):
         return self.__repr__()
@@ -853,18 +961,13 @@ class SingleDefConc:
         
     def as_dict(self):
         d = {}
-        d['name'] = self.name
-        d['charge'] = self.charge
-        d['conc'] = self.conc
+        for k,v in vars(self).items():
+            d[k] = v
         return d
     
     @classmethod
     def from_dict(cls,d):
-        name = d['name']
-        charge = d['charge']
-        conc = d['conc']
-        
-        return cls(name,charge,conc)
+        return cls(**d)
 
         
 class DefectConcentrations:
@@ -892,7 +995,7 @@ class DefectConcentrations:
         conc_stable = []
         for n in self.names:
             concs = self.filter_conc(name=n)
-            cmax = SingleDefConc('',0,0)
+            cmax = SingleDefConc(name='',conc=0,charge=0) # dummy object
             for c in concs:
                 if c.conc > cmax.conc:
                     cmax = c
@@ -930,7 +1033,30 @@ class DefectConcentrations:
                 c = SingleDefConc(k,100,v) # charge if 100 to make it clear it's a dummy value that can't be used
                 dc.append(c)
         return cls(dc)
+ 
+    @property
+    def elemental(self):
+        d = {}
+        for c in self:
+            for el,deltan in c.delta_atoms.items():
+                if el not in d.keys():                   
+                    if deltan < 0 and f'Vac_{el.symbol}' in c.name:
+                        ekey = 'Vac_' + el.symbol
+                        eltot = self.get_element_total(el,vacancy=True)
+                        d[ekey] = eltot
+                    elif deltan > 0:
+                        ekey = el.symbol
+                        eltot = self.get_element_total(el,vacancy=False)
+                        d[ekey] = eltot
+                    
+        return d
+                    
     
+    @property
+    def elements(self):
+        return self.elemental.keys()
+
+                
     @property
     def names(self):
         """
@@ -996,8 +1122,18 @@ class DefectConcentrations:
         return output_concs
             
         
-        
-        
+    def get_element_total(self,element,vacancy=False):
+        el = Element(element) if isinstance(element,str) else element
+        eltot = 0
+        for c in self:
+            if el in c.delta_atoms.keys():
+                if vacancy:
+                    if c.delta_atoms[el] < 0 and f'Vac_{el.symbol}' in c.name:
+                        eltot += c.conc * abs(c.delta_atoms[el])
+                else:
+                    if c.delta_atoms[el] > 0:
+                        eltot += c.conc * abs(c.delta_atoms[el])
+        return eltot
         
         
         

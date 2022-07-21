@@ -140,7 +140,7 @@ class GenericDefectEntry:
         return formation_energy
     
     
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0):
+    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, per_unit_volume=True):
         """
         Compute the defect concentration for a temperature and Fermi level.
         Args:
@@ -151,7 +151,7 @@ class GenericDefectEntry:
         Returns:
             defects concentration in cm^-3
         """
-        n = self.multiplicity * 1e24 / self.bulk_structure.volume
+        n = self.multiplicity * 1e24 / self.bulk_structure.volume if per_unit_volume else self.multiplicity 
         conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
                           (kb * temperature))
         return conc
@@ -404,7 +404,14 @@ class DefectComplexEntry(GenericDefectEntry):
     @property
     def defect_list(self):
         return self._defect_list
+
+    # @property
+    # def defect_dict(self):
+    #     dd = {'Vac':{},'Add':{}}
         
+    #     for d in self.defect_list:
+    #         if d.__class__.__name__ == 'Vacancy'
+    #             dd 
     @property
     def charge(self):
         return self._charge
