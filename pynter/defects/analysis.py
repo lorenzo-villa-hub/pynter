@@ -370,43 +370,25 @@ class DefectsAnalysis:
             
 
         return DefectConcentrations(concentrations)
-                    
-
-    def _convert_frozen_conc_format(self,frozen):
-        fconc = []
-        for k,v in frozen.items():
-            if 'Vac' in k:
-                elsymbol = k.split('_')[1]
-                el = Element(elsymbol)
-                fc = SingleDefConc(delta_atoms={el:-1},conc=v,name=k)
-            elif '_' not in k:
-                el = Element(k)
-                fc = SingleDefConc(delta_atoms={el:1},conc=v,name=k)
-            fconc.append(fc)
-        
-        return fconc
 
 
     def _get_frozen_correction(self,e,frozen,dc):
         corr = 1
         eltot = None
-        for el,dne in e.delta_atoms.items():
-            for fc in frozen:
-                for elc,dnc in fc.delta_atoms.items():
-                    if elc == el and dnc< 0 and dne < 0 and f'Vac_{el.symbol}' in fc.name and f'Vac_{el.symbol}' in e.name: # ensure it's a vac and not sub
-                        eltot = dc.get_element_total(el,vacancy=True)
-                        corr = corr * (fc.conc/eltot)#**abs(dne)
-                        print(abs(dne))
-                        print(e.name,dc.filter_conc(name=e.name,charge=e.charge)[0].conc,fc.conc,eltot,corr)
-                    elif elc == el and dnc > 0 and dne > 0:
-                        eltot = dc.get_element_total(el,vacancy=False)
-                        corr = corr * (fc.conc/eltot)#**abs(dne)
-                        print(abs(dne))
-                        print(e.name,dc.filter_conc(name=e.name,charge=e.charge)[0].conc,fc.conc,eltot,corr)
-        print(corr)
+        for ds in e.defect_species:
+            typ, specie = ds['type'], ds['specie']
+            if typ == 'Vacancy':
+                k = f'Vac_{specie}'
+                if k in frozen.keys():
+                    eltot = dc.get_element_total(specie,vacancy=True)
+                    corr = corr * (frozen[k]/eltot)
+            else:
+                k = specie
+                if k in frozen.keys():
+                    eltot = dc.get_element_total(specie,vacancy=False)
+                    corr = corr * (frozen[k]/eltot)
         return corr
             
-    
 
     def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
                               frozen_defect_concentrations=None,per_unit_volume=True):
@@ -442,8 +424,7 @@ class DefectsAnalysis:
         if frozen_defect_concentrations:
             dc = self.defect_concentrations(chemical_potentials,temperature,fermi_level,
                                             frozen_defect_concentrations=None,per_unit_volume=per_unit_volume)
-            frozen = self._convert_frozen_conc_format(frozen_defect_concentrations)
-
+            frozen = frozen_defect_concentrations 
 
         for e in self.entries:
             # frozen defects approach
@@ -451,25 +432,12 @@ class DefectsAnalysis:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species)
                 concentrations.append(defconc)     
-        
-        # for e in self.entries:
-        #     # frozen defects approach
-        #     if frozen_defect_concentrations:
-        #         c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
-        #         for el, deltan in e.delta_atoms.items():
-        #             for fc in frozen:
-        #                 if el in fc.delta_atoms.keys():
-        #                     vacancy = True if deltan < 0 else False
-        #                     eltot = dc.get_element_total(el,vacancy)
-        #                     c = c * (fc.conc/eltot) **abs(deltan)
-        #         defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
-        #         concentrations.append(defconc)
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species)
                 concentrations.append(defconc)
             
 
@@ -941,8 +909,8 @@ class SingleDefConc:
             Charge of defect specie.
         conc : (float)
             Concentration value.
-        delta_atoms : (dict)
-            Dictionary with Element as keys and particle difference as values ({Element:delta_n}).
+        defects_species : (list)
+            Dictionary with defect type and defect specie (attribute of defect entry).
         """
         for k,v in kwargs.items():
             setattr(self, k, v)
@@ -1030,7 +998,7 @@ class DefectConcentrations:
         except: # recover old thermodata with just total concentrations
             dc = []
             for k,v in d.items():
-                c = SingleDefConc(k,100,v) # charge if 100 to make it clear it's a dummy value that can't be used
+                c = SingleDefConc(name=k,charge=100,conc=v) # charge if 100 to make it clear it's a dummy value that can't be used
                 dc.append(c)
         return cls(dc)
  
@@ -1038,17 +1006,14 @@ class DefectConcentrations:
     def elemental(self):
         d = {}
         for c in self:
-            for el,deltan in c.delta_atoms.items():
-                if el not in d.keys():                   
-                    if deltan < 0 and f'Vac_{el.symbol}' in c.name:
-                        ekey = 'Vac_' + el.symbol
-                        eltot = self.get_element_total(el,vacancy=True)
-                        d[ekey] = eltot
-                    elif deltan > 0:
-                        ekey = el.symbol
-                        eltot = self.get_element_total(el,vacancy=False)
-                        d[ekey] = eltot
-                    
+            for ds in c.defect_species:
+                if ds['specie'] not in d.keys():
+                    if ds['type'] == 'Vacancy':
+                        ekey = 'Vac_' + ds['specie']
+                        d[ekey] = self.get_element_total(ds['specie'],vacancy=True)
+                    else:
+                        ekey = ds['specie']
+                        d[ekey] = self.get_element_total(ds['specie'],vacancy=False)
         return d
                     
     
@@ -1123,16 +1088,14 @@ class DefectConcentrations:
             
         
     def get_element_total(self,element,vacancy=False):
-        el = Element(element) if isinstance(element,str) else element
         eltot = 0
         for c in self:
-            if el in c.delta_atoms.keys():
-                if vacancy:
-                    if c.delta_atoms[el] < 0 and f'Vac_{el.symbol}' in c.name:
-                        eltot += c.conc * abs(c.delta_atoms[el])
-                else:
-                    if c.delta_atoms[el] > 0:
-                        eltot += c.conc * abs(c.delta_atoms[el])
+            for ds in c.defect_species:
+                if element == ds['specie']:
+                    if vacancy and ds['type']=='Vacancy':
+                        eltot += c.conc
+                    elif vacancy == False:
+                        eltot += c.conc
         return eltot
         
         
