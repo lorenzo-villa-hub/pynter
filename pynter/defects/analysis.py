@@ -305,73 +305,6 @@ class DefectsAnalysis:
         return charge_transition_levels
     
 
-    def _defect_concentrations_old(self, chemical_potentials, temperature=300, fermi_level=0.,
-                              frozen_defect_concentrations=None):
-        """
-        Give list of all concentrations at specified efermi.
-        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
-        is normalized starting from the input fixed concentration as:
-            C = C_eq * (Ctot_fix/Ctot_eq)
-        while for DefectComplexEntry this is applied for every single defect specie which
-        is composing the complex (needs to be present in computed entries):
-            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
-            
-        Labels are ignored when accounting for the defect species equilibrium.
-            
-        Parameters
-        ----------
-        chemical_potentials: (dict)
-            Dictionary of chemical potentials ({Element: number})   
-        temperature: (float) 
-            Temperature to produce concentrations at.
-        fermi_level: (float) 
-            Fermi level relative to valence band maximum. The default is 0. 
-        frozen_defect_concentrations: (dict)
-            Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. The multiplicity part in the string is not
-            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
-        
-        Returns:
-        --------
-            list of dictionaries of defect concentrations
-        """
-        concentrations = []
-        if frozen_defect_concentrations:
-            #Dtot = self.defect_concentrations_total(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None)
-            Dtot = self.defect_concentrations(chemical_potentials,temperature,fermi_level,frozen_defect_concentrations=None).total
-            Dfix = frozen_defect_concentrations
-
-        for e in self.entries:
-            # frozen defects approach
-            if frozen_defect_concentrations:
-                name = e.name.split('(')[0]
-                #handle defect complex case
-                if e.classname == 'DefectComplexEntry':
-                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)                      
-                    for dname in e.defect_list_names:
-                        if dname in Dfix.keys():
-                            if dname in Dtot.keys():
-                                c = c * (Dfix[dname] / Dtot[dname])
-                            else:
-                                print(f'Warning: frozen defect with name {dname} is not in defect entries')
-                #handle single defect case
-                else:
-                    c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                    if name in Dfix.keys():
-                        if name in Dtot.keys():
-                            c = c * (Dfix[name] / Dtot[name])
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
-                concentrations.append(defconc)
-            
-            else:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level)
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,delta_atoms=e.delta_atoms)
-                concentrations.append(defconc)
-            
-
-        return DefectConcentrations(concentrations)
-
-
     def _get_frozen_correction(self,e,frozen,dc):
         corr = 1
         eltot = None
@@ -415,6 +348,8 @@ class DefectsAnalysis:
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations. The multiplicity part in the string is not
             needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+        per_unit_volume: (bool)
+            Get concentrations in cm^-3. If False they are per unit cell. The default is True.
         
         Returns:
         --------
@@ -427,17 +362,18 @@ class DefectsAnalysis:
             frozen = frozen_defect_concentrations 
 
         for e in self.entries:
+            nsites = e.multiplicity * 1e24 / e.bulk_structure.volume if per_unit_volume else e.multiplicity
             # frozen defects approach
             if frozen_defect_concentrations:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=c<=nsites)
                 concentrations.append(defconc)     
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=c<=nsites)
                 concentrations.append(defconc)
             
 
@@ -911,6 +847,8 @@ class SingleDefConc:
             Concentration value.
         defects_species : (list)
             Dictionary with defect type and defect specie (attribute of defect entry).
+        stable : (bool)
+            If formation energy is negative, i.e. the concentration > Nsites.
         """
         for k,v in kwargs.items():
             setattr(self, k, v)
@@ -1004,6 +942,9 @@ class DefectConcentrations:
  
     @property
     def elemental(self):
+        """
+        Dictionary with element (or element vacancy) as keys and total element concentration as values.
+        """
         d = {}
         for c in self:
             for ds in c.defect_species:
@@ -1019,6 +960,9 @@ class DefectConcentrations:
     
     @property
     def elements(self):
+        """
+        List of element (or vacancies) symbols.
+        """
         return self.elemental.keys()
 
                 
@@ -1088,6 +1032,21 @@ class DefectConcentrations:
             
         
     def get_element_total(self,element,vacancy=False):
+        """
+        Get total concentration of every element (summed also across different species)
+
+        Parameters
+        ----------
+        element : (str)
+            Target element.
+        vacancy : (bool), optional
+            Weather the target element is a vacancy. The default is False.
+
+        Returns
+        -------
+        eltot : (float)
+            Total concentration of target element.
+        """
         eltot = 0
         for c in self:
             for ds in c.defect_species:

@@ -135,7 +135,7 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None):
+    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None,show_unstable=True):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -166,6 +166,8 @@ class PressurePlotter:
             Range of x-axis. The default is (1e-20,1e08).
         ylim : (tuple), optional
             Range of y-axis. The default is None.
+        show_unstable: (bool), optional
+            Show regions where the system is unstable (at least one formation energy is negative).
 
         Returns
         -------
@@ -182,6 +184,10 @@ class PressurePlotter:
             
         plt.xscale('log')
         plt.yscale('log')
+        if show_unstable:
+            stable = self._get_unstable_bool(p,dc)
+            ax = plt.gca()
+            plt.fill_between(p, 0, 1, where=stable, alpha=0.3, transform=ax.get_xaxis_transform(), color='red')
         xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
         if ylim:
@@ -320,9 +326,7 @@ class PressurePlotter:
         plt.figure(figsize=size)
         filter_defects = True if defect_indexes else False
         p = partial_pressures
-        dc = defect_concentrations
-        if output == 'stable':
-            dc = dc.stable
+        dc = defect_concentrations if output != 'stable' else [c.stable for c in defect_concentrations] 
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations]
         previous_charge = None
@@ -360,4 +364,19 @@ class PressurePlotter:
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
         return plt
+    
+    
+    def _get_unstable_bool(self,partial_pressures,defect_concentrations):
+        slist = []
+        for dc in defect_concentrations:
+            unstable = False
+            for d in dc:
+                if 'stable' in vars(d).keys() and d.stable == False:
+                    unstable = True
+            slist.append(unstable)
+        
+        return slist
+        
+    
+    
     
