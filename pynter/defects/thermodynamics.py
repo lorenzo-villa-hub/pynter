@@ -260,7 +260,8 @@ class PressureAnalysis:
     
 
     def get_quenched_fermi_levels(self,reservoirs,initial_temperature,final_temperature,
-                                  quenched_species=None,get_final_concentrations=True,name=None):
+                                  quenched_species=None,get_final_concentrations=True,
+                                  quench_elements=False,name=None):
         """
         Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
         It is possible to select which defect species to quench and which ones are free to equilibrate.
@@ -280,6 +281,10 @@ class PressureAnalysis:
             Name to assign to ThermoData.
         get_final_concentrations : (bool)
             Save also defect and carrier concentrations after quenching. The default is True.
+        quench_elements : (bool)
+            If True the total concentrations of elements at high temperature go in the charge neutrality at low temperature.
+            If False the quenched concentrations are the ones of single defect species (e.g. elements are not allowed
+            to equilibrate on different sites). The default is False.
 
         Returns
         -------
@@ -312,7 +317,10 @@ class PressureAnalysis:
                 mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T1,xtol=self.xtol)
             else:
                 mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1,xtol=self.xtol)
-            c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).elemental
+            if quench_elements:
+                c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).elemental
+            else:
+                c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).total
             if quenched_species is None:
                 quenched_concentrations = c1.copy()
             else:

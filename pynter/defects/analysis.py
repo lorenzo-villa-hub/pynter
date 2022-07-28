@@ -305,7 +305,8 @@ class DefectsAnalysis:
         return charge_transition_levels
     
     
-    def _get_frozen_correction(self,e,frozen,dc):
+    def _get_frozen_correction_old(self,e,frozen,dc):
+        # old version only fixes elements, doesn't allow for specific defect entry names in frozen dict
         corr = 1
         eltot = None
         for ds in e.defect_species:
@@ -321,18 +322,39 @@ class DefectsAnalysis:
                     eltot = dc.get_element_total(specie,vacancy=False)
                     corr = corr * (frozen[k]/eltot)
         return corr
-            
+    
+
+    def _get_frozen_correction(self,e,frozen,dc):
+        corr = 1
+        for ds in e.defect_species:
+            typ, specie, name = ds['type'], ds['specie'], ds['name']
+            if typ == 'Vacancy':
+                k = f'Vac_{specie}'
+                if k in frozen.keys():
+                    eltot = dc.get_element_total(specie,vacancy=True)
+                    corr = corr * (frozen[k]/eltot)
+            else:
+                if name in frozen.keys():
+                    dtot = 0
+                    for n,c in dc.total.items(): # sum over all defects containing the specific specie
+                        if name in n:
+                            dtot += c
+                    corr = corr * (frozen[name]/dtot) 
+                else:
+                    k = specie
+                    if k in frozen.keys():
+                        eltot = dc.get_element_total(specie,vacancy=False)
+                        corr = corr * (frozen[k]/eltot)
+        return corr        
+    
 
     def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
                               frozen_defect_concentrations=None,per_unit_volume=True):
         """
         Give list of all concentrations at specified efermi.
-        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
-        is normalized starting from the input fixed concentration as:
-            C = C_eq * (Ctot_fix/Ctot_eq)
-        while for DefectComplexEntry this is applied for every single defect specie which
-        is composing the complex (needs to be present in computed entries):
-            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
+        If frozen_defect_concentration is provided the concentration of defect entries are 
+        corrected according to the fixed provided values. reference to paper once (if?) is
+        published.
             
         Labels are ignored when accounting for the defect species equilibrium.
             
@@ -345,9 +367,10 @@ class DefectsAnalysis:
         fermi_level: (float) 
             Fermi level relative to valence band maximum. The default is 0. 
         frozen_defect_concentrations: (dict)
-            Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. The multiplicity part in the string is not
-            needed as it is ignored in the calculation. (ex {'Vac_Na':1e20}) 
+            Dictionary with fixed concentrations. Keys can be simple element strings
+            (or vacancies of elements) in the format 'Vac_{el}') if that element needs to be 
+            fixed across all defect species, alternatively defect entry names can be used as well 
+            to target specific defect entries. The values are the concentrations.
         per_unit_volume: (bool)
             Get concentrations in cm^-3. If False they are per unit cell. The default is True.
         

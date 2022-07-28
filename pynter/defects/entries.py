@@ -209,7 +209,7 @@ class SingleDefectEntry(GenericDefectEntry):
 
     @property
     def defect_species(self):
-        return [{'type':self.defect.__class__.__name__, 'specie':self.defect.site.specie.symbol}]
+        return [{'type':self.defect.__class__.__name__, 'specie':self.defect.site.specie.symbol, 'name':self.defect.name.split('_mult')[0]}]
 
     @property
     def charge(self):
@@ -413,7 +413,7 @@ class DefectComplexEntry(GenericDefectEntry):
     def defect_species(self):
         ds = []
         for d in self.defect_list:
-            ds.append({'type':d.__class__.__name__, 'specie':d.site.specie.symbol})
+            ds.append({'type':d.__class__.__name__, 'specie':d.site.specie.symbol, 'name':d.name.split('_mult',1)[0]})
         return ds 
             
     @property
