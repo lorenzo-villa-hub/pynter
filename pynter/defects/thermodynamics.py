@@ -383,7 +383,7 @@ class ThermoData:
         """
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-             "thermodata":self.data,    
+             "thermodata":self.data.copy(),    
              "temperature": self.temperature,
              "name": self.name
              }

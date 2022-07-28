@@ -174,8 +174,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        td = thermodata.data
-        p,dc,cc = td['partial_pressures'],td['defect_concentrations'],td['carrier_concentrations']
+        td = thermodata
+        p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
         matplotlib.rcParams.update({'font.size': 22})
         if output == 'all' or output == 'stable':
             plt = self._plot_conc(p,dc,cc,defect_indexes,output,size)
@@ -229,8 +229,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        td = thermodata.data
-        partial_pressures,conductivities = td['partial_pressures'], td['conductivities']
+        td = thermodata
+        partial_pressures,conductivities = td.partial_pressures, td.conductivities
         if not label:
             label = '$\sigma$'
         matplotlib.rcParams.update({'font.size': 22})

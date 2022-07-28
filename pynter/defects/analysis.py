@@ -304,7 +304,7 @@ class DefectsAnalysis:
                             
         return charge_transition_levels
     
-
+    
     def _get_frozen_correction(self,e,frozen,dc):
         corr = 1
         eltot = None
