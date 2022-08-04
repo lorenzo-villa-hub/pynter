@@ -304,25 +304,6 @@ class DefectsAnalysis:
                             
         return charge_transition_levels
     
-    
-    def _get_frozen_correction_old(self,e,frozen,dc):
-        # old version only fixes elements, doesn't allow for specific defect entry names in frozen dict
-        corr = 1
-        eltot = None
-        for ds in e.defect_species:
-            typ, specie = ds['type'], ds['specie']
-            if typ == 'Vacancy':
-                k = f'Vac_{specie}'
-                if k in frozen.keys():
-                    eltot = dc.get_element_total(specie,vacancy=True)
-                    corr = corr * (frozen[k]/eltot)
-            else:
-                k = specie
-                if k in frozen.keys():
-                    eltot = dc.get_element_total(specie,vacancy=False)
-                    corr = corr * (frozen[k]/eltot)
-        return corr
-    
 
     def _get_frozen_correction(self,e,frozen,dc):
         corr = 1
