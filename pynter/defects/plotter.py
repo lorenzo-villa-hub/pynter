@@ -60,7 +60,7 @@ class ConcPlotter:
         return 
     
     
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=(1e13,1e40),total=True,**kwargs):
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,**kwargs):
         """
         Bar plot of concentrations with pd.DataFrame.plot
 
@@ -69,11 +69,11 @@ class ConcPlotter:
         conc_range : (tuple), optional
             Range of concentrations to include in df. The default is (1e13,1e40).
         ylim : (tuple), optional
-            Limit of y-axis in plot. The default is (1e13,1e40).
-        **kwargs : (dict)
-            Kwargs to pass to df.plot().
+            Limit of y-axis in plot. If None conc_range is used. The default is None.
         total : (bool), optional
             plot total concentrations. The default is True.
+        **kwargs : (dict)
+            Kwargs to pass to df.plot().
 
         Returns
         -------
@@ -81,15 +81,13 @@ class ConcPlotter:
             Matplotlib object.
         """
         if conc_range:
-            if total:
-                series = self.limit_conc_range(conc_range,reset_df=False)[1]
-            else:
-                df = self.limit_conc_range(conc_range,reset_df=False)[0]
+            if not ylim:
+                ylim = conc_range
+            series = self.limit_conc_range(conc_range,reset_df=False)[1]
+            df = self.limit_conc_range(conc_range,reset_df=False)[0]
         else:
-            if total:
-                series = self.series
-            else:
-                df = self.df
+            series = self.series
+            df = self.df
         if not total:
             df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,xlabel='Name , Charge',
                     ylabel='Concentrations(cm$^{-3}$)',legend=None,**kwargs)
@@ -137,7 +135,7 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None):
+    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None,show_unstable=True):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -168,14 +166,16 @@ class PressurePlotter:
             Range of x-axis. The default is (1e-20,1e08).
         ylim : (tuple), optional
             Range of y-axis. The default is None.
+        show_unstable: (bool), optional
+            Show regions where the system is unstable (at least one formation energy is negative).
 
         Returns
         -------
         plt : 
             Matplotlib object.
         """
-        td = thermodata.data
-        p,dc,cc = td['partial_pressures'],td['defect_concentrations'],td['carrier_concentrations']
+        td = thermodata
+        p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
         matplotlib.rcParams.update({'font.size': 22})
         if output == 'all' or output == 'stable':
             plt = self._plot_conc(p,dc,cc,defect_indexes,output,size)
@@ -184,6 +184,10 @@ class PressurePlotter:
             
         plt.xscale('log')
         plt.yscale('log')
+        if show_unstable:
+            stable = self._get_unstable_bool(p,dc)
+            ax = plt.gca()
+            plt.fill_between(p, 0, 1, where=stable, alpha=0.3, transform=ax.get_xaxis_transform(), color='red')
         xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
         if ylim:
@@ -225,8 +229,8 @@ class PressurePlotter:
         plt : 
             Matplotlib object.
         """
-        td = thermodata.data
-        partial_pressures,conductivities = td['partial_pressures'], td['conductivities']
+        td = thermodata
+        partial_pressures,conductivities = td.partial_pressures, td.conductivities
         if not label:
             label = '$\sigma$'
         matplotlib.rcParams.update({'font.size': 22})
@@ -322,9 +326,7 @@ class PressurePlotter:
         plt.figure(figsize=size)
         filter_defects = True if defect_indexes else False
         p = partial_pressures
-        dc = defect_concentrations
-        if output == 'stable':
-            dc = dc.stable
+        dc = defect_concentrations if output != 'stable' else [c.stable for c in defect_concentrations] 
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations]
         previous_charge = None
@@ -362,4 +364,19 @@ class PressurePlotter:
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
         return plt
+    
+    
+    def _get_unstable_bool(self,partial_pressures,defect_concentrations):
+        slist = []
+        for dc in defect_concentrations:
+            unstable = False
+            for d in dc:
+                if 'stable' in vars(d).keys() and d.stable == False:
+                    unstable = True
+            slist.append(unstable)
+        
+        return slist
+        
+    
+    
     
