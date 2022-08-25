@@ -372,12 +372,12 @@ class DefectsAnalysis:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=c<=nsites)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=bool(c<=nsites))
                 concentrations.append(defconc)     
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=c<=nsites)
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=bool(c<=nsites))
                 concentrations.append(defconc)
             
 
@@ -852,7 +852,7 @@ class SingleDefConc:
         defects_species : (list)
             Dictionary with defect type and defect specie (attribute of defect entry).
         stable : (bool)
-            If formation energy is negative, i.e. the concentration > Nsites.
+            If formation energy is positive, i.e. the concentration < Nsites.
         """
         for k,v in kwargs.items():
             setattr(self, k, v)
