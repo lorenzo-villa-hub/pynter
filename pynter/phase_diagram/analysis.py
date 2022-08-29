@@ -247,7 +247,37 @@ class Reservoirs:
             df = df.round(decimals=ndecimals)
         return df
         
-     
+    
+    def get_plot(self,elements,size=1,**kwargs):
+        """
+        Plot the stability diagram with the reservoir points
+
+        Parameters
+        ----------
+        elements : (list)
+            List of strings with element symbols on the diagram axis.
+        size : (float), optional
+            Size of the points. The default is 1.
+        **kwargs : (dict)
+            Kwargs for the add_reservoirs function.
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        from pynter.phase_diagram.plotter import PDPlotterAdder # import here to avoid circular import
+        res = self.copy()
+        if not res.pd:
+            raise ValueError('PhaseDiagram object needs to be provided to plot the stability diagram')
+        plt = PDHandler(res.pd).get_stability_diagram(elements)
+        if not res.are_chempots_delta:
+            res.set_to_referenced()
+            
+        plt = PDPlotterAdder(res.pd,size).add_reservoirs(res,elements,**kwargs)
+        return plt
+                
+    
     def set_to_absolute(self):
         """
         Set reservoir dictionary to absolute values of chempots.
