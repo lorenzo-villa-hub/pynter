@@ -129,11 +129,10 @@ class DefectsAnalysis:
             if sel_entries and mode=='and':
                 ent = sel_entries.copy()
                 sel_entries = []
-            elements = [Element(el) for el in elements]
             for e in ent:
-                select = False
-                for el in e.delta_atoms:
-                    if el in elements:
+                select = False                
+                for d in e.defect_species:
+                    if d['specie'] in elements:
                         select = True
                 if select:
                     sel_entries.append(e)
