@@ -138,7 +138,7 @@ class PressurePlotter:
 
     
     def plot_concentrations(self,thermodata,output='total',defect_indexes=None,names=None,
-                            size=(12,8),xlim=None,ylim=None,show_unstable=True):
+                            size=(12,8),fontsize=22,xlim=None,ylim=None,show_unstable=True):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -165,6 +165,8 @@ class PressurePlotter:
             List of names of defect entries to be included in the plot. If None all defects are included. The default is None.
         size : (tuple), optional
             Size of the matplotlib figure. The default is (12,8).
+        fontsize : (float), optional
+            Size of font for matplotlib rcParams. The default is 22.
         xlim : (tuple), optional
             Range of x-axis. The default is (1e-20,1e08).
         ylim : (tuple), optional
@@ -179,7 +181,7 @@ class PressurePlotter:
         """
         td = thermodata
         p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
-        matplotlib.rcParams.update({'font.size': 22})
+        matplotlib.rcParams.update({'font.size': fontsize})
         if output == 'all' or output == 'stable':
             plt = self._plot_conc(p,dc,cc,defect_indexes,names,output,size)
         elif output == 'total':
