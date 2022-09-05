@@ -60,7 +60,7 @@ class ConcPlotter:
         return 
     
     
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,**kwargs):
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,ylabel_fontsize=15,**kwargs):
         """
         Bar plot of concentrations with pd.DataFrame.plot
 
@@ -72,6 +72,8 @@ class ConcPlotter:
             Limit of y-axis in plot. If None conc_range is used. The default is None.
         total : (bool), optional
             plot total concentrations. The default is True.
+        ylabel_fontsize : (int), optional
+            Size of the label for y-axis. The default is 15.
         **kwargs : (dict)
             Kwargs to pass to df.plot().
 
@@ -89,12 +91,12 @@ class ConcPlotter:
             series = self.series
             df = self.df
         if not total:
-            df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,xlabel='Name , Charge',
-                    ylabel='Concentrations(cm$^{-3}$)',legend=None,**kwargs)
+            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,
+                          xlabel='Name , Charge',legend=None,**kwargs)
         else:
-            series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
-
-        return plt
+            ax = series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
+        ax.set_ylabel('Concentrations(cm$^{-3}$)',fontdict={'fontsize':ylabel_fontsize})
+        return ax
 
 
     def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
@@ -135,7 +137,8 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,thermodata,defect_indexes=None,output='total',size=(12,8),xlim=None,ylim=None,show_unstable=True):
+    def plot_concentrations(self,thermodata,output='total',defect_indexes=None,names=None,
+                            size=(12,8),xlim=None,ylim=None,show_unstable=True):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -149,17 +152,17 @@ class PressurePlotter:
                     Defect concentrations in the same format as the output of DefectsAnalysis. 
                 carrier_concentrations : (list)
                     List of tuples with intrinsic carriers concentrations (holes,electrons).
-        defect_indexes : (list), optional
-            List of indexes of the entry that need to be included in the plot. If None 
-            all defect entries are included. The default is None.
-        pressure_range : (tuple), optional
-            Exponential range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
         output : (str), optional
             Type of output for defect concentrations:
                 "all": The output is the concentration of every defect entry.
                 "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
                 "total": The output is the sum of the concentration in every charge for each specie.
                 The default is 'total'.
+        defect_indexes : (list), optional
+            List of indexes of the entry that need to be included in the plot. To be used when output is set to 'all'.
+            If None all defect entries are included. The default is None.  
+        names : (list), optional
+            List of names of defect entries to be included in the plot. If None all defects are included. The default is None.
         size : (tuple), optional
             Size of the matplotlib figure. The default is (12,8).
         xlim : (tuple), optional
@@ -178,9 +181,9 @@ class PressurePlotter:
         p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
         matplotlib.rcParams.update({'font.size': 22})
         if output == 'all' or output == 'stable':
-            plt = self._plot_conc(p,dc,cc,defect_indexes,output,size)
+            plt = self._plot_conc(p,dc,cc,defect_indexes,names,output,size)
         elif output == 'total':
-            plt = self._plot_conc_total(p,dc,cc,size)
+            plt = self._plot_conc_total(p,dc,cc,names,size)
             
         plt.xscale('log')
         plt.yscale('log')
@@ -321,17 +324,17 @@ class PressurePlotter:
     
     
     def _plot_conc(self,partial_pressures,defect_concentrations,carrier_concentrations,defect_indexes,
-                   output,size):
+                   names,output,size):
         
         plt.figure(figsize=size)
-        filter_defects = True if defect_indexes else False
+        filter_defects = True if (defect_indexes or names) else False
         p = partial_pressures
         dc = defect_concentrations if output != 'stable' else [c.stable for c in defect_concentrations] 
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations]
         previous_charge = None
         for i in range(0,len(dc[0])):
-            if filter_defects is False or (defect_indexes is not None and i in defect_indexes):
+            if filter_defects is False or (defect_indexes is not None and i in defect_indexes) or (names is not None and dc[0][i].name in names):
                 conc = [c[i].conc for c in dc]
                 charges = [c[i].charge for c in dc]
                 label_txt = get_formatted_legend(dc[0][i].name)
@@ -350,14 +353,15 @@ class PressurePlotter:
         return plt
     
     
-    def _plot_conc_total(self,partial_pressures,defect_concentrations,carrier_concentrations,size):
+    def _plot_conc_total(self,partial_pressures,defect_concentrations,carrier_concentrations,names,size):
         
         dc = defect_concentrations
         plt.figure(figsize=size)
         p = partial_pressures
         h = [cr[0] for cr in carrier_concentrations] 
-        n = [cr[1] for cr in carrier_concentrations] 
-        for name in dc[0].total:
+        n = [cr[1] for cr in carrier_concentrations]
+        names = names if names else dc[0].total
+        for name in names:
             conc = [c.total[name] for c in dc]
             label_txt = get_formatted_legend(name)
             plt.plot(p,conc,label=label_txt,linewidth=4)
