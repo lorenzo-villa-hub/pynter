@@ -248,6 +248,16 @@ class Reservoirs:
         return df
         
     
+    def get_latex_table(self):
+        """
+        Get string with formatted latex table of chemical potentials
+        """
+        df = self.get_dataframe(format_labels=True)
+        df = df.round(decimals=1)
+        table = df.to_latex(escape=False)
+        return table
+    
+    
     def get_plot(self,elements,size=1,**kwargs):
         """
         Plot the stability diagram with the reservoir points
@@ -269,7 +279,7 @@ class Reservoirs:
         from pynter.phase_diagram.plotter import PDPlotterAdder # import here to avoid circular import
         res = self.copy()
         if not res.pd:
-            raise ValueError('PhaseDiagram object needs to be provided to plot the stability diagram')
+            raise ValueError('PhaseDiagram object needs to be stored to plot the stability diagram')
         plt = PDHandler(res.pd).get_stability_diagram(elements)
         if not res.are_chempots_delta:
             res.set_to_referenced()
