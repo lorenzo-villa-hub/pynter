@@ -248,12 +248,11 @@ class Reservoirs:
         return df
         
     
-    def get_latex_table(self):
+    def get_latex_table(self,ndecimals=1):
         """
         Get string with formatted latex table of chemical potentials
         """
-        df = self.get_dataframe(format_labels=True)
-        df = df.round(decimals=1)
+        df = self.get_dataframe(format_labels=True,ndecimals=ndecimals)
         table = df.to_latex(escape=False)
         return table
     
