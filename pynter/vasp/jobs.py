@@ -537,7 +537,9 @@ class VaspJob(Job):
     def _get_band_structure(self,**kwargs):
         """Get BandStructure objects from Vasprun"""
         if self.vasprun:
-            return self.vasprun.get_band_structure(kpoints_filename=op.join(self.path,'KPOINTS'),**kwargs)
+            if not kwargs or 'kpoints_filename' not in kwargs.keys():
+                kwargs['kpoints_filename'] = op.join(self.path,'KPOINTS')
+            return self.vasprun.get_band_structure(**kwargs)
         else:
             return None
             
