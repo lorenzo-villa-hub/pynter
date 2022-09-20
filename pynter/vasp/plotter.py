@@ -180,3 +180,51 @@ def plot_spd_dos(complete_dos,xlim=(-3,3),**kwargs):
     return plt
 
 
+def plot_dos_bs_custom(bs,dos,ylim=(-4,7)):
+    
+    from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter, DosPlotter
+    # PLOT BS
+    plt = BSPlotter(bs).get_plot(ylim=ylim,get_subplot=True)
+    plt.xticks(fontsize=25)
+    plt.yticks(fontsize=25)
+        
+    # PLOT DOS
+    partial_dos = dos.get_spd_dos()
+    dos_plotter = DosPlotter()
+    dos_plotter.add_dos('Total_dos',dos)
+    for orbital in partial_dos:
+        dos_plotter.add_dos(orbital,partial_dos[orbital])
+    plt = dos_plotter.get_plot(xlim=ylim,get_subplot=True)    
+
+    # modify pymatgen output to flip graph
+    ax = plt.gca()
+    ymax = 0
+    fermi_lines = []
+    for i in range(0,len(ax.lines)):
+        x = ax.lines[i].get_ydata()
+        y = ax.lines[i].get_xdata()
+        for j in range(0,len(x)):
+            if x[j] > ylim[0] and x[j] < ylim[1]:
+                if x[j] > ymax:
+                    ymax = x[j]
+        ax.lines[i].set_xdata(x)
+        ax.lines[i].set_ydata(y)
+        if ax.lines[i].get_linestyle() == '--':
+            fermi_lines.append(ax.lines[i])
+            
+    ax.lines = [l for l in ax.lines if l not in fermi_lines] 
+    ylim = ax.get_xlim()
+    ax.set_xlim()
+    ax.set_ylim()
+    ax.set_xlim(0,ymax)
+    ax.set_ylim(ylim)
+    ax.set_xlabel('Density of states',size=25)
+    ax.set_yticks([])
+    ax.set_ylabel(None)
+    plt.xticks(fontsize=25)
+
+    fig = plt.gcf()
+    fig.tight_layout()
+
+    return plt
+

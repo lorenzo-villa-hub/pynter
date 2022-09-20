@@ -29,6 +29,7 @@ from pymatgen.util.plotting import pretty_plot, \
 from collections import Counter
 import copy
 
+import matplotlib.pyplot as plt
 from pymatgen.electronic_structure.boltztrap import BoltztrapError
 
 __author__ = "Shyue Ping Ong, Geoffroy Hautier, Anubhav Jain"
@@ -143,9 +144,12 @@ class DosPlotter:
         alldensities = []
         allenergies = []
         
-        plt = pretty_plot(12, 8)
+        import matplotlib.pyplot as plt 
         if get_subplot: #custom
             plt.subplot(1,2,2) #custom
+            plt = pretty_plot(14, 8, plt=plt)
+        else:
+            plt = pretty_plot(12,8)
 
         # Note that this complicated processing of energies is to allow for
         # stacked plots in matplotlib.
@@ -423,7 +427,12 @@ class BSPlotter:
             smooth_tol (float) : tolerance for fitting spline to band data.
                 Default is None such that no tolerance will be used.
         """
-        plt = pretty_plot(12, 8)
+        import matplotlib.pyplot as plt 
+        if get_subplot:
+            plt.subplot(1,2,1)
+            plt = pretty_plot(14, 8, plt=plt)
+        else:
+            plt = pretty_plot(12,8)
         import scipy.interpolate as scint
 
         # main internal config options
@@ -435,8 +444,8 @@ class BSPlotter:
         # band_linewidth = 3
         band_linewidth = 1
 
-        if get_subplot:
-            plt.subplot(1,2,1)
+       # if get_subplot:
+       #     plt.subplot(1,2,1)
 
         data = self.bs_plot_data(zero_to_efermi)
         if not smooth:
