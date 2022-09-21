@@ -5,8 +5,8 @@ Created on Fri Apr 23 11:19:30 2021
 
 @author: villa
 """
-#from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected  #original pymatgen
-from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected #modified version 
+from pymatgen.electronic_structure.plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected  #original pymatgen
+#from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter,BSDOSPlotter,DosPlotter, BSPlotterProjected #modified version 
 from pymatgen.electronic_structure.bandstructure import BandStructure
 
 
