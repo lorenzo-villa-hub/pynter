@@ -465,17 +465,10 @@ class VaspJob(Job):
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:
             data = self._default_data_computed_entry 
-            optional_attributes = []
             if kwargs['data']:
                 for attr in kwargs['data']:
                     data.append(attr)
-                    optional_attributes.append(attr)
             self.outputs['ComputedStructureEntry'] = self.vasprun.get_computed_entry(data=data)
-            
-            if optional_attributes:
-                for attr in optional_attributes:
-                    value = self.computed_entry.data[attr]
-                    setattr(self,attr,value)
         
         if kwargs['get_band_structure']:
             if type(kwargs['get_band_structure']) == dict:
