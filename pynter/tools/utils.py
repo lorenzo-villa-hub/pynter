@@ -11,6 +11,7 @@ import os
 import os.path as op
 import json
 import pkgutil
+import pandas as pd
 
 
 def change_file (input_file , output_file=None, back_up_file = True,
@@ -68,6 +69,53 @@ def change_file (input_file , output_file=None, back_up_file = True,
     
     return
     
+
+def display_df(df,max_rows=None,max_columns=None,max_colwidth=None):
+    """
+    Print DataFrame with temporary options
+
+    Parameters
+    ----------
+    df : (DataFrame)
+        DataFrame object.
+    max_rows : (int), optional
+        Max number of rows to display. The default is None.
+    max_columns : (int), optional
+        Max number of columns to display. The default is None.
+    max_colwidth : (int), optional
+        Max column width to display. The default is None.
+    """
+    with pd.option_context('display.max_rows', max_rows, 'display.max_columns', max_columns,
+                           'display.max_colwidth', max_colwidth):  # more options can be specified also
+        print(df)
+    return
+
+
+def set_display_df(reset=False,max_rows=None,max_columns=None,max_colwidth=None):
+    """
+    Set option for DataFrame display.
+
+    Parameters
+    ----------
+    reset : (bool), optional
+        Reset options to default. The default is False.
+    max_rows : (int), optional
+        Max number of rows to display. The default is None.
+    max_columns : (int), optional
+        Max number of columns to display. The default is None.
+    max_colwidth : (int), optional
+        Max column width to display. The default is None.
+    """
+    if reset:
+        pd.reset_option('display.max_rows')
+        pd.reset_option('display.max_columns')
+        pd.reset_option('display.max_colwidth')
+    else:
+        pd.set_option('display.max_columns', max_rows)  
+        pd.set_option('display.max_rows', max_columns)  
+        pd.set_option('display.max_colwidth', max_colwidth)
+    return
+
 
 def explore_packages(path):
     """

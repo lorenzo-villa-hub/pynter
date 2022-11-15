@@ -539,7 +539,7 @@ class Dataset:
             
 
     def select_jobs(self,jobs=None,mode='and',exclude=False,names=None,groups=None,common_group=None,
-                    common_node=None,complex_features=None,**kwargs):
+                    common_node=None,complex_features=None,function=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
@@ -551,23 +551,25 @@ class Dataset:
         jobs : (list), optional
             List of Jobs to search, if None the self.jobs is used. The default is None.
         mode : (str), optional
-            Filtering mode, aviavilable are: 'and' and 'or'. The default is 'and'. 
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
         exclude : (bool), optional
-            Exclude the jobs satisfying the criteria instead of selecting them.
+            Exclude the jobs satisfying the criteria instead of selecting them. The default is False.
         names : (list), optional
-            List of Job names. The default is None.
+            List of Job names. 
         groups : (list), optional
-            List of groups that jobs need to belong to. The default is None.
+            List of groups that jobs need to belong to.
         common_group : (str), optional
-            String that needs to be present in the group. The default is None.
+            String that needs to be present in the group.
         common_node : (str), optional
-            String that needs to be present in the node. The default is None.
+            String that needs to be present in the node.
         complex_features : (list of tuples) , optional
             List of properties that need to be satisfied.
             To use when the property of interest is stored in a dictionary.
             The first element of the tuple indentifies the property (see get_object_feature),
             the second corrisponds to the target value. To address more than one condition 
             relative to the same property, use lists or tuples.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function needs to return a bool.
         **kwargs : (dict)
             Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
             present in the relative Job class. To address more than one condition relative to
@@ -644,7 +646,16 @@ class Dataset:
                                 sel_jobs.append(j)
                 elif job_feature == kwargs[feature]:
                     if j not in sel_jobs:
-                        sel_jobs.append(j)        
+                        sel_jobs.append(j) 
+                        
+        if function:
+            if sel_jobs and mode=='and':
+                jobs = sel_jobs.copy()
+                sel_jobs = []
+            for j in jobs:
+                if function(j):
+                    if j not in sel_jobs:
+                        sel_jobs.append(j)
         
         output_jobs = []
         for j in input_jobs:
