@@ -104,6 +104,14 @@ class GenericDefectEntry:
         return get_formatted_legend(self.name)
 
     @property
+    def symbol_full(self):
+        return format_legend_with_charge_number(self.symbol, self.charge)
+
+    @property
+    def symbol_kroger(self):
+        return format_legend_with_charge(self.symbol, self.charge)
+
+    @property
     def classname(self):
         return self.__class__.__name__    
         
@@ -676,7 +684,7 @@ def format_legend_with_charge(fulllabel,charge):
         for i in range(0,abs(charge)):
             if i == 0:
                 mod_label = mod_label + "^{"
-            mod_label = mod_label + "°"
+            mod_label = mod_label + "'"
         mod_label = mod_label + "}"
     elif charge == 0:
         mod_label = mod_label + "^{x}"
@@ -684,11 +692,22 @@ def format_legend_with_charge(fulllabel,charge):
         for i in range(0,charge):
             if i == 0:
                 mod_label = mod_label + "^{"
-            mod_label = mod_label + "'"
+            mod_label = mod_label + "°"
         mod_label = mod_label + "}"
     
     mod_label = mod_label + "$"
     
     return mod_label
         
+
+def format_legend_with_charge_number(fulllabel,charge):
+    s = fulllabel('$')
+    if charge > 0:
+        q = '+'+str(charge)
+    elif charge == 0:
+        q = '\;' + str(charge)
+    else:
+        q = str(charge)
+    return '$' + s + '^{' + q + '}$'
+
 

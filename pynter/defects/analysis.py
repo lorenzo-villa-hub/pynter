@@ -12,9 +12,11 @@ import matplotlib.pyplot as plt
 from pynter.defects.pmg_dos import FermiDosCarriersInfo
 from pynter.defects.utils import get_delta_atoms
 from pynter.defects.entries import SingleDefectEntry, DefectComplexEntry, get_formatted_legend
-from pynter.tools.utils import get_object_feature
+from pynter.tools.utils import get_object_feature, get_object_from_json
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
+import os.path as op
+import json
 
 
 class DefectsAnalysis:
@@ -75,6 +77,30 @@ class DefectsAnalysis:
         vbm = d['vbm']
         band_gap = d['band_gap']
         return cls(entries,vbm,band_gap)
+    
+    
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build Dataset object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return DefectsAnalysis.from_dict(d)
     
     
     @property
