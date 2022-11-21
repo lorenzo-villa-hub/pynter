@@ -700,14 +700,14 @@ def format_legend_with_charge(fulllabel,charge):
     return mod_label
         
 
-def format_legend_with_charge_number(fulllabel,charge):
-    s = fulllabel('$')
+def format_legend_with_charge_number(fulllabel,charge,reset_math=True):
+    s = fulllabel
     if charge > 0:
         q = '+'+str(charge)
     elif charge == 0:
         q = '\;' + str(charge)
     else:
         q = str(charge)
-    return '$' + s + '^{' + q + '}$'
+    return s + '$^{' + q + '}$'
 
 
