@@ -9,6 +9,80 @@ Created on Fri Nov 27 10:52:08 2020
 import numpy as np
 from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
+from pymatgen.util.coord import pbc_shortest_vectors
+from pymatgen.core.trajectory import Trajectory
+
+def _get_distance_vector_and_image(lattice,frac_coords1,frac_coords2,jimage=None):
+    """
+    Same as pymatgen.core.Lattice.get_distance_and_image but returns 
+    the distance vetor instead of the norm.
+    Gets distance between two frac_coords assuming periodic boundary
+    conditions. If the index jimage is not specified it selects the j
+    image nearest to the i atom and returns the distance and jimage
+    indices in terms of lattice vector translations. If the index jimage
+    is specified it returns the distance between the frac_coords1 and
+    the specified jimage of frac_coords2, and the given jimage is also
+    returned.
+    Args:
+        frac_coords1 (3x1 array): Reference fcoords to get distance from.
+        frac_coords2 (3x1 array): fcoords to get distance from.
+        jimage (3x1 array): Specific periodic image in terms of
+            lattice translations, e.g., [1,0,0] implies to take periodic
+            image that is one a-lattice vector away. If jimage is None,
+            the image that is nearest to the site is found.
+    Returns:
+        (distance, jimage): distance and periodic lattice translations
+        of the other site for which the distance applies. This means that
+        the distance between frac_coords1 and (jimage + frac_coords2) is
+        equal to distance.
+    """
+    if jimage is None:
+        v, d2 = pbc_shortest_vectors(lattice, frac_coords1, frac_coords2, return_d2=True)
+        fc = lattice.get_fractional_coords(v[0][0]) + frac_coords1 - frac_coords2  # type: ignore
+        fc = np.array(np.round(fc), dtype=int)
+        return v, fc
+
+    jimage = np.array(jimage)
+    mapped_vec = lattice.get_cartesian_coords(jimage + frac_coords2 - frac_coords1)  # type: ignore
+    return mapped_vec, jimage  # type: ignore
+
+
+def get_distance_vector(site1,site2,jimage=None):
+    """
+    Get distance vector between two sites assuming periodic boundary conditions.
+    Same as pymatgen.core.sites.Site.distance but returns a vector instead of norm.
+    Args:
+        other (PeriodicSite): Other site to get distance from.
+        jimage (3x1 array): Specific periodic image in terms of lattice
+            translations, e.g., [1,0,0] implies to take periodic image
+            that is one a-lattice vector away. If jimage is None,
+            the image that is nearest to the site is found.
+    Returns:
+        distance (float): Distance between the two sites
+    """
+    return _get_distance_vector_and_image(site1.lattice, site1.frac_coords, site2.frac_coords,jimage=jimage)[0]
+
+
+def get_displacement_vectors(structure1,structure2):
+    """
+    Get vectors in cartesian coords of site displacements of structure2 w.r.t. structure 1
+
+    Parameters
+    ----------
+    structure1 : 
+        Pymatgen Structure object.
+    structure2 : TYPE
+        Pymatgen Structure object.
+
+    Returns
+    -------
+    (numpy ndarray)
+        Displacement vectors in cartesian coordinates.
+    """
+    traj = Trajectory.from_structures([structure1,structure2],constant_lattice=True) #order of structures determines ref in traj
+    traj.to_displacements()
+    disp = traj.frac_coords[1]
+    return structure1.lattice.get_cartesian_coords(disp)
 
 
 def _is_site_in_structure_old(site,structure,tol=1e-03):
@@ -208,3 +282,19 @@ def view_structure_with_ase(structures):
     return
 
 
+def write_xdatcar_from_structures(structures,file='XDATCAR'):
+    """
+    Write XDATCAR file from a list of structures. The first structure determines the reference for the Trajectory object.
+    """
+    traj = Trajectory.from_structures(structures,constant_lattice=True) 
+    traj.write_Xdatcar(file)
+    return
+    
+    
+    
+    
+    
+    
+    
+    
+    
