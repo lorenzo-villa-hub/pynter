@@ -17,7 +17,7 @@ from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCo
 import os.path as op
 import os
 import importlib
-from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords
+from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
 from pymatgen.core.trajectory import Trajectory
 
 
@@ -506,9 +506,8 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
 
 def get_trajectory_for_visualization(structure_defect,structure_bulk,defects=None,tol=1e-03,file=None):
     """
-    Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
-    in the vacant site the element of same row and next group on the periodic table.
-    If sort_to_bulk is True the Sites are sorted to match the Bulk structure.
+    Create trajectory from defect and bulk structures for visualization in OVITO. 
+    The vacancies are shown by inserting in the vacant site the element of same row and next group on the periodic table.
 
     Parameters
     ----------
@@ -542,4 +541,31 @@ def get_trajectory_for_visualization(structure_defect,structure_bulk,defects=Non
     return traj
         
         
-        
+def write_extxyz_for_visualization(file,structure_defect,structure_bulk,defects=None,tol=1e-03): 
+    """
+    Write extxyz file for visualization in OVITO. The displacements w.r.t the bulk structure are included.
+    The vacancies are shown by inserting in the vacant site the element of same row and next group on the periodic table.
+    
+    Parameters
+    ----------
+    file : (str)
+        Path to save file. 
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    defects : (tuple or list). 
+        Tuple or list of tuples in the format (defect_site,defect_type)
+        The format is the same as the output of defect_finder. If None defect_finder is used. The default is None.
+    tol: (float)
+        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
+        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
+        The default is 1e-03.
+    """
+    sb = structure_bulk
+    dummy = create_def_structure_for_visualization(structure_defect, structure_bulk,defects,sort_to_bulk=True,tol=tol)
+    write_extxyz_file(file, dummy, sb,displacements=True)
+    return
+
+
+     

@@ -7,6 +7,8 @@ Created on Fri Nov 27 10:52:08 2020
 """
 
 import numpy as np
+import os.path as op
+import os
 from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 from pymatgen.util.coord import pbc_shortest_vectors
@@ -71,7 +73,7 @@ def get_displacement_vectors(structure1,structure2):
     ----------
     structure1 : 
         Pymatgen Structure object.
-    structure2 : TYPE
+    structure2 : 
         Pymatgen Structure object.
 
     Returns
@@ -279,6 +281,31 @@ def view_structure_with_ase(structures):
     else:
         atoms = AseAtomsAdaptor.get_atoms(structures)
     view(atoms)
+    return
+
+
+def write_extxyz_file(file,structure,structure_ref=None,displacements=False):
+    """
+    Write extxyz format. Displacements can be included for visualization in OVITO. 
+
+    Parameters
+    ----------
+    file : (str)
+        Path to save extxyz file to.
+    structure : (Structure)
+        Structure to visualize.
+    structure_ref : (Structure)
+        Reference Structure if needed. The default is None.
+    displacements : (bool)
+        Include displacement vectors. The default is False.
+    """
+    atoms = AseAtomsAdaptor.get_atoms(structure)
+    if displacements:
+        disp = get_displacement_vectors(structure_ref, structure)
+        atoms.arrays.update({'disp:R:3':disp})
+    if not op.exists(op.dirname(file)):
+        os.makedirs(op.dirname(file))
+    atoms.write(file,format='extxyz')
     return
 
 
