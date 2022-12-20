@@ -302,7 +302,7 @@ def write_extxyz_file(file,structure,structure_ref=None,displacements=False):
     atoms = AseAtomsAdaptor.get_atoms(structure)
     if displacements:
         disp = get_displacement_vectors(structure_ref, structure)
-        atoms.arrays.update({'disp:R:3':disp})
+        atoms.arrays.update({'disp':disp})
     if not op.exists(op.dirname(file)):
         os.makedirs(op.dirname(file))
     atoms.write(file,format='extxyz')
