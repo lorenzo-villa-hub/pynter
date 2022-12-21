@@ -41,6 +41,8 @@ def get_defect_entry_from_jobs(job_defect,job_bulk,corrections,defect_structure=
         for a defect complex is set to 1.
     tol : (float)
         Tolerance for defect_finder function. The default is 1e-03.
+    data : (dict)
+    	Data to add to entry. The default is None.
     label : (str), optional
         Additional label to add to defect specie. Does not influence non equilibrium calculations.
 
