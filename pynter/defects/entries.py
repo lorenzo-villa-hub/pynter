@@ -13,7 +13,7 @@ from pymatgen.core.units import kb
 from pymatgen.core.structure import Structure
 from pymatgen.analysis.defects.core import *
 from pynter.defects.utils import *
-from monty.json import MontyDecoder
+from monty.json import MontyDecoder, MontyEncoder
 from pynter.defects.elasticity import Stresses
 
 
@@ -357,7 +357,7 @@ class SingleDefectEntry(GenericDefectEntry):
              "bulk_structure": self.bulk_structure.as_dict(),
              "energy_diff": self.energy_diff,
              "corrections": self.corrections,
-             "data": self.data,
+             "data": MontyEncoder().encode(self.data),
              "label": self.label
              }
         return d        
@@ -378,7 +378,7 @@ class SingleDefectEntry(GenericDefectEntry):
         bulk_structure = Structure.from_dict(d['bulk_structure'])
         energy_diff = d['energy_diff']
         corrections = d['corrections']
-        data = d['data'] if 'data' in d.keys() else None # ensure compatibility with old dictionaries
+        data = MontyDecoder().process_decoded(d['data']) if 'data' in d.keys() else None # ensure compatibility with old dictionaries
         label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
         return cls(defect,bulk_structure,energy_diff,corrections,data,label)
 
