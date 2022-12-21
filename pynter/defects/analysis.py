@@ -104,6 +104,30 @@ class DefectsAnalysis:
         else:
             d = json.load(path_or_string)
         return DefectsAnalysis.from_dict(d)
+
+
+    def to_json(self,path='',**kwargs):
+        """
+        Save DefectsAnalysis object as json string or file.
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file. If '' the path is set to "self.path/self.name.json".
+            If None a string is exported. 
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+        """
+        d = self.as_dict(**kwargs)
+        if path == '':
+            path = op.join(self.path,self.name+'.json')
+        if path:
+            with open(path,'w') as file:
+                json.dump(d,file)
+            return
+        else:
+            return d.__str__() 
     
     
     @property

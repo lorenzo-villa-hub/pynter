@@ -7,6 +7,7 @@ Created on Fri Dec 11 14:33:12 2020
 """
 
 from abc import abstractmethod
+import json
 import numpy as np
 import importlib
 from pymatgen.core.units import kb
@@ -357,7 +358,7 @@ class SingleDefectEntry(GenericDefectEntry):
              "bulk_structure": self.bulk_structure.as_dict(),
              "energy_diff": self.energy_diff,
              "corrections": self.corrections,
-             "data": MontyEncoder().encode(self.data),
+             "data": json.loads(json.dumps(self.data, cls=MontyEncoder)),
              "label": self.label
              }
         return d        
@@ -585,7 +586,7 @@ class DefectComplexEntry(GenericDefectEntry):
              "corrections": self.corrections,
              "charge": self.charge,
              "multiplicity": self.multiplicity,
-             "data": self.data,
+             "data": json.loads(json.dumps(self.data, cls=MontyEncoder)),
              "label": self.label
              }
         return d        
@@ -608,7 +609,7 @@ class DefectComplexEntry(GenericDefectEntry):
         corrections = d['corrections']
         charge = d['charge']
         multiplicity = d['multiplicity']
-        data = d['data'] if 'data' in d.keys() else None # ensure compatibility with old dictionaries
+        data = MontyDecoder().process_decoded(d['data']) if 'data' in d.keys() else None # ensure compatibility with old dictionaries
         label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
         return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,data,label)
     
