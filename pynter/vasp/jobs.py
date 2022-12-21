@@ -18,6 +18,7 @@ from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pynter.slurm.job_script import ScriptHandler
 import numpy as np
 import json
+from monty.json import MontyDecoder, MontyEncoder
 from glob import glob
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
@@ -586,9 +587,7 @@ class VaspNEBJob(Job):
         d["inputs"] = inputs_as_dict
         d["is_step_limit_reached"] = self.is_step_limit_reached
         d["is_converged"] = self.is_converged
-        d["r"] = self.r.tolist() if self.r is not None else None
-        d["energies"] = self.energies.tolist() if self.energies is not None else None
-        d["forces"] = self.forces.tolist() if self.forces is not None else None
+        d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
         
         return d
     
@@ -631,15 +630,12 @@ class VaspNEBJob(Job):
         job_settings = d['job_settings']
         job_script_filename = d['job_script_filename']
         name = d['name']
-        outputs={}
+        outputs= MontyDecoder().process_decoded(d['outputs'])
         
         vaspNEBjob = VaspNEBJob(path,inputs,job_settings,outputs,job_script_filename,name)
         
         vaspNEBjob._is_step_limit_reached = d['is_step_limit_reached']
         vaspNEBjob._is_converged = d['is_converged']
-        vaspNEBjob._r = np.array(d['r']) if d['r'] else None
-        vaspNEBjob._energies = np.array(d['energies']) if d['energies'] else None
-        vaspNEBjob._forces = np.array(d['forces']) if d['forces'] else None
         
         return vaspNEBjob
     
@@ -804,20 +800,13 @@ class VaspNEBJob(Job):
 
 
     @property
-    def energies(self):
+    def final_structures(self):
         """
-        Energies of images read with NEBAnalysis
+        Final structures, taken from CONTCAR for all points aside from end-points (as done by NEBAnalysis).
         """
-        return self._energies
+        return self.neb_analysis.structures
 
-    @property
-    def forces(self):
-        """
-        Forces of images read with NEBAnalysis
-        """
-        return self._forces
-        
-        
+
     @property
     def formula(self):
         """Complete formula from initial structure (read with Pymatgen)"""
@@ -869,12 +858,9 @@ class VaspNEBJob(Job):
     @property
     def neb_analysis(self):
         """
-        Get NEBAnalysis object from r, energies and forces. Returns None if any of the inputs is None.
+        Pymatgen NEBAnalysis object read from self.outputs.
         """
-        if self.r is not None and self.energies is not None and self.forces is not None:
-            return NEBAnalysis(self.r, self.energies, self.forces, self.structures)
-        else:
-            return None
+        return self.outputs['NEBAnalysis']
 
 
     @property
@@ -892,14 +878,6 @@ class VaspNEBJob(Job):
             nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
                            for el in self.initial_structure.composition])
         return nelect
-
-
-    @property
-    def r(self):
-        """
-        Root mean square distances between structures read with NEBAnalysis
-        """
-        return self._r
 
 
     def get_inputs(self,sync=False):
@@ -956,11 +934,6 @@ class VaspNEBJob(Job):
         self._is_required_accuracy_reached = self._get_ionic_relaxation_from_outfile()
         self._is_step_limit_reached = self._get_step_limit_reached()                
         self._is_converged = self._get_convergence()
-        
-        neb = self.outputs['NEBAnalysis']
-        self._r = neb.r  if neb else None
-        self._energies = neb.energies  if neb else None
-        self._forces = neb.forces  if neb else None
 
         return
 
