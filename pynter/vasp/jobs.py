@@ -586,9 +586,9 @@ class VaspNEBJob(Job):
         d["inputs"] = inputs_as_dict
         d["is_step_limit_reached"] = self.is_step_limit_reached
         d["is_converged"] = self.is_converged
-        d["r"] = self.r.tolist()
-        d["energies"] = self.energies.tolist()
-        d["forces"] = self.forces.tolist()
+        d["r"] = self.r.tolist() if self.r is not None else None
+        d["energies"] = self.energies.tolist() if self.energies is not None else None
+        d["forces"] = self.forces.tolist() if self.forces is not None else None
         
         return d
     
@@ -637,9 +637,9 @@ class VaspNEBJob(Job):
         
         vaspNEBjob._is_step_limit_reached = d['is_step_limit_reached']
         vaspNEBjob._is_converged = d['is_converged']
-        vaspNEBjob._r = np.array(d['r'])
-        vaspNEBjob._energies = np.array(d['energies'])
-        vaspNEBjob._forces = np.array(d['forces'])
+        vaspNEBjob._r = np.array(d['r']) if d['r'] else None
+        vaspNEBjob._energies = np.array(d['energies']) if d['energies'] else None
+        vaspNEBjob._forces = np.array(d['forces']) if d['forces'] else None
         
         return vaspNEBjob
     
