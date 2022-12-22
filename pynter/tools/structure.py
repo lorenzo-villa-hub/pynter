@@ -314,6 +314,8 @@ def write_xdatcar_from_structures(structures,file='XDATCAR'):
     Write XDATCAR file from a list of structures. The first structure determines the reference for the Trajectory object.
     """
     traj = Trajectory.from_structures(structures,constant_lattice=True) 
+    if not op.exists(op.dirname(file)):
+        os.makedirs(op.dirname(file))
     traj.write_Xdatcar(file)
     return
     
