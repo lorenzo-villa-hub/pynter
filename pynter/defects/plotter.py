@@ -263,7 +263,7 @@ class PressurePlotter:
         return plt
    
     
-    def plot_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
+    def plot_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None,colors=None):
         """
         Plot Fermi level as a function of the oxygen partial pressure.
 
@@ -286,6 +286,8 @@ class PressurePlotter:
             Range of x-axis. The default is (1e-20,1e08).
         ylim : (tuple), optional
             Range of y-axis. The default is None.
+        colors : (list), optional
+            List with colors for 
 
         Returns
         -------
@@ -301,10 +303,12 @@ class PressurePlotter:
         if isinstance(fermi_levels,dict):
             for name,mue in fermi_levels.items():
                 p = partial_pressures
-                plt.plot(p,mue,linewidth=4,marker='s',label=name)
+                clr = colors[list(fermi_levels.keys()).index(name)] if colors else None
+                plt.plot(p,mue,linewidth=4,marker='s',label=name,color=clr)
         else:
             p,mue = partial_pressures, fermi_levels
-            plt.plot(p,mue,linewidth=4,marker='s',label=label)
+            clr = colors[0] if colors else None
+            plt.plot(p,mue,linewidth=4,marker='s',label=label,color=clr)
         plt.xscale('log')
         xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
