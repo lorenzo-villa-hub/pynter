@@ -71,7 +71,7 @@ class Reservoirs:
         return self.res_dict.items()
 
     def copy(self):
-        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.pd,are_chempots_delta=self.are_chempots_delta)
+        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.pd,are_chempots_delta=self.are_chempots_delta,mu_refs=self.mu_refs)
     
     def as_dict(self):
         """
@@ -346,8 +346,8 @@ class PressureReservoirs(Reservoirs):
     """
     Subclass of Reservoirs which contains temperature information. Useful for partial pressure analysis. 
     """
-    def __init__(self,res_dict,temperature=None,phase_diagram=None,are_chempots_delta=False):
-        super().__init__(res_dict,phase_diagram,are_chempots_delta)
+    def __init__(self,res_dict,temperature=None,phase_diagram=None,mu_refs=None,are_chempots_delta=False):
+        super().__init__(res_dict,phase_diagram,mu_refs,are_chempots_delta)
         self.temperature = temperature
         self.pressures = list(self.res_dict.keys())
         
@@ -391,17 +391,40 @@ class PressureReservoirs(Reservoirs):
         """
         res_dict = {}
         for res,chempots in d['res_dict'].items():
-            res_dict[res] = {Element(el):chempots[el] for el in chempots}
+            res_dict[float(res)] = {Element(el):chempots[el] for el in chempots}
         temperature = d['temperature'] if 'temperature' in d.keys() else None
         if 'phase_diagram' in d.keys() and d['phase_diagram'] is not None:
             phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
         else:
             phase_diagram = None
-        mu_refs = d['mu_refs'] if 'mu_refs' in d.keys() else None
+        mu_refs = {Element(el):chem for el,chem in d['mu_refs'].items()}  if 'mu_refs' in d.keys() else None
         are_chempots_delta = d['are_chempots_delta']
             
         return cls(res_dict,temperature,phase_diagram,mu_refs,are_chempots_delta)
 
+
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build PressureReservoirs object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        PressureReservoir object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.load(path_or_string)
+        return PressureReservoirs.from_dict(d)    
     
     
 class ChempotAnalysis:
