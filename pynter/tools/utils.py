@@ -144,7 +144,7 @@ def get_object_feature(obj,feature):
     obj : (object)
         Generic object.
     feature : (str or list)
-        Method or attribute of Job class for which the value is needed.
+        Method or attribute of class for which the value is needed.
     """
     if isinstance(feature,list):
         met = feature[0]
@@ -153,10 +153,11 @@ def get_object_feature(obj,feature):
         except:
             attr = getattr(obj,met)                
         for k in feature[1:]:
-            if isinstance(attr[k],dict):
-                attr = attr[k]
+            v = attr[k] if k in attr.keys() else None
+            if isinstance(v,dict):
+                attr = v
             else:
-                return attr[k]
+                return v
             
     else:
         met = feature
