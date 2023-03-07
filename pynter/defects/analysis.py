@@ -34,7 +34,7 @@ class DefectsAnalysis:
             should still be that of the Hybrid calculation you are shifting to.       
     """    
     def __init__(self, entries, vbm, band_gap, sort_entries = True):
-        self.entries = sorted(entries, key=lambda x: x.name) if sort_entries else entries
+        self.entries = self.sort_entries(entries) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap
 
@@ -135,7 +135,6 @@ class DefectsAnalysis:
         """
         Returns a list with all the different names of defect entries
         """
-        
         names = []
         for d in self.entries:
             if d.name not in names:
@@ -165,7 +164,6 @@ class DefectsAnalysis:
         Returns
         -------
         DefectsAnalysis object.
-
         """
         input_entries = entries if entries else self.entries 
         ent = input_entries.copy()
@@ -254,6 +252,37 @@ class DefectsAnalysis:
             if e.charge == charge:
                 return e
 
+
+    def sort_entries(self,entries=None,features=['name','charge'],inplace=False):
+        """
+        Sort defect entries with different criteria.
+
+        Parameters
+        ----------
+        entries : (list), optional
+            List of defect entries to sort. If None self.entries is used. The default is None.
+        features : (list), optional
+            List of strings with attribute/method names. The default is ['name','charge'].
+        inplace : (bool), optional
+            Reset the self.entries attibute with sorted entries. Only works if entries input
+            is not given. The default is False.
+
+        Returns
+        -------
+        (list)
+            List of defect entries.
+        """
+        inplace = False if entries else inplace
+        entries = entries if entries else self.entries
+        def criteria(entry):
+            return [get_object_feature(entry,feature) for feature in features]           
+        sort_function = lambda entry: criteria(entry)
+        sorted_entries = sorted(entries, key=sort_function)
+        if inplace:
+            self.entries = sorted_entries
+        else:
+            return sorted_entries
+        
 
     def binding_energy(self,name,fermi_level=0):
         """
