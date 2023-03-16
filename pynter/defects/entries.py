@@ -149,9 +149,9 @@ class GenericDefectEntry:
         formation_energy = formation_energy + chempot_correction
         
         return formation_energy
-    
-    
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, per_unit_volume=True):
+
+
+    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, per_unit_volume=True,occupation_function='FD'):
         """
         Compute the defect concentration for a temperature and Fermi level.
         Args:
@@ -163,8 +163,14 @@ class GenericDefectEntry:
             defects concentration in cm^-3
         """
         n = self.multiplicity * 1e24 / self.bulk_structure.volume if per_unit_volume else self.multiplicity 
-        conc = n * np.exp(-1.0 * self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level) /
-                          (kb * temperature))
+        eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
+        
+        if occupation_function=='FD':
+            conc = n * fermi_dirac(eform,temperature)
+        elif occupation_function=='MB':
+            conc = n * maxwell_boltzmann(eform,temperature)
+        else:
+            raise ValueError('Invalid occupation function. Options are: "FD" for Fermi-Dirac and "MB" for Maxwell-Boltzmann.')
         return conc
     
     
@@ -612,8 +618,30 @@ class DefectComplexEntry(GenericDefectEntry):
         data = MontyDecoder().process_decoded(d['data']) if 'data' in d.keys() else None # ensure compatibility with old dictionaries
         label = d['label'] if 'label' in d.keys() else None # ensure compatibility with old dictionaries
         return cls(defect_list,bulk_structure,energy_diff,corrections,charge,multiplicity,data,label)
-    
-    
+
+
+
+def fermi_dirac(E,T):
+    """
+    Returns the defect occupation as a function of the formation energy,
+    using the Fermi-Dirac distribution with chemical potential equal to 0. 
+    Args:
+        E (float): energy in eV
+        T (float): the temperature in kelvin
+    """
+    return 1. / (1. + np.exp(E/(kb*T)) )
+
+
+def maxwell_boltzmann(E,T):
+    """
+    Returns the defect occupation as a function of the formation energy,
+    using the exponential dependence of the Maxwell-Boltzmann distribution. 
+    Args:
+        E (float): energy in eV
+        T (float): the temperature in kelvin
+    """
+    return np.exp(-1.0*E /(kb*T)) 
+
 
 # Latex formats for defect symbols    
 def get_formatted_legend(fullname):
