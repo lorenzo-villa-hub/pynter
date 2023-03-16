@@ -31,12 +31,15 @@ class DefectsAnalysis:
             contribution to formation energy).
         band_gap (float): Band gap to use for all defect entries.
             NOTE if using band shifting-type correction then this gap
-            should still be that of the Hybrid calculation you are shifting to.       
+            should still be that of the Hybrid calculation you are shifting to. 
+        occupation_function (str): Function to compute defect occupation. 
+            "FD" for Fermi-Dirac, "MB" for Maxwell-Boltzmann.
     """    
-    def __init__(self, entries, vbm, band_gap, sort_entries = True):
+    def __init__(self, entries, vbm, band_gap, sort_entries = True, occupation_function='FD'):
         self.entries = self.sort_entries(entries) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap
+        self.occupation_function = occupation_function
 
 
     def __str__(self):     
@@ -415,9 +418,9 @@ class DefectsAnalysis:
         """
         Give list of all concentrations at specified efermi.
         If frozen_defect_concentration is provided the concentration of defect entries are 
-        corrected according to the fixed provided values. reference to paper once (if?) is
-        published.
-            
+        corrected according to the fixed provided values. More details can be found in 
+        https://doi.org/10.1103/PhysRevB.106.134101 .
+        
         Labels are ignored when accounting for the defect species equilibrium.
             
         Parameters
@@ -450,14 +453,14 @@ class DefectsAnalysis:
             nsites = e.multiplicity * 1e24 / e.bulk_structure.volume if per_unit_volume else e.multiplicity
             # frozen defects approach
             if frozen_defect_concentrations:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
                 defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=bool(c<=nsites))
                 concentrations.append(defconc)     
             
             else:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
                 defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=bool(c<=nsites))
                 concentrations.append(defconc)
             
