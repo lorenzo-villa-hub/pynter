@@ -466,6 +466,22 @@ class DefectsAnalysis:
             
 
         return DefectConcentrations(concentrations)
+
+
+    def _get_total_charge(self,fermi_level,chemical_potentials, bulk_dos, temperature=300, 
+                          frozen_defect_concentrations=None,external_defects=[], per_unit_volume=True):
+        fdos = FermiDos(bulk_dos, bandgap=self.band_gap)
+        _,fdos_vbm = fdos.get_cbm_vbm()
+        
+        qd_tot = sum([
+            d.charge * d.conc
+            for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
+                                                frozen_defect_concentrations,per_unit_volume)])
+        #external fixed defects - D3
+        for d_ext in external_defects:
+            qd_tot += d_ext.charge * d_ext.conc
+        qd_tot += fdos.get_doping(fermi_level=fermi_level + fdos_vbm, temperature=temperature)
+        return qd_tot
             
  
     def equilibrium_fermi_level(self, chemical_potentials, bulk_dos, temperature=300, xtol=1e-05):
