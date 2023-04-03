@@ -6,14 +6,14 @@ Created on Mon Oct 12 15:27:33 2020
 @author: villa
 """
 
-from pymatgen.analysis.defects.utils import StructureMotifInterstitial
+#from pymatgen.analysis.defects.utils import StructureMotifInterstitial
 import numpy as np
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.periodic_table import Element
 from pymatgen.io.vasp.inputs import Poscar
 from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
-from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, Substitution, Defect
-from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
+#from pymatgen.analysis.defects.core import Vacancy , DefectEntry, Interstitial, Substitution, Defect
+#from pymatgen.analysis.defects.corrections import FreysoldtCorrection, KumagaiCorrection
 import os.path as op
 import os
 import importlib
