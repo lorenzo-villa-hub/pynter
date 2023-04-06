@@ -11,12 +11,11 @@ from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.periodic_table import Element
 from pymatgen.io.vasp.inputs import Poscar
 from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
-from pynter.defects.pmg.pmg_defects_core import Vacancy , DefectEntry, Interstitial, Substitution, Defect
-from pynter.defects.pmg.pmg_defects_corrections import FreysoldtCorrection, KumagaiCorrection
 import os.path as op
 import os
 import importlib
 from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
+from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectComplex
 from pymatgen.core.trajectory import Trajectory
 
 """Interstitial generator to be re-implemented using the new pymatgen defects"""
@@ -110,7 +109,7 @@ def create_substitution_structures(structure,replace,supercell_size=1):
         Dict with element symbol of specie to be replaced as keys and element 
         symbol of the species to be replaced with as values ({'old_El':{new_El}}).
     supercell_size : (int or numpy array), optional
-        Input for the generate_defect_structure function of the Substitution class.
+        Input for the generate_defect_structure function of the old pymatgen Substitution class.
 
     Returns
     -------
@@ -118,6 +117,7 @@ def create_substitution_structures(structure,replace,supercell_size=1):
         Dictionary with substitution types as keys and structures as values.
 
     """
+    from pynter.defects.pmg.pmg_defects_core import Substitution
     sub_structures={}
     bulk_structure = structure.copy()
     
@@ -150,8 +150,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     structure_bulk : (Pymatgen Structure object)
         Bulk structure.
     defects : (tuple or list). 
-        Tuple or list of tuples in the format (defect_site,defect_type)
-        The format is the same as the output of defect_finder. If None defect_finder is used. The default is None.
+        List of defect objects.
     sort_to_bulk : (bool)
         Sort Sites of the defect structure to match the order of coordinates in the bulk structure
         (useful if the non-relaxed defect structure is not available). 
@@ -174,12 +173,15 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     if defects:
         dfs = defects
     else:
-        dfs = defect_finder(df,bk,tol=tol)
-    
-    # handle single defect case
-    if not isinstance(dfs,list):
-        dfs = [dfs] 
-    for dsite,dtype in dfs:
+        df_found = defect_finder(df,bk,tol=tol)
+        if df_found.classname=='DefectComplex':
+            dfs = df_found.defects
+        else:
+            dfs = [df_found]
+   
+    for d in dfs:
+        dsite = d.site
+        dtype = d.classname
         if dtype == 'Vacancy':
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
@@ -187,6 +189,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
             df.insert(i=i,species=species,coords=dsite.frac_coords)
         elif dtype == 'Interstitial' and sort_to_bulk:
             extra_sites.append(dsite)
+
     # reorder to match bulk, useful if you don't have the non-relaxed defect structure
     if sort_to_bulk:
         new_structure = sort_sites_to_ref_coords(df, bk, extra_sites,tol=tol)
@@ -197,7 +200,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
         
 
 
-def defect_finder(structure_defect,structure_bulk,tol=1e-03):
+def _defect_finder_old(structure_defect,structure_bulk,tol=1e-03):
     """
     Function to find defect comparing defect and bulk structure (Pymatgen objects). 
 
@@ -214,7 +217,7 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     -------
     defects : (list)
         List of tuples with defect site (Pymatgen PeriodicSite object) and defect type ("Vacancy","Interstitial" or "Substitution")
-        for each point defect present. If len(defects) is 1 only the tuple is returned.
+        for each point defect present.
     """
     df = structure_defect
     bk = structure_bulk
@@ -237,12 +240,51 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03):
             dtype = 'Vacancy'
             defects.append((dsite,dtype))
     
-    if len(defects) == 1:
-        return defects[0]
-    else:
-        return defects
+    return defects
 
         
+def defect_finder(structure_defect,structure_bulk,tol=1e-03):
+    """
+    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    tol: (float)
+        Tolerance for fractional coordinates comparison.
+
+    Returns
+    -------
+    Defect object
+    """
+    df = structure_defect
+    bk = structure_bulk
+    defects = []
+    
+    for s in df:
+        is_site,index = is_site_in_structure_coords(s,bk,tol=tol)
+        if is_site:
+            if is_site_in_structure(s,bk,tol=tol)[0] == False:
+                defect = Substitution(s, bk,site_in_bulk=bk[index])
+                defects.append(defect)
+        else:
+            defect = Interstitial(s, bk)
+            defects.append(defect)
+            
+    for s in bk:
+        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
+            defect = Vacancy(s, bk)
+            defects.append(defect)
+    
+    if len(defects) > 1:
+        return DefectComplex(defects, structure_bulk)
+    else:
+        return defects[0]
+
+
 
 def get_trajectory_for_visualization(structure_defect,structure_bulk,defects=None,tol=1e-03,file=None):
     """

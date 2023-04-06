@@ -3,16 +3,11 @@
 
 import numpy as np
 from scipy.optimize import bisect
-from pymatgen.core.units import kb
-from pymatgen.core.structure import Structure, PeriodicSite, Lattice
-from pymatgen.core.periodic_table import Element
 from pymatgen.electronic_structure.dos import FermiDos
 import matplotlib
 import matplotlib.pyplot as plt
-from pynter.defects.pmg_dos import FermiDosCarriersInfo
-from pynter.defects.utils import get_delta_atoms
-from pynter.defects.entries import SingleDefectEntry, DefectComplexEntry, get_formatted_legend
-from pynter.tools.utils import get_object_feature, get_object_from_json
+from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
+from pynter.tools.utils import get_object_feature
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 import os.path as op
@@ -23,7 +18,7 @@ class DefectsAnalysis:
     """ 
     Class to compute defect properties starting from single calculations of defects
     Args:
-        entries (list): A list of SingleDefectEntry or DefectComplexEntry objects.
+        entries (list): A list of DefectEntry objects.
         vbm (float): Valence Band energy to use for all defect entries.
             NOTE if using band shifting-type correction then this VBM
             should still be that of the GGA calculation
@@ -146,16 +141,18 @@ class DefectsAnalysis:
         return names
     
     
-    def filter_entries(self,exclude=False,mode='and',entries=None,entry_class=None,elements=None,names=None,**kwargs):
+    def filter_entries(self,inplace=False,exclude=False,mode='and',entries=None,types=None,elements=None,names=None,**kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
         Parameters
         ----------
+        inplace : (bool)
+            Apply changes to current DefectsAnalysis object.
         entries : (list)
             List of defect entries.
-        entry_class : (str), optional
-            Class name of the entry. "SingleDefectEntry" or "DefectComplexEntry".
+        types : (list), optional
+            Class name of the defect in the entry.
         elements : (list), optional
             List of symbols of elements that need to belong to the defect specie.
             If None this criterion is ignored. The default is None.
@@ -171,12 +168,12 @@ class DefectsAnalysis:
         input_entries = entries if entries else self.entries 
         ent = input_entries.copy()
         sel_entries = []
-        if entry_class:
+        if types:
             if sel_entries and mode=='and':
                 ent = sel_entries.copy()
                 sel_entries = []
             for e in ent:
-                if e.classname == entry_class:
+                if e.defect_type in types:
                     sel_entries.append(e)
         
         if elements is not None:
@@ -216,13 +213,17 @@ class DefectsAnalysis:
             else:
                 if e in sel_entries:
                     output_entries.append(e) 
-                    
-        return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
+        
+        if inplace:
+            self.entries = output_entries
+            return
+        else:
+            return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
     
     
     def find_entries_by_type_and_specie(self,dtype,dspecie):
         """
-        Find entries by selecting defect type and defect specie. Finds only SingleDefectEntry objects.
+        Find entries by selecting defect type and defect specie. Finds only entries of single defects.
 
         Parameters
         ----------
@@ -238,8 +239,8 @@ class DefectsAnalysis:
         """
         sel_entries = []
         for e in self.entries:
-            if e.classname == 'SingleDefectEntry':
-                if e.defect.__class__.__name__ == dtype and e.defect.site.specie.symbol == dspecie:
+            if e.defect_type != 'DefectComplex':
+                if e.defect.defect_type == dtype and e.defect.site.specie.symbol == dspecie:
                     sel_entries.append(e)
         return sel_entries
     
@@ -299,8 +300,8 @@ class DefectsAnalysis:
         charge = stable_charges[name][0]
         binding_energy = stable_charges[name][1]
         entry = self.find_entry_by_name_and_charge(name, charge)
-        for sd in entry.defect_list:
-            dtype = sd.__class__.__name__
+        for sd in entry.defect.defects:
+            dtype = sd.defect_type
             dspecie = sd.site.specie.symbol
             dname = self.find_entries_by_type_and_specie(dtype,dspecie)[0].name
             binding_energy = binding_energy - stable_charges[dname][1]    
@@ -520,10 +521,10 @@ class DefectsAnalysis:
         # I kept 2 different functions to limit confusions and facilitate integrations with old notebooks
         """
         Solve charge neutrality in non-equilibrium conditions (when some concentrations are fixed).
-        If frozen_defect_concentration is not None the concentration for every SingleDefectEntry 
+        If frozen_defect_concentration is not None the concentration for every single defect 
         is normalized starting from the input fixed concentration as:
             C = C_eq * (Ctot_fix/Ctot_eq)
-        while for DefectComplexEntry this is applied for every single defect specie which
+        while for a defect complex this is applied for every single defect specie which
         is composing the complex (needs to be present in computed entries):
             C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
             
@@ -647,14 +648,18 @@ class DefectsAnalysis:
         Returns:
             {name: [(charge,formation energy)] }
         """
+        module = importlib.import_module("pynter.defects.defects")
         computed_charges = {}
-        for d in self.entries:
+        for e in self.entries:
+            defect_class = getattr(module,e.defect_type)
+            defect = defect_class(e.defect.site,)
+            dummy_defect = 
             name = d.name
             if name in computed_charges:
-                computed_charges[name].append((d.charge,d.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
+                computed_charges[name].append((e.charge,e.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
             else:
                 computed_charges[name] = []
-                computed_charges[name].append((d.charge,d.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
+                computed_charges[name].append((e.charge,e.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
         
         return computed_charges
             
@@ -789,7 +794,7 @@ class DefectsAnalysis:
         Plot binding energies for complex of defects as a function of the fermi level
         Args:
             names: 
-                List of strings with names of DefectComplexEntry. If None all DefectComplexEntry
+                List of strings with names of DefectEntry. If None all DefectEntry
                 objects are plotted.
             xlim:
                 Tuple (min,max) giving the range of the x (fermi energy) axis
@@ -812,12 +817,12 @@ class DefectsAnalysis:
         if not names:
             names = []
             for e in self.entries:
-                if e.classname == 'DefectComplexEntry':
+                if e.defect_type == 'DefectComplex':
                     if e.name not in names:
                         names.append(e.name)        
         # getting binding energy at different fermi levels for every name in list
         for name in names:
-            label = self._get_formatted_legend(name) if format_legend else name
+            label = self.find_entries_by_name(name)[0].symbol if format_legend else name
             for i in range(0,len(ef)):
                 binding_energy[i] = self.binding_energy(name,fermi_level=ef[i])            
             plt.plot(ef,binding_energy, linewidth=2.5*size,label=label)
@@ -902,6 +907,37 @@ class DefectsAnalysis:
         
         return plt  
             
+
+    def _stable_charges_old(self,chemical_potentials,fermi_level=0):
+        """
+        Creating a dictionary with names of single defect entry as keys and
+        as value a tuple (charge,formation_energy) that gives the most stable 
+        charge state at the inserted fermi level.
+        Every defect name identifies a type of defect
+        Args:
+            chemical_potentials:
+                a dictionnary of {Element:value} giving the chemical
+                potential of each element
+            fermi_level:
+                Value of fermi level to use for calculating formation energies 
+        Returns:
+            {name:(stable charge, formation energy)}
+       """
+        computed_charges = self.formation_energies(chemical_potentials,fermi_level=fermi_level)        
+        stable_charges = {}
+        for name in computed_charges:
+            emin = 1e40
+            for d in computed_charges[name]:
+                q = d[0]
+                energy = d[1]
+                # finding most stable charge state
+                if energy < emin:
+                    emin = energy
+                    q_stable = q
+            stable_charges[name] = (q_stable,emin)
+            
+        return stable_charges
+
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """
@@ -939,7 +975,7 @@ class SingleDefConc:
     
     def __init__(self,**kwargs):
         """
-        Object to store defect concentrations data. Is also subscribtable like a dictionary.
+        Object to store defect concentrations data. It is also subscribtable like a dictionary.
 
         Parameters
         ----------

@@ -254,7 +254,16 @@ class VaspJob(Job):
             band_gap = self.computed_entry.data['eigenvalue_band_properties'][0]
             
         return band_gap
-    
+ 
+    @property
+    def cbm(self):
+        """"Conduction band minimum"""
+        return self.computed_entry.data['eigenvalue_band_properties'][1]  
+
+    @property
+    def vbm(self):
+        """"valence band maximum"""
+        return self.computed_entry.data['eigenvalue_band_properties'][2]    
 
     @property
     def final_energy(self):
@@ -380,6 +389,7 @@ class VaspJob(Job):
         else:
             print('Ionic steps data not present in ComputedStructureEntry')
             return None
+
 
 
     def delete_output_files(self,safety=True):

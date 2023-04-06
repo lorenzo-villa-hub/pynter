@@ -103,7 +103,8 @@ def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,e
     path_to_defect_locpot = op.join(job_defect.path,'LOCPOT')
     path_to_pure_locpot = op.join(job_bulk.path,'LOCPOT')
 
-    defect_site, defect_type = defect_finder(structure_defect, structure_bulk,tol)
+    df_found = defect_finder(structure_defect, structure_bulk, tol=tol)
+    defect_site, defect_type = df_found.site, df_found.defect_type
     defect_specie = defect_site.specie.symbol
     defect_site_coordinates = defect_site.frac_coords
     charge = job_defect.charge
@@ -160,7 +161,8 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
     """
     
     if not defect_site and not defect_type and not defect_specie:
-        defect_site, defect_type = defect_finder(structure_defect, structure_bulk, tol=tol)
+        df_found = defect_finder(structure_defect, structure_bulk, tol=tol)
+        defect_site, defect_type = df_found.site, df_found.defect_type
         defect_specie = defect_site.specie.symbol
    
     site_matching_indices = []
@@ -233,7 +235,8 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defec
     path_to_defect_outcar = op.join(job_defect.path)
     path_to_bulk_outcar = op.join(job_bulk.path)
 
-    defect_site, defect_type = defect_finder(structure_defect, structure_bulk,tol)
+    df_found = defect_finder(structure_defect, structure_bulk, tol=tol)
+    defect_site, defect_type = df_found.site, df_found.defect_type
     defect_specie = defect_site.specie.symbol
     
     charge = job_defect.charge

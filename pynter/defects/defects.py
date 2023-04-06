@@ -5,12 +5,22 @@ Created on Mon Apr  3 14:08:42 2023
 
 @author: villa
 """
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
+from monty.json import MSONable
 from pymatgen.core.composition import Composition
+import json
+from monty.json import MontyDecoder, MontyEncoder
+from pymatgen.core.sites import PeriodicSite
 
 # Adapted from pymatgen.analysis.defect.core 
 
-class Defect:
+class GenericDefect:
+    def __init__(defect_type,defect_specie):
+        self.type
+        self.specie
+
+
+class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_dict methods
     """
     Abstract class for a single point defect
     """
@@ -42,6 +52,13 @@ class Defect:
         return self.__repr__()
 
     @property
+    def site(self):
+        """
+        Defect position as a site object
+        """
+        return self._defect_site
+
+    @property
     def bulk_structure(self):
         """
         Returns the structure without any defects.
@@ -56,19 +73,16 @@ class Defect:
         return self._charge
 
     @property
-    def site(self):
-        """
-        Defect position as a site object
-        """
-        return self._defect_site
-
-    @property
     def multiplicity(self):
         """
         Multiplicity of a defect site within the structure
         """
         return self._multiplicity
       
+    @property
+    def defect_type(self):
+        return self.__class__.__name__
+
     @property 
     @abstractmethod
     def defect_composition(self):
@@ -125,6 +139,13 @@ class Defect:
         Sets the charge of the defect.
         """
         self._charge = new_charge
+        return
+    
+    def set_multiplicity(self, new_multiplicity=1):
+        """
+        Sets the charge of the defect.
+        """
+        self._multiplicity = new_multiplicity
         return
         
         
@@ -199,6 +220,8 @@ class Substitution(Defect):
             site = min(
                 self.bulk_structure.get_sites_in_sphere(self.site.coords, 0.5, include_index=True),
                            key=lambda x: x[1])  
+            # there's a bug in pymatgen PeriodicNeighbour._from_dict and the specie attribute, get PeriodicSite instead
+            site = PeriodicSite(site.species, site.coords, site.lattice)
             return site
         except:
             return ValueError("""No equivalent site has been found in bulk, defect and bulk structures are too different.\
@@ -210,7 +233,7 @@ Try using the unrelaxed defect structure or provide bulk site manually""")
         """
         Returns a name for this defect
         """
-        return "Sub_{}_on_{}".format(self.site.specie, self.site_in_bulk.specie)    
+        return "Sub_{}_on_{}".format(self.site.specie.symbol, self.site_in_bulk.specie)    
     
     @property
     def symbol(self):
@@ -289,9 +312,9 @@ class Polaron(Defect):
 
     
     
-class DefectComplex:
+class DefectComplex(MSONable,metaclass=ABCMeta):
 
-    def __init__(self,defects,bulk_structure,charge,multiplicity):
+    def __init__(self,defects,bulk_structure,charge=None,multiplicity=None):
         """
         Class to describe defect complexes
 
@@ -342,6 +365,10 @@ class DefectComplex:
         return self._charge
 
     @property
+    def defect_type(self):
+        return self.__class__.__name__
+
+    @property
     def multiplicity(self):
         """
         Multiplicity of a defect site within the structure
@@ -349,11 +376,41 @@ class DefectComplex:
         return self._multiplicity
 
     @property
+    def name(self):
+        return '-'.join([d.name for d in self.defects])
+    
+    @property
+    def symbol(self):
+        return '-'.join([d.symbol for d in self.defects])
+
+    @property
+    def symbol_with_charge(self):
+        """
+        Name in latex format with charge written as a number.
+        """
+        return format_legend_with_charge_number(self.symbol,self.charge)
+    
+    @property
+    def symbol_with_charge_kv(self):
+        """
+        Name in latex format with charge written with kroger and vink notation.
+        """
+        return format_legend_with_charge_kv(self.symbol,self.charge)
+
+    @property
+    def sites(self):
+        return [d.site for d in self.defects]
+
+    @property
     def defect_species(self):
         ds = []
         for d in self.defects:
             ds.append({'type':d.__class__.__name__, 'specie':d.site.specie.symbol, 'name':d.name})
         return ds 
+
+    @property
+    def defect_names(self):
+        return [d.name for d in self.defects]
 
 
     @property
@@ -372,8 +429,23 @@ class DefectComplex:
                     prec = da_global[e] if e in da_global.keys() else 0
                     da_global[e] = prec + da_single[e]       
         return da_global    
-    
 
+
+    def set_charge(self, new_charge=0.0):
+        """
+        Sets the charge of the defect.
+        """
+        self._charge = new_charge
+        return    
+
+    def set_multiplicity(self, new_multiplicity=1):
+        """
+        Sets the charge of the defect.
+        """
+        self._multiplicity = new_multiplicity
+        return
+    
+    
 
 def format_legend_with_charge_number(label,charge):
     """
@@ -405,9 +477,10 @@ def format_legend_with_charge_kv(label,charge):
     label : (str)
         Original name of the defect.
     charge : (int or float)
-        Charge of the defect.
+        Charge of the defect. Floats are converted to integer.
     """
     mod_label = label[:-1]
+    charge = int(charge)
     if charge < 0:
         for i in range(0,abs(charge)):
             if i == 0:
