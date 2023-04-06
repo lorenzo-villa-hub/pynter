@@ -648,13 +648,9 @@ class DefectsAnalysis:
         Returns:
             {name: [(charge,formation energy)] }
         """
-        module = importlib.import_module("pynter.defects.defects")
         computed_charges = {}
         for e in self.entries:
-            defect_class = getattr(module,e.defect_type)
-            defect = defect_class(e.defect.site,)
-            dummy_defect = 
-            name = d.name
+            name = e.name
             if name in computed_charges:
                 computed_charges[name].append((e.charge,e.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
             else:
@@ -907,37 +903,6 @@ class DefectsAnalysis:
         
         return plt  
             
-
-    def _stable_charges_old(self,chemical_potentials,fermi_level=0):
-        """
-        Creating a dictionary with names of single defect entry as keys and
-        as value a tuple (charge,formation_energy) that gives the most stable 
-        charge state at the inserted fermi level.
-        Every defect name identifies a type of defect
-        Args:
-            chemical_potentials:
-                a dictionnary of {Element:value} giving the chemical
-                potential of each element
-            fermi_level:
-                Value of fermi level to use for calculating formation energies 
-        Returns:
-            {name:(stable charge, formation energy)}
-       """
-        computed_charges = self.formation_energies(chemical_potentials,fermi_level=fermi_level)        
-        stable_charges = {}
-        for name in computed_charges:
-            emin = 1e40
-            for d in computed_charges[name]:
-                q = d[0]
-                energy = d[1]
-                # finding most stable charge state
-                if energy < emin:
-                    emin = energy
-                    q_stable = q
-            stable_charges[name] = (q_stable,emin)
-            
-        return stable_charges
-
     
     def stable_charges(self,chemical_potentials,fermi_level=0):
         """

@@ -14,18 +14,13 @@ from pymatgen.core.sites import PeriodicSite
 
 # Adapted from pymatgen.analysis.defect.core 
 
-class GenericDefect:
-    def __init__(defect_type,defect_specie):
-        self.type
-        self.specie
-
 
 class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_dict methods
     """
     Abstract class for a single point defect
     """
 
-    def __init__(self, defect_site, bulk_structure, charge=None, multiplicity=None):
+    def __init__(self, defect_site, bulk_structure=None, charge=None, multiplicity=None):
         """
         Base class for defect objets
 
@@ -189,7 +184,11 @@ class Substitution(Defect):
     Subclass of Defect for substitutional defects.
     """
 
-    def __init__(self,defect_site,bulk_structure,charge=None,multiplicity=None,site_in_bulk=None):
+    def __init__(self,defect_site,bulk_structure=None,charge=None,multiplicity=None,site_in_bulk=None):
+        """
+        site_in_bulk: (PeriodicSite)
+            Original Site in bulk structure were substitution took place
+        """
         super().__init__(defect_site,bulk_structure,charge,multiplicity)  
         self._site_in_bulk = site_in_bulk if site_in_bulk else self.get_site_in_bulk()
 
