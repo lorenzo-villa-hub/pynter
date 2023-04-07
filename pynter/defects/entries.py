@@ -125,10 +125,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return self.defect.delta_atoms
         
 
-    def __str__(self):
-        return self.__repr__()
-
     def __repr__(self):
+        return "Name: %s, Charge: %i" %(self.name,self.charge)
+
+    def __str__(self):
         output = [
             "DefectEntry",
             "Defect: %s" %(self.defect.__str__()),

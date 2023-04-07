@@ -35,7 +35,8 @@ class DefectsAnalysis:
         self.vbm = vbm
         self.band_gap = band_gap
         self.occupation_function = occupation_function
-
+        self.groups = self._group_entries()
+        self.group_names = list(self.groups.keys())
 
     def __str__(self):     
         return self.get_dataframe().__str__()
@@ -46,6 +47,15 @@ class DefectsAnalysis:
     def __iter__(self):
         return self.entries.__iter__()
     
+    def _group_entries(self):
+        groups = {}
+        for e in self.entries:
+            if e.name not in groups.keys():
+                groups[e.name] = [e]
+            else:
+                groups[e.name].append(e)
+        return groups
+            
     
     def as_dict(self):
         """

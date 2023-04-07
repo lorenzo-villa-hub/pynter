@@ -433,13 +433,15 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         return
     
 
-class DefectName(str):
+class DefectName(str): # fix label
     
     def __init__(self, name):
         super().__init__()
         self.name = name
         
-        nsplit = self.name.split('_')
+        nolabel_name,label = self.name.split('(')
+        self._label = label.strip(')')
+        nsplit = nolabel_name.split('_')
         ntype = nsplit[0]
         el = nsplit[1]
         if ntype=='Vac':
@@ -493,6 +495,10 @@ class DefectName(str):
     @property        
     def dspecie(self):
         return self._dspecie
+
+    @property
+    def label(self):
+        return self._label
 
     @property
     def symbol(self):
