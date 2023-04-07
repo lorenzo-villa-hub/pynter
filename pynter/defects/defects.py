@@ -108,12 +108,11 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         return
     
     @property  
-    @abstractmethod
     def symbol(self):
         """
         Latex formatted name of the defect
         """
-        return
+        return self.name.symbol
 
     @property
     def symbol_with_charge(self):
@@ -172,11 +171,8 @@ class Vacancy(Defect):
         """
         Name of the defect.
         """
-        return "Vac_{}".format(self.site.specie.symbol)
-    
-    @property
-    def symbol(self):
-        return "$V_{"+self.site.specie.symbol+"}$"
+        name = "Vac_{}".format(self.site.specie.symbol)
+        return DefectName(name)
         
     
 class Substitution(Defect):
@@ -232,11 +228,9 @@ Try using the unrelaxed defect structure or provide bulk site manually""")
         """
         Returns a name for this defect
         """
-        return "Sub_{}_on_{}".format(self.site.specie.symbol, self.site_in_bulk.specie)    
+        name = "Sub_{}_on_{}".format(self.site.specie.symbol, self.site_in_bulk.specie)
+        return DefectName(name)   
     
-    @property
-    def symbol(self):
-        return "$"+self.site.specie.symbol+"_{"+self.site_in_bulk.specie.symbol+"}$"
 
     @property
     def site_in_bulk(self):
@@ -273,12 +267,9 @@ class Interstitial(Defect):
         """
         Name of the defect
         """
-        return "Int_{}".format(self.site.specie)   
-    
-    @property
-    def symbol(self):
-        return "$"+self.site.specie.symbol+"_{i}}$"
-    
+        name = "Int_{}".format(self.site.specie)
+        return DefectName(name)   
+        
   
     
 class Polaron(Defect):
@@ -303,12 +294,9 @@ class Polaron(Defect):
         """
         Name of the defect
         """
-        return "Pol_{}".format(self.site.specie)   
+        name = "Pol_{}".format(self.site.specie)
+        return DefectName(name)
   
-    @property
-    def symbol(self):
-        return "$"+self.site.specie.symbol+"_{"+self.site.specie.symbol+"}$"
-
     
     
 class DefectComplex(MSONable,metaclass=ABCMeta):
@@ -376,11 +364,11 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
 
     @property
     def name(self):
-        return '-'.join([d.name for d in self.defects])
+        return DefectComplexName([d.name for d in self.defects])
     
     @property
     def symbol(self):
-        return '-'.join([d.symbol for d in self.defects])
+        return self.name.symbol
 
     @property
     def symbol_with_charge(self):
@@ -443,6 +431,110 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         """
         self._multiplicity = new_multiplicity
         return
+    
+
+class DefectName(str):
+    
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        
+        nsplit = self.name.split('_')
+        ntype = nsplit[0]
+        el = nsplit[1]
+        if ntype=='Vac':
+            self._dtype = 'Vacancy'
+            self._dspecie = el
+            self._symbol = "$V_{"+el+"}$"
+        elif ntype=='Int':
+            self._dtype = 'Interstitial'
+            self._dspecie = el
+            self._symbol = "$"+el+"_{i}$"
+        elif ntype=='Sub':
+            self._dtype = 'Substitution'
+            self._dspecie = el
+            el_bulk = nsplit[3]
+            self._bulk_specie = el_bulk
+            self._symbol = "$"+el+"_{"+el_bulk+"}$"
+        elif ntype=='Pol':
+            self._dtype = 'Polaron'
+            self._dspecie = el
+            self._symbol = "$"+el+"_{"+el+"}$"
+    
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.name
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif isinstance(other, DefectName):
+            return self.name == other.name
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.name)
+
+    @property    
+    def bulk_specie(self):
+        if hasattr(self, '_bulk_specie'):
+            bulk_specie = self._bulk_specie
+        else:
+            bulk_specie = None
+        return bulk_specie
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property        
+    def dspecie(self):
+        return self._dspecie
+
+    @property
+    def symbol(self):
+        return self._symbol
+        
+
+
+class DefectComplexName(str):
+    
+    def __init__(self,defect_names):
+        super().__init__()
+        self.defect_names = defect_names
+        self.name = '-'.join(defect_names)
+        
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.name
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.name == other
+        elif isinstance(other, DefectName):
+            return self.name == other.name
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.name)
+    
+    @property
+    def dtype(self):
+        return 'DefectComplex'
+    
+    @property
+    def dspecies(self):
+        return [n.dspecie for n in self.defect_names]
+    
+    @property
+    def symbol(self):
+        return '-'.join([n.symbol for n in self.defect_names])
     
     
 
