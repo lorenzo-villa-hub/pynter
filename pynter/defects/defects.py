@@ -20,7 +20,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
     Abstract class for a single point defect
     """
 
-    def __init__(self, defect_site, bulk_structure=None, charge=None, multiplicity=None):
+    def __init__(self, defect_site, bulk_structure, charge=None, multiplicity=None):
         """
         Base class for defect objets
 
@@ -184,7 +184,7 @@ class Substitution(Defect):
     Subclass of Defect for substitutional defects.
     """
 
-    def __init__(self,defect_site,bulk_structure=None,charge=None,multiplicity=None,site_in_bulk=None):
+    def __init__(self,defect_site,bulk_structure,charge=None,multiplicity=None,site_in_bulk=None):
         """
         site_in_bulk: (PeriodicSite)
             Original Site in bulk structure were substitution took place
