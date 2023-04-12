@@ -20,7 +20,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
     Abstract class for a single point defect
     """
 
-    def __init__(self, defect_site, bulk_structure, charge=None, multiplicity=None):
+    def __init__(self, defect_site, bulk_structure, charge=None, multiplicity=None,label=None):
         """
         Base class for defect objets
 
@@ -39,6 +39,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         self._bulk_structure = bulk_structure
         self._charge = charge
         self._multiplicity = multiplicity 
+        self._label = label
 
     def __repr__(self):
         return "{} : {} {}".format(self.__class__.__name__,self.site.frac_coords, self.site.specie.symbol)
@@ -99,6 +100,10 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         """
         return
 
+    @property
+    def label(self):
+        return self._label
+
     @property  
     @abstractmethod
     def name(self):
@@ -135,6 +140,13 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         self._charge = new_charge
         return
     
+    def set_label(self,new_label):
+        """
+        Sets the label of the defect
+        """
+        self._label = new_label
+        return
+
     def set_multiplicity(self, new_multiplicity=1):
         """
         Sets the charge of the defect.
@@ -172,7 +184,7 @@ class Vacancy(Defect):
         Name of the defect.
         """
         name = "Vac_{}".format(self.site.specie.symbol)
-        return DefectName(name)
+        return DefectName(name,self.label)
         
     
 class Substitution(Defect):
@@ -180,12 +192,12 @@ class Substitution(Defect):
     Subclass of Defect for substitutional defects.
     """
 
-    def __init__(self,defect_site,bulk_structure,charge=None,multiplicity=None,site_in_bulk=None):
+    def __init__(self,defect_site,bulk_structure,charge=None,multiplicity=None,label=None,site_in_bulk=None):
         """
         site_in_bulk: (PeriodicSite)
             Original Site in bulk structure were substitution took place
         """
-        super().__init__(defect_site,bulk_structure,charge,multiplicity)  
+        super().__init__(defect_site,bulk_structure,charge,multiplicity,label)  
         self._site_in_bulk = site_in_bulk if site_in_bulk else self.get_site_in_bulk()
 
 
@@ -229,7 +241,7 @@ Try using the unrelaxed defect structure or provide bulk site manually""")
         Returns a name for this defect
         """
         name = "Sub_{}_on_{}".format(self.site.specie.symbol, self.site_in_bulk.specie)
-        return DefectName(name)   
+        return DefectName(name,self.label)   
     
 
     @property
@@ -268,7 +280,7 @@ class Interstitial(Defect):
         Name of the defect
         """
         name = "Int_{}".format(self.site.specie)
-        return DefectName(name)   
+        return DefectName(name,self.label)   
         
   
     
@@ -295,13 +307,13 @@ class Polaron(Defect):
         Name of the defect
         """
         name = "Pol_{}".format(self.site.specie)
-        return DefectName(name)
+        return DefectName(name,self.label)
   
     
     
 class DefectComplex(MSONable,metaclass=ABCMeta):
 
-    def __init__(self,defects,bulk_structure,charge=None,multiplicity=None):
+    def __init__(self,defects,bulk_structure,charge=None,multiplicity=None,label=None):
         """
         Class to describe defect complexes
 
@@ -320,6 +332,7 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         self._bulk_structure = bulk_structure
         self._charge = charge
         self._multiplicity = multiplicity
+        self._label = label
 
     def __repr__(self):
         return "{} : {}".format(self.__class__.__name__,
@@ -356,6 +369,10 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         return self.__class__.__name__
 
     @property
+    def label(self):
+        return self._label
+
+    @property
     def multiplicity(self):
         """
         Multiplicity of a defect site within the structure
@@ -364,7 +381,7 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
 
     @property
     def name(self):
-        return DefectComplexName([d.name for d in self.defects])
+        return DefectComplexName([d.name for d in self.defects],self.label)
     
     @property
     def symbol(self):
@@ -418,14 +435,21 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         return da_global    
 
 
-    def set_charge(self, new_charge=0.0):
+    def set_charge(self, new_charge):
         """
         Sets the charge of the defect.
         """
         self._charge = new_charge
         return    
 
-    def set_multiplicity(self, new_multiplicity=1):
+    def set_label(self,new_label):
+        """
+        Sets the label of the defect
+        """
+        self._label = new_label
+        return
+
+    def set_multiplicity(self, new_multiplicity):
         """
         Sets the charge of the defect.
         """
@@ -433,52 +457,78 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         return
     
 
-class DefectName(str): # fix label
+class DefectName(str):
     
-    def __init__(self, name):
-        super().__init__()
-        self.name = name
+    def __new__(cls, name, label=None):
+        if label:
+            fullname =  name + '(%s)'%label
+        else:
+            fullname = name
+        instance = super().__new__(cls,fullname)        
+        instance._name = name
+        instance._label = label
+        instance._fullname = fullname
+        return instance
+
+    def __init__(self,name,label=None):
+        """
+        Class to systematically organize the name of a defect.
+        Behaves like a string, with the additional attributes.
+
+        Parameters
+        ----------
+        name : (str)
+            Name of the defect. Names conventions are set in the Defect objects.
+        label : (str), optional
+            Label for the defect. Will be displayed in parenthesis after the name. The default is None.
+        """
+        super().__init__() # init string
         
-        nolabel_name,label = self.name.split('(')
-        self._label = label.strip(')')
-        nsplit = nolabel_name.split('_')
+        nsplit = self.name.split('_')
         ntype = nsplit[0]
         el = nsplit[1]
         if ntype=='Vac':
-            self._dtype = 'Vacancy'
-            self._dspecie = el
-            self._symbol = "$V_{"+el+"}$"
+            dtype = 'Vacancy'
+            dspecie = el
+            symbol = "$V_{"+el+"}$"
         elif ntype=='Int':
-            self._dtype = 'Interstitial'
-            self._dspecie = el
-            self._symbol = "$"+el+"_{i}$"
+            dtype = 'Interstitial'
+            dspecie = el
+            symbol = "$"+el+"_{i}$"
         elif ntype=='Sub':
-            self._dtype = 'Substitution'
-            self._dspecie = el
+            dtype = 'Substitution'
+            dspecie = el
             el_bulk = nsplit[3]
             self._bulk_specie = el_bulk
-            self._symbol = "$"+el+"_{"+el_bulk+"}$"
+            symbol = "$"+el+"_{"+el_bulk+"}$"
         elif ntype=='Pol':
-            self._dtype = 'Polaron'
-            self._dspecie = el
-            self._symbol = "$"+el+"_{"+el+"}$"
+            dtype = 'Polaron'
+            dspecie = el
+            symbol = "$"+el+"_{"+el+"}$"
+        
+        self._dtype = dtype
+        self._dspecie = dspecie
+        if label:
+            self._symbol = symbol + '(%s)'%label
+        else:
+            self._symbol = symbol
     
     def __str__(self):
-        return self.name
+        return self.fullname
     
     def __repr__(self):
-        return self.name
+        return self.fullname
 
     def __eq__(self, other):
         if isinstance(other, str):
-            return self.name == other
+            return self.fullname == other
         elif isinstance(other, DefectName):
-            return self.name == other.name
+            return self.fullname == other.fullname
         else:
             return False
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.fullname)
 
     @property    
     def bulk_specie(self):
@@ -497,38 +547,75 @@ class DefectName(str): # fix label
         return self._dspecie
 
     @property
+    def fullname(self):
+        return self._fullname
+
+    @property
     def label(self):
         return self._label
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def symbol(self):
         return self._symbol
-        
-
+          
+    
 
 class DefectComplexName(str):
     
-    def __init__(self,defect_names):
+    def __new__(cls, defect_names, label=None):
+        defect_names = [DefectName(n.name,label=None) for n in defect_names] #exclude labels
+        name = '-'.join(defect_names)
+        if label:
+            fullname =  name + '(%s)'%label
+        else:
+            fullname = name
+        instance = super().__new__(cls,fullname)        
+        instance._name = name
+        instance._label = label
+        instance._fullname = fullname
+        instance._defect_names = defect_names
+        return instance
+    
+    def __init__(self,defect_names,label=None):
+        """
+        Class to systematically organize the name of a defect complex. The name of the 
+        complex concatenates with '-' the names of the single defects.
+        Behaves like a string, with the additional attributes.
+
+        Parameters
+        ----------
+        defect_names : (list)
+            List of DefectName objects.
+        label : (str), optional
+            Label for the defect. Will be displayed in parenthesis after the name. The default is None.
+        """
         super().__init__()
-        self.defect_names = defect_names
-        self.name = '-'.join(defect_names)
+        
         
     def __str__(self):
-        return self.name
+        return self.fullname
     
     def __repr__(self):
-        return self.name
+        return self.fullname
 
     def __eq__(self, other):
         if isinstance(other, str):
-            return self.name == other
+            return self.fullname == other
         elif isinstance(other, DefectName):
-            return self.name == other.name
+            return self.fullname == other.fullname
         else:
             return False
 
     def __hash__(self):
-        return hash(self.name)
+        return hash(self.fullname)
+
+    @property
+    def defect_names(self):
+        return self._defect_names
     
     @property
     def dtype(self):
@@ -539,8 +626,23 @@ class DefectComplexName(str):
         return [n.dspecie for n in self.defect_names]
     
     @property
+    def fullname(self):
+        return self._fullname
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def name(self):
+        return self._name
+    
+    @property
     def symbol(self):
-        return '-'.join([n.symbol for n in self.defect_names])
+        symbol = '-'.join([n.symbol for n in self.defect_names]) 
+        if self.label:
+            symbol = symbol + '(%s)'%self.label 
+        return symbol
     
     
 

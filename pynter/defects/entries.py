@@ -17,6 +17,7 @@ from pynter.defects.structure import defect_finder
 from monty.json import MontyDecoder, MontyEncoder
 from pynter.defects.elasticity import Stresses
 from pynter.defects.defects import format_legend_with_charge_kv, format_legend_with_charge_number
+#from pynter.defects.defects import DefectName,
 
 
 
@@ -42,7 +43,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
         self._data = data if data else {}
-        self._label = label 
+        self._defect.set_label(label)
    
     @property
     def defect(self):
@@ -71,21 +72,20 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
     @property
     def label(self):
-        return self._label
+        return self.defect.label
+    
+    @label.setter
+    def label(self,label):
+        self.defect.set_label(label)
+        return
     
     @property
     def name(self):
-        name = self.defect.name
-        if self.label:
-            name += f"({self.label})"
-        return name
+        return self.defect.name
     
     @property
     def symbol(self):
-        symbol = self.defect.symbol
-        if self.label:
-            symbol += f"({self.label})"
-        return symbol
+        return self.defect.name.symbol
 
     @property
     def symbol_full(self):
@@ -113,7 +113,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     
     @multiplicity.setter
     def multiplicity(self,multiplicity):
-        self.defect._multiplicity = multiplicity
+        self.defect.set_multiplicity(multiplicity)
         return
 
     @property
@@ -126,7 +126,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         
 
     def __repr__(self):
-        return "Name: %s, Charge: %i" %(self.name,self.charge)
+        return "DefectEntry: Name=%s, Charge=%i" %(self.name,self.charge)
 
     def __str__(self):
         output = [
@@ -247,7 +247,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return formation_energy
 
 
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, per_unit_volume=True,occupation_function='FD'):
+    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
+                             per_unit_volume=True,occupation_function='MB'):
         """
         Compute the defect concentration for a temperature and Fermi level.
         Args:
@@ -310,6 +311,8 @@ def maxwell_boltzmann(E,T):
     """
     Returns the defect occupation as a function of the formation energy,
     using the exponential dependence of the Maxwell-Boltzmann distribution. 
+    This is the more common approach, which is the approximation of the FD-like 
+    distribution for N_sites >> N_defects.
     Args:
         E (float): energy in eV
         T (float): the temperature in kelvin
