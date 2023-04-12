@@ -36,7 +36,7 @@ class DefectsAnalysis:
         self.band_gap = band_gap
         self.occupation_function = occupation_function
         self.groups = self._group_entries()
-        self.group_names = list(self.groups.keys())
+        self.names = list(self.groups.keys())
 
     def __str__(self):     
         return self.get_dataframe().__str__()
@@ -136,22 +136,10 @@ class DefectsAnalysis:
             return
         else:
             return d.__str__() 
-    
-    
-    @property
-    def names(self):
-        """
-        Returns a list with all the different names of defect entries
-        """
-        names = []
-        for d in self.entries:
-            if d.name not in names:
-                names.append(d.name)
         
-        return names
     
-    
-    def filter_entries(self,inplace=False,exclude=False,mode='and',entries=None,types=None,elements=None,names=None,**kwargs):
+    def filter_entries(self,inplace=False,exclude=False,mode='and',entries=None,
+                       types=None,elements=None,names=None,**kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
@@ -159,6 +147,10 @@ class DefectsAnalysis:
         ----------
         inplace : (bool)
             Apply changes to current DefectsAnalysis object.
+        exclude : (bool), optional
+            Exclude the entries satisfying the criteria instead of selecting them. The default is False.
+        mode : (str), optional
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'.
         entries : (list)
             List of defect entries.
         types : (list), optional
@@ -175,6 +167,42 @@ class DefectsAnalysis:
         -------
         DefectsAnalysis object.
         """
+        output_entries = self.select_entries(exclude,mode,entries,types,elements,names,**kwargs)
+        
+        if inplace:
+            self.entries = output_entries
+            return
+        else:
+            return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
+   
+    
+    def select_entries(self,exclude=False,mode='and',entries=None,
+                       types=None,elements=None,names=None,**kwargs):
+        """
+        Find entries based on different criteria. Returns a list of DefectEntry objects.
+
+        Parameters
+        ----------
+        exclude : (bool), optional
+            Exclude the entries satisfying the criteria instead of selecting them. The default is False.
+        mode : (str), optional
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+        entries : (list)
+            List of defect entries.
+        types : (list), optional
+            Class name of the defect in the entry.
+        elements : (list), optional
+            List of symbols of elements that need to belong to the defect specie.
+            If None this criterion is ignored. The default is None.
+        names : (list)
+            List of entry names.
+        **kwargs : (dict)
+            Criterion based on attributes or methods of defect entry (e.g. charge=1).
+
+        Returns
+        -------
+        List of DefectEntry objects.
+        """        
         input_entries = entries if entries else self.entries 
         ent = input_entries.copy()
         sel_entries = []
@@ -192,8 +220,8 @@ class DefectsAnalysis:
                 sel_entries = []
             for e in ent:
                 select = False                
-                for d in e.defect_species:
-                    if d['specie'] in elements:
+                for dn in e.name:
+                    if dn.dspecie in elements:
                         select = True
                 if select:
                     sel_entries.append(e)
@@ -223,12 +251,8 @@ class DefectsAnalysis:
             else:
                 if e in sel_entries:
                     output_entries.append(e) 
-        
-        if inplace:
-            self.entries = output_entries
-            return
-        else:
-            return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
+    
+        return output_entries    
     
     
     def find_entries_by_type_and_specie(self,dtype,dspecie):
@@ -402,10 +426,10 @@ class DefectsAnalysis:
 
     def _get_frozen_correction(self,e,frozen,dc):
         corr = 1
-        for ds in e.defect_species:
-            typ, specie, name = ds['type'], ds['specie'], ds['name']
+        for dn in e.name:
+            typ, specie, name = dn.dtype, dn.dspecie, dn.name
             if typ == 'Vacancy':
-                k = f'Vac_{specie}'
+                k = name
                 if k in frozen.keys():
                     eltot = dc.get_element_total(specie,vacancy=True)
                     corr = corr * (frozen[k]/eltot)
@@ -467,12 +491,12 @@ class DefectsAnalysis:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=bool(c<=nsites))
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,stable=bool(c<=nsites))
                 concentrations.append(defconc)     
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,defect_species=e.defect_species,stable=bool(c<=nsites))
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,stable=bool(c<=nsites))
                 concentrations.append(defconc)
             
 
@@ -580,8 +604,32 @@ class DefectsAnalysis:
             return qd_tot
                        
         return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=xtol)
-            
-     
+
+
+    def formation_energies(self,chemical_potentials,fermi_level=0):
+        """
+        Creating a dictionary with names of single defect entry as keys and
+        a list of tuples (charge,formation_energy) as values
+        Every defect name identifies a type of defect
+        Args:
+            chemical_potentials:
+                a dictionnary of {Element:value} giving the chemical
+                potential of each element
+            fermi_level:
+                Value of fermi level to use for calculating formation energies
+        Returns:
+            {name: [(charge,formation energy)] }
+        """
+        formation_energies = {}
+        for name in self.groups:
+            formation_energies[name] = []
+            for entry in self.groups[name]:
+                formation_energies[name].append((entry.charge,entry.formation_energy(self.vbm,
+                                                    chemical_potentials,fermi_level=fermi_level)))
+        
+        return formation_energies
+        
+
     def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False,display=[]):
         """
         Get DataFrame to display entries. 
@@ -643,33 +691,7 @@ class DefectsAnalysis:
             df.index.name = 'name'
         return df
     
-    
-    def formation_energies(self,chemical_potentials,fermi_level=0):
-        """
-        Creating a dictionary with names of single defect entry as keys and
-        a list of tuples (charge,formation_energy) as values
-        Every defect name identifies a type of defect
-        Args:
-            chemical_potentials:
-                a dictionnary of {Element:value} giving the chemical
-                potential of each element
-            fermi_level:
-                Value of fermi level to use for calculating formation energies
-        Returns:
-            {name: [(charge,formation energy)] }
-        """
-        computed_charges = {}
-        for e in self.entries:
-            name = e.name
-            if name in computed_charges:
-                computed_charges[name].append((e.charge,e.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
-            else:
-                computed_charges[name] = []
-                computed_charges[name].append((e.charge,e.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)))
-        
-        return computed_charges
-            
-    
+                
     def plot(self,mu_elts=None,filter_names=None,xlim=None, ylim=None, title=None, fermi_level=None, 
              plotsize=1, fontsize=1.2, show_legend=True, format_legend=True, 
              order_legend=False, get_subplot=False, subplot_settings=None):
@@ -757,7 +779,7 @@ class DefectsAnalysis:
                     q_previous = q_stable       
             # if format_legend is True get latex-like legend
             if format_legend:
-                label_txt = self._get_formatted_legend(name)
+                label_txt = name.symbol
             else:
                 label_txt = name            
             if filter_names:
@@ -790,11 +812,7 @@ class DefectsAnalysis:
 
         return plt
      
-
-    def _get_formatted_legend(self,fullname):
-            return get_formatted_legend(fullname)
-    
-    
+        
     def plot_binding_energies(self, names=None, xlim=None, ylim=None, size=1,format_legend=True):
         """
         Plot binding energies for complex of defects as a function of the fermi level
@@ -898,7 +916,7 @@ class DefectsAnalysis:
         # format latex-like legend
         if format_legend:    
              for name in x_ticks_labels:            
-                x_ticks_labels[x_ticks_labels.index(name)] = self._get_formatted_legend(name)                
+                x_ticks_labels[x_ticks_labels.index(name)] = name.symbol               
         if fermi_level:
             plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
         
@@ -960,8 +978,6 @@ class SingleDefConc:
             Charge of defect specie.
         conc : (float)
             Concentration value.
-        defects_species : (list)
-            Dictionary with defect type and defect specie (attribute of defect entry).
         stable : (bool)
             If formation energy is positive, i.e. the concentration < Nsites.
         """
@@ -984,6 +1000,7 @@ class SingleDefConc:
         d = {}
         for k,v in vars(self).items():
             d[k] = v
+        d['symbol'] = self.name.symbol
         return d
     
     @classmethod
@@ -993,7 +1010,7 @@ class SingleDefConc:
         
 class DefectConcentrations:
     
-    def __init__(self,concentrations,get_old_format=False):
+    def __init__(self,concentrations):
         """
         Class to store sets of defect concentrations (output of concentration calculations with DefectsAnalysis).
         List of SingleDefConc objects. Subscriptable like a list.
@@ -1007,7 +1024,7 @@ class DefectConcentrations:
         d = {}
         # calculate total concentrations
         for c in self.concentrations:
-            gname = c.name.split('(')[0] #name without label
+            gname = c.name.name #name without label
             if gname not in d.keys():
                 d[gname] = 0
             d[gname] += c.conc    
@@ -1018,7 +1035,7 @@ class DefectConcentrations:
             concs = self.filter_conc(name=n)
             cmax = SingleDefConc(name='',conc=0,charge=0) # dummy object
             for c in concs:
-                if c.conc > cmax.conc:
+                if c.conc >= cmax.conc:
                     cmax = c
             conc_stable.append(concs[concs.index(cmax)])
         self._stable = conc_stable
@@ -1046,13 +1063,7 @@ class DefectConcentrations:
 
     @classmethod 
     def from_dict(cls,d):
-        try:
-            dc = [SingleDefConc.from_dict(c) for c in d]
-        except: # recover old thermodata with just total concentrations
-            dc = []
-            for k,v in d.items():
-                c = SingleDefConc(name=k,charge=100,conc=v) # charge if 100 to make it clear it's a dummy value that can't be used
-                dc.append(c)
+        dc = [SingleDefConc.from_dict(c) for c in d]
         return cls(dc)
  
     @property
@@ -1062,14 +1073,14 @@ class DefectConcentrations:
         """
         d = {}
         for c in self:
-            for ds in c.defect_species:
-                if ds['specie'] not in d.keys():
-                    if ds['type'] == 'Vacancy':
-                        ekey = 'Vac_' + ds['specie']
-                        d[ekey] = self.get_element_total(ds['specie'],vacancy=True)
+            for dn in c.name:
+                if dn.dspecie not in d.keys():
+                    if dn.dtype == 'Vacancy':
+                        ekey = dn.name
+                        d[ekey] = self.get_element_total(dn.dspecie,vacancy=True)
                     else:
-                        ekey = ds['specie']
-                        d[ekey] = self.get_element_total(ds['specie'],vacancy=False)
+                        ekey = dn.dspecie
+                        d[ekey] = self.get_element_total(dn.dspecie,vacancy=False)
         return d
                     
     
@@ -1164,9 +1175,9 @@ class DefectConcentrations:
         """
         eltot = 0
         for c in self:
-            for ds in c.defect_species:
-                if element == ds['specie']:
-                    if vacancy and ds['type']=='Vacancy':
+            for dn in c.name:
+                if element == dn.dspecie:
+                    if vacancy and dn.dtype=='Vacancy':
                         eltot += c.conc
                     elif vacancy == False:
                         eltot += c.conc

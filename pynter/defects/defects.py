@@ -46,7 +46,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
     
     def __print__(self):
         return self.__repr__()
-
+    
     @property
     def site(self):
         """
@@ -518,6 +518,9 @@ class DefectName(str):
     
     def __repr__(self):
         return self.fullname
+    
+    def __iter__(self):
+        return [self].__iter__() # dummy iter to handle single defecs and complexes the same way 
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -601,6 +604,9 @@ class DefectComplexName(str):
     
     def __repr__(self):
         return self.fullname
+    
+    def __iter__(self):
+        return self.defect_names.__iter__()
 
     def __eq__(self, other):
         if isinstance(other, str):
@@ -649,15 +655,16 @@ class DefectComplexName(str):
 def format_legend_with_charge_number(label,charge):
     """
     Get label in latex format with charge written as a number.
-
+   
     Parameters
     ----------
     label : (str)
         Original name of the defect.
     charge : (int or float)
-        Charge of the defect.
+        Charge of the defect. Floats are converted to integers.
     """
     s = label
+    charge = int(charge)
     if charge > 0:
         q = '+'+str(charge)
     elif charge == 0:

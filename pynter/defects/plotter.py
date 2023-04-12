@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
 import pandas as pd
-from pynter.defects.entries import get_formatted_legend, format_legend_with_charge
+from pynter.defects.defects import format_legend_with_charge_number
 
 class ConcPlotter:
 
@@ -50,12 +50,11 @@ class ConcPlotter:
         """
         Format names with latex symbols.
         """
-        format_legend = get_formatted_legend
         df = self.df
-        df.name = df.name.map(format_legend)
+        df.name = df.symbol
         df.charge = df.charge.astype(str)
         df.name = df[['name', 'charge']].agg(','.join, axis=1)
-        self.series.index = self.series.index.map(format_legend)
+        self.series.index = 
         self.df = df     
         return 
     
