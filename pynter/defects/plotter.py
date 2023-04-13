@@ -10,7 +10,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
 import pandas as pd
-from pynter.defects.defects import format_legend_with_charge_number
+from pynter.defects.defects import DefectName, DefectComplexName, format_legend_with_charge_number
+
+def get_defect_name_from_string(string):
+    if '-' in string:
+        return DefectComplexName.from_string(string)
+    else:
+        return DefectName.from_string(string)
+        
 
 class ConcPlotter:
 
@@ -28,13 +35,29 @@ class ConcPlotter:
             Format names with latex symbols. The default is True.
         """
         # to be fixed
-        self.conc = concentrations.as_dict()
-        self.conc_total = concentrations.total
+        conc_dict = []
+        for c in concentrations:
+            d = {'charge':c.charge,'conc':c.conc,'stable':c.stable}
+            if format_names:
+                name = c.name.symbol
+            else:
+                name = c.name.fullname
+            d['name'] = format_legend_with_charge_number(name,c.charge)
+            conc_dict.append(d)
+        
+        conc_total_dict = {}
+        for dn,conc in concentrations.total.items():
+            if format_names:
+                name = dn.symbol
+            else:
+                name = dn.fullname
+            conc_total_dict[name] = conc
+
+        self.conc = conc_dict
+        self.conc_total = conc_total_dict
         self.format = format_names
         self.df = pd.DataFrame(self.conc)
         self.series = pd.Series(self.conc_total,name='Total Concentrations')
-        if self.format:
-            self.format_names()
     
 
     def __print__(self):
@@ -45,19 +68,6 @@ class ConcPlotter:
 
     def copy(self):
         return self.df.copy()
-
-
-    def format_names(self):
-        """
-        Format names with latex symbols.
-        """
-        df = self.df
-        df.name = df.symbol
-        df.charge = df.charge.astype(str)
-        df.name = df[['name', 'charge']].agg(','.join, axis=1)
-   #     self.series.index = 
-        self.df = df     
-        return 
     
     
     def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,ylabel_fontsize=15,**kwargs):
@@ -343,9 +353,9 @@ class PressurePlotter:
             if filter_defects is False or (defect_indexes is not None and i in defect_indexes) or (names is not None and dc[0][i].name in names):
                 conc = [c[i].conc for c in dc]
                 charges = [c[i].charge for c in dc]
-                label_txt = get_formatted_legend(dc[0][i].name)
+                label_txt = dc[0][i].name.symbol
                 if output == 'all':
-                    label_txt = format_legend_with_charge(label_txt,dc[0][i].charge)
+                    label_txt = format_legend_with_charge_number(label_txt,dc[0][i].charge)
                 elif output == 'stable':
                     for q in charges:
                         if q != previous_charge:
@@ -369,7 +379,7 @@ class PressurePlotter:
         names = names if names else dc[0].total
         for name in names:
             conc = [c.total[name] for c in dc]
-            label_txt = get_formatted_legend(name)
+            label_txt = name.symbol
             plt.plot(p,conc,label=label_txt,linewidth=4)
         plt.plot(p,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
         plt.plot(p,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)

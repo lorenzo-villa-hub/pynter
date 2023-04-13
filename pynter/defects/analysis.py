@@ -16,22 +16,27 @@ import json
 
 
 class DefectsAnalysis:
-    """ 
-    Class to compute defect properties starting from single calculations of defects
-    Args:
-        entries (list): A list of DefectEntry objects.
-        vbm (float): Valence Band energy to use for all defect entries.
-            NOTE if using band shifting-type correction then this VBM
-            should still be that of the GGA calculation
-            (the bandedgeshifting_correction accounts for shift's
-            contribution to formation energy).
-        band_gap (float): Band gap to use for all defect entries.
-            NOTE if using band shifting-type correction then this gap
-            should still be that of the Hybrid calculation you are shifting to. 
-        occupation_function (str): Function to compute defect occupation. 
-            "FD" for Fermi-Dirac, "MB" for Maxwell-Boltzmann.
-    """    
+    
     def __init__(self, entries, vbm, band_gap, sort_entries = True, occupation_function='MB'):
+        """ 
+        Class to compute defect properties starting from single calculations of defects.
+        Args:
+            entries: (list) 
+                A list of DefectEntry objects.
+            vbm: (float) 
+                Valence Band energy to use for all defect entries.
+                NOTE if using band shifting-type correction then this VBM
+                should still be that of the GGA calculation
+                (the bandedgeshifting_correction accounts for shift's
+                contribution to formation energy).
+            band_gap : (float)
+                Band gap to use for all defect entries.
+                NOTE if using band shifting-type correction then this gap
+                should still be that of the Hybrid calculation you are shifting to. 
+            occupation_function : (str) 
+                Function to compute defect occupation. 
+                "FD" for Fermi-Dirac, "MB" for Maxwell-Boltzmann.
+        """
         self.entries = self.sort_entries(entries) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap

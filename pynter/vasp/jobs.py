@@ -56,9 +56,9 @@ class VaspJob(Job):
              "job_script_filename":self.job_script_filename,
              "name":self.name}
         
-        d["outputs"] = {}
-        if "ComputedStructureEntry" in self.outputs.keys():
-            d["outputs"]["ComputedStructureEntry"] = self.computed_entry.as_dict()
+        d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
+        if "Vasprun" in d["outputs"].keys():
+            del d["outputs"]["Vasprun"] # Vasprun has no from_dict
         
         d["is_converged"] = self.is_converged
         d["band_structure"] = self.band_structure.as_dict() if kwargs['get_band_structure'] else None
@@ -109,15 +109,13 @@ class VaspJob(Job):
         job_settings = d['job_settings']
         job_script_filename = d['job_script_filename']
         name = d['name']
-        outputs={}
-        if d['outputs']:
-            outputs['ComputedStructureEntry'] = ComputedStructureEntry.from_dict(d['outputs']['ComputedStructureEntry'])
+        outputs= MontyDecoder().process_decoded(d['outputs'])
         
         vaspjob = VaspJob(path,inputs,job_settings,outputs,job_script_filename,name)
         
         vaspjob._band_structure = BandStructure.from_dict(d['band_structure']) if d['band_structure'] else None
         vaspjob._is_converged = d['is_converged']
-        if outputs:
+        if outputs and 'ComputedStructureEntry' in outputs.keys():
             for k,v in vaspjob.computed_entry.data.items():
                 if k not in vaspjob._default_data_computed_entry:
                     setattr(vaspjob,k,v)

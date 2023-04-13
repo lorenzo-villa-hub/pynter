@@ -227,7 +227,7 @@ class Substitution(Defect):
     @property 
     def name(self):
         """
-        Returns a name for this defect. Behaves like a string with additional attributes.
+        Name for this defect. Behaves like a string with additional attributes.
         """
         return DefectName(self.defect_type,self.site.specie.symbol,self.site_in_bulk.specie,self.label)   
     
@@ -486,6 +486,7 @@ class DefectName(str,MSONable):
         
         return instance
 
+
     def __init__(self,dtype,dspecie,bulk_specie=None,label=None):
         """
         Class to systematically organize the name of a defect.
@@ -668,7 +669,7 @@ class DefectComplexName(str,MSONable):
     
     @property
     def symbol(self):
-        symbol = '-'.join([n.symbol for n in self.defect_names]) 
+        symbol = '-'.join([n.symbol.split('(')[0] for n in self.defect_names]) 
         if self.label:
             symbol = symbol + '(%s)'%self.label 
         return symbol

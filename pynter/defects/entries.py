@@ -139,7 +139,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return self.defect.name.symbol
 
     @property
-    def symbol_full(self):
+    def symbol_charge(self):
         return self.defect.symbol_with_charge
 
     @property
@@ -224,6 +224,29 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return DefectEntry(defect, bulk_structure, energy_diff, corrections,data,label)
 
 
+    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
+                             per_unit_volume=True,occupation_function='MB'):
+        """
+        Compute the defect concentration for a temperature and Fermi level.
+        Args:
+            temperature:
+                the temperature in K
+            fermi_level:
+                the fermi level in eV (with respect to the VBM)
+        Returns:
+            defects concentration in cm^-3
+        """
+        n = self.defect.site_concentration_in_cm3 if per_unit_volume else self.multiplicity 
+        eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
+        
+        if occupation_function=='FD':
+            conc = n * fermi_dirac(eform,temperature)
+        elif occupation_function=='MB':
+            conc = n * maxwell_boltzmann(eform,temperature)
+        else:
+            raise ValueError('Invalid occupation function. Options are: "FD" for Fermi-Dirac and "MB" for Maxwell-Boltzmann.')
+        return conc
+
 
     def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
         """
@@ -248,30 +271,6 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         formation_energy = formation_energy + chempot_correction
         
         return formation_energy
-
-
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
-                             per_unit_volume=True,occupation_function='MB'):
-        """
-        Compute the defect concentration for a temperature and Fermi level.
-        Args:
-            temperature:
-                the temperature in K
-            fermi_level:
-                the fermi level in eV (with respect to the VBM)
-        Returns:
-            defects concentration in cm^-3
-        """
-        n = self.multiplicity * 1e24 / self.bulk_structure.volume if per_unit_volume else self.multiplicity 
-        eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
-        
-        if occupation_function=='FD':
-            conc = n * fermi_dirac(eform,temperature)
-        elif occupation_function=='MB':
-            conc = n * maxwell_boltzmann(eform,temperature)
-        else:
-            raise ValueError('Invalid occupation function. Options are: "FD" for Fermi-Dirac and "MB" for Maxwell-Boltzmann.')
-        return conc
     
     
     def relaxation_volume(self,stress_bulk,bulk_modulus,add_corrections=True): #still to decide weather to keep this method
