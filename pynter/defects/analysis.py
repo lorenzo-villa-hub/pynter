@@ -38,6 +38,7 @@ class DefectsAnalysis:
         self.occupation_function = occupation_function
         self.groups = self._group_entries()
         self.names = list(self.groups.keys())
+        
 
     def __str__(self):     
         return self.get_dataframe().__str__()

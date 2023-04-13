@@ -44,87 +44,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         self._corrections = corrections if corrections else {}
         self._data = data if data else {}
         self._defect.set_label(label)
-   
-    @property
-    def defect(self):
-        return self._defect  
-
-    @property
-    def bulk_structure(self):
-        return self._bulk_structure
-    
-    @property
-    def energy_diff(self):
-        return self._energy_diff
-    
-    @property
-    def corrections(self):
-        return self._corrections
-    
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self,data):
-        self._data = data
-        return 
-
-    @property
-    def label(self):
-        return self.defect.label
-    
-    @label.setter
-    def label(self,label):
-        self.defect.set_label(label)
-        return
-    
-    @property
-    def name(self):
-        return self.defect.name
-    
-    @property
-    def symbol(self):
-        return self.defect.name.symbol
-
-    @property
-    def symbol_full(self):
-        return self.defect.symbol_with_charge
-
-    @property
-    def symbol_kroger(self):
-        return self.defect.symbol_with_charge_kv
-
-    @property
-    def defect_type(self):
-        return self.defect.defect_type
-
-    @property
-    def defect_specie(self):
-        return self.defect.defect_specie
-
-    @property
-    def charge(self):
-        return self.defect.charge
-    
-    @property
-    def multiplicity(self):
-        return self.defect.multiplicity
-    
-    @multiplicity.setter
-    def multiplicity(self,multiplicity):
-        self.defect.set_multiplicity(multiplicity)
-        return
-
-    @property
-    def delta_atoms(self):
-        """
-        Dictionary with Element as keys and particle difference between defect structure
-        and bulk structure as values.
-        """
-        return self.defect.delta_atoms
         
-
+    
     def __repr__(self):
         return "DefectEntry: Name=%s, Charge=%i" %(self.name,self.charge)
 
@@ -142,6 +63,88 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             "\n"
             ]
         return "\n".join(output)
+
+    @property
+    def bulk_structure(self):
+        return self._bulk_structure    
+
+    @property
+    def charge(self):
+        return self.defect.charge
+    
+    @property
+    def corrections(self):
+        return self._corrections
+    
+    @property
+    def data(self):
+        """
+        Dictionary containing additional data.
+        """
+        return self._data
+
+    @data.setter
+    def data(self,data):
+        self._data = data
+        return 
+
+    @property
+    def defect(self):
+        return self._defect  
+    
+    @property
+    def defect_specie(self):
+        return self.defect.defect_specie
+    
+    @property
+    def defect_type(self):
+        return self.defect.defect_type
+    
+    @property
+    def delta_atoms(self):
+        """
+        Dictionary with Element as keys and particle difference between defect structure
+        and bulk structure as values.
+        """
+        return self.defect.delta_atoms
+    
+    @property
+    def energy_diff(self):
+        return self._energy_diff
+    
+    @property
+    def label(self):
+        return self.defect.label
+    
+    @label.setter
+    def label(self,label):
+        self.defect.set_label(label)
+        return
+
+    @property
+    def multiplicity(self):
+        return self.defect.multiplicity
+    
+    @multiplicity.setter
+    def multiplicity(self,multiplicity):
+        self.defect.set_multiplicity(multiplicity)
+        return
+            
+    @property
+    def name(self):
+        return self.defect.name
+    
+    @property
+    def symbol(self):
+        return self.defect.name.symbol
+
+    @property
+    def symbol_full(self):
+        return self.defect.symbol_with_charge
+
+    @property
+    def symbol_kroger(self):
+        return self.defect.symbol_with_charge_kv
     
     
     @staticmethod

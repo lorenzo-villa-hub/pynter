@@ -505,11 +505,6 @@ class DefectName(str,MSONable):
         super().__init__() # init string
 
 
-    @staticmethod
-    def from_string(string):
-        args = DefectName._get_args_from_string(string)
-        return DefectName(*args)
-
     def __str__(self):
         return self.fullname
     
@@ -561,6 +556,12 @@ class DefectName(str,MSONable):
     @property
     def symbol(self):
         return self._symbol
+    
+    
+    @staticmethod
+    def from_string(string):
+        args = DefectName._get_args_from_string(string)
+        return DefectName(*args)
           
     def _get_args_from_string(string):
         if '(' in string:
@@ -620,12 +621,7 @@ class DefectComplexName(str,MSONable):
         """
         super().__init__()
         
-        
-    @staticmethod
-    def from_string(string):
-        args = DefectComplexName._get_args_from_string(string)
-        return DefectComplexName(*args)
-        
+                
     def __str__(self):
         return self.fullname
     
@@ -676,6 +672,12 @@ class DefectComplexName(str,MSONable):
         if self.label:
             symbol = symbol + '(%s)'%self.label 
         return symbol
+    
+    
+    @staticmethod
+    def from_string(string):
+        args = DefectComplexName._get_args_from_string(string)
+        return DefectComplexName(*args)
     
     def _get_args_from_string(string):
         if '(' in string:
