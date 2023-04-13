@@ -41,44 +41,27 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         self._multiplicity = multiplicity 
         self._label = label
 
+
     def __repr__(self):
         return "{} : {} {}".format(self.defect_type,self.site.frac_coords, self.name.dspecie)
     
     def __print__(self):
         return self.__repr__()
-    
-    @property
-    def site(self):
-        """
-        Defect position as a site object
-        """
-        return self._defect_site
 
     @property
     def bulk_structure(self):
         """
-        Returns the structure without any defects.
+        Structure without defects.
         """
         return self._bulk_structure
-
+    
     @property
     def charge(self):
         """
         Charge of the defect.
         """
         return self._charge
-
-    @property
-    def multiplicity(self):
-        """
-        Multiplicity of a defect site within the structure
-        """
-        return self._multiplicity
-      
-    @property
-    def defect_type(self):
-        return self.__class__.__name__
-
+    
     @property 
     @abstractmethod
     def defect_composition(self):
@@ -88,10 +71,25 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         return
 
     @property
+    def site(self):
+        """
+        Defect position as a site object
+        """
+        return self._defect_site
+
+    @property
+    def defect_specie(self):
+        return self.name.dspecie
+    
+    @property
+    def defect_type(self):
+        return self.__class__.__name__
+    
+    @property
     @abstractmethod
     def delta_atoms(self):
         """
-        Dictionary with delement as keys and difference in particle number 
+        Dictionary with defect element as keys and difference in particle number 
         between defect and bulk structure as values
         """
         return
@@ -100,6 +98,13 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
     def label(self):
         return self._label
 
+    @property
+    def multiplicity(self):
+        """
+        Multiplicity of a defect site within the structure
+        """
+        return self._multiplicity
+      
     @property  
     @abstractmethod
     def name(self):
@@ -107,7 +112,11 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         Name of the defect
         """
         return
-    
+   
+    @property
+    def site_concentration_in_cm3(self):
+        return self.multiplicity * 1e24 / self.bulk_structure.volume 
+   
     @property  
     def symbol(self):
         """
@@ -207,7 +216,6 @@ class Substitution(Defect):
         temp_comp[str(self.bulk_structure[defect_index].specie)] -= 1
         return Composition(temp_comp)
 
-
     @property
     def delta_atoms(self):
         """
@@ -216,7 +224,17 @@ class Substitution(Defect):
         """
         return {self.site.specie:1, self.site_in_bulk.specie:-1}
 
-
+    @property 
+    def name(self):
+        """
+        Returns a name for this defect. Behaves like a string with additional attributes.
+        """
+        return DefectName(self.defect_type,self.site.specie.symbol,self.site_in_bulk.specie,self.label)   
+    
+    @property
+    def site_in_bulk(self):
+        return self._site_in_bulk
+    
     def get_site_in_bulk(self):
         try:
             site = min(
@@ -228,19 +246,6 @@ class Substitution(Defect):
         except:
             return ValueError("""No equivalent site has been found in bulk, defect and bulk structures are too different.\
 Try using the unrelaxed defect structure or provide bulk site manually""")
-
-
-    @property 
-    def name(self):
-        """
-        Returns a name for this defect. Behaves like a string with additional attributes.
-        """
-        return DefectName(self.defect_type,self.site.specie.symbol,self.site_in_bulk.specie,self.label)   
-    
-
-    @property
-    def site_in_bulk(self):
-        return self._site_in_bulk
     
  
     
@@ -258,7 +263,6 @@ class Interstitial(Defect):
         temp_comp[str(self.site.specie)] += 1
         return Composition(temp_comp)
     
-
     @property
     def delta_atoms(self):
         """
@@ -267,7 +271,6 @@ class Interstitial(Defect):
         """
         return {self.site.specie:1}
 
-
     @property
     def name(self):
         """
@@ -275,8 +278,7 @@ class Interstitial(Defect):
         """
         return DefectName(self.defect_type,self.site.specie.symbol,None,self.label)
         
-  
-    
+      
 class Polaron(Defect):
     """
     Subclass of Defect for polarons
@@ -285,7 +287,6 @@ class Polaron(Defect):
     def defect_composition(self):
         return self.bulk_structure.composition
     
-
     @property
     def delta_atoms(self):
         """
@@ -326,6 +327,7 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         self._multiplicity = multiplicity
         self._label = label
 
+
     def __repr__(self):
         return "{} : {}".format(self.defect_type,
         [(d.defect_type,d.name.dspecie,d.site.frac_coords.__str__()) 
@@ -334,21 +336,13 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
     def __str__(self):
         return self.__repr__()
     
-    
-    @property
-    def defects(self):
-        """
-        List of single defects consituting the complex.
-        """
-        return self._defects
-        
     @property
     def bulk_structure(self):
         """
         Returns the structure without any defects.
         """
         return self._bulk_structure
-
+    
     @property
     def charge(self):
         """
@@ -357,8 +351,36 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         return self._charge
 
     @property
+    def defects(self):
+        """
+        List of single defects consituting the complex.
+        """
+        return self._defects
+        
+    @property
+    def defect_names(self):
+        return [d.name for d in self.defects]
+
+    @property
     def defect_type(self):
         return self.__class__.__name__
+    
+    @property
+    def delta_atoms(self):
+        """
+        Dictionary with Element as keys and particle difference between defect structure
+        and bulk structure as values.
+        """
+        da_global = None
+        for d in self.defects:
+            da_single = d.delta_atoms
+            if da_global is None:
+                da_global = da_single.copy()
+            else:
+                for e in da_single:
+                    prec = da_global[e] if e in da_global.keys() else 0
+                    da_global[e] = prec + da_single[e]       
+        return da_global 
 
     @property
     def label(self):
@@ -377,6 +399,14 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         Name of the defect. Behaves like a string with additional attributes.
         """
         return DefectComplexName([d.name for d in self.defects],self.label)
+
+    @property
+    def site_concentration_in_cm3(self):
+        return self.multiplicity * 1e24 / self.bulk_structure.volume 
+    
+    @property
+    def sites(self):
+        return [d.site for d in self.defects]
     
     @property
     def symbol(self):
@@ -395,31 +425,6 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         Name in latex format with charge written with kroger and vink notation.
         """
         return format_legend_with_charge_kv(self.symbol,self.charge)
-
-    @property
-    def sites(self):
-        return [d.site for d in self.defects]
-
-    @property
-    def defect_names(self):
-        return [d.name for d in self.defects]
-
-    @property
-    def delta_atoms(self):
-        """
-        Dictionary with Element as keys and particle difference between defect structure
-        and bulk structure as values.
-        """
-        da_global = None
-        for d in self.defects:
-            da_single = d.delta_atoms
-            if da_global is None:
-                da_global = da_single.copy()
-            else:
-                for e in da_single:
-                    prec = da_global[e] if e in da_global.keys() else 0
-                    da_global[e] = prec + da_single[e]       
-        return da_global    
 
 
     def set_charge(self, new_charge):
@@ -468,7 +473,8 @@ class DefectName(str,MSONable):
             symbol = symbol +'(%s)'%label
         else:
             fullname = name
-            
+        
+        #get str instance
         instance = super().__new__(cls,fullname) 
         instance._dtype = dtype
         instance._dspecie = dspecie
@@ -487,8 +493,12 @@ class DefectName(str,MSONable):
 
         Parameters
         ----------
-        name : (str)
-            Name of the defect. Names conventions are set in the Defect objects.
+        dtype : (str)
+            Type of the defect. Types are "Vacancy","Substitution","Interstitial","Polaron".
+        dspecie : (str)
+            Element of defect specie.
+        bulk_specie : (str)
+            Element of the specie that has been replaced. To be set only for "Substitution".
         label : (str), optional
             Label for the defect. Will be displayed in parenthesis after the name. The default is None.
         """
@@ -528,13 +538,13 @@ class DefectName(str,MSONable):
             bulk_specie = None
         return bulk_specie
 
-    @property
-    def dtype(self):
-        return self._dtype
-
     @property        
     def dspecie(self):
         return self._dspecie
+
+    @property
+    def dtype(self):
+        return self._dtype
 
     @property
     def fullname(self):
@@ -610,6 +620,7 @@ class DefectComplexName(str,MSONable):
         """
         super().__init__()
         
+        
     @staticmethod
     def from_string(string):
         args = DefectComplexName._get_args_from_string(string)
@@ -638,15 +649,15 @@ class DefectComplexName(str,MSONable):
     @property
     def defect_names(self):
         return self._defect_names
-    
-    @property
-    def dtype(self):
-        return 'DefectComplex'
-    
+
     @property
     def dspecies(self):
         return [n.dspecie for n in self.defect_names]
     
+    @property
+    def dtype(self):
+        return 'DefectComplex'
+        
     @property
     def fullname(self):
         return self._fullname

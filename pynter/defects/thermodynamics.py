@@ -131,10 +131,9 @@ class PressureAnalysis:
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
-            if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
-            else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
+            mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T,
+                                            frozen_defect_concentrations=frozen_df,
+                                            external_defects=ext_df,xtol=self.xtol)
             conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             defect_concentrations.append(conc)
@@ -191,10 +190,9 @@ class PressureAnalysis:
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
-            if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
-            else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
+            mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T,
+                                            frozen_defect_concentrations=frozen_df,
+                                            external_defects=ext_df,xtol=self.xtol)
             conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             sigma = cnd.get_conductivity(carriers, conc)
@@ -244,10 +242,9 @@ class PressureAnalysis:
         frozen_df = self.frozen_defect_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
-            if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T,xtol=self.xtol)
-            else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T,xtol=self.xtol)
+            mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T,
+                                            frozen_defect_concentrations=frozen_df,
+                                            external_defects=ext_df,xtol=self.xtol)
             fermi_levels.append(mue)
         
         thermodata = {}
@@ -313,10 +310,9 @@ class PressureAnalysis:
         ext_df = self.external_defects
                 
         for r,mu in res.items():
-            if frozen_df or ext_df:
-                mue = self.da.non_equilibrium_fermi_level(frozen_df,mu,dos,ext_df,temperature=T1,xtol=self.xtol)
-            else:
-                mue = self.da.equilibrium_fermi_level(mu,dos,temperature=T1,xtol=self.xtol)
+            mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T1,
+                                            frozen_defect_concentrations=frozen_df,
+                                            external_defects=ext_df,xtol=self.xtol)
             if quench_elements:
                 c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).elemental
             else:
@@ -327,7 +323,9 @@ class PressureAnalysis:
                 quenched_concentrations = copy.deepcopy(frozen_df) if frozen_df else {}
                 for k in quenched_species:
                     quenched_concentrations[k] = c1[k]
-            quenched_mue = self.da.non_equilibrium_fermi_level(quenched_concentrations,mu,dos,ext_df,temperature=T2,xtol=self.xtol)
+            quenched_mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T2,
+                                            frozen_defect_concentrations=frozen_df,
+                                            external_defects=ext_df,xtol=self.xtol)
             fermi_levels.append(quenched_mue)
             
             conc = self.da.defect_concentrations(mu,T2,quenched_mue,quenched_concentrations)

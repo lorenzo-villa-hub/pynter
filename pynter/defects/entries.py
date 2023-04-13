@@ -100,6 +100,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return self.defect.defect_type
 
     @property
+    def defect_specie(self):
+        return self.defect.defect_specie
+
+    @property
     def charge(self):
         return self.defect.charge
     
