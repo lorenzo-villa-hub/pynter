@@ -89,19 +89,15 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
     @property
     def symbol_full(self):
-        return format_legend_with_charge_number(self.symbol,self.charge)
+        return self.defect.symbol_with_charge
 
     @property
     def symbol_kroger(self):
-        return format_legend_with_charge_kv(self.symbol,self.charge)
+        return self.defect.symbol_with_charge_kv
 
     @property
     def defect_type(self):
-        return self.defect.defect_type   
-      
-    @property
-    def defect_species(self):
-        return self.defect.defect_species
+        return self.defect.defect_type
 
     @property
     def charge(self):

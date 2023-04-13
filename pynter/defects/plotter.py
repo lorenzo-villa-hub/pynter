@@ -27,6 +27,7 @@ class ConcPlotter:
         format_names : (bool), optional
             Format names with latex symbols. The default is True.
         """
+        # to be fixed
         self.conc = concentrations.as_dict()
         self.conc_total = concentrations.total
         self.format = format_names
@@ -54,7 +55,7 @@ class ConcPlotter:
         df.name = df.symbol
         df.charge = df.charge.astype(str)
         df.name = df[['name', 'charge']].agg(','.join, axis=1)
-        self.series.index = 
+   #     self.series.index = 
         self.df = df     
         return 
     
