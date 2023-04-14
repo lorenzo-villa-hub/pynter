@@ -4,6 +4,8 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
+from abc import ABCMeta, abstractmethod, abstractproperty
+from monty.json import MSONable, MontyDecoder, MontyEncoder
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
@@ -11,7 +13,76 @@ from pymatgen.symmetry.groups import SpaceGroup
 from pynter.tools.format import format_composition
 import copy
 
-class Reservoirs:
+class Chempots(MSONable):
+    
+    def __init__(self,chempots_dict):
+        self._mu = chempots_dict
+    
+    @property
+    def mu(self):
+        return self._mu
+
+    def __str__(self):
+        return self.mu.__str__()
+    
+    def __repr__(self):
+        return self.__str__()
+
+    def __len__(self):
+        return len(self.mu)
+
+    def __iter__(self):
+        return self.mu.keys().__iter__()
+
+    def __getitem__(self,el):
+        return self.mu[el]
+
+    def __setitem__(self,el,value):
+        self.mu[el] = value
+        return
+
+    def keys(self):
+        return self.mu.keys()
+
+    def values(self):
+        return self.mu.values()
+    
+    def items(self):
+        return self.mu.items()
+
+    def copy(self):
+        return Chempots(copy.deepcopy(self.mu))
+    
+    def as_dict(self):
+        d = {
+        "@module": self.__class__.__module__,
+        "@class": self.__class__.__name__,
+        "chempots":self.mu
+        }
+        return d
+    
+    @staticmethod
+    def from_dict(d):
+        chempots = d["chempots"]
+        return Chempots(chempots)
+    
+    @staticmethod
+    def from_pmg_elements(d):
+        return Chempots({el.symbol:value for el,value in d.items()})
+    
+    def to_pmg_elements(self):
+        return {Element(el):value for el,value in self.mu.items()}
+    
+    def get_absolute(self,mu_refs):
+        return {el:self.mu[el] + mu_refs[el] for el in self.mu}
+        
+    def get_referenced(self,mu_refs):
+        return {el:self.mu[el] - mu_refs[el] for el in self.mu}
+            
+        
+        
+
+class Reservoirs(MSONable):
     
     def __init__(self,res_dict,phase_diagram=None,mu_refs=None,are_chempots_delta=False):
         """
@@ -86,10 +157,9 @@ class Reservoirs:
         d = {}
         d['@module'] = self.__class__.__module__
         d['@class'] = self.__class__.__name__
-        d['res_dict'] = self._get_res_dict_with_symbols()
+        d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()} #self._get_res_dict_with_symbols()
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
-        if self.mu_refs:
-            d['mu_refs'] = {el.symbol:chem for el,chem in self.mu_refs.items()}
+        d['mu_refs'] = self.mu_refs.as_dict() if self.mu_refs else None
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 
@@ -132,14 +202,14 @@ class Reservoirs:
         """
         res_dict = {}
         for res,chempots in d['res_dict'].items():
-            res_dict[res] = {Element(el):chempots[el] for el in chempots}
+            res_dict[res] = Chempots.from_dict(chempots)
         if 'phase_diagram' in d.keys() and d['phase_diagram'] is not None:
             phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
         else:
             phase_diagram = None
         mu_refs = d['mu_refs'] if 'mu_refs' in d.keys() else None
         if mu_refs:
-            mu_refs = {Element(el):chem for el,chem in mu_refs.items()}
+            mu_refs = Chempots.from_dict(mu_refs)
         are_chempots_delta = d['are_chempots_delta']
             
         return cls(res_dict,phase_diagram,mu_refs,are_chempots_delta)
@@ -189,7 +259,7 @@ class Reservoirs:
             d = filtered_dict.copy()
             for r in list(d):
                 for el in list(d[r]):
-                    if el.symbol not in elements:
+                    if el not in elements:
                         del filtered_dict[r][el]        
         return res
 
@@ -674,7 +744,7 @@ class PDHandler:
         for el in pd.el_refs:
             chempots_ref[el] = pd.el_refs[el].energy_per_atom
         chempots_ref = {k: v for k, v in sorted(chempots_ref.items(), key=lambda item: item[0])}
-        return chempots_ref
+        return Chempots.from_pmg_elements(chempots_ref)
        
 
     def get_dataframe(self):
