@@ -147,8 +147,8 @@ class PressurePlotter:
         self.xlim = xlim
 
     
-    def plot_concentrations(self,thermodata,output='total',defect_indexes=None,names=None,
-                            size=(12,8),fontsize=22,xlim=None,ylim=None,show_unstable=True):
+    def plot_concentrations(self,thermodata,output='total',size=(12,8),fontsize=22,
+                            xlim=None,ylim=None,show_unstable=True,**kwargs):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -168,11 +168,6 @@ class PressurePlotter:
                 "stable": The output is the concentration of the stable charge for every defect at each fermi level point.
                 "total": The output is the sum of the concentration in every charge for each specie.
                 The default is 'total'.
-        defect_indexes : (list), optional
-            List of indexes of the entry that need to be included in the plot. To be used when output is set to 'all'.
-            If None all defect entries are included. The default is None.  
-        names : (list), optional
-            List of names of defect entries to be included in the plot. If None all defects are included. The default is None.
         size : (tuple), optional
             Size of the matplotlib figure. The default is (12,8).
         fontsize : (float), optional
@@ -181,8 +176,13 @@ class PressurePlotter:
             Range of x-axis. The default is (1e-20,1e08).
         ylim : (tuple), optional
             Range of y-axis. The default is None.
-        show_unstable: (bool), optional
+        show_unstable : (bool), optional
             Show regions where the system is unstable (at least one formation energy is negative).
+        kwargs : 
+            Kwargs to pass to DefectConcentrations.filter_concentrations(**kwargs).
+            If provided, only the filtered concentrations will be plotted. If output
+            is set to "total", only the filtered concentrations will be used to 
+            compute the total concentration.
 
         Returns
         -------
@@ -193,9 +193,9 @@ class PressurePlotter:
         p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
         matplotlib.rcParams.update({'font.size': fontsize})
         if output == 'all' or output == 'stable':
-            plt = self._plot_conc(p,dc,cc,defect_indexes,names,output,size)
+            plt = self._plot_conc(p,dc,cc,output,size,**kwargs)
         elif output == 'total':
-            plt = self._plot_conc_total(p,dc,cc,names,size)
+            plt = self._plot_conc_total(p,dc,cc,size,**kwargs)
             
         plt.xscale('log')
         plt.yscale('log')
@@ -273,7 +273,8 @@ class PressurePlotter:
         return plt
    
     
-    def plot_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None,colors=None):
+    def plot_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,
+                         label=None,size=(12,8),xlim=None,ylim=None,colors=None):
         """
         Plot Fermi level as a function of the oxygen partial pressure.
 
@@ -339,18 +340,17 @@ class PressurePlotter:
         return plt
     
     
-    def _plot_conc(self,partial_pressures,defect_concentrations,carrier_concentrations,defect_indexes,
-                   names,output,size):
+    def _plot_conc(self,partial_pressures,defect_concentrations,carrier_concentrations,output,size,**kwargs):
         
         plt.figure(figsize=size)
-        filter_defects = True if (defect_indexes or names) else False
         p = partial_pressures
         dc = defect_concentrations if output != 'stable' else [c.stable for c in defect_concentrations] 
+        if kwargs:
+            dc = [c.filter_concentrations(**kwargs) for c in dc] #filter concentrations based on kwargs
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations]
         previous_charge = None
         for i in range(0,len(dc[0])):
-            if filter_defects is False or (defect_indexes is not None and i in defect_indexes) or (names is not None and dc[0][i].name in names):
                 conc = [c[i].conc for c in dc]
                 charges = [c[i].charge for c in dc]
                 label_txt = dc[0][i].name.symbol
@@ -369,15 +369,16 @@ class PressurePlotter:
         return plt
     
     
-    def _plot_conc_total(self,partial_pressures,defect_concentrations,carrier_concentrations,names,size):
+    def _plot_conc_total(self,partial_pressures,defect_concentrations,carrier_concentrations,size,**kwargs):
         
         dc = defect_concentrations
+        if kwargs:
+            dc = [c.filter_concentrations(**kwargs) for c in dc]
         plt.figure(figsize=size)
         p = partial_pressures
         h = [cr[0] for cr in carrier_concentrations] 
         n = [cr[1] for cr in carrier_concentrations]
-        names = names if names else dc[0].total
-        for name in names:
+        for name in dc[0].names:
             conc = [c.total[name] for c in dc]
             label_txt = name.symbol
             plt.plot(p,conc,label=label_txt,linewidth=4)

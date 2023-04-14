@@ -225,7 +225,7 @@ class DefectsAnalysis:
     
 
     def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
-                              frozen_defect_concentrations=None,per_unit_volume=True):
+                              fixed_concentrations=None,per_unit_volume=True):
         """
         Give list of all concentrations at specified efermi.
         If frozen_defect_concentration is provided the concentration of defect entries are 
@@ -242,7 +242,7 @@ class DefectsAnalysis:
             Temperature to produce concentrations at.
         fermi_level: (float) 
             Fermi level relative to valence band maximum. The default is 0. 
-        frozen_defect_concentrations: (dict)
+        fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys can be simple element strings
             (or vacancies of elements) in the format 'Vac_{el}') if that element needs to be 
             fixed across all defect species, alternatively defect entry names can be used as well 
@@ -255,15 +255,15 @@ class DefectsAnalysis:
             list of dictionaries of defect concentrations
         """
         concentrations = []
-        if frozen_defect_concentrations:
+        if fixed_concentrations:
             dc = self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                            frozen_defect_concentrations=None,per_unit_volume=per_unit_volume)
-            frozen = frozen_defect_concentrations 
+                                            fixed_concentrations=None,per_unit_volume=per_unit_volume)
+            frozen = fixed_concentrations 
 
         for e in self.entries:
             nsites = e.defect.site_concentration_in_cm3 if per_unit_volume else e.multiplicity
             # frozen defects approach
-            if frozen_defect_concentrations:
+            if fixed_concentrations:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
@@ -520,12 +520,13 @@ class DefectsAnalysis:
             x_star = []
             y_star = []
             q_previous = None
+            # this is faster than using self.stable_charges
             for i in range(0,npoints):
                 emin[i] = 1e40
                 for d in formation_energies[name]:
                     q = d[0]
                     e0 = d[1]
-                    energy[i] = e0 + q*x[i] # Eform(x) = Eform(0) + q*x
+                    energy[i] = e0 + q*x[i]
                     # finding most stable charge state
                     if energy[i] < emin[i]:
                         emin[i] = energy[i]
@@ -536,7 +537,7 @@ class DefectsAnalysis:
                         x_star.append(x[i])
                         y_star.append(emin[i])
                     q_previous = q_stable       
-            # if format_legend is True get latex-like legend
+
             if format_legend:
                 label_txt = name.symbol
             else:
@@ -768,7 +769,7 @@ class DefectsAnalysis:
     
 
     def solve_fermi_level(self,chemical_potentials,bulk_dos,temperature=300,
-                                    frozen_defect_concentrations=None,external_defects=[],xtol=1e-05):
+                                    fixed_concentrations=None,external_defects=[],xtol=1e-05):
         """
         Solve charge neutrality in non-equilibrium conditions (when some concentrations are fixed).
         If frozen_defect_concentration is not None the concentration for every single defect 
@@ -788,7 +789,7 @@ class DefectsAnalysis:
             Pymatgen CompleteDos object of the DOS of the bulk system.
         temperature : (float), optional
             Temperature to equilibrate the system to. The default is 300.
-        frozen_defect_concentrations: (dict)
+        fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
@@ -808,7 +809,7 @@ class DefectsAnalysis:
             qd_tot = sum([
                 d.charge * d.conc
                 for d in self.defect_concentrations(chemical_potentials,temperature,ef,
-                                                    frozen_defect_concentrations)])
+                                                    fixed_concentrations)])
             for d_ext in external_defects:
                 qd_tot += d_ext.charge * d_ext.conc                
             qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
@@ -882,13 +883,13 @@ class DefectsAnalysis:
         
 
     def _get_total_charge(self,fermi_level,chemical_potentials, bulk_dos, temperature=300, 
-                          frozen_defect_concentrations=None,external_defects=[], per_unit_volume=True):
+                          fixed_concentrations=None,external_defects=[], per_unit_volume=True):
         fdos = FermiDos(bulk_dos, bandgap=self.band_gap)
         _,fdos_vbm = fdos.get_cbm_vbm()    
         qd_tot = sum([
             d.charge * d.conc
             for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                                frozen_defect_concentrations,per_unit_volume)])
+                                                fixed_concentrations,per_unit_volume)])
         for d_ext in external_defects:
             qd_tot += d_ext.charge * d_ext.conc
         qd_tot += fdos.get_doping(fermi_level=fermi_level + fdos_vbm, temperature=temperature)
@@ -950,10 +951,10 @@ class DefectConcentrations:
                 d[gname] = 0
             d[gname] += c.conc    
         self._total = d
-        # store stable concentrations
+      #  store stable concentrations
         conc_stable = []
         for n in self.names:
-            concs = self.filter_conc(name=n)
+            concs = self.select_concentrations(name=n)
             cmax = SingleDefConc(name='',conc=0,charge=0,stable=True) # dummy object
             for c in concs:
                 if c.conc >= cmax.conc:
@@ -1035,16 +1036,26 @@ class DefectConcentrations:
         return self._total
 
     
-    def filter_conc(self,mode='and',exclude=False,**kwargs):
+    def filter_concentrations(self,inplace=False,mode='and',exclude=False,names=None,
+                              charges=None,indexes=None,**kwargs):
         """
         Filter concentrations based on different criteria.
 
         Parameters
         ----------
+        inplace : (bool), optional
+            If True update the current object, otherwise returns a new DefectConcentrations object.
+            The default is False.
         mode : (str), optional
             Selection mode. available are 'and','or'. The default is 'and'.
         exclude : (bool), optional
             Exclude the entries matching the criteria. The default is False.
+        names : (list), optional
+            Names of the defect.
+        charges : (list), optional
+            Charges of the defect.
+        indexes : (list), optional
+            Indexes of defect in the concentrations list.
         **kwargs : (dict)
             Criteria for selection. They need to be attributes of SingleDefConc.
 
@@ -1053,29 +1064,15 @@ class DefectConcentrations:
         output_concs : (list)
             Filtered DefectConcentrations object.
         """
-        sel_concs = []
-        input_concs = self.concentrations.copy()
-        concs = input_concs.copy()  
-        for k in kwargs:
-            if sel_concs and mode=='and':
-                concs = sel_concs.copy()
-                sel_concs = []
-            for c in concs:
-                feature = get_object_feature(c,k)
-                if feature == kwargs[k]:
-                    if c not in sel_concs:
-                        sel_concs.append(c)
-                        
-        output_concs = []
-        for c in input_concs:
-            if exclude:
-                if c not in sel_concs:
-                    output_concs.append(c)
-            else:
-                if c in sel_concs:
-                    output_concs.append(c)
+
+        output_concs = self.select_concentrations(mode=mode,exclude=exclude,names=names,
+                                                  charges=charges,indexes=indexes,**kwargs)
                     
-        return output_concs
+        if inplace:
+            self.concentrations = output_concs
+            return
+        else:
+            return DefectConcentrations(output_concs)
             
         
     def get_element_total(self,element,vacancy=False):
@@ -1104,7 +1101,88 @@ class DefectConcentrations:
                         eltot += c.conc
         return eltot
         
+
+    def select_concentrations(self,concentrations=None,mode='and',exclude=False,names=None,
+                    charges=None,indexes=None,**kwargs):
+        """
+        Select concentrations based on different criteria.
+
+        Parameters
+        ----------
+        concentrations : (list), optional
+            List of SingleDefConc to select from. If None self.concentrations is used.
+            The default is None.
+        mode : (str), optional
+            Selection mode. available are 'and','or'. The default is 'and'.
+        exclude : (bool), optional
+            Exclude the entries matching the criteria. The default is False.
+        names : (list), optional
+            Names of the defect.
+        charges : (list), optional
+            Charges of the defect.
+        indexes : (list), optional
+            Indexes of defect in the concentrations list.
+        **kwargs : (dict)
+            Criteria for selection. They need to be attributes of SingleDefConc.
+
+        Returns
+        -------
+        output_concs : (list)
+            List of SingleDefConc objects.
+        """
+        sel_concs = []
+        input_concs = concentrations if concentrations else self.concentrations.copy()
+        concs = input_concs.copy()  
         
+        if names is not None:
+            if sel_concs and mode=='and':
+                concs = sel_concs.copy()
+                sel_concs = []
+            for c in concs:
+                if c.name in names:
+                    if c not in sel_concs:
+                        sel_concs.append(c)
+                        
+        if charges is not None:
+            if sel_concs and mode=='and':
+                concs = sel_concs.copy()
+                sel_concs = []
+            for c in concs:
+                if c.charge in charges:
+                    if c not in sel_concs:
+                        sel_concs.append(c)
+                        
+        if indexes is not None:
+            if sel_concs and mode=='and':
+                concs = sel_concs.copy()
+                sel_concs = []
+            for c in concs:
+                if concs.index(c) in indexes:
+                    if c not in sel_concs:
+                        sel_concs.append(c)
+        
+        if kwargs:
+            for k in kwargs:
+                if sel_concs and mode=='and':
+                    concs = sel_concs.copy()
+                    sel_concs = []
+                for c in concs:
+                    feature = get_object_feature(c,k)
+                    if feature == kwargs[k]:
+                        if c not in sel_concs:
+                            sel_concs.append(c)
+                        
+        output_concs = []
+        for c in input_concs:
+            if exclude:
+                if c not in sel_concs:
+                    output_concs.append(c)
+            else:
+                if c in sel_concs:
+                    output_concs.append(c)
+                    
+        return output_concs
+                    
         
         
         

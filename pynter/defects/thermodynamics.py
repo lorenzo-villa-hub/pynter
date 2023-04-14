@@ -68,7 +68,7 @@ class PressureAnalysis:
     Class that handles the analysis of the oxygen partial pressure dependency.
     """
     
-    def __init__(self,defects_analysis,bulk_dos,frozen_defect_concentrations=None,external_defects=[],xtol=1e-05):
+    def __init__(self,defects_analysis,bulk_dos,fixed_concentrations=None,external_defects=[],xtol=1e-05):
         """
         Parameters
         ----------
@@ -76,7 +76,7 @@ class PressureAnalysis:
             DefectsAnalysis object.
         bulk_dos : 
             Pymatgen Dos object.
-        frozen_defect_concentrations: (dict)
+        fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
@@ -85,7 +85,7 @@ class PressureAnalysis:
         """
         self.da = defects_analysis
         self.bulk_dos = bulk_dos
-        self.frozen_defect_concentrations = frozen_defect_concentrations if frozen_defect_concentrations else None
+        self.fixed_concentrations = fixed_concentrations if fixed_concentrations else None
         self.external_defects = external_defects if external_defects else []
         self.xtol = xtol
     
@@ -105,7 +105,7 @@ class PressureAnalysis:
 
         Returns
         -------
-        Thermodata : (thermoData)
+        Thermodata : (ThermoData)
             ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
@@ -128,13 +128,13 @@ class PressureAnalysis:
         carrier_concentrations = []
         fermi_levels=[]
         dos = self.bulk_dos
-        frozen_df = self.frozen_defect_concentrations
+        fixed_df = self.fixed_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
             mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T,
-                                            frozen_defect_concentrations=frozen_df,
+                                            fixed_concentrations=fixed_df,
                                             external_defects=ext_df,xtol=self.xtol)
-            conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
+            conc = self.da.defect_concentrations(mu,T,mue,fixed_df)
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             defect_concentrations.append(conc)
             carrier_concentrations.append(carriers)
@@ -187,13 +187,13 @@ class PressureAnalysis:
         partial_pressures = list(res.keys())
         conductivities = []
         dos = self.bulk_dos
-        frozen_df = self.frozen_defect_concentrations
+        fixed_df = self.fixed_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
             mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T,
-                                            frozen_defect_concentrations=frozen_df,
+                                            fixed_concentrations=fixed_df,
                                             external_defects=ext_df,xtol=self.xtol)
-            conc = self.da.defect_concentrations(mu,T,mue,frozen_df)
+            conc = self.da.defect_concentrations(mu,T,mue,fixed_df)
             carriers = self.da.carrier_concentrations(dos,temperature=T,fermi_level=mue)
             sigma = cnd.get_conductivity(carriers, conc)
             conductivities.append(sigma)
@@ -239,11 +239,11 @@ class PressureAnalysis:
         partial_pressures = list(res.keys())
         fermi_levels = []
         dos = self.bulk_dos
-        frozen_df = self.frozen_defect_concentrations
+        fixed_df = self.fixed_concentrations
         ext_df = self.external_defects
         for r,mu in res.items():
             mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T,
-                                            frozen_defect_concentrations=frozen_df,
+                                            fixed_concentrations=fixed_df,
                                             external_defects=ext_df,xtol=self.xtol)
             fermi_levels.append(mue)
         
@@ -306,25 +306,25 @@ class PressureAnalysis:
             final_carrier_conc = []
             
         dos = self.bulk_dos
-        frozen_df = self.frozen_defect_concentrations
+        fixed_df = self.fixed_concentrations
         ext_df = self.external_defects
                 
         for r,mu in res.items():
             mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T1,
-                                            frozen_defect_concentrations=frozen_df,
+                                            fixed_concentrations=fixed_df,
                                             external_defects=ext_df,xtol=self.xtol)
             if quench_elements:
-                c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).elemental
+                c1 = self.da.defect_concentrations(mu,T1,mue,fixed_df).elemental
             else:
-                c1 = self.da.defect_concentrations(mu,T1,mue,frozen_df).total
+                c1 = self.da.defect_concentrations(mu,T1,mue,fixed_df).total
             if quenched_species is None:
                 quenched_concentrations = c1.copy()
             else:
-                quenched_concentrations = copy.deepcopy(frozen_df) if frozen_df else {}
+                quenched_concentrations = copy.deepcopy(fixed_df) if fixed_df else {}
                 for k in quenched_species:
                     quenched_concentrations[k] = c1[k]
             quenched_mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T2,
-                                            frozen_defect_concentrations=frozen_df,
+                                            fixed_concentrations=fixed_df,
                                             external_defects=ext_df,xtol=self.xtol)
             fermi_levels.append(quenched_mue)
             
