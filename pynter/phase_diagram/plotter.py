@@ -6,19 +6,11 @@ Created on Mon Jan 11 12:15:47 2021
 @author: lorenzo
 """
 
-import json
-import os.path as op
 import numpy as np
-from pandas import DataFrame
 import matplotlib.pyplot as plt
-from pymatgen.core.periodic_table import Element
-from pymatgen.core.composition import Composition
-from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
-from pynter.tools.format import format_composition
-from pynter.phase_diagram.analysis import Reservoirs, PDHandler, ChempotAnalysis
+from pynter.phase_diagram.chempots import PDHandler
 
              
-
 class PDPlotterAdder:
     
     def __init__(self,phase_diagram=None,size=1):
@@ -33,7 +25,7 @@ class PDPlotterAdder:
             Multiplier for the size of the objects added in the plot
         """
         self.pd = phase_diagram if phase_diagram else None
-        self.chempots_analysis = ChempotAnalysis(phase_diagram) if phase_diagram else None
+        self.pdh = PDHandler(phase_diagram) if phase_diagram else None
         self.size = size
         
     
@@ -65,7 +57,7 @@ class PDPlotterAdder:
         return plt
     
     
-    def add_constant_chempot_line(self, comp, variable_element, fixed_chempots,**kwargs):
+    def add_constant_chempot_line(self, comp, variable_element, chempots_ref,**kwargs):
         """
         Add line of constant chemical potential (at a given composition) to the plot. Only works for 3 component PD.
 
@@ -73,9 +65,9 @@ class PDPlotterAdder:
         ----------
         comp : (Pymatgen Composition object)
             Composition of the phase.
-        variable_element : (Pymatgen Element object)
+        variable_element : (str)
             Element chosen as indipendent variable.
-        fixed_chempots : (dict)
+        chempots_ref : (dict)
             Dictionary with fixed chemical potentials (values relative to reference phase). the format is {Element:chempot}
         **kwargs : 
             kwargs passed to Matplotlib plot function.
@@ -88,7 +80,7 @@ class PDPlotterAdder:
         plt.xlim(xlim)
         plt.ylim(ylim)
         mu = np.arange(xlim[0]-1,xlim[1]+1,0.01)
-        plt.plot(mu,self.constant_chempot_line(mu,comp,variable_element,fixed_chempots),
+        plt.plot(mu,self.constant_chempot_line(mu,comp,variable_element,chempots_ref),
                  linewidth= 4.5*self.size , **kwargs)
         return plt
     
@@ -103,7 +95,7 @@ class PDPlotterAdder:
         comp : (Pymatgen Composition object)
             Composition of interest to compute the chemical potential.
         elements : (list)
-            List of strings with elements with free chemical potentials. These will be converted in Element objects
+            List of strings with elements with free chemical potentials.
         cbar_label : (string), optional
             String with label of the colormap. The default is ''.
         cbar_values : (tuple or bool), optional
@@ -115,12 +107,11 @@ class PDPlotterAdder:
         Returns
         -------
         Matplotlib object
-        """
-        
+        """        
         el1,el2 = elements  
         
         def f(mu1,mu2):            
-            return self.chempots_analysis.calculate_single_chempot(comp,{Element(el1):mu1,Element(el2):mu2})
+            return self.pdh.calculate_single_chempot(comp,{el1:mu1,el2:mu2})
         
         axes = plt.gca()
         xlim , ylim = axes.get_xlim() , axes.get_ylim()
@@ -150,10 +141,9 @@ class PDPlotterAdder:
         return plt
         
 
-    def add_reservoirs(self,reservoirs,elements,size=1,label_size=1,color=[],edgecolor='k',label_color='k',linewidths=3,**kwargs):
+    def add_reservoirs(self,reservoirs,elements,size=1,label_size=1,color=[],edgecolor='k',
+                       label_color='k',linewidths=3,**kwargs):
         """
-        
-
         Parameters
         ----------
         reservoirs : (Reservoirs)
@@ -173,16 +163,15 @@ class PDPlotterAdder:
         Returns
         -------
         plt : Matplotlib object
-        """
-         
+        """         
         points = {}
         for r,mu in reservoirs.items():
-            points[r] = [mu[Element(el)] for el in elements]
+            points[r] = [mu[el] for el in elements]
         
         return self.add_points(points,size,label_size,color,edgecolor,label_color,linewidths,**kwargs)
         
     
-    def constant_chempot_line(self, mu, comp, variable_element, fixed_chempots):
+    def constant_chempot_line(self, mu, comp, variable_element, chempots_ref):
         """
         Function that expresses line of constant chemical potential of a given composition. Only works for 3-component PD.
 
@@ -194,9 +183,8 @@ class PDPlotterAdder:
             Composition of the phase.
         variable_element : (Pymatgen Element object)
             Element chosen as indipendent variable.
-        fixed_chempots : (dict)
+        chempots_ref : (dict)
             Dictionary with fixed chemical potentials (values relative to reference phase). the format is {Element:chempot}
         """
-
-        fixed_chempots[variable_element] = mu
-        return self.chempots_analysis.calculate_single_chempot(comp,fixed_chempots)
+        chempots_ref[variable_element] = mu
+        return self.chempots_analysis.calculate_single_chempot(comp,chempots_ref)
