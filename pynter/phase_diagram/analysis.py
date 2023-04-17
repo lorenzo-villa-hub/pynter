@@ -157,7 +157,7 @@ class Reservoirs(MSONable):
         d = {}
         d['@module'] = self.__class__.__module__
         d['@class'] = self.__class__.__name__
-        d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()} #self._get_res_dict_with_symbols()
+        d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()} 
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
         d['mu_refs'] = self.mu_refs.as_dict() if self.mu_refs else None
         d['are_chempots_delta'] = self.are_chempots_delta
@@ -203,13 +203,8 @@ class Reservoirs(MSONable):
         res_dict = {}
         for res,chempots in d['res_dict'].items():
             res_dict[res] = Chempots.from_dict(chempots)
-        if 'phase_diagram' in d.keys() and d['phase_diagram'] is not None:
-            phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
-        else:
-            phase_diagram = None
-        mu_refs = d['mu_refs'] if 'mu_refs' in d.keys() else None
-        if mu_refs:
-            mu_refs = Chempots.from_dict(mu_refs)
+        phase_diagram = d['phase_diagram'] if PhaseDiagram.from_dict(d['phase_diagram']) else None
+        mu_refs = Chempots.from_dict(d['mu_refs']) if d['mu_refs'] else None
         are_chempots_delta = d['are_chempots_delta']
             
         return cls(res_dict,phase_diagram,mu_refs,are_chempots_delta)
@@ -284,13 +279,13 @@ class Reservoirs(MSONable):
             return self._get_referenced_res()
 
     
-    def get_dataframe(self,format_labels=False,format_compositions=False,all_math=False,ndecimals=None):
+    def get_dataframe(self,format_symbols=False,format_compositions=False,all_math=False,ndecimals=None):
         """
         Get DataFrame object of the dictionary of reservoirs
 
         Parameters
         ----------
-        format_labels : (bool), optional
+        format_symbols : (bool), optional
             Format labels of element chempots as \Delta \mu_{\text{"el"}}. The default is False.
         format_compositions : (bool), optional
             Get Latex format of compositions. The default is False.
@@ -305,7 +300,8 @@ class Reservoirs(MSONable):
         df : 
             DataFrame object.
         """
-        df = DataFrame(self._get_res_dict_with_symbols(format_labels=format_labels))
+        res = self._get_res_dict_with_symbols(format_symbols)
+        df = DataFrame(res)
         df = df.transpose()
         if format_compositions:
             new_index = []
@@ -395,7 +391,7 @@ class Reservoirs(MSONable):
             res_delta[r] = self._get_referenced_chempots(chem)
         return res_delta
                 
-    def _get_res_dict_with_symbols(self,format_labels=False):
+    def _get_res_dict_with_symbols(self,format_symbols=False):
         """
         format_labels : (bool), optional
             Format labels of element chempots as \Delta \mu_{\text{"el"}}. The default is False.
@@ -403,11 +399,12 @@ class Reservoirs(MSONable):
         new_dict = {}
         for res,chempots in self.res_dict.items():
             new_dict[res] = {}
+            chempots = chempots.mu #keep just dict for DataFrame
             for el in chempots:
-                if format_labels:
-                    label = '$\Delta \mu_{\text{%s}}$' %el.symbol
+                if format_symbols:
+                    label = '$\Delta \mu_{\text{%s}}$' %el
                 else:
-                    label = el.symbol
+                    label = el
                 new_dict[res][label] = chempots[el]
         return new_dict
 
@@ -435,11 +432,7 @@ class PressureReservoirs(Reservoirs):
         d = {}
         d['@module'] = self.__class__.__module__
         d['@class'] = self.__class__.__name__
-        d['res_dict'] = {}
-        for res,chempots in self.res_dict.items():
-            d['res_dict'][res] = {}
-            for el in chempots:
-                d['res_dict'][res][el.symbol] = chempots[el]
+        d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()}
         d['temperature'] = self.temperature
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
         d['mu_refs'] = {el.symbol:chem for el,chem in self.mu_refs.items()} 
@@ -459,15 +452,10 @@ class PressureReservoirs(Reservoirs):
         -------
         PressureReservoirs object.
         """
-        res_dict = {}
-        for res,chempots in d['res_dict'].items():
-            res_dict[float(res)] = {Element(el):chempots[el] for el in chempots}
+        res_dict = {float(r):Chempots.from_dict(mu) for r,mu in d['res_dict'].items()}
         temperature = d['temperature'] if 'temperature' in d.keys() else None
-        if 'phase_diagram' in d.keys() and d['phase_diagram'] is not None:
-            phase_diagram = PhaseDiagram.from_dict(d['phase_diagram'])
-        else:
-            phase_diagram = None
-        mu_refs = {Element(el):chem for el,chem in d['mu_refs'].items()}  if 'mu_refs' in d.keys() else None
+        phase_diagram = PhaseDiagram.from_dict(d['phase_diagram']) if d['phase_diagram'] else None
+        mu_refs = Chempots.from_dict(d['mu_refs'])  if d['mu_refs'] else None
         are_chempots_delta = d['are_chempots_delta']
             
         return cls(res_dict,temperature,phase_diagram,mu_refs,are_chempots_delta)
