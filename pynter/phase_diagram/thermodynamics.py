@@ -8,13 +8,14 @@ Created on Wed Mar 18 13:12:05 2020
 
 import numpy as np
 from pymatgen.core.periodic_table import Element
-from pynter.phase_diagram.analysis import Chempots, ChempotAnalysis, Reservoirs, PDHandler, PressureReservoirs
+from pynter.phase_diagram.chempots import Chempots, PDHandler, PressureReservoirs
 
-class ChempotExperimental:
+class OxygenPressure:
     
     def __init__(self,temperature=300,partial_pressure=1):
         """
-        Class to extract and organize data regarding experimental chemical potentials
+        Class to extract and organize data regarding chemical potentials as function of oxygen partial pressure.
+        Useful for defects analysis for oxides.
 
         Parameters
         ----------
@@ -68,7 +69,6 @@ class ChempotExperimental:
         -------
         (float)
             Value of oxygen chemical potential (delta) at given T and p/p0.
-
         """
         temperature = temperature if temperature else self.temperature
         partial_pressure = partial_pressure if partial_pressure else self.partial_pressure
@@ -82,12 +82,15 @@ class ChempotExperimental:
         """
         Generate Reservoirs object with a set of different chemical potentials starting from a range of oxygen partial pressure.
         The code distinguishes between 2-component and 3-component phase diagrams.
+        
         In the case of a 2-comp PD the other chemical potential is calculated directly from the formation energy of the phase
         with target composition.
         In the case of a 3-comp PD the set of chemical potentials is obtained first calculating the boundary phases starting
         from the constant value of muO, then the arithmetic average between this two points in the stability diagram is taken.
-        In the case where there are some extrinsic elements not belonging to the PD, they must be added in the extrinsic_chempots
-        dictionary ({Element:chempot}). The value of delta_mu_O will be subtracted to the input value at each partial pressure.
+        
+        In the case where there are some extrinsic elements not belonging to the PD, they must be added in the 
+        extrinsic_chempots_range dictionary ({Element:(O_poor_chempot,O_rich_chempot)}). The chempots of extrinsic elements 
+        are interpolated linearly between O_poor and O_rich values. 
         
         Parameters
         ----------
@@ -111,7 +114,6 @@ class ChempotExperimental:
         -------
         reservoirs
             PressureReservoirs object. The dictionary is organized as {partial_pressure:chempots}.
-
         """
         chempots_dict = {}
         reservoirs = {}
@@ -127,21 +129,21 @@ class ChempotExperimental:
             fixed_chempot = Chempots({'O':muO})
             
             if len(pd.elements) == 2: # 2-component PD case
-                ca = ChempotAnalysis(pd)
-                mu = ca.calculate_single_chempot(target_comp, fixed_chempot)
+                pdh = PDHandler(pd)
+                mu = pdh.calculate_single_chempot(target_comp, fixed_chempot)
                 for el in target_comp.elements:
                     if el is not Element('O'):
                         chempots = fixed_chempot.copy()
                         chempots.update({el.symbol:mu})
                     
             elif len(pd.elements) == 3: # 3-component PD case
-                ca = ChempotAnalysis(pd)
-                res = ca.boundary_analysis(target_comp, fixed_chempot)
+                pdh = PDHandler(pd)
+                res = pdh.get_phase_boundaries_chempots(target_comp, fixed_chempot)
                 for el in list(res.values())[0]:
                     chempots_dict[el] = np.mean(np.array([mu[el] for mu in res.values()]))
             
             chempots = Chempots(chempots_dict)
-            chempots_abs = chempots.get_absolute(ca.mu_refs)
+            chempots_abs = chempots.get_absolute(pdh.mu_refs)
             
             if extrinsic_chempots_range:
                 for el in extrinsic_chempots_range:

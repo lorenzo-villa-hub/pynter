@@ -4,22 +4,34 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
-from abc import ABCMeta, abstractmethod, abstractproperty
-from monty.json import MSONable, MontyDecoder, MontyEncoder
+from monty.json import MSONable
 from pymatgen.core.periodic_table import Element
-from pymatgen.core.composition import Composition
-from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
+from pymatgen.analysis.phase_diagram import PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pymatgen.symmetry.groups import SpaceGroup
 from pynter.tools.format import format_composition
 import copy
 
+
 class Chempots(MSONable):
     
     def __init__(self,chempots_dict):
+        """
+        Class to handle set of chemical potentials. Behaves like a python dictionary.
+        The dictionary needs to be set with element symbols as keys and chemical potentials 
+        as values.
+
+        Parameters
+        ----------
+        chempots_dict : (dict)
+            Dictionary of chemical potentials in the format {el:value}.
+        """
         self._mu = chempots_dict
     
     @property
     def mu(self):
+        """
+        Dictionary with chemical potentials
+        """
         return self._mu
 
     def __str__(self):
@@ -40,6 +52,14 @@ class Chempots(MSONable):
     def __setitem__(self,el,value):
         self.mu[el] = value
         return
+    
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.mu == other
+        elif isinstance(other, Chempots):
+            return self.mu == other.mu
+        else:
+            return False
 
     def keys(self):
         return self.mu.keys()
@@ -63,6 +83,14 @@ class Chempots(MSONable):
     
     
     def as_dict(self):
+        """
+        Json-serializable dict representation of a Chempots object. 
+        
+        Returns
+        -------
+        dict
+            Json-serializable dict of a Chempots object.
+        """
         d = {
         "@module": self.__class__.__module__,
         "@class": self.__class__.__name__,
@@ -72,25 +100,83 @@ class Chempots(MSONable):
     
     @staticmethod
     def from_dict(d):
+        """
+        Constructor of Chempots object from dictionary representation.
+        
+        Parameters
+        ----------
+        d : dict
+        
+        Returns
+        -------
+        Chempots object.
+        """
         chempots = d["chempots"]
         return Chempots(chempots)
     
     @staticmethod
     def from_pmg_elements(d):
+        """
+        Construct a Chempots object from a dictionary in the format {Element:value}. Useful to
+        interface with pymatgen which uses Element class to address elements instead of just their symbols.
+
+        Parameters
+        ----------
+        d : (dict)
+            Dictionary in the format {Element:value}.
+
+        Returns
+        -------
+        Chempots.
+        """
         return Chempots({el.symbol:value for el,value in d.items()})
     
     def to_pmg_elements(self):
+        """
+        Convert the Chempots object to a dictionary in the format {Element:value}. 
+        Useful to interface with pymatgen which uses Element class to address elements 
+        instead of just their symbols.
+
+        Returns
+        -------
+        Dictionary in the format {Element:value}
+        """
         return {Element(el):value for el,value in self.mu.items()}
     
+    
     def get_absolute(self,mu_refs):
+        """
+        Get Chempots object with chemical potentials converted to absolute values (mu + mu_ref)
+
+        Parameters
+        ----------
+        mu_refs : (dict or Chempots)
+            Chempots object or just dictionary with elemental chemical potentials (mu0).
+
+        Returns
+        -------
+        Chempots values converted to absolute (mu + mu_ref).
+        """
         return Chempots({el:self.mu[el] + mu_refs[el] for el in self.mu})
         
+    
     def get_referenced(self,mu_refs):
+        """
+        Get Chempots object with chemical potentials converted to referenced values (mu - mu_ref)
+
+        Parameters
+        ----------
+        mu_refs : (dict or Chempots)
+            Chempots object or just dictionary with elemental chemical potentials (mu0).
+
+        Returns
+        -------
+        Chempots values converted to referenced (mu - mu_ref).
+        """
         return Chempots({el:self.mu[el] - mu_refs[el] for el in self.mu})
             
         
         
-
 class Reservoirs(MSONable):
     
     def __init__(self,res_dict,phase_diagram=None,mu_refs=None,are_chempots_delta=False):
@@ -140,6 +226,14 @@ class Reservoirs(MSONable):
     def __setitem__(self,reskey,chempots):
         self.res_dict[reskey] = chempots
         return
+    
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.res_dict == other
+        elif isinstance(other, Reservoirs):
+            return self.res_dict == other.mu
+        else:
+            return False
 
     def keys(self):
         return self.res_dict.keys()
@@ -164,9 +258,8 @@ class Reservoirs(MSONable):
 
     def as_dict(self):
         """
-        Json-serializable dict representation of a Reservoirs object. The Pymatgen element 
-        is expressed with the symbol of the element.
-
+        Json-serializable dict representation of a Reservoirs object. 
+        
         Returns
         -------
         dict
@@ -283,7 +376,6 @@ class Reservoirs(MSONable):
         """
         if self.are_chempots_delta:
             return {r:mu.get_absolute(self.mu_refs) for r,mu in self.res_dict.items()}
-         #   return self._get_absolute_res()
         else:
             raise ValueError('Chemical potential values are already absolute')
                 
@@ -296,7 +388,6 @@ class Reservoirs(MSONable):
             raise ValueError('Chemical potential values are already with respect to reference')
         else:
             return {r:mu.get_referenced(self.mu_refs) for r,mu in self.res_dict.items()}
-        #    return self._get_referenced_res()
 
     
     def get_dataframe(self,format_symbols=False,format_compositions=False,all_math=False,ndecimals=None):
@@ -338,7 +429,7 @@ class Reservoirs(MSONable):
         """
         Get string with formatted latex table of chemical potentials
         """
-        df = self.get_dataframe(format_labels=True,ndecimals=ndecimals)
+        df = self.get_dataframe(format_symbols=True,ndecimals=ndecimals)
         table = df.to_latex(escape=False)
         return table
     
@@ -441,6 +532,7 @@ class PressureReservoirs(Reservoirs):
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 
+
     @classmethod
     def from_dict(cls,d):
         """
@@ -487,224 +579,6 @@ class PressureReservoirs(Reservoirs):
         return PressureReservoirs.from_dict(d)    
     
     
-class ChempotAnalysis:
-    
-    def __init__(self,phase_diagram):
-        """
-        Initializes class to analyse chemical potentials of a phase diagram generated with Pymatgen.
-        All of the functions in this class take the Referenced chemical potentials values as argument,
-        to facilitate the connection with stability diagram visualization.
-        
-        Parameters
-        ----------
-        phase_diagram : (PhaseDiagram)
-            Pymatgen PhaseDiagram object
-        """
-        self.pd = phase_diagram
-        self.mu_refs = PDHandler(phase_diagram).get_chempots_reference()
-    
-
-    def boundary_analysis(self,comp,fixed_chempot_delta):
-        """
-        Given a composition and a fixed chemical potential, this function analises the composition of the boundary phases
-        and the associated chemical potentials at the boundaries. Only works for 3 component PD.
-
-        Parameters
-        ----------
-        comp : (Pymatgen Composition object)
-            Composition of the phase you want to get the chemical potentials at the boundary.
-        fixed_chempot_delta : (Dict)
-            Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}).
-            The chemical potential here is the referenced value. 
-        Returns
-        -------
-        chempots : (Dict)
-            Dictionary with compositions at the boundaries as keys and delta chemical potentials as value.
-        """       
-        chempots = {}
-        comp1,comp2 = self.get_composition_boundaries(comp, fixed_chempot_delta)
-        
-        boundary = '-'.join([comp1.reduced_formula,comp.reduced_formula])
-        chempots[boundary] = self.get_chempots_boundary(comp1, comp, fixed_chempot_delta)
-        
-        boundary = '-'.join([comp.reduced_formula,comp2.reduced_formula])
-        chempots[boundary] = self.get_chempots_boundary(comp, comp2, fixed_chempot_delta)
-        
-        return chempots        
-        
-
-    def calculate_single_chempot(self,comp,fixed_chempots_delta):
-        """
-        Calculate referenced chemical potential in a given composition and given
-        the chemical potentials of the other elements.
-
-        Parameters
-        ----------
-        comp : (Pymatgen Composition object)
-            Compositions of the phase.
-        fixed_chempot_delta : (Dict)
-            Dictionary with Element as keys and respective chemical potential as value ({Element:chempot}).
-            The chemical potentials used here are the ones relative to the reference (delta_mu)
-
-        Returns
-        -------
-        mu : (float)
-            Chemical potential.
-        """        
-        form_energy = PDHandler(self.pd).get_formation_energy_from_stable_comp(comp)
-        mu = form_energy
-        for el,coeff in comp.items():
-            if el.symbol in fixed_chempots_delta:
-                mu += -1*coeff * fixed_chempots_delta[el.symbol]
-            else:
-                factor = coeff
-        
-        return mu/factor
-                
-
-    def get_chempots_abs(self,chempots_delta):
-        """
-        Add energy per atom of elemental phases to dictionary of relative chemical potentials ({Element:chempot}) 
-        to get the total chemical potentials.
-        The energy of the elemental phase is taken from the input PhaseDiagram 
-        Parameters
-        ----------
-        chempots_delta : (Dict)
-            Dictionary of relative (delta) chemical potentials, format ({Pymatgen Element object:chempot value}).
-        Returns
-        -------
-        chempots_abs : (Dict)
-            Dictionary of total chemical potentials, format ({Pymatgen Element object:chempot value}).
-        """
-        return {el:chempots_delta[el] + self.chempots_reference[el] for el in chempots_delta}
-        
-        
-    def get_chempots_delta(self,chempots_abs):
-        """
-        Subtract energy per atom of elemental phases to dictionary of chemical potentials ({Element:chempot})
-        The energy of the elemental phase is taken from the input PhaseDiagram
-        Parameters
-        ----------
-        chempots_abs : (Dict)
-            Dictionary of absolute chemical potentials, format ({Pymatgen Element object:chempot value}).
-        Returns
-        -------
-        chempots_delta : (Dict)
-            Dictionary of chemical potentials relative to elemental phase, format ({Pymatgen Element object:chempot value}).
-        """
-        return {el:chempots_abs[el] - self.chempots_reference[el] for el in chempots_abs}
-                    
-
-    def get_chempots_boundary(self,comp1,comp2,fixed_chempot_delta):
-        """
-        Given a fixed chemical potential, gets the values of the remaining two chemical potentials
-        in the boundary between two phases (region where the two phases coexist). Only works for 3-component PD (to check).
-        Given a phase P1 (formula AxByOz) and a phase P2 (formula AiBjOk) the chemical potentials have to satisfy the conditions:
-            form_energy(P1) = x*mu(A) + y*mu(B) +z*mu(O)
-            form_energy(P2) = i*mu(A) + j*mu(B) +k*mu(O)
-        From these conditions the values of mu(A) and mu(B) are determined given a fixed value of mu(O).
-        All of the chemical potentials used here are delta_mu, i.e. relative to the elemental phase(delta_mu(O) = mu(O) - mu_ref(O))
-
-        Parameters
-        ----------
-        comp1,comp2 : (Pymatgen Composition object)
-            Compositions of the two phases at the boundary.
-        fixed_chempot_delta : (Dict)
-            Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}). The chemical potential
-            used here is the one relative to the reference (delta_mu)
-
-        Returns
-        -------
-        chempots_boundary : (Dict)
-            Dictionary of chemical potentials.
-        """
-        chempots_boundary ={}
-        mu_fixed = fixed_chempot_delta.to_pmg_elements()
-        for el,chempot in mu_fixed.items():
-            el_fixed, mu_fixed = el, chempot
-        pdhandler = PDHandler(self.pd)
-        e1 = pdhandler.get_formation_energy_from_stable_comp(comp1)
-        e2 = pdhandler.get_formation_energy_from_stable_comp(comp2)
-        
-        coeff1 = []
-        coeff2 = []
-        # order of variables (mu) will follow the order of self.chempots_reference which is alphabetically ordered
-        mu_refs = self.mu_refs.to_pmg_elements()
-        for el in mu_refs:
-            if el != el_fixed:
-                if el not in comp1:
-                    coeff1.append(0)
-                else:
-                    coeff1.append(comp1[el])
-                if el not in comp2:
-                    coeff2.append(0)
-                else:
-                    coeff2.append(comp2[el])                
-        a = np.array([coeff1,coeff2])
-        
-        const1 = e1 - comp1[el_fixed]*mu_fixed if el_fixed in comp1 else e1 
-        const2 = e2 - comp2[el_fixed]*mu_fixed if el_fixed in comp2 else e2
-        b = np.array([const1,const2])
-        x = np.linalg.solve(a, b)
-        # output will follow the order given in input
-        counter = 0
-        for el in mu_refs:
-            if el != el_fixed:
-                chempots_boundary[el] = x[counter]
-                counter += 1
-        chempots_boundary[el_fixed] = mu_fixed        
-        return Chempots.from_pmg_elements(chempots_boundary)
-                  
-    
-    def get_composition_boundaries(self,comp,fixed_chempot_delta):
-        """
-        Get compositions of phases in boundary of stability with a target composition given a fixed chemical potential 
-        on one component. Currently only works for 3-component PD (to check). 
-        Used Pymatgen GrandPotentialPhaseDiagram class. The fixed chemical potential is the referenced value that is
-        converted in the global value for the analysis with the GrandPotentialPhaseDiagram class.
-
-        Parameters
-        ----------
-        comp : (Pymatgen Composition object)
-            Target composition for which you want to get the bounday phases.
-        fixed_chempots_delta : (Dict)
-            Dictionary with fixed Element as key and respective chemical potential as value ({Element:chempot}).
-            The chemical potential is the referenced value
-
-        Returns
-        -------
-        comp1,comp2 : (Pymatgen Composition object)
-            Compositions of the boundary phases given a fixed chemical potential for one element.
-        """
-        fixed_chempot = fixed_chempot_delta.get_absolute(self.mu_refs).to_pmg_elements()
-        
-        entries = self.pd.all_entries
-        gpd = GrandPotentialPhaseDiagram(entries, fixed_chempot)
-        stable_entries = gpd.stable_entries
-        comp_in_stable_entries = False
-        for e in stable_entries:
-            if e.original_comp.reduced_composition == comp:
-                comp_in_stable_entries = True
-        if comp_in_stable_entries == False:
-            raise ValueError('Target composition %s is not a stable entry for fixed chemical potential: %s' %(comp.reduced_formula,fixed_chempot))
-        
-        el = comp.elements[0]
-        x_target = comp.get_wt_fraction(el)
-        x_max_left = 0
-        x_min_right = 1
-        for e in stable_entries:
-            c = e.original_comp
-            if c != comp:
-                x = c.get_wt_fraction(el)
-                if x < x_target and x >= x_max_left:
-                    x_max_left = x
-                    comp1 = c
-                if x > x_target and x <= x_min_right:
-                    x_min_right = x
-                    comp2 = c
-        return comp1.reduced_composition,comp2.reduced_composition
-            
-
     
 class PDHandler:
     
@@ -718,6 +592,36 @@ class PDHandler:
             Pymatgen PhaseDiagram object
         """
         self.pd = phase_diagram 
+        self.mu_refs = self.get_chempots_reference()
+
+
+    def calculate_single_chempot(self,comp,chempots_ref):
+        """
+        Calculate referenced chemical potential in a given composition and given
+        the chemical potentials of the other elements.
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+            Compositions of the phase.
+        chempots_ref : (Dict)
+            Dictionary with element symbols as keys and respective chemical potential as value ({el:chempot}).
+            The chemical potentials used here are the ones relative to the reference (delta_mu)
+
+        Returns
+        -------
+        mu : (float)
+            Chemical potential.
+        """        
+        form_energy = self.get_formation_energy_from_stable_comp(comp)
+        mu = form_energy
+        for el,coeff in comp.items():
+            if el.symbol in chempots_ref:
+                mu += -1*coeff * chempots_ref[el.symbol]
+            else:
+                factor = coeff
+        
+        return mu/factor
 
         
     def get_chempots_reference(self):
@@ -726,10 +630,8 @@ class PDHandler:
 
         Returns
         -------
-        chempot_ref: (Dict)
-            Dictionary of elemental chemical potentials 
+        Chempots object
         """
-        
         chempots_ref = {}
         pd = self.pd
         for el in pd.el_refs:
@@ -817,6 +719,146 @@ class PDHandler:
         entry = self.get_stable_entry_from_comp(comp)
         factor = entry.composition.get_reduced_composition_and_factor()[1]
         return pd.get_form_energy(entry)/factor
+        
+
+    def get_phase_boundaries_chempots(self,comp,chempot_ref):
+        """
+        Given a composition and a fixed chemical potential, this function analises the composition of the boundary phases
+        and the associated chemical potentials at the boundaries. Only works for 3 component PD.
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+            Composition of the phase you want to get the chemical potentials at the boundary.
+        chempot_ref : (Dict)
+            Dictionary with fixed element symbol as key and respective chemical potential as value ({el:chempot}).
+            The chemical potential here is the referenced value. 
+        Returns
+        -------
+        chempots : (Dict)
+            Dictionary with compositions at the boundaries as keys and delta chemical potentials as value.
+        """       
+        chempots = {}
+        comp1,comp2 = self.get_phase_boundaries_compositions(comp, chempot_ref)
+        
+        boundary = '-'.join([comp1.reduced_formula,comp.reduced_formula])
+        chempots[boundary] = self.solve_phase_boundary_chempots(comp1, comp, chempot_ref)
+        
+        boundary = '-'.join([comp.reduced_formula,comp2.reduced_formula])
+        chempots[boundary] = self.solve_phase_boundary_chempots(comp, comp2, chempot_ref)
+        
+        return chempots      
+                  
+    
+    def get_phase_boundaries_compositions(self,comp,chempot_ref):
+        """
+        Get compositions of phases in boundary of stability with a target composition given a fixed chemical potential 
+        on one component. Currently only works for 3-component PD (to check). 
+        Used Pymatgen GrandPotentialPhaseDiagram class. The fixed chemical potential is the referenced value that is
+        converted in the global value for the analysis with the GrandPotentialPhaseDiagram class.
+
+        Parameters
+        ----------
+        comp : (Pymatgen Composition object)
+            Target composition for which you want to get the bounday phases.
+        chempot_ref : (Dict)
+            Dictionary with fixed element symbol as key and respective chemical potential as value ({el:chempot}).
+            The chemical potential is the referenced value
+
+        Returns
+        -------
+        comp1,comp2 : (Pymatgen Composition object)
+            Compositions of the boundary phases given a fixed chemical potential for one element.
+        """
+        fixed_chempot = chempot_ref.get_absolute(self.mu_refs).to_pmg_elements()
+        
+        entries = self.pd.all_entries
+        gpd = GrandPotentialPhaseDiagram(entries, fixed_chempot)
+        stable_entries = gpd.stable_entries
+        comp_in_stable_entries = False
+        for e in stable_entries:
+            if e.original_comp.reduced_composition == comp:
+                comp_in_stable_entries = True
+        if comp_in_stable_entries == False:
+            raise ValueError('Target composition %s is not a stable entry for fixed chemical potential: %s' %(comp.reduced_formula,fixed_chempot))
+        
+        el = comp.elements[0]
+        x_target = comp.get_wt_fraction(el)
+        x_max_left = 0
+        x_min_right = 1
+        for e in stable_entries:
+            c = e.original_comp
+            if c != comp:
+                x = c.get_wt_fraction(el)
+                if x < x_target and x >= x_max_left:
+                    x_max_left = x
+                    comp1 = c
+                if x > x_target and x <= x_min_right:
+                    x_min_right = x
+                    comp2 = c
+        return comp1.reduced_composition,comp2.reduced_composition   
+                  
+                    
+    def solve_phase_boundary_chempots(self,comp1,comp2,chempot_ref):
+        """
+        Given a fixed chemical potential, gets the values of the remaining two chemical potentials
+        in the boundary between two phases (region where the two phases coexist). Only works for 3-component PD (to check).
+        Given a phase P1 (formula AxByOz) and a phase P2 (formula AiBjOk) the chemical potentials have to satisfy the conditions:
+            form_energy(P1) = x*mu(A) + y*mu(B) +z*mu(O)
+            form_energy(P2) = i*mu(A) + j*mu(B) +k*mu(O)
+        From these conditions the values of mu(A) and mu(B) are determined given a fixed value of mu(O).
+        All of the chemical potentials used here are delta_mu, i.e. relative to the elemental phase(delta_mu(O) = mu(O) - mu_ref(O))
+
+        Parameters
+        ----------
+        comp1,comp2 : (Pymatgen Composition object)
+            Compositions of the two phases at the boundary.
+        chempot_ref : (Dict)
+            Dictionary with fixed element symbol as key and respective chemical potential as value ({el:chempot}). The chemical potential
+            used here is the one relative to the reference (delta_mu)
+
+        Returns
+        -------
+        chempots_boundary : (Dict)
+            Dictionary of chemical potentials.
+        """
+        chempots_boundary ={}
+        mu_fixed = chempot_ref.to_pmg_elements()
+        for el,chempot in mu_fixed.items():
+            el_fixed, mu_fixed = el, chempot
+        e1 = self.get_formation_energy_from_stable_comp(comp1)
+        e2 = self.get_formation_energy_from_stable_comp(comp2)
+        
+        coeff1 = []
+        coeff2 = []
+        # order of variables (mu) will follow the order of self.chempots_reference which is alphabetically ordered
+        mu_refs = self.mu_refs.to_pmg_elements()
+        for el in mu_refs:
+            if el != el_fixed:
+                if el not in comp1:
+                    coeff1.append(0)
+                else:
+                    coeff1.append(comp1[el])
+                if el not in comp2:
+                    coeff2.append(0)
+                else:
+                    coeff2.append(comp2[el])                
+        a = np.array([coeff1,coeff2])
+        
+        const1 = e1 - comp1[el_fixed]*mu_fixed if el_fixed in comp1 else e1 
+        const2 = e2 - comp2[el_fixed]*mu_fixed if el_fixed in comp2 else e2
+        b = np.array([const1,const2])
+        x = np.linalg.solve(a, b)
+        # output will follow the order given in input
+        counter = 0
+        for el in mu_refs:
+            if el != el_fixed:
+                chempots_boundary[el] = x[counter]
+                counter += 1
+        chempots_boundary[el_fixed] = mu_fixed        
+        
+        return Chempots.from_pmg_elements(chempots_boundary) 
+
 
     def get_plot(self,**kwargs):
         """
@@ -873,8 +915,5 @@ class PDHandler:
             return target_entry
         else:
             raise ValueError('No stable entry has been found for target composition:%s' %comp.reduced_formula)
-        
-
-    
 
     
