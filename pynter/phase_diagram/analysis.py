@@ -53,6 +53,15 @@ class Chempots(MSONable):
     def copy(self):
         return Chempots(copy.deepcopy(self.mu))
     
+    def update(self, other):
+        if isinstance(other, dict):
+            for key, value in other.items():
+                self.mu[key] = value
+        else:
+            for key, value in other:
+                self.mu[key] = value
+    
+    
     def as_dict(self):
         d = {
         "@module": self.__class__.__module__,
@@ -74,10 +83,10 @@ class Chempots(MSONable):
         return {Element(el):value for el,value in self.mu.items()}
     
     def get_absolute(self,mu_refs):
-        return {el:self.mu[el] + mu_refs[el] for el in self.mu}
+        return Chempots({el:self.mu[el] + mu_refs[el] for el in self.mu})
         
     def get_referenced(self,mu_refs):
-        return {el:self.mu[el] - mu_refs[el] for el in self.mu}
+        return Chempots({el:self.mu[el] - mu_refs[el] for el in self.mu})
             
         
         
@@ -144,6 +153,15 @@ class Reservoirs(MSONable):
     def copy(self):
         return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.pd,are_chempots_delta=self.are_chempots_delta,mu_refs=self.mu_refs)
     
+    def update(self, other):
+        if isinstance(other, dict):
+            for key, value in other.items():
+                self.res_dict[key] = value
+        else:
+            for key, value in other:
+                self.res_dict[key] = value
+
+
     def as_dict(self):
         """
         Json-serializable dict representation of a Reservoirs object. The Pymatgen element 
@@ -259,24 +277,26 @@ class Reservoirs(MSONable):
         return res
 
 
-    def get_absolute_res_values(self):
+    def get_absolute_res_dict(self):
         """ 
         Return values of chempots from referenced to absolute 
         """
         if self.are_chempots_delta:
-            return self._get_absolute_res()
+            return {r:mu.get_absolute(self.mu_refs) for r,mu in self.res_dict.items()}
+         #   return self._get_absolute_res()
         else:
             raise ValueError('Chemical potential values are already absolute')
                 
 
-    def get_referenced_res_values(self):
+    def get_referenced_res_dict(self):
         """ 
         Return values of chempots from absolute to referenced 
         """
         if self.are_chempots_delta:
             raise ValueError('Chemical potential values are already with respect to reference')
         else:
-            return self._get_referenced_res()
+            return {r:mu.get_referenced(self.mu_refs) for r,mu in self.res_dict.items()}
+        #    return self._get_referenced_res()
 
     
     def get_dataframe(self,format_symbols=False,format_compositions=False,all_math=False,ndecimals=None):
@@ -357,7 +377,7 @@ class Reservoirs(MSONable):
         """
         Set reservoir dictionary to absolute values of chempots.
         """
-        new_res_dict = self.get_absolute_res_values()
+        new_res_dict = self.get_absolute_res_dict()
         self.res_dict = new_res_dict
         self.are_chempots_delta = False
         return
@@ -367,29 +387,11 @@ class Reservoirs(MSONable):
         """
         Set reservoir dictionary to referenced values of chempots.
         """
-        new_res_dict = self.get_referenced_res_values()
+        new_res_dict = self.get_referenced_res_dict()
         self.res_dict = new_res_dict
         self.are_chempots_delta = True
         return    
     
-
-    def _get_absolute_chempots(self,chem):
-        return {el:chem[el] + self.mu_refs[el] for el in chem}
-        
-    def _get_referenced_chempots(self,chem):
-        return {el:chem[el] - self.mu_refs[el] for el in chem}
-
-    def _get_absolute_res(self):
-        res_abs = {}
-        for r,chem in self.items():
-            res_abs[r] = self._get_absolute_chempots(chem)
-        return res_abs
-
-    def _get_referenced_res(self):
-        res_delta = {}
-        for r,chem in self.items():
-            res_delta[r] = self._get_referenced_chempots(chem)
-        return res_delta
                 
     def _get_res_dict_with_symbols(self,format_symbols=False):
         """
@@ -499,7 +501,7 @@ class ChempotAnalysis:
             Pymatgen PhaseDiagram object
         """
         self.pd = phase_diagram
-        self.chempots_reference = PDHandler(phase_diagram).get_chempots_reference()
+        self.mu_refs = PDHandler(phase_diagram).get_chempots_reference()
     
 
     def boundary_analysis(self,comp,fixed_chempot_delta):
@@ -533,7 +535,8 @@ class ChempotAnalysis:
 
     def calculate_single_chempot(self,comp,fixed_chempots_delta):
         """
-        Calculate chemical potential in a given composition and given the chemical potentials of the other elements.
+        Calculate referenced chemical potential in a given composition and given
+        the chemical potentials of the other elements.
 
         Parameters
         ----------
@@ -551,8 +554,8 @@ class ChempotAnalysis:
         form_energy = PDHandler(self.pd).get_formation_energy_from_stable_comp(comp)
         mu = form_energy
         for el,coeff in comp.items():
-            if el in fixed_chempots_delta:
-                mu += -1*coeff * fixed_chempots_delta[el]
+            if el.symbol in fixed_chempots_delta:
+                mu += -1*coeff * fixed_chempots_delta[el.symbol]
             else:
                 factor = coeff
         
@@ -616,7 +619,8 @@ class ChempotAnalysis:
             Dictionary of chemical potentials.
         """
         chempots_boundary ={}
-        for el,chempot in fixed_chempot_delta.items():
+        mu_fixed = fixed_chempot_delta.to_pmg_elements()
+        for el,chempot in mu_fixed.items():
             el_fixed, mu_fixed = el, chempot
         pdhandler = PDHandler(self.pd)
         e1 = pdhandler.get_formation_energy_from_stable_comp(comp1)
@@ -625,7 +629,8 @@ class ChempotAnalysis:
         coeff1 = []
         coeff2 = []
         # order of variables (mu) will follow the order of self.chempots_reference which is alphabetically ordered
-        for el in self.chempots_reference:
+        mu_refs = self.mu_refs.to_pmg_elements()
+        for el in mu_refs:
             if el != el_fixed:
                 if el not in comp1:
                     coeff1.append(0)
@@ -640,16 +645,15 @@ class ChempotAnalysis:
         const1 = e1 - comp1[el_fixed]*mu_fixed if el_fixed in comp1 else e1 
         const2 = e2 - comp2[el_fixed]*mu_fixed if el_fixed in comp2 else e2
         b = np.array([const1,const2])
-        
         x = np.linalg.solve(a, b)
         # output will follow the order given in input
         counter = 0
-        for el in self.chempots_reference:
+        for el in mu_refs:
             if el != el_fixed:
                 chempots_boundary[el] = x[counter]
                 counter += 1
         chempots_boundary[el_fixed] = mu_fixed        
-        return chempots_boundary
+        return Chempots.from_pmg_elements(chempots_boundary)
                   
     
     def get_composition_boundaries(self,comp,fixed_chempot_delta):
@@ -672,8 +676,7 @@ class ChempotAnalysis:
         comp1,comp2 : (Pymatgen Composition object)
             Compositions of the boundary phases given a fixed chemical potential for one element.
         """
-        
-        fixed_chempot = self.get_chempots_abs(fixed_chempot_delta)
+        fixed_chempot = fixed_chempot_delta.get_absolute(self.mu_refs).to_pmg_elements()
         
         entries = self.pd.all_entries
         gpd = GrandPotentialPhaseDiagram(entries, fixed_chempot)

@@ -8,7 +8,7 @@ Created on Wed Mar 18 13:12:05 2020
 
 import numpy as np
 from pymatgen.core.periodic_table import Element
-from pynter.phase_diagram.analysis import ChempotAnalysis, Reservoirs, PDHandler, PressureReservoirs
+from pynter.phase_diagram.analysis import Chempots, ChempotAnalysis, Reservoirs, PDHandler, PressureReservoirs
 
 class ChempotExperimental:
     
@@ -113,7 +113,7 @@ class ChempotExperimental:
             PressureReservoirs object. The dictionary is organized as {partial_pressure:chempots}.
 
         """
-        chempots = {}
+        chempots_dict = {}
         reservoirs = {}
         pd = phase_diagram
         temperature = temperature if temperature else self.temperature
@@ -124,7 +124,7 @@ class ChempotExperimental:
         for p in partial_pressures:
             i += 1
             muO = self.chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p) #delta value
-            fixed_chempot = {Element('O'):muO} 
+            fixed_chempot = Chempots({'O':muO})
             
             if len(pd.elements) == 2: # 2-component PD case
                 ca = ChempotAnalysis(pd)
@@ -132,15 +132,16 @@ class ChempotExperimental:
                 for el in target_comp.elements:
                     if el is not Element('O'):
                         chempots = fixed_chempot.copy()
-                        chempots.update({el:mu})
+                        chempots.update({el.symbol:mu})
                     
             elif len(pd.elements) == 3: # 3-component PD case
                 ca = ChempotAnalysis(pd)
                 res = ca.boundary_analysis(target_comp, fixed_chempot)
                 for el in list(res.values())[0]:
-                    chempots[el] = np.mean(np.array([mu[el] for mu in res.values()]))
-                
-            chempots_abs = ca.get_chempots_abs(chempots)
+                    chempots_dict[el] = np.mean(np.array([mu[el] for mu in res.values()]))
+            
+            chempots = Chempots(chempots_dict)
+            chempots_abs = chempots.get_absolute(ca.mu_refs)
             
             if extrinsic_chempots_range:
                 for el in extrinsic_chempots_range:
@@ -179,19 +180,21 @@ class ChempotExperimental:
 
         """
         reservoirs = {}
+        mu_refs = Chempots({'O':oxygen_ref})
         temperature = temperature if temperature else self.temperature
         partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
         mu_standard = self.oxygen_standard_chempot(temperature)
         for p in partial_pressures:
             mu = {}
             muO = self.chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p)
-            mu.update({Element('O'):oxygen_ref + muO})
+            mu.update({'O':oxygen_ref + muO})
             if get_pressures_as_strings:
                 p = "%.1g" % p
                 p = str(p)
-            reservoirs[p] = mu
+            reservoirs[p] = Chempots(mu)
         
-        return PressureReservoirs(reservoirs,temperature,phase_diagram=None,are_chempots_delta=False)
+        return PressureReservoirs(reservoirs,temperature,phase_diagram=None,
+                                  mu_refs=mu_refs,are_chempots_delta=False)
     
     
     def oxygen_standard_chempot(self,temperature=None):
