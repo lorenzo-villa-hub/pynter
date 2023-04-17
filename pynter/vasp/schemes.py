@@ -13,7 +13,7 @@ from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
 from pynter.vasp.default_inputs import DefaultInputs
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
-from pynter.defects.utils import create_vacancy_structures, create_substitution_structures
+from pynter.defects.structure import create_vacancy_structures, create_substitution_structures
 
 
 class InputSets:

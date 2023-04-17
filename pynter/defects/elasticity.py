@@ -15,7 +15,7 @@ class Stresses:
     def __init__(self,stress_bulk):
         """
         Class to handle elastic analysis from defect calculations. Necessary data must be present for 
-        defect entries (SingleDefectEntry or DefectComplexEntry) in dictionary form in "data" attribute.
+        defect entries in dictionary form in "data" attribute.
         Valid keys are:
             "stress" : To compute elastic dipole tensor and relaxation volume starting from stress tensor 
                     of defect calculation.
@@ -37,8 +37,8 @@ class Stresses:
 
         Parameters
         ----------
-        entry : (GenericDefectEntry)
-            SingleDefectEntry or DefectComplexEntry object. Stress needs to be present in the data
+        entry : (DefectEntry)
+            DefectEntry object. Stress needs to be present in the data
             dictionary as a numpy array with key "stress".
         add_corrections : (bool)
             Add correction terms from "elastic_corrections" dict (if key is present in dict). The default is True.
@@ -61,12 +61,13 @@ class Stresses:
     def get_relaxation_volume(self,entry,bulk_modulus,add_corrections=True,add_to_data=True):
         """
         Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
-        in the "data" dictionary with realtive "stress" key.
+        in the "data" dictionary with relative "stress" key.
 
         Parameters
         ----------
-        stress_bulk : (np.array)
-            Stresses of bulk calculation.
+        entry : (DefectEntry)
+            DefectEntry object. Stress needs to be present in the data dictionary 
+            as a numpy array with key "stress".  
         bulk_modulus : (float)
             Bulk modulus in GPa.
         add_corrections : (bool)
@@ -94,9 +95,9 @@ class Stresses:
 
         Parameters
         ----------
-        entry : (GenericDefectEntry)
-            SingleDefectEntry or DefectComplexEntry object. Stress needs to be present in the data
-            dictionary as a numpy array with key "stress".
+        entry : (DefectEntry)
+            DefectEntry object. Stress needs to be present in the data dictionary 
+            as a numpy array with key "stress".
 
         Returns
         -------
@@ -116,7 +117,7 @@ class Stresses:
         Parameters
         ----------
         entries : (list)
-            List of defect entries (SingleDefectEntry or DefectComplexEntry).
+            List of DefectEntry objects.
         bulk_modulus : (float)
             Bulk modulus in GPa.
         check_in_data : (bool), optional

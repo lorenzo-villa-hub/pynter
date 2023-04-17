@@ -1,0 +1,350 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Apr  4 17:10:46 2023
+
+@author: villa
+"""
+
+import numpy as np
+from pymatgen.core.sites import PeriodicSite
+from pymatgen.core.periodic_table import Element
+from pymatgen.io.vasp.inputs import Poscar
+from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
+import os.path as op
+import os
+import importlib
+from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
+from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectComplex
+from pymatgen.core.trajectory import Trajectory
+
+"""Interstitial generator to be re-implemented using the new pymatgen defects"""
+# def create_interstitial_supercells(structure,element,size=2):
+    
+#     '''
+#     Create interstitial structures with InFiT (Interstitialcy Finding Tool) algorithm with Pymatgen.
+    
+#     Parameters
+#     ----------
+#     structure: (Pymatgen Structure)
+#         Bulk structure.
+#     element: (str or Element)
+#         interstitial element.
+    
+#     Returns
+#     -------
+#     interstitials: (dict)
+#         Dictionary with sites (Site object) and supercell structures (Structure object)
+#     '''
+    
+#     int_object = StructureMotifInterstitial(structure,element)
+#     int_sites = int_object.enumerate_defectsites()
+#     int_supercells = int_object.make_supercells_with_defects([[size,0,0],[0,size,0],[0,0,size]])
+    
+#     interstitials = {}
+#     interstitial_sites =  {}
+#     interstitial_structures = {}
+
+#     for i in range(0,len(int_sites)):        
+#         int_coord_type = int_object.get_motif_type(i)
+#         interstitial_sites[int_coord_type] = int_sites[i]
+#         struct_int = int_supercells[i+1]
+#         interstitial_structures[int_coord_type] = struct_int
+        
+#         interstitials['sites'] = interstitial_sites
+#         interstitials['structures'] = interstitial_structures
+        
+#     return interstitials
+
+
+def create_vacancy_structures(structure,elements=None,supercell_size=None):
+    """
+    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    elements : (str), optional
+        Symbol of the elements for which vacancies are needed.
+        If None all of the elements are considered. The default is None.
+    supercell_size : (int or numpy array), optional
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. The default is None.
+
+    Returns
+    -------
+    vac_structures : (dict)
+        Dictionary with vacancy types as keys and structures as values.
+
+    """
+    vac_structures={}
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    if not elements:
+        elements = [el.symbol for el in bulk_structure.composition.elements]
+    
+    for el in bulk_structure.composition.elements:
+        s = bulk_structure.copy()
+        for site in s.sites:
+            if el.symbol in elements:
+                if site.specie == el:
+                    s.remove_sites([bulk_structure.index(site)])
+                    vac_structures[f'{el.symbol}'] = s
+                    break
+
+    return vac_structures
+
+
+def create_substitution_structures(structure,replace,supercell_size=1):
+    """
+    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    replace : (str), optional
+        Dict with element symbol of specie to be replaced as keys and element 
+        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
+    supercell_size : (int or numpy array), optional
+        Input for the generate_defect_structure function of the old pymatgen Substitution class.
+
+    Returns
+    -------
+    sub_structures : (dict)
+        Dictionary with substitution types as keys and structures as values.
+
+    """
+    from pynter.defects.pmg.pmg_defects_core import Substitution
+    sub_structures={}
+    bulk_structure = structure.copy()
+    
+    for el_to_sub in replace:
+        for el in bulk_structure.composition.elements:
+            s = bulk_structure.copy()
+            for site in s.sites:
+                if el.symbol == el_to_sub:
+                    if site.specie == el:
+                        sub_site = site
+                        sub_el = replace[el.symbol]
+                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
+                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
+                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
+                        break
+
+    return sub_structures
+
+
+def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,sort_to_bulk=False,tol=1e-03):
+    """
+    Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
+    in the vacant site the element of same row and next group on the periodic table.
+    If sort_to_bulk is True the Sites are sorted to match the Bulk structure.
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    defects : (tuple or list). 
+        List of defect objects.
+    sort_to_bulk : (bool)
+        Sort Sites of the defect structure to match the order of coordinates in the bulk structure
+        (useful if the non-relaxed defect structure is not available). 
+        If False only the dummy atoms are inserted and not further changes are made.
+    tol: (float)
+        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
+        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
+        The default is 1e-03.
+
+    Returns
+    -------
+    new_structure (Pymatgen Structure object)
+        Structure with dummy atoms as vacancies and interstitials in the bottom.
+        The order of the Sites follow the order of the Bulk structure.
+
+    """
+    df = structure_defect.copy()
+    bk = structure_bulk.copy()
+    extra_sites=[]
+    if defects:
+        dfs = defects
+    else:
+        df_found = defect_finder(df,bk,tol=tol)
+        if df_found.classname=='DefectComplex':
+            dfs = df_found.defects
+        else:
+            dfs = [df_found]
+   
+    for d in dfs:
+        dsite = d.site
+        dtype = d.classname
+        if dtype == 'Vacancy':
+            check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
+            el = dsite.specie
+            species = Element.from_row_and_group(el.row, el.group+1)
+            df.insert(i=i,species=species,coords=dsite.frac_coords)
+        elif dtype == 'Interstitial' and sort_to_bulk:
+            extra_sites.append(dsite)
+
+    # reorder to match bulk, useful if you don't have the non-relaxed defect structure
+    if sort_to_bulk:
+        new_structure = sort_sites_to_ref_coords(df, bk, extra_sites,tol=tol)
+    # In this case only dummy atoms are inserted, no further changes
+    else:
+        new_structure = df.copy()
+    return new_structure
+        
+
+
+def _defect_finder_old(structure_defect,structure_bulk,tol=1e-03):
+    """
+    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    tol: (float)
+        Tolerance for fractional coordinates comparison.
+
+    Returns
+    -------
+    defects : (list)
+        List of tuples with defect site (Pymatgen PeriodicSite object) and defect type ("Vacancy","Interstitial" or "Substitution")
+        for each point defect present.
+    """
+    df = structure_defect
+    bk = structure_bulk
+    defects = []
+    
+    for s in df:
+        if is_site_in_structure_coords(s,bk,tol=tol)[0]:
+            if is_site_in_structure(s,bk,tol=tol)[0] == False:
+                dsite = s
+                dtype = 'Substitution'
+                defects.append((dsite,dtype))
+        else:
+            dsite = s
+            dtype = 'Interstitial'
+            defects.append((dsite,dtype))
+            
+    for s in bk:
+        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
+            dsite = s
+            dtype = 'Vacancy'
+            defects.append((dsite,dtype))
+    
+    return defects
+
+        
+def defect_finder(structure_defect,structure_bulk,tol=1e-03):
+    """
+    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    tol: (float)
+        Tolerance for fractional coordinates comparison.
+
+    Returns
+    -------
+    Defect object
+    """
+    df = structure_defect
+    bk = structure_bulk
+    defects = []
+    
+    for s in df:
+        is_site,index = is_site_in_structure_coords(s,bk,tol=tol)
+        if is_site:
+            if is_site_in_structure(s,bk,tol=tol)[0] == False:
+                defect = Substitution(s, bk,site_in_bulk=bk[index])
+                defects.append(defect)
+        else:
+            defect = Interstitial(s, bk)
+            defects.append(defect)
+            
+    for s in bk:
+        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
+            defect = Vacancy(s, bk)
+            defects.append(defect)
+    
+    if len(defects) > 1:
+        return DefectComplex(defects, structure_bulk)
+    else:
+        return defects[0]
+
+
+
+def get_trajectory_for_visualization(structure_defect,structure_bulk,defects=None,tol=1e-03,file=None):
+    """
+    Create trajectory from defect and bulk structures for visualization in OVITO. 
+    The vacancies are shown by inserting in the vacant site the element of same row and next group on the periodic table.
+
+    Parameters
+    ----------
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    defects : (tuple or list). 
+        Tuple or list of tuples in the format (defect_site,defect_type)
+        The format is the same as the output of defect_finder. If None defect_finder is used. The default is None.
+    tol: (float)
+        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
+        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
+        The default is 1e-03.
+    file : (str)
+        File to save XDATCAR. 
+    Returns
+    -------
+    new_structure (Pymatgen Structure object)
+        Structure with dummy atoms as vacancies and interstitials in the bottom.
+        The order of the Sites follow the order of the Bulk structure.
+
+    """
+    sb = structure_bulk
+    dummy = create_def_structure_for_visualization(structure_defect, structure_bulk,defects,sort_to_bulk=True,tol=tol)
+    traj = Trajectory.from_structures([dummy,sb],constant_lattice=True)     
+    if file:
+        if not op.exists(op.dirname(file)):
+            os.makedirs(op.dirname(file))
+        traj.write_Xdatcar(file)
+    return traj
+        
+        
+def write_extxyz_for_visualization(file,structure_defect,structure_bulk,defects=None,tol=1e-03): 
+    """
+    Write extxyz file for visualization in OVITO. The displacements w.r.t the bulk structure are included.
+    The vacancies are shown by inserting in the vacant site the element of same row and next group on the periodic table.
+    
+    Parameters
+    ----------
+    file : (str)
+        Path to save file. 
+    structure_defect : (Pymatgen Structure object)
+        Defect structure.
+    structure_bulk : (Pymatgen Structure object)
+        Bulk structure.
+    defects : (tuple or list). 
+        Tuple or list of tuples in the format (defect_site,defect_type)
+        The format is the same as the output of defect_finder. If None defect_finder is used. The default is None.
+    tol: (float)
+        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
+        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
+        The default is 1e-03.
+    """
+    sb = structure_bulk
+    dummy = create_def_structure_for_visualization(structure_defect, structure_bulk,defects,sort_to_bulk=True,tol=tol)
+    write_extxyz_file(file, dummy, sb,displacements=True)
+    return
