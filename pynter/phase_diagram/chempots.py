@@ -4,7 +4,7 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
-from monty.json import MSONable
+from monty.json import MSONable, jsanitize
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.phase_diagram import PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pymatgen.symmetry.groups import SpaceGroup
@@ -269,7 +269,7 @@ class Reservoirs(MSONable):
         d['@module'] = self.__class__.__module__
         d['@class'] = self.__class__.__name__
         d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()} 
-        d['phase_diagram'] = self.pd.as_dict() if self.pd else None
+        d['phase_diagram'] = jsanitize(self.pd.as_dict()) if self.pd else None
         d['mu_refs'] = self.mu_refs.as_dict() if self.mu_refs else None
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
@@ -623,6 +623,27 @@ class PDHandler:
         
         return mu/factor
 
+
+    def get_all_boundaries_chempots(self,comp):
+        """
+        Get chemical potentials at the corners of the stability ta given composition.
+
+        Parameters
+        ----------
+        comp : 
+            Pymatgen Composition object.
+
+        Returns
+        -------
+        chempots : (Chempots)
+            Chempots object.
+        """
+        chempots_pmg = self.pd.get_all_chempots(comp)
+        for r,mu in chempots_pmg.items():
+            chempots_pmg[r] = {k:v.item() for k,v in mu.items()} # convert from np.float64
+        chempots = {r:Chempots.from_pmg_elements(mu) for r,mu in chempots_pmg.items()}
+        return chempots
+
         
     def get_chempots_reference(self):
         """
@@ -770,6 +791,7 @@ class PDHandler:
         comp1,comp2 : (Pymatgen Composition object)
             Compositions of the boundary phases given a fixed chemical potential for one element.
         """
+        chempot_ref = Chempots(chempot_ref)
         fixed_chempot = chempot_ref.get_absolute(self.mu_refs).to_pmg_elements()
         
         entries = self.pd.all_entries
@@ -823,6 +845,7 @@ class PDHandler:
             Dictionary of chemical potentials.
         """
         chempots_boundary ={}
+        chempot_ref = Chempots(chempot_ref)
         mu_fixed = chempot_ref.to_pmg_elements()
         for el,chempot in mu_fixed.items():
             el_fixed, mu_fixed = el, chempot
