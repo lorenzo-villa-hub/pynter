@@ -368,6 +368,60 @@ class Dataset:
             print('Job "%s" removed from Dataset'%j.name)
         return
         
+            
+    def filter_jobs(self,jobs=None,inplace=False,mode='and',exclude=False,names=None,groups=None,
+                    common_group=None,common_node=None,complex_features=None,function=None,**kwargs):
+        """
+        Function to filter jobs based on different selection criteria.
+        The priority of the selection criterion follows the order of the input
+        parameters. When more than one criterion is present, the arg "mode" 
+        determines the selection criterion.
+
+        Parameters
+        ----------
+        jobs : (list), optional
+            List of Jobs to search, if None the self.jobs is used. The default is None.
+        mode : (str), optional
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+        exclude : (bool), optional
+            Exclude the jobs satisfying the criteria instead of selecting them. The default is False.
+        names : (list), optional
+            List of Job names. 
+        groups : (list), optional
+            List of groups that jobs need to belong to.
+        common_group : (str), optional
+            String that needs to be present in the group.
+        common_node : (str), optional
+            String that needs to be present in the node.
+        complex_features : (list of tuples) , optional
+            List of properties that need to be satisfied.
+            To use when the property of interest is stored in a dictionary.
+            The first element of the tuple indentifies the property (see get_object_feature),
+            the second corrisponds to the target value. To address more than one condition 
+            relative to the same property, use lists or tuples.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function needs to return a bool.
+        **kwargs : (dict)
+            Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
+            present in the relative Job class. To address more than one condition relative to
+            the same attribute, use lists or tuples (e.g. charge=[0,1]).
+
+        Returns
+        -------
+        dataset : (Dataset)
+            Dataset object with filtered jobs. If inplace is True self.jobs is updated with
+            the selected jobs.
+        """
+        jobs = self.select_jobs(jobs=jobs,mode=mode,exclude=exclude,names=names,groups=groups,
+                                common_group=common_group,common_node=common_node,
+                                complex_features=complex_features,function=function,**kwargs)
+        
+        if inplace:
+            self.__init__(jobs,self.path,self.name,self.sort)
+            return
+        else:
+            return Dataset(jobs,self.path,self.name,self.sort)
+        
     
     def get_jobs_inputs(self,**kwargs):
         """Read inputs for all jobs from the data stored in the respective directories"""
@@ -578,7 +632,7 @@ class Dataset:
         Returns
         -------
         output_jobs : (list)
-            List with filtered jobs. If list has one element only the element is returned.
+            List with selected jobs.
         """
         input_jobs = jobs.copy() if jobs else self.jobs.copy() 
         
@@ -666,8 +720,6 @@ class Dataset:
                 if j in sel_jobs:
                     output_jobs.append(j)    
         
-        if len(output_jobs) == 1:
-            output_jobs = output_jobs[0]
             
         return output_jobs
 

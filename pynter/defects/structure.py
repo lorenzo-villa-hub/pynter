@@ -196,51 +196,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     # In this case only dummy atoms are inserted, no further changes
     else:
         new_structure = df.copy()
-    return new_structure
-        
-
-
-def _defect_finder_old(structure_defect,structure_bulk,tol=1e-03):
-    """
-    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
-
-    Parameters
-    ----------
-    structure_defect : (Pymatgen Structure object)
-        Defect structure.
-    structure_bulk : (Pymatgen Structure object)
-        Bulk structure.
-    tol: (float)
-        Tolerance for fractional coordinates comparison.
-
-    Returns
-    -------
-    defects : (list)
-        List of tuples with defect site (Pymatgen PeriodicSite object) and defect type ("Vacancy","Interstitial" or "Substitution")
-        for each point defect present.
-    """
-    df = structure_defect
-    bk = structure_bulk
-    defects = []
-    
-    for s in df:
-        if is_site_in_structure_coords(s,bk,tol=tol)[0]:
-            if is_site_in_structure(s,bk,tol=tol)[0] == False:
-                dsite = s
-                dtype = 'Substitution'
-                defects.append((dsite,dtype))
-        else:
-            dsite = s
-            dtype = 'Interstitial'
-            defects.append((dsite,dtype))
-            
-    for s in bk:
-        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
-            dsite = s
-            dtype = 'Vacancy'
-            defects.append((dsite,dtype))
-    
-    return defects
+    return new_structure        
 
         
 def defect_finder(structure_defect,structure_bulk,tol=1e-03):
