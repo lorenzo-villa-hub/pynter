@@ -961,9 +961,9 @@ class DefectConcentrations:
         conc_stable = []
         for n in self.names:
             concs = self.select_concentrations(name=n)
-            cmax = SingleDefConc(name='',conc=0,charge=0,stable=True) # dummy object
+            cmax = SingleDefConc(name='',conc=None,charge=0,stable=True) # dummy object
             for c in concs:
-                if c.conc >= cmax.conc:
+                if cmax.conc is None or c.conc >= cmax.conc:
                     cmax = c
             conc_stable.append(concs[concs.index(cmax)])
         self._stable = conc_stable

@@ -6,13 +6,10 @@ Created on Thu Jan 14 14:48:55 2021
 @author: villa
 """
 
-from pynter.defects.analysis import DefectsAnalysis, DefectConcentrations
-from pynter.phase_diagram.experimental import ChempotExperimental
-from pynter.tools.utils import save_object_as_json, get_object_from_json
+from pynter.defects.analysis import DefectConcentrations
 import copy
 import os.path as op
 import json
-from monty.json import MontyDecoder
 import os
 
 class Conductivity:
@@ -324,7 +321,7 @@ class PressureAnalysis:
                 for k in quenched_species:
                     quenched_concentrations[k] = c1[k]
             quenched_mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T2,
-                                            fixed_concentrations=fixed_df,
+                                            fixed_concentrations=quenched_concentrations,
                                             external_defects=ext_df,xtol=self.xtol)
             fermi_levels.append(quenched_mue)
             

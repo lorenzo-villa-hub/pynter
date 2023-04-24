@@ -53,6 +53,10 @@ class Chempots(MSONable):
         self.mu[el] = value
         return
     
+    def __delitem__(self,el):
+        del self.mu[el]
+        return
+    
     def __eq__(self, other):
         if isinstance(other, str):
             return self.mu == other
@@ -314,7 +318,7 @@ class Reservoirs(MSONable):
         res_dict = {}
         for res,chempots in d['res_dict'].items():
             res_dict[res] = Chempots.from_dict(chempots)
-        phase_diagram = d['phase_diagram'] if PhaseDiagram.from_dict(d['phase_diagram']) else None
+        phase_diagram = PhaseDiagram.from_dict(d['phase_diagram']) if d['phase_diagram'] else None
         mu_refs = Chempots.from_dict(d['mu_refs']) if d['mu_refs'] else None
         are_chempots_delta = d['are_chempots_delta']
             
@@ -345,12 +349,14 @@ class Reservoirs(MSONable):
         return Reservoirs.from_dict(d)
 
 
-    def filter_reservoirs(self,elements=None):
+    def filter_reservoirs(self,inplace=False,elements=None):
         """
         Get new Reservoir object filtering the chempots dictionary.
 
         Parameters
         ----------
+        inplace : (bool)
+            Apply changes to current Reservoirs object.
         elements : (list), optional
             List of element symbols. The default is None.
 
@@ -360,14 +366,23 @@ class Reservoirs(MSONable):
             Reservoirs object.
         """
         res = self.copy()
+        mu_refs = self.mu_refs.copy()
         filtered_dict = res.res_dict
         if elements:
             d = filtered_dict.copy()
             for r in list(d):
                 for el in list(d[r]):
                     if el not in elements:
-                        del filtered_dict[r][el]        
-        return res
+                        del filtered_dict[r][el]
+                        if el in mu_refs.keys():
+                            del mu_refs[el]
+        if inplace:
+            self.res_dict = filtered_dict
+            self.mu_refs = mu_refs
+            return
+        else:
+            res.mu_refs = mu_refs
+            return res
 
 
     def get_absolute_res_dict(self):
