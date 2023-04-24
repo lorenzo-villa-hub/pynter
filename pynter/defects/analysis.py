@@ -187,7 +187,7 @@ class DefectsAnalysis:
         return abs(h) , abs(n)
 
 
-    def charge_transition_levels(self, energy_range=None,entries=None):
+    def charge_transition_levels(self, energy_range=None,entries=None,get_integers=True):
         """
         Computes charge transition levels for all defect entries
         Args:
@@ -195,6 +195,8 @@ class DefectsAnalysis:
                                   default to (-0.5, Eg + 0.5)    
             entries:
                 List of entries to calculate. If None all entries are considered.
+            get_integers : (bool)
+                Save charges as integers. More convenient for plotting.
         Returns:
             Dictionary with defect name and list of tuples for charge transition levels:
                 {name:[(q1,q2,ctl),(q2,q3,ctl),...}
@@ -219,6 +221,9 @@ class DefectsAnalysis:
                     if name not in charge_transition_levels.keys():
                         charge_transition_levels[name] = []
                     previous_stable_charges = stable_charges
+                    if get_integers:
+                        previous_charge = int(previous_charge)
+                        new_charge = int(new_charge)
                     charge_transition_levels[name].append((previous_charge,new_charge,e[i]))
                             
         return charge_transition_levels        
@@ -624,7 +629,7 @@ class DefectsAnalysis:
         return plt
     
     
-    def plot_ctl(self, entries=None,ylim=None, size=1, fermi_level=None, format_legend=True):
+    def plot_ctl(self, entries=None,ylim=None, size=1, fermi_level=None, format_legend=True,get_integers=True):
         """
         Plotter for the charge transition levels
         Args:
@@ -633,17 +638,18 @@ class DefectsAnalysis:
             fermi_level (float) : float to plot Fermi energy position
             size (float) : Float multiplier for plot size
             format_legend (bool): Bool for getting latex-like legend based on the name of defect entries 
+            get_integers (bool): Get CTLs as integers.
         Returns:
             matplotlib object    
         """        
         plt.figure(figsize=(10*size,10*size))         
         if ylim == None:
             ylim = (-0.5,self.band_gap +0.5)        
-        charge_transition_levels = self.charge_transition_levels(entries=entries)
+        charge_transition_levels = self.charge_transition_levels(entries=entries,get_integers=get_integers)
         number_defects = len(charge_transition_levels)   
         x_max = 10
         interval = x_max/(number_defects + 1)
-        x = np.arange(0,x_max,interval)        
+        x = np.arange(0,x_max,interval)
         # position of x labels
         x_ticks_positions = []
         for i in range(0,len(x)-1):

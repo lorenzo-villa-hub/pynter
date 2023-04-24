@@ -86,7 +86,6 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         return self.__class__.__name__
     
     @property
-    @abstractmethod
     def delta_atoms(self):
         """
         Dictionary with defect element as keys and difference in particle number 
@@ -181,7 +180,7 @@ class Vacancy(Defect):
         Dictionary with delement as keys and difference in particle number 
         between defect and bulk structure as values
         """
-        return {self.site.specie:-1}
+        return {self.site.specie.symbol:-1}
 
     @property
     def name(self):
@@ -222,7 +221,7 @@ class Substitution(Defect):
         Dictionary with delement as keys and difference in particle number 
         between defect and bulk structure as values
         """
-        return {self.site.specie:1, self.site_in_bulk.specie:-1}
+        return {self.site.specie.symbol:1, self.site_in_bulk.specie.symbol:-1}
 
     @property 
     def name(self):
@@ -269,7 +268,7 @@ class Interstitial(Defect):
         Dictionary with delement as keys and difference in particle number 
         between defect and bulk structure as values
         """
-        return {self.site.specie:1}
+        return {self.site.specie.symbol:1}
 
     @property
     def name(self):

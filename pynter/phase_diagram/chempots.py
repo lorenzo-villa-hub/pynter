@@ -4,7 +4,7 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
-from monty.json import MSONable, jsanitize
+from monty.json import MSONable, jsanitize, MontyEncoder
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.phase_diagram import PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pymatgen.symmetry.groups import SpaceGroup
@@ -269,7 +269,7 @@ class Reservoirs(MSONable):
         d['@module'] = self.__class__.__module__
         d['@class'] = self.__class__.__name__
         d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()} 
-        d['phase_diagram'] = jsanitize(self.pd.as_dict()) if self.pd else None
+        d['phase_diagram'] = self.pd.as_dict() if self.pd else None
         d['mu_refs'] = self.mu_refs.as_dict() if self.mu_refs else None
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
@@ -292,7 +292,7 @@ class Reservoirs(MSONable):
         d = self.as_dict()
         if path:
             with open(path,'w') as file:
-                json.dump(d,file)
+                json.dump(d,file,cls=MontyEncoder)
             return
         else:
             return d.__str__()  
