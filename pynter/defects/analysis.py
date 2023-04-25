@@ -233,11 +233,9 @@ class DefectsAnalysis:
                               fixed_concentrations=None,per_unit_volume=True):
         """
         Give list of all concentrations at specified efermi.
-        If frozen_defect_concentration is provided the concentration of defect entries are 
+        If fixed_concentrations is provided the concentration of defect entries are 
         corrected according to the fixed provided values. More details can be found in 
         https://doi.org/10.1103/PhysRevB.106.134101 .
-        
-        Labels are ignored when accounting for the defect species equilibrium.
             
         Parameters
         ----------
@@ -249,7 +247,7 @@ class DefectsAnalysis:
             Fermi level relative to valence band maximum. The default is 0. 
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys can be simple element strings
-            (or vacancies of elements) in the format 'Vac_{el}') if that element needs to be 
+            (or vacancies of elements in the format 'Vac_{el}') if that element needs to be 
             fixed across all defect species, alternatively defect entry names can be used as well 
             to target specific defect entries. The values are the concentrations.
         per_unit_volume: (bool)
@@ -778,7 +776,7 @@ class DefectsAnalysis:
                                     fixed_concentrations=None,external_defects=[],xtol=1e-05):
         """
         Solve charge neutrality in non-equilibrium conditions (when some concentrations are fixed).
-        If frozen_defect_concentration is not None the concentration for every single defect 
+        If fixed_concentrations is not None the concentration for every single defect 
         is normalized starting from the input fixed concentration as:
             C = C_eq * (Ctot_fix/Ctot_eq)
         while for a defect complex this is applied for every single defect specie which

@@ -378,7 +378,23 @@ class ThermoData:
         for k,v in thermodata.items():
             setattr(self, k, v)
         
-        
+    
+    def __getitem__(self,key):
+        return self.data[key]
+    
+    def __iter__(self):
+        return self.data.__iter__()
+    
+    def keys(self):
+        return self.data.keys()
+    
+    def values(self):
+        return self.data.values()
+    
+    def items(self):
+        return self.data.items()
+    
+    
     def as_dict(self):
         """
         Returns:
