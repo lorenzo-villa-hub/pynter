@@ -406,6 +406,8 @@ class DefectsAnalysis:
         ----------
         filter_names : (list), optional
             Only entries whose name is on the list will be displayed. The default is None.
+        pretty : (bool), optional
+            Optimize DataFrame for prettier visualization.
         include_bulk: (bool), optional
             Include bulk composition and space group for each entry in DataFrame.
         display: (list)
@@ -467,30 +469,29 @@ class DefectsAnalysis:
         Produce defect Formation energy vs Fermi energy plot
         Args:
             chemical_potentials:
-                Dictionary of {Element:value} giving the chemical
-                potential of each element
+                Chempots object containing the chemical
+                potential of each element.
             entries: 
                 List of entries to calculate. If None all entries are considered.
             xlim:
-                Tuple (min,max) giving the range of the x (fermi energy) axis
+                Tuple (min,max) giving the range of the x (fermi energy) axis.
             ylim:
-                Tuple (min,max) giving the range for the formation energy axis
+                Tuple (min,max) giving the range for the formation energy axis.
             fermi_level:
-                float to plot Fermi energy position
+                float to plot Fermi energy position.
             plotsize:
-                float or tuple
-                can be float or tuple for different x and y sizes
-                multiplier to change plotsize            
+                float or tuple. Can be float or tuple for different x and y sizes
+                multiplier to change plotsize.
             fontsize:
-                float  multiplier to change fontsize
+                float  multiplier to change fontsize.
             show_legend:
-                Bool for showing legend
+                Bool for showing legend.
             format_legend:
-                Bool for getting latex-like legend based on the name of defect entries
+                Bool for getting latex-like legend based on the name of defect entries.
             get_subplot:
-                Bool for getting subplot
+                Bool for getting subplot.
             subplot_settings:
-                List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)) 
+                List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)). 
         Returns:
             matplotlib object
         """
@@ -632,10 +633,10 @@ class DefectsAnalysis:
         Plotter for the charge transition levels
         Args:
             entries: List of entries to calculate. If None all entries are considered.
-            ylim (Tuple): y-axis limits
-            fermi_level (float) : float to plot Fermi energy position
-            size (float) : Float multiplier for plot size
-            format_legend (bool): Bool for getting latex-like legend based on the name of defect entries 
+            ylim (Tuple): y-axis limits.
+            fermi_level (float) : float to plot Fermi energy position.
+            size (float) : Float multiplier for plot size.
+            format_legend (bool): Bool for getting latex-like legend based on the name of defect entries .
             get_integers (bool): Get CTLs as integers.
         Returns:
             matplotlib object    
@@ -775,15 +776,7 @@ class DefectsAnalysis:
     def solve_fermi_level(self,chemical_potentials,bulk_dos,temperature=300,
                                     fixed_concentrations=None,external_defects=[],xtol=1e-05):
         """
-        Solve charge neutrality in non-equilibrium conditions (when some concentrations are fixed).
-        If fixed_concentrations is not None the concentration for every single defect 
-        is normalized starting from the input fixed concentration as:
-            C = C_eq * (Ctot_fix/Ctot_eq)
-        while for a defect complex this is applied for every single defect specie which
-        is composing the complex (needs to be present in computed entries):
-            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
-            
-        If external defects are present their charge concentrations are treated as d['charge']*d['conc'].
+        Solve charge neutrality and get the value of Fermi level at thermodynamic equilibrium.
         
         Parameters
         ----------
@@ -795,9 +788,11 @@ class DefectsAnalysis:
             Temperature to equilibrate the system to. The default is 300.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. (ex {'Vac_Na':1e20}) 
+            format, values are the concentrations (ex {'Vac_A':1e20}) . For more info, 
+            read the documentation of the defect_concentrations method.
         external_defects : (list)
-            List of external defect concentrations (not present in defect entries).
+            List of SingleDefConc objects containing external defect concentrations 
+            (not present in defect entries).
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
 
         Returns
@@ -903,7 +898,7 @@ class DefectsAnalysis:
 
 class SingleDefConc(MSONable):
     
-    def __init__(self,name,charge,conc,stable):
+    def __init__(self,name,charge,conc,stable=True):
         """
         Object to store defect concentrations data. It is also subscribtable like a dictionary.
 
