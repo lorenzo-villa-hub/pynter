@@ -398,14 +398,14 @@ class DefectsAnalysis:
         return charge_transition_level
         
 
-    def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False,display=[]):
+    def get_dataframe(self,entries=None,pretty=False,include_bulk=False,display=[]):
         """
         Get DataFrame to display entries. 
 
         Parameters
         ----------
-        filter_names : (list), optional
-            Only entries whose name is on the list will be displayed. The default is None.
+        entries : (list), optional
+            Entries to display. If None all entries are displayed. The default is None.
         pretty : (bool), optional
             Optimize DataFrame for prettier visualization.
         include_bulk: (bool), optional
@@ -418,13 +418,7 @@ class DefectsAnalysis:
         df : 
             DataFrame object.
         """
-        if filter_names:
-            entries = []
-            for name in filter_names:
-                en = self.select_entries(names=[name])
-                for e in en:
-                    entries.append(e)
-        else:
+        if not entries:
             entries = self.entries
         d = {}
         index = []
