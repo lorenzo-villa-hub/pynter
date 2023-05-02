@@ -11,6 +11,7 @@ from pymatgen.core.composition import Composition
 import json
 from monty.json import MontyDecoder, MontyEncoder
 from pymatgen.core.sites import PeriodicSite
+from pynter.tools.structure import is_site_in_structure_coords
 
 # Adapted from pymatgen.analysis.defect.core 
 
@@ -166,6 +167,14 @@ class Vacancy(Defect):
     """
 
     @property
+    def defect_site_index(self):
+        """
+        Index of the defect site in the bulk structure
+        """
+        _,index = is_site_in_structure_coords(self.site, self.bulk_structure)
+        return index
+
+    @property
     def defect_composition(self):
         """
         Returns: Composition of defect.
@@ -174,6 +183,15 @@ class Vacancy(Defect):
         temp_comp[str(self.site.specie)] -= 1
         return Composition(temp_comp)
     
+    @property
+    def defect_structure(self):
+        """
+        Structure of the defect
+        """
+        structure = self.bulk_structure.copy()
+        structure.remove_sites([self.defect_site_index])
+        return structure
+
     @property
     def delta_atoms(self):
         """
@@ -216,6 +234,16 @@ class Substitution(Defect):
         return Composition(temp_comp)
 
     @property
+    def defect_site_index(self):
+        return self.bulk_structure.index(self.site_in_bulk)
+
+    @property
+    def defect_structure(self):
+        defect_structure = self.bulk_structure.copy()
+        defect_structure.replace(self.defect_site_index,self.defect_specie)  
+        return defect_structure
+
+    @property
     def delta_atoms(self):
         """
         Dictionary with delement as keys and difference in particle number 
@@ -239,8 +267,8 @@ class Substitution(Defect):
             site = min(
                 self.bulk_structure.get_sites_in_sphere(self.site.coords, 0.5, include_index=True),
                            key=lambda x: x[1])  
-            # there's a bug in pymatgen PeriodicNeighbour._from_dict and the specie attribute, get PeriodicSite instead
-            site = PeriodicSite(site.species, site.coords, site.lattice)
+            # there's a bug in pymatgen PeriodicNeighbour.from_dict and the specie attribute, get PeriodicSite instead
+            site = PeriodicSite(site.species, site.frac_coords, site.lattice)
             return site
         except:
             return ValueError("""No equivalent site has been found in bulk, defect and bulk structures are too different.\

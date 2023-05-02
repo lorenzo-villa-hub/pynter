@@ -19,43 +19,50 @@ from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectCompl
 from pymatgen.core.trajectory import Trajectory
 
 """Interstitial generator to be re-implemented using the new pymatgen defects"""
-# def create_interstitial_supercells(structure,element,size=2):
     
-#     '''
-#     Create interstitial structures with InFiT (Interstitialcy Finding Tool) algorithm with Pymatgen.
-    
-#     Parameters
-#     ----------
-#     structure: (Pymatgen Structure)
-#         Bulk structure.
-#     element: (str or Element)
-#         interstitial element.
-    
-#     Returns
-#     -------
-#     interstitials: (dict)
-#         Dictionary with sites (Site object) and supercell structures (Structure object)
-#     '''
-    
-#     int_object = StructureMotifInterstitial(structure,element)
-#     int_sites = int_object.enumerate_defectsites()
-#     int_supercells = int_object.make_supercells_with_defects([[size,0,0],[0,size,0],[0,0,size]])
-    
-#     interstitials = {}
-#     interstitial_sites =  {}
-#     interstitial_structures = {}
+def create_interstitial_structures(structure,elements,supercell_size=None,**kwargs):
+    """
+    Create structures with interstitials based on Voronoi tessalation. 
 
-#     for i in range(0,len(int_sites)):        
-#         int_coord_type = int_object.get_motif_type(i)
-#         interstitial_sites[int_coord_type] = int_sites[i]
-#         struct_int = int_supercells[i+1]
-#         interstitial_structures[int_coord_type] = struct_int
-        
-#         interstitials['sites'] = interstitial_sites
-#         interstitials['structures'] = interstitial_structures
-        
-#     return interstitials
+    Parameters
+    ----------
+    structure : (Structure)
+        Bulk structure.
+    elements : (list)
+        List of element symbols.
+    supercell_size : (int), optional
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. The default is None.
+    kwargs: 
+        Arguments to pass to VoronoiInterstitialGenerator:
+            clustering_tol: Tolerance for clustering the Voronoi nodes.
+            min_dist: Minimum distance between an interstitial and the nearest atom.
+            ltol: Tolerance for lattice matching.
+            stol: Tolerance for structure matching.
+            angle_tol: Angle tolerance for structure matching.
+            kwargs: Additional keyword arguments for the ``TopographyAnalyzer`` constructor.
 
+    Returns
+    -------
+    interstitial_structures : (dict)
+        Dictionary with element as keys and list of structures as values.
+    """
+    from pymatgen.analysis.defects.generators import VoronoiInterstitialGenerator
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
+    interstitial_structures = {}
+    for inter in generator:
+        el = inter.site.specie.element.symbol
+        if el not in interstitial_structures.keys():
+            interstitial_structures[el] = []
+            inter_structure = inter.defect_structure
+            inter_structure.remove_oxidation_states()
+        interstitial_structures[el].append(inter_structure)
+            
+    return interstitial_structures
+    
 
 def create_vacancy_structures(structure,elements=None,supercell_size=None):
     """
@@ -95,6 +102,19 @@ def create_vacancy_structures(structure,elements=None,supercell_size=None):
                     break
 
     return vac_structures
+
+
+def create_substitutions(structure,replace):
+
+    bulk_structure = structure.copy()
+    defects = [] 
+    for el_to_sub,el_subbed in replace.items():
+        for site in bulk_structure:
+            if site.specie.symbol == el_to_sub:
+                defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
+                defects.append(Substitution(defect_site, bulk_structure,site_in_bulk=site))
+                break
+    return defects    
 
 
 def create_substitution_structures(structure,replace,supercell_size=1):

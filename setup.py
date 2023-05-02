@@ -154,7 +154,7 @@ vasp_default = {
   'Mn': 'Mn_pv',
   'Mo': 'Mo_pv',
   'N': 'N',
-  'Na': 'Na',
+  'Na': 'Na_pv',
   'Nb': 'Nb_pv',
   'Nd': 'Nd_3',
   'Ne': 'Ne',
