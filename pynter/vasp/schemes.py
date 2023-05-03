@@ -913,8 +913,9 @@ class AdvancedSchemes(Schemes):
             self.job_settings['add_automation'] = 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'
 
         for df, charge_states in defects_with_charges:
-            schemes_q = Schemes(path=self.path,structure=df.defect_structure,incar_settings=self.incar_settings,
-                                job_settings=self.job_settings,name=self.name+'_'+df.name,add_parent_folder=True)
+            path = op.join(self.path,df.name)
+            schemes_q = Schemes(path=path,structure=df.defect_structure,incar_settings=self.incar_settings,
+                                job_settings=self.job_settings,name=self.name+'_'+df.name,add_parent_folder=False)
             charge_jobs = schemes_q.charge_states(charge_states,locpot)
             for jq in charge_jobs:
                 schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)
@@ -1057,7 +1058,7 @@ class NEBSchemes:
 
     def cineb_pbe(self,nionic_steps=50,scheme_name=None,stepnames=['CINEB']):
         """
-        Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation in done with damped 
+        Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation is done with damped 
         dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to nionic_steps.
         """
         scheme_name = scheme_name if scheme_name != None else 'CINEB'
