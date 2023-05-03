@@ -22,7 +22,7 @@ from pymatgen.core.trajectory import Trajectory
     
 def create_interstitial_structures(structure,elements,supercell_size=None,**kwargs):
     """
-    Create structures with interstitials based on Voronoi tessalation. 
+    Create structures with interstitials based on Voronoi with pymatgen. 
 
     Parameters
     ----------
@@ -57,12 +57,49 @@ def create_interstitial_structures(structure,elements,supercell_size=None,**kwar
         el = inter.site.specie.element.symbol
         if el not in interstitial_structures.keys():
             interstitial_structures[el] = []
-            inter_structure = inter.defect_structure
-            inter_structure.remove_oxidation_states()
-        interstitial_structures[el].append(inter_structure)
+        interstitial_structures[el].append(inter.defect_structure)
             
     return interstitial_structures
     
+
+def create_substitution_structures(structure,replace,supercell_size=1):
+    """
+    Create structures with substitutions starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    replace : (str), optional
+        Dict with element symbol of specie to be replaced as keys and element 
+        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
+    supercell_size : (int or numpy array), optional
+        Input for the generate_defect_structure function of the old pymatgen Substitution class.
+
+    Returns
+    -------
+    sub_structures : (dict)
+        Dictionary with substitution types as keys and structures as values.
+    """
+    from pynter.defects.pmg.pmg_defects_core import Substitution
+    sub_structures={}
+    bulk_structure = structure.copy()
+    
+    for el_to_sub in replace:
+        for el in bulk_structure.composition.elements:
+            s = bulk_structure.copy()
+            for site in s.sites:
+                if el.symbol == el_to_sub:
+                    if site.specie == el:
+                        sub_site = site
+                        sub_el = replace[el.symbol]
+                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
+                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
+                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
+                        break
+
+    return sub_structures
+
 
 def create_vacancy_structures(structure,elements=None,supercell_size=None):
     """
@@ -103,60 +140,7 @@ def create_vacancy_structures(structure,elements=None,supercell_size=None):
 
     return vac_structures
 
-
-def create_substitutions(structure,replace):
-
-    bulk_structure = structure.copy()
-    defects = [] 
-    for el_to_sub,el_subbed in replace.items():
-        for site in bulk_structure:
-            if site.specie.symbol == el_to_sub:
-                defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
-                defects.append(Substitution(defect_site, bulk_structure,site_in_bulk=site))
-                break
-    return defects    
-
-
-def create_substitution_structures(structure,replace,supercell_size=1):
-    """
-    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
-
-    Parameters
-    ----------
-    structure : Structure
-        Bulk structure, both unit cell or supercell can be used as input.
-    replace : (str), optional
-        Dict with element symbol of specie to be replaced as keys and element 
-        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
-    supercell_size : (int or numpy array), optional
-        Input for the generate_defect_structure function of the old pymatgen Substitution class.
-
-    Returns
-    -------
-    sub_structures : (dict)
-        Dictionary with substitution types as keys and structures as values.
-
-    """
-    from pynter.defects.pmg.pmg_defects_core import Substitution
-    sub_structures={}
-    bulk_structure = structure.copy()
-    
-    for el_to_sub in replace:
-        for el in bulk_structure.composition.elements:
-            s = bulk_structure.copy()
-            for site in s.sites:
-                if el.symbol == el_to_sub:
-                    if site.specie == el:
-                        sub_site = site
-                        sub_el = replace[el.symbol]
-                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
-                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
-                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
-                        break
-
-    return sub_structures
-
-
+ 
 def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,sort_to_bulk=False,tol=1e-03):
     """
     Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
