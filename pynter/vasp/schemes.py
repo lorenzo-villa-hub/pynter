@@ -335,7 +335,7 @@ class Schemes(InputSets):
         val = {}
         for p in self.potcar:
             val[p.element] = p.nelectrons        
-        nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
+        nelect = sum([ val[el.symbol]*coeff for el,coeff in self.structure.composition.items()])
         
         for q in charges:
             if isinstance(q,float) and not q.is_integer():
@@ -894,7 +894,7 @@ class AdvancedSchemes(Schemes):
         Parameters
         ----------
         defects_with_charges : (dict)
-            List of tuples with Defect object and relative charge state list, for example [(Defect , [q1,q2,q3])].
+            List of tuples with Defect object and relative charge state list, for example [(Defect , [q1,q2,q3,...])].
         automation : (bool)
             Add default automation string: 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'.
         locpot : (bool), optional
@@ -914,7 +914,7 @@ class AdvancedSchemes(Schemes):
 
         for df, charge_states in defects_with_charges:
             schemes_q = Schemes(path=self.path,structure=df.defect_structure,incar_settings=self.incar_settings,
-                                job_settings=self.job_settings,name=df.name,add_parent_folder=True)
+                                job_settings=self.job_settings,name=self.name+'_'+df.name,add_parent_folder=True)
             charge_jobs = schemes_q.charge_states(charge_states,locpot)
             for jq in charge_jobs:
                 schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)

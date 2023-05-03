@@ -236,8 +236,8 @@ class VaspJob(Job):
             val = {}
             for p in self.potcar:
                 val[p.element] = p.nelectrons
-            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
-                           for el in self.initial_structure.composition])
+            neutral = sum([ val[el.symbol]*coeff 
+                           for el,coeff in self.initial_structure.composition.items()])
             charge = neutral - nelect
         if not isinstance(charge,int):
             charge = np.around(charge,decimals=1)

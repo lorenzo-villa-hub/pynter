@@ -874,7 +874,8 @@ def create_interstitials(structure,elements,supercell_size=None,**kwargs):
         bulk_structure.make_supercell(supercell_size)
     generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
     for inter in generator:
-        interstitial = Interstitial(inter.site, bulk_structure,multiplicity=inter.multiplicity)
+        interstitial = Interstitial(inter.site, bulk_structure,multiplicity=inter.multiplicity,
+                                    label=f'mult{inter.multiplicity}')
         defects.append(interstitial)
     return defects
 
