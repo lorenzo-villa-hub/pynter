@@ -236,13 +236,21 @@ class VaspJob(Job):
             val = {}
             for p in self.potcar:
                 val[p.element] = p.nelectrons
-            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
-                           for el in self.initial_structure.composition])
+            neutral = sum([ val[el.symbol]*coeff 
+                           for el,coeff in self.initial_structure.composition.items()])
             charge = neutral - nelect
         if not isinstance(charge,int):
             charge = np.around(charge,decimals=1)
         return charge
 
+
+    @property
+    def complete_dos(self):
+        if 'complete_dos' in self.computed_entry.data.keys():
+            return self.computed_entry.data['complete_dos']
+        else:
+            return ValueError('CompleteDos not present in ComputedStructureEntry data')
+            
 
     @property
     def energy_gap(self):

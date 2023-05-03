@@ -200,7 +200,7 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
         return kumagai_corrections
     
     
-def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,defect_site=None,sampling_radius=None,
+def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampling_radius=None,
                                      gamma=None,tol=1e-03,get_plot=False):
     """
     Get Kumagai corrections from VaspJob objects.

@@ -8,9 +8,10 @@ Created on Mon Apr  3 14:08:42 2023
 from abc import ABCMeta, abstractmethod, abstractproperty
 from monty.json import MSONable
 from pymatgen.core.composition import Composition
-import json
-from monty.json import MontyDecoder, MontyEncoder
 from pymatgen.core.sites import PeriodicSite
+from pynter.tools.structure import is_site_in_structure_coords
+import importlib
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 # Adapted from pymatgen.analysis.defect.core 
 
@@ -61,38 +62,47 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         Charge of the defect.
         """
         return self._charge
-    
-    @property 
-    @abstractmethod
+     
+    @abstractproperty
     def defect_composition(self):
         """
         Defect composition as a Composition object
         """
         return
 
-    @property
-    def site(self):
+    @abstractproperty
+    def defect_site_index(self):
         """
-        Defect position as a site object
+        Index of the defect site in the structure
         """
-        return self._defect_site
-
+        return
+    
     @property
     def defect_specie(self):
         return self.name.dspecie
+    
+    @abstractproperty
+    def defect_structure(self):
+        """
+        Structure of the defect
+        """
+        return     
     
     @property
     def defect_type(self):
         return self.__class__.__name__
     
     @property
-    @abstractmethod
     def delta_atoms(self):
         """
-        Dictionary with defect element as keys and difference in particle number 
+        Dictionary with defect element symbol as keys and difference in particle number 
         between defect and bulk structure as values
         """
         return
+
+    @abstractmethod
+    def get_multiplicity(self):
+        return 
 
     @property
     def label(self):
@@ -105,13 +115,19 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         """
         return self._multiplicity
       
-    @property  
-    @abstractmethod
+    @abstractproperty  
     def name(self):
         """
         Name of the defect
         """
         return
+
+    @property
+    def site(self):
+        """
+        Defect position as a site object
+        """
+        return self._defect_site
    
     @property
     def site_concentration_in_cm3(self):
@@ -165,23 +181,53 @@ class Vacancy(Defect):
     """
     Subclass of Defect for single vacancies.
     """
-
     @property
     def defect_composition(self):
         """
-        Returns: Composition of defect.
+        Composition of the defect.
         """
         temp_comp = self.bulk_structure.composition.as_dict()
         temp_comp[str(self.site.specie)] -= 1
         return Composition(temp_comp)
     
     @property
+    def defect_site_index(self):
+        """
+        Index of the defect site in the bulk structure
+        """
+        _,index = is_site_in_structure_coords(self.site, self.bulk_structure)
+        return index
+    
+    @property
+    def defect_structure(self):
+        """
+        Structure of the defect
+        """
+        structure = self.bulk_structure.copy()
+        structure.remove_sites([self.defect_site_index])
+        return structure
+
+    @property
     def delta_atoms(self):
         """
-        Dictionary with delement as keys and difference in particle number 
+        Dictionary with element symbol as keys and difference in particle number 
         between defect and bulk structure as values
         """
-        return {self.site.specie:-1}
+        return {self.site.specie.symbol:-1}
+    
+    def get_multiplicity(self,**kwargs):
+        """
+        Get multiplicity of the defect in the structure
+
+        Parameters
+        ----------
+        **kwargs : (dict)
+            Arguments to pass to SpacegroupAnalyzer (symprec, angle_tolerance)
+        """
+        sga = SpacegroupAnalyzer(self.bulk_structure,**kwargs)
+        symmetrized_structure = sga.get_symmetrized_structure()
+        equivalent_sites = symmetrized_structure.find_equivalent_sites(self.site)
+        return len(equivalent_sites)
 
     @property
     def name(self):
@@ -208,7 +254,7 @@ class Substitution(Defect):
     @property  # type: ignore
     def defect_composition(self):
         """
-        Returns: Composition of defect.
+        Composition of the defect.
         """
         defect_index = self.site_in_bulk.index
         temp_comp = self.bulk_structure.composition.as_dict()
@@ -217,12 +263,42 @@ class Substitution(Defect):
         return Composition(temp_comp)
 
     @property
+    def defect_site_index(self):
+        """
+        Index of the defect site in the bulk structure
+        """
+        return self.bulk_structure.index(self.site_in_bulk)
+
+    @property
+    def defect_structure(self):
+        """
+        Structure of the defect
+        """
+        defect_structure = self.bulk_structure.copy()
+        defect_structure.replace(self.defect_site_index,self.defect_specie)  
+        return defect_structure
+
+    @property
     def delta_atoms(self):
         """
-        Dictionary with delement as keys and difference in particle number 
+        Dictionary with element symbol as keys and difference in particle number 
         between defect and bulk structure as values
         """
-        return {self.site.specie:1, self.site_in_bulk.specie:-1}
+        return {self.site.specie.symbol:1, self.site_in_bulk.specie.symbol:-1}
+
+    def get_multiplicity(self,**kwargs):
+        """
+        Get multiplicity of the defect in the structure
+
+        Parameters
+        ----------
+        **kwargs : (dict)
+            Arguments to pass to SpacegroupAnalyzer (symprec, angle_tolerance)
+        """
+        sga = SpacegroupAnalyzer(self.bulk_structure,**kwargs)
+        symmetrized_structure = sga.get_symmetrized_structure()
+        equivalent_sites = symmetrized_structure.find_equivalent_sites(self.site_in_bulk)
+        return len(equivalent_sites)
 
     @property 
     def name(self):
@@ -240,8 +316,8 @@ class Substitution(Defect):
             site = min(
                 self.bulk_structure.get_sites_in_sphere(self.site.coords, 0.5, include_index=True),
                            key=lambda x: x[1])  
-            # there's a bug in pymatgen PeriodicNeighbour._from_dict and the specie attribute, get PeriodicSite instead
-            site = PeriodicSite(site.species, site.coords, site.lattice)
+            # there's a bug in pymatgen PeriodicNeighbour.from_dict and the specie attribute, get PeriodicSite instead
+            site = PeriodicSite(site.species, site.frac_coords, site.lattice)
             return site
         except:
             return ValueError("""No equivalent site has been found in bulk, defect and bulk structures are too different.\
@@ -257,19 +333,38 @@ class Interstitial(Defect):
     @property
     def defect_composition(self):
         """
-        Returns: Defect composition.
+        Composition of the defect.
         """
         temp_comp = self.bulk_structure.composition.as_dict()
         temp_comp[str(self.site.specie)] += 1
         return Composition(temp_comp)
     
     @property
+    def defect_site_index(self):
+        """
+        Index of the defect site in the defect structure
+        """
+        return self.defect_structure.index(self.site)
+    
+    @property
+    def defect_structure(self):
+        """
+        Structure of the defect
+        """
+        defect_structure = self.bulk_structure.copy()
+        defect_structure.append(self.site.species,self.site.frac_coords)
+        return defect_structure
+    
+    @property
     def delta_atoms(self):
         """
-        Dictionary with delement as keys and difference in particle number 
+        Dictionary with element symbol as keys and difference in particle number 
         between defect and bulk structure as values
         """
-        return {self.site.specie:1}
+        return {self.site.specie.symbol:1}
+
+    def get_multiplicity(self):
+        raise NotImplementedError('Not implemented for Interstitial')
 
     @property
     def name(self):
@@ -282,10 +377,43 @@ class Interstitial(Defect):
 class Polaron(Defect):
     """
     Subclass of Defect for polarons
-    """    
+    """   
+    
+    def __init__(self,defect_site,bulk_structure,charge=None,multiplicity=None,
+                 label=None,defect_structure=None):
+        """
+        defect_structure: (Structure)
+            Structure containing the polaron. If not provided the site index is searched 
+            in the bulk structure, and the defect_structure is set equal to the bulk structure.
+        """
+        super().__init__(defect_site,bulk_structure,charge,multiplicity,label) 
+        self._defect_structure = defect_structure
+        
+        
     @property
     def defect_composition(self):
+        """
+        Composition of the defect
+        """
         return self.bulk_structure.composition
+    
+    @property
+    def defect_site_index(self):
+        """
+        Index of the defect site in the structure
+        """
+        return self.defect_structure.index(self.site)
+    
+    @property
+    def defect_structure(self):
+        """
+        Structure containing the polaron. If not provided the site index is searched 
+        in the bulk structure, and the defect_structure is set equal to the bulk structure.
+        """
+        if self._defect_structure:
+            return self._defect_structure
+        else:
+            return self.bulk_structure
     
     @property
     def delta_atoms(self):
@@ -294,6 +422,20 @@ class Polaron(Defect):
         between defect and bulk structure as values
         """
         return {}
+
+    def get_multiplicity(self,**kwargs):
+        """
+        Get multiplicity of the defect in the structure
+
+        Parameters
+        ----------
+        **kwargs : (dict)
+            Arguments to pass to SpacegroupAnalyzer (symprec, angle_tolerance)
+        """
+        sga = SpacegroupAnalyzer(self.bulk_structure,**kwargs)
+        symmetrized_structure = sga.get_symmetrized_structure()
+        equivalent_sites = symmetrized_structure.find_equivalent_sites(self.site)
+        return len(equivalent_sites)
 
     @property
     def name(self):
@@ -381,6 +523,9 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
                     prec = da_global[e] if e in da_global.keys() else 0
                     da_global[e] = prec + da_single[e]       
         return da_global 
+
+    def get_multiplicity(self):
+        raise NotImplementedError('Not implemented for DefectComplex')
 
     @property
     def label(self):
@@ -690,7 +835,119 @@ class DefectComplexName(str,MSONable):
         names = name.split('-')
         defect_names = [DefectName.from_string(n) for n in names]
         return defect_names,label
-        
+
+
+
+
+def create_interstitials(structure,elements,supercell_size=None,**kwargs):
+    """
+    Create Interstitial objects based on Voronoi with pymatgen. 
+
+    Parameters
+    ----------
+    structure : (Structure)
+        Bulk structure.
+    elements : (list)
+        List of element symbols.
+    supercell_size : (int), optional
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. The default is None.
+    kwargs: 
+        Arguments to pass to VoronoiInterstitialGenerator:
+            clustering_tol: Tolerance for clustering the Voronoi nodes.
+            min_dist: Minimum distance between an interstitial and the nearest atom.
+            ltol: Tolerance for lattice matching.
+            stol: Tolerance for structure matching.
+            angle_tol: Angle tolerance for structure matching.
+            kwargs: Additional keyword arguments for the ``TopographyAnalyzer`` constructor.
+
+    Returns
+    -------
+    defects : (list)
+        List of Interstitial objects
+    """
+    from pymatgen.analysis.defects.generators import VoronoiInterstitialGenerator
+    
+    defects = []
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
+    for inter in generator:
+        interstitial = Interstitial(inter.site, bulk_structure,multiplicity=inter.multiplicity,
+                                    label=f'mult{inter.multiplicity}')
+        defects.append(interstitial)
+    return defects
+
+
+def create_substitutions(structure,elements_to_replace,supercell_size=None):
+    """
+    Create Substitution objects starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    elements_to_replace : (str), optional
+        Dict with element symbol of specie to be replaced as keys and element 
+        symbol of the species to be replaced with as values ({'old_El':'new_El'}).
+    supercell_size : (int or numpy array), optional
+        Input for the generate_defect_structure function of the old pymatgen Substitution class.
+
+    Returns
+    -------
+    defects : (list)
+        List of Substitution objects
+    """
+    defects = [] 
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    for el_to_sub,el_subbed in elements_to_replace.items():
+        for site in bulk_structure:
+            if site.specie.symbol == el_to_sub:
+                defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
+                defects.append(Substitution(defect_site, bulk_structure,site_in_bulk=site))
+                break
+    return defects   
+
+
+def create_vacancies(structure,elements=None,supercell_size=None):
+    """
+    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    elements : (str), optional
+        Symbol of the elements for which vacancies are needed.
+        If None all of the elements are considered. The default is None.
+    supercell_size : (int or numpy array), optional
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. The default is None.
+
+    Returns
+    -------
+    defects : (list)
+        List of Vacancy objects
+    """
+    defects = []
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    if not elements:
+        elements = [el.symbol for el in bulk_structure.composition.elements]
+    
+    for el in bulk_structure.composition.elements:
+        for site in bulk_structure:
+            if el.symbol in elements:
+                if site.specie == el:
+                    vacancy = Vacancy(site, bulk_structure)
+                    defects.append(vacancy)
+                    break
+    return defects        
+
 
 def format_legend_with_charge_number(label,charge):
     """
@@ -789,4 +1046,25 @@ def get_delta_atoms_from_comp(comp_defect,comp_bulk):
         
     return delta_atoms    
     
+
+def get_old_pmg_object(defect):
+    """
+    Convert defect object to the old version of pymatgen defect object.
+    """
+    module = importlib.import_module("pynter.defects.pmg.pmg_defects_core")
+    pmg_class = getattr(module,defect.defect_type)
+    charge = defect.charge if defect.charge else 0
+    pmg_object = pmg_class(structure=defect.bulk_structure,defect_site=defect.site,
+                           charge=charge,multiplicity=defect.multiplicity)
+    return pmg_object
+
+def get_pmg_object(defect):
+    """
+    Convert defect object to pymatgen defect object.
+    """
+    module = importlib.import_module("pymatgen.analysis.defects.core")
+    pmg_class = getattr(module,defect.defect_type)
+    pmg_object = pmg_class(structure=defect.bulk_structure,site=defect.site,
+                           multiplicity=defect.multiplicity)
+    return pmg_object
     

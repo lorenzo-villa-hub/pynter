@@ -187,7 +187,7 @@ class DefectsAnalysis:
         return abs(h) , abs(n)
 
 
-    def charge_transition_levels(self, energy_range=None,entries=None):
+    def charge_transition_levels(self, energy_range=None,entries=None,get_integers=True):
         """
         Computes charge transition levels for all defect entries
         Args:
@@ -195,6 +195,8 @@ class DefectsAnalysis:
                                   default to (-0.5, Eg + 0.5)    
             entries:
                 List of entries to calculate. If None all entries are considered.
+            get_integers : (bool)
+                Save charges as integers. More convenient for plotting.
         Returns:
             Dictionary with defect name and list of tuples for charge transition levels:
                 {name:[(q1,q2,ctl),(q2,q3,ctl),...}
@@ -219,6 +221,9 @@ class DefectsAnalysis:
                     if name not in charge_transition_levels.keys():
                         charge_transition_levels[name] = []
                     previous_stable_charges = stable_charges
+                    if get_integers:
+                        previous_charge = int(previous_charge)
+                        new_charge = int(new_charge)
                     charge_transition_levels[name].append((previous_charge,new_charge,e[i]))
                             
         return charge_transition_levels        
@@ -228,11 +233,9 @@ class DefectsAnalysis:
                               fixed_concentrations=None,per_unit_volume=True):
         """
         Give list of all concentrations at specified efermi.
-        If frozen_defect_concentration is provided the concentration of defect entries are 
+        If fixed_concentrations is provided the concentration of defect entries are 
         corrected according to the fixed provided values. More details can be found in 
         https://doi.org/10.1103/PhysRevB.106.134101 .
-        
-        Labels are ignored when accounting for the defect species equilibrium.
             
         Parameters
         ----------
@@ -244,7 +247,7 @@ class DefectsAnalysis:
             Fermi level relative to valence band maximum. The default is 0. 
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys can be simple element strings
-            (or vacancies of elements) in the format 'Vac_{el}') if that element needs to be 
+            (or vacancies of elements in the format 'Vac_{el}') if that element needs to be 
             fixed across all defect species, alternatively defect entry names can be used as well 
             to target specific defect entries. The values are the concentrations.
         per_unit_volume: (bool)
@@ -395,14 +398,16 @@ class DefectsAnalysis:
         return charge_transition_level
         
 
-    def get_dataframe(self,filter_names=None,pretty=False,include_bulk=False,display=[]):
+    def get_dataframe(self,entries=None,pretty=False,include_bulk=False,display=[]):
         """
         Get DataFrame to display entries. 
 
         Parameters
         ----------
-        filter_names : (list), optional
-            Only entries whose name is on the list will be displayed. The default is None.
+        entries : (list), optional
+            Entries to display. If None all entries are displayed. The default is None.
+        pretty : (bool), optional
+            Optimize DataFrame for prettier visualization.
         include_bulk: (bool), optional
             Include bulk composition and space group for each entry in DataFrame.
         display: (list)
@@ -413,13 +418,7 @@ class DefectsAnalysis:
         df : 
             DataFrame object.
         """
-        if filter_names:
-            entries = []
-            for name in filter_names:
-                en = self.select_entries(names=[name])
-                for e in en:
-                    entries.append(e)
-        else:
+        if not entries:
             entries = self.entries
         d = {}
         index = []
@@ -464,30 +463,29 @@ class DefectsAnalysis:
         Produce defect Formation energy vs Fermi energy plot
         Args:
             chemical_potentials:
-                Dictionary of {Element:value} giving the chemical
-                potential of each element
+                Chempots object containing the chemical
+                potential of each element.
             entries: 
                 List of entries to calculate. If None all entries are considered.
             xlim:
-                Tuple (min,max) giving the range of the x (fermi energy) axis
+                Tuple (min,max) giving the range of the x (fermi energy) axis.
             ylim:
-                Tuple (min,max) giving the range for the formation energy axis
+                Tuple (min,max) giving the range for the formation energy axis.
             fermi_level:
-                float to plot Fermi energy position
+                float to plot Fermi energy position.
             plotsize:
-                float or tuple
-                can be float or tuple for different x and y sizes
-                multiplier to change plotsize            
+                float or tuple. Can be float or tuple for different x and y sizes
+                multiplier to change plotsize.
             fontsize:
-                float  multiplier to change fontsize
+                float  multiplier to change fontsize.
             show_legend:
-                Bool for showing legend
+                Bool for showing legend.
             format_legend:
-                Bool for getting latex-like legend based on the name of defect entries
+                Bool for getting latex-like legend based on the name of defect entries.
             get_subplot:
-                Bool for getting subplot
+                Bool for getting subplot.
             subplot_settings:
-                List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)) 
+                List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)). 
         Returns:
             matplotlib object
         """
@@ -624,26 +622,27 @@ class DefectsAnalysis:
         return plt
     
     
-    def plot_ctl(self, entries=None,ylim=None, size=1, fermi_level=None, format_legend=True):
+    def plot_ctl(self, entries=None,ylim=None, size=1, fermi_level=None, format_legend=True,get_integers=True):
         """
         Plotter for the charge transition levels
         Args:
             entries: List of entries to calculate. If None all entries are considered.
-            ylim (Tuple): y-axis limits
-            fermi_level (float) : float to plot Fermi energy position
-            size (float) : Float multiplier for plot size
-            format_legend (bool): Bool for getting latex-like legend based on the name of defect entries 
+            ylim (Tuple): y-axis limits.
+            fermi_level (float) : float to plot Fermi energy position.
+            size (float) : Float multiplier for plot size.
+            format_legend (bool): Bool for getting latex-like legend based on the name of defect entries .
+            get_integers (bool): Get CTLs as integers.
         Returns:
             matplotlib object    
         """        
         plt.figure(figsize=(10*size,10*size))         
         if ylim == None:
             ylim = (-0.5,self.band_gap +0.5)        
-        charge_transition_levels = self.charge_transition_levels(entries=entries)
+        charge_transition_levels = self.charge_transition_levels(entries=entries,get_integers=get_integers)
         number_defects = len(charge_transition_levels)   
         x_max = 10
         interval = x_max/(number_defects + 1)
-        x = np.arange(0,x_max,interval)        
+        x = np.arange(0,x_max,interval)
         # position of x labels
         x_ticks_positions = []
         for i in range(0,len(x)-1):
@@ -771,15 +770,7 @@ class DefectsAnalysis:
     def solve_fermi_level(self,chemical_potentials,bulk_dos,temperature=300,
                                     fixed_concentrations=None,external_defects=[],xtol=1e-05):
         """
-        Solve charge neutrality in non-equilibrium conditions (when some concentrations are fixed).
-        If frozen_defect_concentration is not None the concentration for every single defect 
-        is normalized starting from the input fixed concentration as:
-            C = C_eq * (Ctot_fix/Ctot_eq)
-        while for a defect complex this is applied for every single defect specie which
-        is composing the complex (needs to be present in computed entries):
-            C = C_eq * prod(Ctot_fix(i)/Ctot_eq(i))
-            
-        If external defects are present their charge concentrations are treated as d['charge']*d['conc'].
+        Solve charge neutrality and get the value of Fermi level at thermodynamic equilibrium.
         
         Parameters
         ----------
@@ -791,9 +782,11 @@ class DefectsAnalysis:
             Temperature to equilibrate the system to. The default is 300.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
-            format, values are the concentrations. (ex {'Vac_Na':1e20}) 
+            format, values are the concentrations (ex {'Vac_A':1e20}) . For more info, 
+            read the documentation of the defect_concentrations method.
         external_defects : (list)
-            List of external defect concentrations (not present in defect entries).
+            List of SingleDefConc objects containing external defect concentrations 
+            (not present in defect entries).
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
 
         Returns
@@ -899,7 +892,7 @@ class DefectsAnalysis:
 
 class SingleDefConc(MSONable):
     
-    def __init__(self,name,charge,conc,stable):
+    def __init__(self,name,charge,conc,stable=True):
         """
         Object to store defect concentrations data. It is also subscribtable like a dictionary.
 
@@ -955,9 +948,9 @@ class DefectConcentrations:
         conc_stable = []
         for n in self.names:
             concs = self.select_concentrations(name=n)
-            cmax = SingleDefConc(name='',conc=0,charge=0,stable=True) # dummy object
+            cmax = SingleDefConc(name='',conc=None,charge=0,stable=True) # dummy object
             for c in concs:
-                if c.conc >= cmax.conc:
+                if cmax.conc is None or c.conc >= cmax.conc:
                     cmax = c
             conc_stable.append(concs[concs.index(cmax)])
         self._stable = conc_stable

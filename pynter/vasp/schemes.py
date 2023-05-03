@@ -14,6 +14,7 @@ from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
 from pynter.vasp.default_inputs import DefaultInputs
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
 from pynter.defects.structure import create_vacancy_structures, create_substitution_structures
+from pynter.defects.defects import create_vacancies, create_substitutions, create_interstitials
 
 
 class InputSets:
@@ -334,7 +335,7 @@ class Schemes(InputSets):
         val = {}
         for p in self.potcar:
             val[p.element] = p.nelectrons        
-        nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()])
+        nelect = sum([ val[el.symbol]*coeff for el,coeff in self.structure.composition.items()])
         
         for q in charges:
             if isinstance(q,float) and not q.is_integer():
@@ -885,13 +886,64 @@ class Schemes(InputSets):
 
 class AdvancedSchemes(Schemes):
     
-    def substitutions_pbe_relaxation(self,replace_dict,supercell_size=1,automation=False,locpot=False,rel_scheme='default'):
+    
+    def defects_pbe_relaxation(self,defects_with_charges,automation=False,locpot=False,rel_scheme='default'):
+        """
+        Generate jobs for default defect calculation scheme with PBE.
+
+        Parameters
+        ----------
+        defects_with_charges : (dict)
+            List of tuples with Defect object and relative charge state list, for example [(Defect , [q1,q2,q3,...])].
+        automation : (bool)
+            Add default automation string: 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'.
+        locpot : (bool), optional
+            Add 'LVTOT=True' in INCAR. The default is False.
+        rel_scheme : (str), optional
+            Relaxation scheme to use with PBE. 'default for pbe_relaxation and 
+            'gamma' pbe_relaxation_gamma. The default is 'default'.
+
+        Returns
+        -------
+        jobs : (list)
+            List of VaspJob objects.
+        """
+        jobs = []
+        if automation:
+            self.job_settings['add_automation'] = 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'
+
+        for df, charge_states in defects_with_charges:
+            path = op.join(self.path,df.name)
+            schemes_q = Schemes(path=path,structure=df.defect_structure,incar_settings=self.incar_settings,
+                                job_settings=self.job_settings,name=self.name+'_'+df.name,add_parent_folder=False)
+            charge_jobs = schemes_q.charge_states(charge_states,locpot)
+            for jq in charge_jobs:
+                schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)
+                if rel_scheme == 'default':
+                    rel_jobs = schemes_rel.pbe_relaxation()
+                elif rel_scheme == 'gamma':
+                    rel_jobs = schemes_rel.pbe_relaxation_gamma()
+                for jrel in rel_jobs:
+                        jobs.append(jrel)
+        return jobs
+
+
+    def interstitials_pbe_relaxation(self):
+        """
+        Since the interstitials structures neeed to be checked and selected, calculations should be set up manually 
+        with defects_pbe_relaxation. If the function needs to be implemented, set up a criterion for the choice of 
+        interstitials sites.
+        """
+        pass
+
+            
+    def substitutions_pbe_relaxation(self,elements_to_replace_with_charges,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
         """
         Generate jobs for default vacancies calculation scheme with PBE.
 
         Parameters
         ----------
-        replace_dict : (dict)
+        elements_to_replace_with_charges : (dict)
             Dictionary which indicates the substitution types and the relative charge states list.
             Needs to be in this format:
                 {'<new_el>-on-<old_el>':[q0,q1,q2]}, where <new_el> and <old_el> are the symbols of the element to be added and
@@ -912,38 +964,23 @@ class AdvancedSchemes(Schemes):
         jobs : (list)
             List of VaspJob objects.
         """
-        jobs = []
-        structure = self.structure
-        replace = {}
-        for k,v in replace_dict.items():
-            new_k,new_v = k.split('-on-')[1],k.split('-on-')[0]
-            replace[new_k] = new_v
-        sub_structures = create_substitution_structures(structure,replace,supercell_size=supercell_size)
-        if automation:
-            self.job_settings['add_automation'] = 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'
-        for n,st in sub_structures.items():
-            charge_states = replace_dict[n]
-            schemes_q = Schemes(path=self.path,structure=st,incar_settings=self.incar_settings,
-                                job_settings=self.job_settings,name=n,add_parent_folder=True)
-            charge_jobs = schemes_q.charge_states(charge_states,locpot)
-            for jq in charge_jobs:
-                schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)
-                if rel_scheme == 'default':
-                    rel_jobs = schemes_rel.pbe_relaxation()
-                elif rel_scheme == 'gamma':
-                    rel_jobs = schemes_rel.pbe_relaxation_gamma()
-                for jrel in rel_jobs:
-                        jobs.append(jrel)
-        return jobs
-    
+        defects_with_charges = []
+        for key,charge_states in elements_to_replace_with_charges.items():
+            elements_to_replace = {key.split('-on-')[1] : key.split('-on-')[0]}
+            substitution = create_substitutions(self.structure,elements_to_replace=elements_to_replace,
+                                                supercell_size=supercell_size)[0]
+            defects_with_charges.append((substitution,charge_states))
+        jobs = self.defects_pbe_relaxation(defects_with_charges,automation=automation,locpot=locpot,rel_scheme=rel_scheme)
+        return jobs        
+        
 
-    def vacancies_pbe_relaxation(self,el_dict,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
+    def vacancies_pbe_relaxation(self,elements_with_charges,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
         """
         Generate jobs for default vacancies calculation scheme with PBE.
 
         Parameters
         ----------
-        el_dict : (dict)
+        elements_with_charges : (dict)
             Dictionary with element symbols as keys and relative charge states (int) lists as values ({'el':[-1,0,1]}).
         supercell_size : (int or numpy array), optional
             Input for the make_supercell function of the Structure class.
@@ -961,28 +998,14 @@ class AdvancedSchemes(Schemes):
         jobs : (list)
             List of VaspJob objects.
         """
-        jobs = []
-        structure = self.structure
-        elements = list(el_dict.keys())
-        vac_structures = create_vacancy_structures(structure,elements,supercell_size)
-        if automation:
-            self.job_settings['add_automation'] = 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'
-        for el,st in vac_structures.items():
-            charge_states = el_dict[el]
-            schemes_q = Schemes(path=self.path,structure=st,incar_settings=self.incar_settings,
-                                job_settings=self.job_settings,name=f'{el}-vacancy',add_parent_folder=True)
-            charge_jobs = schemes_q.charge_states(charge_states,locpot)
-            for jq in charge_jobs:
-                schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)
-                if rel_scheme == 'default':
-                    rel_jobs = schemes_rel.pbe_relaxation()
-                elif rel_scheme == 'gamma':
-                    rel_jobs = schemes_rel.pbe_relaxation_gamma()
-                for jrel in rel_jobs:
-                        jobs.append(jrel)
+        defects_with_charges = []
+        for el,charge_states in elements_with_charges.items():
+            vacancy = create_vacancies(structure=self.structure,elements=[el],supercell_size=supercell_size)[0]
+            defects_with_charges.append((vacancy,charge_states))
+        jobs = self.defects_pbe_relaxation(defects_with_charges,automation=automation,locpot=locpot,rel_scheme=rel_scheme)
         return jobs
+
         
-    
     
 class NEBSchemes:
     
@@ -1035,7 +1058,7 @@ class NEBSchemes:
 
     def cineb_pbe(self,nionic_steps=50,scheme_name=None,stepnames=['CINEB']):
         """
-        Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation in done with damped 
+        Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation is done with damped 
         dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to nionic_steps.
         """
         scheme_name = scheme_name if scheme_name != None else 'CINEB'

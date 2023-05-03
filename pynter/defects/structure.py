@@ -19,42 +19,86 @@ from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectCompl
 from pymatgen.core.trajectory import Trajectory
 
 """Interstitial generator to be re-implemented using the new pymatgen defects"""
-# def create_interstitial_supercells(structure,element,size=2):
     
-#     '''
-#     Create interstitial structures with InFiT (Interstitialcy Finding Tool) algorithm with Pymatgen.
-    
-#     Parameters
-#     ----------
-#     structure: (Pymatgen Structure)
-#         Bulk structure.
-#     element: (str or Element)
-#         interstitial element.
-    
-#     Returns
-#     -------
-#     interstitials: (dict)
-#         Dictionary with sites (Site object) and supercell structures (Structure object)
-#     '''
-    
-#     int_object = StructureMotifInterstitial(structure,element)
-#     int_sites = int_object.enumerate_defectsites()
-#     int_supercells = int_object.make_supercells_with_defects([[size,0,0],[0,size,0],[0,0,size]])
-    
-#     interstitials = {}
-#     interstitial_sites =  {}
-#     interstitial_structures = {}
+def create_interstitial_structures(structure,elements,supercell_size=None,**kwargs):
+    """
+    Create structures with interstitials based on Voronoi with pymatgen. 
 
-#     for i in range(0,len(int_sites)):        
-#         int_coord_type = int_object.get_motif_type(i)
-#         interstitial_sites[int_coord_type] = int_sites[i]
-#         struct_int = int_supercells[i+1]
-#         interstitial_structures[int_coord_type] = struct_int
-        
-#         interstitials['sites'] = interstitial_sites
-#         interstitials['structures'] = interstitial_structures
-        
-#     return interstitials
+    Parameters
+    ----------
+    structure : (Structure)
+        Bulk structure.
+    elements : (list)
+        List of element symbols.
+    supercell_size : (int), optional
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. The default is None.
+    kwargs: 
+        Arguments to pass to VoronoiInterstitialGenerator:
+            clustering_tol: Tolerance for clustering the Voronoi nodes.
+            min_dist: Minimum distance between an interstitial and the nearest atom.
+            ltol: Tolerance for lattice matching.
+            stol: Tolerance for structure matching.
+            angle_tol: Angle tolerance for structure matching.
+            kwargs: Additional keyword arguments for the ``TopographyAnalyzer`` constructor.
+
+    Returns
+    -------
+    interstitial_structures : (dict)
+        Dictionary with element as keys and list of structures as values.
+    """
+    from pymatgen.analysis.defects.generators import VoronoiInterstitialGenerator
+    bulk_structure = structure.copy()
+    if supercell_size:
+        bulk_structure.make_supercell(supercell_size)
+    generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
+    interstitial_structures = {}
+    for inter in generator:
+        el = inter.site.specie.element.symbol
+        if el not in interstitial_structures.keys():
+            interstitial_structures[el] = []
+        interstitial_structures[el].append(inter.defect_structure)
+            
+    return interstitial_structures
+    
+
+def create_substitution_structures(structure,replace,supercell_size=1):
+    """
+    Create structures with substitutions starting from a bulk structure (unit cell or supercell).
+
+    Parameters
+    ----------
+    structure : Structure
+        Bulk structure, both unit cell or supercell can be used as input.
+    replace : (str), optional
+        Dict with element symbol of specie to be replaced as keys and element 
+        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
+    supercell_size : (int or numpy array), optional
+        Input for the generate_defect_structure function of the old pymatgen Substitution class.
+
+    Returns
+    -------
+    sub_structures : (dict)
+        Dictionary with substitution types as keys and structures as values.
+    """
+    from pynter.defects.pmg.pmg_defects_core import Substitution
+    sub_structures={}
+    bulk_structure = structure.copy()
+    
+    for el_to_sub in replace:
+        for el in bulk_structure.composition.elements:
+            s = bulk_structure.copy()
+            for site in s.sites:
+                if el.symbol == el_to_sub:
+                    if site.specie == el:
+                        sub_site = site
+                        sub_el = replace[el.symbol]
+                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
+                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
+                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
+                        break
+
+    return sub_structures
 
 
 def create_vacancy_structures(structure,elements=None,supercell_size=None):
@@ -96,47 +140,7 @@ def create_vacancy_structures(structure,elements=None,supercell_size=None):
 
     return vac_structures
 
-
-def create_substitution_structures(structure,replace,supercell_size=1):
-    """
-    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
-
-    Parameters
-    ----------
-    structure : Structure
-        Bulk structure, both unit cell or supercell can be used as input.
-    replace : (str), optional
-        Dict with element symbol of specie to be replaced as keys and element 
-        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
-    supercell_size : (int or numpy array), optional
-        Input for the generate_defect_structure function of the old pymatgen Substitution class.
-
-    Returns
-    -------
-    sub_structures : (dict)
-        Dictionary with substitution types as keys and structures as values.
-
-    """
-    from pynter.defects.pmg.pmg_defects_core import Substitution
-    sub_structures={}
-    bulk_structure = structure.copy()
-    
-    for el_to_sub in replace:
-        for el in bulk_structure.composition.elements:
-            s = bulk_structure.copy()
-            for site in s.sites:
-                if el.symbol == el_to_sub:
-                    if site.specie == el:
-                        sub_site = site
-                        sub_el = replace[el.symbol]
-                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
-                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
-                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
-                        break
-
-    return sub_structures
-
-
+ 
 def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,sort_to_bulk=False,tol=1e-03):
     """
     Create defect structure for visualization in OVITO. The vacancies are shown by inserting 
@@ -196,51 +200,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     # In this case only dummy atoms are inserted, no further changes
     else:
         new_structure = df.copy()
-    return new_structure
-        
-
-
-def _defect_finder_old(structure_defect,structure_bulk,tol=1e-03):
-    """
-    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
-
-    Parameters
-    ----------
-    structure_defect : (Pymatgen Structure object)
-        Defect structure.
-    structure_bulk : (Pymatgen Structure object)
-        Bulk structure.
-    tol: (float)
-        Tolerance for fractional coordinates comparison.
-
-    Returns
-    -------
-    defects : (list)
-        List of tuples with defect site (Pymatgen PeriodicSite object) and defect type ("Vacancy","Interstitial" or "Substitution")
-        for each point defect present.
-    """
-    df = structure_defect
-    bk = structure_bulk
-    defects = []
-    
-    for s in df:
-        if is_site_in_structure_coords(s,bk,tol=tol)[0]:
-            if is_site_in_structure(s,bk,tol=tol)[0] == False:
-                dsite = s
-                dtype = 'Substitution'
-                defects.append((dsite,dtype))
-        else:
-            dsite = s
-            dtype = 'Interstitial'
-            defects.append((dsite,dtype))
-            
-    for s in bk:
-        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
-            dsite = s
-            dtype = 'Vacancy'
-            defects.append((dsite,dtype))
-    
-    return defects
+    return new_structure        
 
         
 def defect_finder(structure_defect,structure_bulk,tol=1e-03):

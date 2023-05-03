@@ -4,7 +4,7 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
-from monty.json import MSONable
+from monty.json import MSONable, jsanitize, MontyEncoder
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.phase_diagram import PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pymatgen.symmetry.groups import SpaceGroup
@@ -51,6 +51,10 @@ class Chempots(MSONable):
 
     def __setitem__(self,el,value):
         self.mu[el] = value
+        return
+    
+    def __delitem__(self,el):
+        del self.mu[el]
         return
     
     def __eq__(self, other):
@@ -292,7 +296,7 @@ class Reservoirs(MSONable):
         d = self.as_dict()
         if path:
             with open(path,'w') as file:
-                json.dump(d,file)
+                json.dump(d,file,cls=MontyEncoder)
             return
         else:
             return d.__str__()  
@@ -314,7 +318,7 @@ class Reservoirs(MSONable):
         res_dict = {}
         for res,chempots in d['res_dict'].items():
             res_dict[res] = Chempots.from_dict(chempots)
-        phase_diagram = d['phase_diagram'] if PhaseDiagram.from_dict(d['phase_diagram']) else None
+        phase_diagram = PhaseDiagram.from_dict(d['phase_diagram']) if d['phase_diagram'] else None
         mu_refs = Chempots.from_dict(d['mu_refs']) if d['mu_refs'] else None
         are_chempots_delta = d['are_chempots_delta']
             
@@ -345,12 +349,14 @@ class Reservoirs(MSONable):
         return Reservoirs.from_dict(d)
 
 
-    def filter_reservoirs(self,elements=None):
+    def filter_reservoirs(self,inplace=False,elements=None):
         """
         Get new Reservoir object filtering the chempots dictionary.
 
         Parameters
         ----------
+        inplace : (bool)
+            Apply changes to current Reservoirs object.
         elements : (list), optional
             List of element symbols. The default is None.
 
@@ -360,14 +366,23 @@ class Reservoirs(MSONable):
             Reservoirs object.
         """
         res = self.copy()
+        mu_refs = self.mu_refs.copy()
         filtered_dict = res.res_dict
         if elements:
             d = filtered_dict.copy()
             for r in list(d):
                 for el in list(d[r]):
                     if el not in elements:
-                        del filtered_dict[r][el]        
-        return res
+                        del filtered_dict[r][el]
+                        if el in mu_refs.keys():
+                            del mu_refs[el]
+        if inplace:
+            self.res_dict = filtered_dict
+            self.mu_refs = mu_refs
+            return
+        else:
+            res.mu_refs = mu_refs
+            return res
 
 
     def get_absolute_res_dict(self):
@@ -623,6 +638,27 @@ class PDHandler:
         
         return mu/factor
 
+
+    def get_all_boundaries_chempots(self,comp):
+        """
+        Get chemical potentials at the corners of the stability ta given composition.
+
+        Parameters
+        ----------
+        comp : 
+            Pymatgen Composition object.
+
+        Returns
+        -------
+        chempots : (Chempots)
+            Chempots object.
+        """
+        chempots_pmg = self.pd.get_all_chempots(comp)
+        for r,mu in chempots_pmg.items():
+            chempots_pmg[r] = {k:v.item() for k,v in mu.items()} # convert from np.float64
+        chempots = {r:Chempots.from_pmg_elements(mu) for r,mu in chempots_pmg.items()}
+        return chempots
+
         
     def get_chempots_reference(self):
         """
@@ -770,6 +806,7 @@ class PDHandler:
         comp1,comp2 : (Pymatgen Composition object)
             Compositions of the boundary phases given a fixed chemical potential for one element.
         """
+        chempot_ref = Chempots(chempot_ref)
         fixed_chempot = chempot_ref.get_absolute(self.mu_refs).to_pmg_elements()
         
         entries = self.pd.all_entries
@@ -823,6 +860,7 @@ class PDHandler:
             Dictionary of chemical potentials.
         """
         chempots_boundary ={}
+        chempot_ref = Chempots(chempot_ref)
         mu_fixed = chempot_ref.to_pmg_elements()
         for el,chempot in mu_fixed.items():
             el_fixed, mu_fixed = el, chempot

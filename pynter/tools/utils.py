@@ -12,6 +12,7 @@ import os.path as op
 import json
 import pkgutil
 import pandas as pd
+from monty.json import jsanitize,MontyEncoder
 
 
 def change_file (input_file , output_file=None, back_up_file = True,
@@ -193,7 +194,7 @@ def get_object_from_json(cls,path_or_string):
     return cls.from_dict(d)
 
 
-def save_object_as_json(object,path):
+def save_object_as_json(object,path,sanitize=False,cls=MontyEncoder):
     """
     Save class object as json string or file. The class must posses the 'as_dict' method.
 
@@ -209,9 +210,11 @@ def save_object_as_json(object,path):
         If path is not set a string is returned.
     """
     d = object.as_dict()
+    if sanitize:
+        d = jsanitize(d)
     if path:
         with open(path,'w') as file:
-            json.dump(d,file)
+            json.dump(d,file,cls=cls)
         return
     else:
         return d.__str__() 
