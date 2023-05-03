@@ -879,7 +879,7 @@ def create_interstitials(structure,elements,supercell_size=None,**kwargs):
     return defects
 
 
-def create_substitutions(structure,replace,supercell_size=None):
+def create_substitutions(structure,elements_to_replace,supercell_size=None):
     """
     Create Substitution objects starting from a bulk structure (unit cell or supercell).
 
@@ -887,9 +887,9 @@ def create_substitutions(structure,replace,supercell_size=None):
     ----------
     structure : Structure
         Bulk structure, both unit cell or supercell can be used as input.
-    replace : (str), optional
+    elements_to_replace : (str), optional
         Dict with element symbol of specie to be replaced as keys and element 
-        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
+        symbol of the species to be replaced with as values ({'old_El':'new_El'}).
     supercell_size : (int or numpy array), optional
         Input for the generate_defect_structure function of the old pymatgen Substitution class.
 
@@ -902,7 +902,7 @@ def create_substitutions(structure,replace,supercell_size=None):
     bulk_structure = structure.copy()
     if supercell_size:
         bulk_structure.make_supercell(supercell_size)
-    for el_to_sub,el_subbed in replace.items():
+    for el_to_sub,el_subbed in elements_to_replace.items():
         for site in bulk_structure:
             if site.specie.symbol == el_to_sub:
                 defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
