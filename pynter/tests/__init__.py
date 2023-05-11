@@ -36,3 +36,53 @@ def get_structure_Si():
        'properties': {}}]}
         )
     return structure
+
+
+
+def get_incar_settings():
+    incar_settings = {'ALGO': 'Normal',
+     'AMIX': 0.2,
+     'EDIFF': 1e-06,
+     'EDIFFG': -0.05,
+     'ENCUT': 550,
+     'IBRION': 2,
+     'ISIF': 2,
+     'ISMEAR': 0,
+     'ISPIN': 1,
+     'KPAR': 4,
+     'LCHARG': '.TRUE.',
+     'LORBIT': 10,
+     'LREAL': '.FALSE.',
+     'LWAVE': '.TRUE.',
+     'NELM': 200,
+     'NSW': 0,
+     'SIGMA': 0.05,
+     'SYSTEM': 'Si',
+     '#### Default PBE: system': 'Si',
+     'ISYM': 2}
+    return incar_settings
+
+
+
+def get_job_settings():
+    job_settings = {
+     'add_automation': 'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
+     'add_lines_body': None,
+     'add_lines_header': None,
+     'add_stop_array': True,
+     'array_size': None,
+     'cores_per_node': 24,
+     'email': 'test@pynter.com',
+     'error_filename': 'err.%j',
+     'filename': 'job.sh',
+     'memory_per_cpu': 2400,
+     'modules': ['intel/2019.2', 'intel/2019.3', 'intelmpi/2019.3', 'fftw/3.3.8'],
+     'name': 'Si-BS_PBE-el-str_3',
+     'nodes': 1,
+     'output_filename': 'out.%j',
+     'partition': 'deflt',
+     'path_exe': '/home/vasp-5-3-3',
+     'processor': 'avx2',
+     'project_id': 'project0000',
+     'timelimit': '00:30:00'}
+    return job_settings
