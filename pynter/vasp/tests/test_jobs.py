@@ -16,7 +16,7 @@ from pymatgen.io.vasp.outputs import Vasprun
 from pynter.vasp.jobs import VaspJob
 from pynter.vasp.__init__ import load_vasp_default
 from pynter.tests.__init__ import get_job_settings
-from pynter.tests.compare import CompareVaspInputs, CompareVaspJobs
+from pynter.vasp.tests.compare import CompareVaspInputs, CompareVaspJobs
 
 homedir = os.getenv("HOME")
 test_files_path = op.join(homedir,'pynter/pynter/vasp/tests/test_files')

@@ -251,12 +251,12 @@ class Substitution(Defect):
         self._site_in_bulk = site_in_bulk if site_in_bulk else self.get_site_in_bulk()
 
 
-    @property  # type: ignore
+    @property  
     def defect_composition(self):
         """
         Composition of the defect.
         """
-        defect_index = self.site_in_bulk.index
+        defect_index = self.defect_site_index
         temp_comp = self.bulk_structure.composition.as_dict()
         temp_comp[str(self.site.specie)] += 1
         temp_comp[str(self.bulk_structure[defect_index].specie)] -= 1
@@ -874,6 +874,7 @@ def create_interstitials(structure,elements,supercell_size=None,**kwargs):
         bulk_structure.make_supercell(supercell_size)
     generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
     for inter in generator:
+        bulk_structure.remove_oxidation_states()
         interstitial = Interstitial(inter.site, bulk_structure,multiplicity=inter.multiplicity,
                                     label=f'mult{inter.multiplicity}')
         defects.append(interstitial)
@@ -982,7 +983,7 @@ def format_legend_with_charge_kv(label,charge):
     charge : (int or float)
         Charge of the defect. Floats are converted to integer.
     """
-    mod_label = label[:-1]
+    mod_label = label + '$'
     charge = int(charge)
     if charge < 0:
         for i in range(0,abs(charge)):
