@@ -55,14 +55,6 @@ def test_vaspjob_to_json_from_json():
     #if runs import is successfull - comparing dictionary directly is impossible because of pymatgen's inconsistencies
     j_from_json = VaspJob.from_json(json.dumps(d))
     CompareVaspJobs().compare(j, j_from_json)
-    # assert j.computed_entry == j_from_json.computed_entry
-    # assert j_from_json.job_settings == job_settings
     assert j_from_json.band_structure.as_dict() == j.band_structure.as_dict()
 
-    
-def test_temp():
-    path = op.join(test_files_path,'Si-BS')
-    j1 = VaspJob.from_directory(path,load_outputs=True)
-    j2 = VaspJob.from_json(op.join(test_files_path,'Si-BS.json'))
-    CompareVaspInputs().compare_vaspinput(j1.inputs,j2.inputs)
     
