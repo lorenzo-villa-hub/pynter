@@ -126,6 +126,9 @@ class Dataset:
     
     def __iter__(self):
         return self.jobs.__iter__()
+    
+    def __getitem__(self,index):
+        return self.jobs.__getitem__(index)
 
 
     def as_dict(self,**kwargs):
