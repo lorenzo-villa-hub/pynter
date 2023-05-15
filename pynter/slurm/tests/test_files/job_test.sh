@@ -1,6 +1,6 @@
 #!/bin/sh
 #SBATCH -A projecttest0000
-#SBATCH --job-name=no_name
+#SBATCH --job-name=test
 #SBATCH --array=1-2%1
 #SBATCH --mail-user=test@pynter.com
 #SBATCH --mail-type=ALL
@@ -17,7 +17,7 @@ module purge
 ml intel/2020.4 
 ml intelmpi/2020.4 
 ml fftw/3.3.10 
-test_HEADER
+
 if [ ! -f POSCAR_initial ] ; then
     cp POSCAR POSCAR_initial
 fi
@@ -33,4 +33,3 @@ if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q '
     automation.py
     scancel ${SLURM_ARRAY_JOB_ID}_*
 fi
-test_BODY
