@@ -8,18 +8,23 @@ from pynter.__init__ import load_config, run_local
 
 class HPCInterface:
     
-    def __init__(self):
+    def __init__(self,config=None):
         """
         Class to interface commands with HPC
+
+        Parameters
+        ----------
+        config : (dict), optional
+            Configuration dictionary. If None is loaded from .pynter/config.yml.
         """
-        
-        config = load_config()['HPC']
+        if not config:
+            config = load_config()['HPC']
         
         for key,value in config.items():
             setattr(self, key, value)      
 
 
-    def cancel_jobs(self,*args):
+    def cancel_jobs(self,*args,printout=True,dry_run=False,**kwargs):
         """
         Cancel jobs on HPC using scancel
 
@@ -27,16 +32,22 @@ class HPCInterface:
         ----------
         *args : (str)
             Job-id.
+        printout : (bool), optional
+            Write output on screen. The default is True.
+        dry_run : (bool), optional
+            Only return the command to be run and empty error string. The default is False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
         """
-        
         cmd = 'scancel '
         for arg in args:
             cmd += arg + ' '
-        
-        stdout,stderr = self.command(cmd)
+                
+        stdout,stderr = self.command(cmd,printout,dry_run,**kwargs)
+        return stdout,stderr
 
             
-    def command(self,cmd,printout=True):   
+    def command(self,cmd,printout=True,dry_run=False,**kwargs):   
         """
         Run command on HPC
 
@@ -46,6 +57,10 @@ class HPCInterface:
             Command to run.
         printout : (bool), optional
             Write output on screen. The default is True.
+        dry_run : (bool), optional
+            Only return the command to be run and empty error string. The default is False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
 
         Returns
         -------
@@ -63,11 +78,11 @@ class HPCInterface:
         command = 'sshpass ssh %s %s' %(self.hostname, arg)
         if printout:
             print(f'{self.hostname}: {cmd} \n')
-        stdout,stderr = run_local(command,printout)
+        stdout,stderr = run_local(command,printout,dry_run,**kwargs)
         return stdout,stderr
                 
 
-    def mkdir(self,path,printout=True):
+    def mkdir(self,path,printout=True,dry_run=False,**kwargs):
         """
         Make new directory in HPC if doesn't exist
 
@@ -77,6 +92,10 @@ class HPCInterface:
             Path of directory.
         printout : (bool), optional
             Write output on screen. The default is True.
+        dry_run : (bool), optional
+            Only return the command to be run and empty error string. The default is False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
 
         Returns
         -------
@@ -86,13 +105,11 @@ class HPCInterface:
             Error.
         """
         cmd = 'mkdir -p %s' %path
-        stdout,stderr = self.command(cmd,printout)
+        stdout,stderr = self.command(cmd,printout,dry_run,**kwargs)
         return stdout, stderr
         
         
-
-    
-    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True):
+    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True,dry_run=False,**kwargs):
         """
         Check queue status on HPC
 
@@ -102,6 +119,10 @@ class HPCInterface:
             Command to run. The default is 'squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"'.
         printout : (bool), optional
             Write output on screen. The default is True.
+        dry_run : (bool), optional
+            Only return the command to be run and empty error string. The default is False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
 
         Returns
         -------
@@ -111,11 +132,11 @@ class HPCInterface:
             Error.
         """
         
-        stdout,stderr = self.command(cmd,printout)
+        stdout,stderr = self.command(cmd,printout,dry_run,**kwargs)
         return stdout, stderr
     
 
-    def rsync_from_hpc(self,remotedir=None,localdir=None,exclude=None,dry_run=False):
+    def rsync_from_hpc(self,remotedir=None,localdir=None,exclude=None,printout=True,dry_run=False,**kwargs):
         """
         Sync folders from HPC to local machine. The command "rsync" is used. With this function all
         the folders contained in the remote dir are synched to the local dir.
@@ -129,7 +150,9 @@ class HPCInterface:
         exclude : (list), optional
             List of files to exclude in rsync. The default is None.
         dry_run : (bool), optional
-            Perform dry run in rsync with --dry-run. The default is False.
+            Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
 
         Returns
         -------
@@ -154,13 +177,12 @@ class HPCInterface:
             for s in exclude:
                 cmd += f'--exclude={s} ' 
         cmd += f"-e ssh {self.hostname}:{remotedir} {localdir} "
-        
-        print(cmd)
-        stdout,stderr = run_local(cmd)
+
+        stdout,stderr = run_local(cmd,printout,dry_run=False,**kwargs)
         return stdout,stderr
 
 
-    def rsync_to_hpc(self,localdir=None,remotedir=None,exclude=None,dry_run=False):
+    def rsync_to_hpc(self,localdir=None,remotedir=None,exclude=None,printout=True,dry_run=False,**kwargs):
         """
         Sync folders from local machine to HPC. The command "rsync" is used. With this function all
         the folders contained in the local dir are synched to the remote dir.
@@ -174,7 +196,9 @@ class HPCInterface:
         exclude : (list), optional
             List of files to exclude in rsync. The default is None.
         dry_run : (bool), optional
-            Perform dry run in rsync with --dry-run. The default is False.
+            Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
 
         Returns
         -------
@@ -199,13 +223,12 @@ class HPCInterface:
                 cmd += f'--exclude={s} '
         cmd += f"-e ssh  {localdir} {self.hostname}:{remotedir} "
         
-        print(cmd)
-        stdout,stderr = run_local(cmd)
+        stdout,stderr = run_local(cmd,printout,dry_run=False,**kwargs)
 
         return stdout,stderr
     
           
-    def sbatch(self,path='',job_script_filename='job.sh'):
+    def sbatch(self,path='',job_script_filename='job.sh',printout=True,dry_run=False,**kwargs):
         """
         Execute "sbatch" command on HPC to run job.
 
@@ -215,6 +238,10 @@ class HPCInterface:
             Path where the job script is stored. The default is ''.
         job_script_filename : (str), optional
             Filename of the job script. The default is 'job.sh'.
+        dry_run : (bool), optional
+            Only return the command to be run and empty error string. The default is False.
+        kwargs : (dict), optional
+            Kwargs for the run_local function.
 
         Returns
         -------
@@ -226,7 +253,7 @@ class HPCInterface:
         path = op.join(self.workdir,path)
         cmd = f'cd {path} ; sbatch {job_script_filename}'
         command = f'sshpass ssh {self.hostname} ' + cmd
-        stdout,stderr = run_local(command) # I've used the run local because there was a probelm with the multiple command given with ;
+        stdout,stderr = run_local(command,printout,dry_run,**kwargs) # I've used the run local because there was a probelm with the multiple command given with ;
         return stdout,stderr               # to check again if possible
         
         

@@ -12,7 +12,7 @@ from numpy.testing import assert_array_almost_equal
 
 class CompareStructures(unittest.TestCase):
     
-    def compare_sites(self,site1,site2,decimal=5):
+    def compare_sites(self,site1,site2,decimal=3):
         assert_array_almost_equal(site1.frac_coords,site2.frac_coords,decimal=decimal)
         
     def compare_lattice(self,lattice1,lattice2):

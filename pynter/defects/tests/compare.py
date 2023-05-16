@@ -18,6 +18,18 @@ class CompareDefects(unittest.TestCase):
         self.assertEqual(defect1.charge,defect2.charge)
         self.assertEqual(defect1.multiplicity,defect2.multiplicity)
         self.assertEqual(defect1.label,defect2.label)
+        return
+        
+class CompareEntries(unittest.TestCase):
+    
+    def compare(self,entry1,entry2):
+        CompareDefects().compare(entry1.defect,entry2.defect)
+        CompareStructures().compare(entry1.bulk_structure,entry2.bulk_structure)
+        self.assertEqual(entry1.energy_diff,entry2.energy_diff)
+        self.assertEqual(entry1.corrections,entry2.corrections)
+        self.assertEqual(entry1.data,entry2.data)
+        self.assertEqual(entry1.label,entry2.label)
+            
         
             
 

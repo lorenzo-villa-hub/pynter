@@ -280,6 +280,11 @@ class VaspJob(Job):
             
         return final_energy
     
+    @property
+    def final_energy_per_atom(self):
+        if self.final_energy:
+            return self.final_energy/len(self.final_structure)
+    
     
     @property
     def final_structure(self):

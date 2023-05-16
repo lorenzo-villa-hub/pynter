@@ -10,9 +10,11 @@ def load_config(cfgfile=cfgfile):
     with open(cfgfile,"r") as ymlfile:
         return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
 
-def run_local(cmd,printout=True):
+def run_local(cmd,printout=True,dry_run=False,**kwargs):
+    if dry_run:
+        return cmd, ''
     command = cmd.split()
-    proc = subprocess.run(command, capture_output=True, shell=False, text=True)
+    proc = subprocess.run(command, capture_output=True, shell=False, text=True,**kwargs)
     stdout = proc.stdout
     stderr = proc.stderr
     if printout:
