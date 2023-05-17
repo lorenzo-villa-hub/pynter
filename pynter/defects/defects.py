@@ -9,10 +9,10 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from monty.json import MSONable
 from pymatgen.core.composition import Composition
 from pymatgen.core.sites import PeriodicSite
-from pynter.tools.structure import is_site_in_structure_coords
 import importlib
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
+from pynter.tools.structure import is_site_in_structure_coords, remove_oxidation_state_from_site
 # Adapted from pymatgen.analysis.defect.core 
 
 
@@ -81,12 +81,12 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
     def defect_specie(self):
         return self.name.dspecie
     
-    @abstractproperty
+    @property
     def defect_structure(self):
         """
         Structure of the defect
         """
-        return     
+        return self.generate_defect_structure() 
     
     @property
     def defect_type(self):
@@ -199,21 +199,35 @@ class Vacancy(Defect):
         return index
     
     @property
-    def defect_structure(self):
-        """
-        Structure of the defect
-        """
-        structure = self.bulk_structure.copy()
-        structure.remove_sites([self.defect_site_index])
-        return structure
-
-    @property
     def delta_atoms(self):
         """
         Dictionary with element symbol as keys and difference in particle number 
         between defect and bulk structure as values
         """
         return {self.site.specie.symbol:-1}
+    
+    def generate_defect_structure(self,bulk_structure=None,defect_site_index=None):
+        """
+        Generate a structure containing the defect starting from a bulk structure.
+
+        Parameters
+        ----------
+        bulk_structure : (Structure), optional
+            Bulk Structure. If not provided self.bulk_structure is used. The default is None.
+        defect_site_index : (Structure), optional
+            Index of the defect site in the bulk structure. If not provided 
+            self.defect_site_index is used. The default is None.
+
+        Returns
+        -------
+        structure : (Structure)
+            Structure containing the defect.
+        """
+        bulk_structure = bulk_structure if bulk_structure else self.bulk_structure
+        defect_site_index = defect_site_index if defect_site_index else self.defect_site_index
+        defect_structure = bulk_structure.copy()
+        defect_structure.remove_sites([defect_site_index])
+        return defect_structure
     
     def get_multiplicity(self,**kwargs):
         """
@@ -270,21 +284,35 @@ class Substitution(Defect):
         return self.bulk_structure.index(self.site_in_bulk)
 
     @property
-    def defect_structure(self):
-        """
-        Structure of the defect
-        """
-        defect_structure = self.bulk_structure.copy()
-        defect_structure.replace(self.defect_site_index,self.defect_specie)  
-        return defect_structure
-
-    @property
     def delta_atoms(self):
         """
         Dictionary with element symbol as keys and difference in particle number 
         between defect and bulk structure as values
         """
         return {self.site.specie.symbol:1, self.site_in_bulk.specie.symbol:-1}
+    
+    def generate_defect_structure(self,bulk_structure=None,defect_site_index=None):
+        """
+        Generate a structure containing the defect starting from a bulk structure.
+
+        Parameters
+        ----------
+        bulk_structure : (Structure), optional
+            Bulk Structure. If not provided self.bulk_structure is used. The default is None.
+        defect_site_index : (Structure), optional
+            Index of the defect site in the bulk structure. If not provided 
+            self.defect_site_index is used. The default is None.
+
+        Returns
+        -------
+        structure : (Structure)
+            Structure containing the defect.
+        """
+        bulk_structure = bulk_structure if bulk_structure else self.bulk_structure
+        defect_site_index = defect_site_index if defect_site_index else self.defect_site_index
+        defect_structure = bulk_structure.copy()
+        defect_structure.replace(defect_site_index,self.defect_specie)  
+        return defect_structure
 
     def get_multiplicity(self,**kwargs):
         """
@@ -345,16 +373,7 @@ class Interstitial(Defect):
         Index of the defect site in the defect structure
         """
         return self.defect_structure.index(self.site)
-    
-    @property
-    def defect_structure(self):
-        """
-        Structure of the defect
-        """
-        defect_structure = self.bulk_structure.copy()
-        defect_structure.append(self.site.species,self.site.frac_coords)
-        return defect_structure
-    
+       
     @property
     def delta_atoms(self):
         """
@@ -362,6 +381,26 @@ class Interstitial(Defect):
         between defect and bulk structure as values
         """
         return {self.site.specie.symbol:1}
+    
+    def generate_defect_structure(self,bulk_structure=None):
+        """
+        Generate a structure containing the defect starting from a bulk structure.
+
+        Parameters
+        ----------
+        bulk_structure : (Structure), optional
+            Bulk Structure. If not provided self.bulk_structure is used. The default is None.
+
+        Returns
+        -------
+        structure : (Structure)
+            Structure containing the defect.
+        """
+        bulk_structure = bulk_structure if bulk_structure else self.bulk_structure
+        defect_structure = bulk_structure.copy()
+        defect_structure.append(self.site.species,self.site.frac_coords)
+        return defect_structure
+        
 
     def get_multiplicity(self):
         raise NotImplementedError('Not implemented for Interstitial')
@@ -403,18 +442,7 @@ class Polaron(Defect):
         Index of the defect site in the structure
         """
         return self.defect_structure.index(self.site)
-    
-    @property
-    def defect_structure(self):
-        """
-        Structure containing the polaron. If not provided the site index is searched 
-        in the bulk structure, and the defect_structure is set equal to the bulk structure.
-        """
-        if self._defect_structure:
-            return self._defect_structure
-        else:
-            return self.bulk_structure
-    
+        
     @property
     def delta_atoms(self):
         """
@@ -422,7 +450,19 @@ class Polaron(Defect):
         between defect and bulk structure as values
         """
         return {}
-
+    
+    def generate_defect_structure(self,bulk_structure=None):
+        """
+        Structure containing the polaron. If not provided the site index is searched 
+        in the bulk structure, and the defect_structure is set equal to the bulk structure.
+        """
+        if self._defect_structure:
+            return self._defect_structure
+        else:
+            bulk_structure = bulk_structure if bulk_structure else self.bulk_structure
+            return bulk_structure  
+        
+        
     def get_multiplicity(self,**kwargs):
         """
         Get multiplicity of the defect in the structure
@@ -498,10 +538,18 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         List of single defects consituting the complex.
         """
         return self._defects
+
+    @property
+    def defect_composition(self):
+        return self.defect_structure.composition
         
     @property
     def defect_names(self):
         return [d.name for d in self.defects]
+
+    @property
+    def defect_structure(self):
+        return self.generate_defect_structure()
 
     @property
     def defect_type(self):
@@ -523,6 +571,18 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
                     prec = da_global[e] if e in da_global.keys() else 0
                     da_global[e] = prec + da_single[e]       
         return da_global 
+
+    def generate_defect_structure(self,bulk_structure=None):
+        """
+        Generate a structure containing the defect starting from a bulk structure.
+        If not provided self.bulk_structure is used.
+        """
+        bulk_structure = bulk_structure if bulk_structure else self.bulk_structure
+        structure = bulk_structure.copy()
+        for df in self.defects:
+            df_structure = df.generate_defect_structure(structure)
+            structure = df_structure.copy()
+        return structure
 
     def get_multiplicity(self):
         raise NotImplementedError('Not implemented for DefectComplex')
@@ -652,10 +712,10 @@ class DefectName(str,MSONable):
 
 
     def __str__(self):
-        return self.fullname
+        return self.fullname.__str__()
     
     def __repr__(self):
-        return self.fullname
+        return self.fullname.__repr__()
     
     def __iter__(self):
         return [self].__iter__() # dummy iter to handle single defecs and complexes the same way 
@@ -769,10 +829,10 @@ class DefectComplexName(str,MSONable):
         
                 
     def __str__(self):
-        return self.fullname
+        return self.fullname.__str__()
     
     def __repr__(self):
-        return self.fullname
+        return self.fullname.__repr__()
     
     def __iter__(self):
         return self.defect_names.__iter__()
@@ -875,13 +935,14 @@ def create_interstitials(structure,elements,supercell_size=None,**kwargs):
     generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
     for inter in generator:
         bulk_structure.remove_oxidation_states()
+        remove_oxidation_state_from_site(inter.site)
         interstitial = Interstitial(inter.site, bulk_structure,multiplicity=inter.multiplicity,
                                     label=f'mult{inter.multiplicity}')
         defects.append(interstitial)
     return defects
 
 
-def create_substitutions(structure,elements_to_replace,supercell_size=None):
+def create_substitutions(structure,elements_to_replace,supercell_size=None,site_indexes=None):
     """
     Create Substitution objects starting from a bulk structure (unit cell or supercell).
 
@@ -904,8 +965,12 @@ def create_substitutions(structure,elements_to_replace,supercell_size=None):
     bulk_structure = structure.copy()
     if supercell_size:
         bulk_structure.make_supercell(supercell_size)
+    if site_indexes:
+        sites = [bulk_structure[i] for i in site_indexes]
+    else:
+        sites = bulk_structure.sites
     for el_to_sub,el_subbed in elements_to_replace.items():
-        for site in bulk_structure:
+        for site in sites:
             if site.specie.symbol == el_to_sub:
                 defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
                 defects.append(Substitution(defect_site, bulk_structure,site_in_bulk=site))
@@ -913,7 +978,7 @@ def create_substitutions(structure,elements_to_replace,supercell_size=None):
     return defects   
 
 
-def create_vacancies(structure,elements=None,supercell_size=None):
+def create_vacancies(structure,elements=None,supercell_size=None,site_indexes=None):
     """
     Create structures with vacancies starting from a bulk structure (unit cell or supercell).
 
@@ -939,9 +1004,12 @@ def create_vacancies(structure,elements=None,supercell_size=None):
         bulk_structure.make_supercell(supercell_size)
     if not elements:
         elements = [el.symbol for el in bulk_structure.composition.elements]
-    
+    if site_indexes:
+        sites = [bulk_structure[i] for i in site_indexes]
+    else:
+        sites = bulk_structure.sites
     for el in bulk_structure.composition.elements:
-        for site in bulk_structure:
+        for site in sites:
             if el.symbol in elements:
                 if site.specie == el:
                     vacancy = Vacancy(site, bulk_structure)

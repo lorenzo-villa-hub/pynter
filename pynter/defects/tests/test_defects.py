@@ -30,6 +30,7 @@ def test_interstitial():
     assert inter.defect_type == 'Interstitial'
     assert inter.defect_site_index == 54
     assert inter.defect_composition == Composition('Si55')
+    assert inter.defect_structure.composition == inter.defect_composition
     assert inter.name == DefectName('Interstitial','Si',label='test')
     assert inter.charge == 0
     assert inter.delta_atoms == {'Si': 1}
@@ -46,6 +47,7 @@ def test_polaron():
     assert pol.defect_type == 'Polaron'
     assert pol.defect_site_index == 0
     assert pol.defect_composition == Composition('Si54')
+    assert pol.defect_structure.composition == pol.defect_composition
     assert pol.charge == 1
     assert pol.delta_atoms == {}
     assert pol.get_multiplicity() == 54
@@ -66,6 +68,7 @@ def test_substitution():
     assert sub.defect_type == 'Substitution'
     assert sub.defect_site_index == 0
     assert sub.defect_composition == Composition('Si53P1')
+    assert sub.defect_structure.composition == sub.defect_composition
     assert sub.name == DefectName('Substitution','P',bulk_specie='Si',label='test')
     assert sub.charge == 1
     assert sub.delta_atoms == {'P': 1, 'Si': -1}
@@ -86,6 +89,7 @@ def test_vacancy():
     assert vac.defect_type == 'Vacancy'
     assert vac.defect_site_index == 0
     assert vac.defect_composition == Composition('Si53')
+    assert vac.defect_structure.composition == vac.defect_composition
     assert vac.charge == 0
     assert vac.delta_atoms == {'Si':-1}
     assert vac.get_multiplicity() == 54
@@ -101,7 +105,7 @@ def test_defect_complex():
     structure = bulk_structure.copy()
     vac_site = structure[0]
     vac = Vacancy(vac_site,structure,charge=0,multiplicity=54,label='test')
-    sub_site = structure[0]
+    sub_site = structure[1]
     defect_site = PeriodicSite('P',sub_site.frac_coords,sub_site.lattice)
     sub = Substitution(defect_site,structure,charge=1,multiplicity=54,label='test')
     defects = [vac,sub]
@@ -111,6 +115,7 @@ def test_defect_complex():
                                  DefectName('Substitution','P','Si',label='test')],label='test')
     assert comp.defect_names == [DefectName('Vacancy','Si',label='test'),
                                  DefectName('Substitution','P','Si',label='test')]
+    assert comp.defect_composition == Composition('Si52P1')
     assert comp.charge == 1
     assert comp.delta_atoms == {'Si': -2, 'P': 1}
     assert comp.multiplicity == 216

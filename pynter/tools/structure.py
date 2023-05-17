@@ -9,9 +9,12 @@ Created on Fri Nov 27 10:52:08 2020
 import numpy as np
 import os.path as op
 import os
+import collections
 from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 from pymatgen.util.coord import pbc_shortest_vectors
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.composition import Composition
 from pymatgen.core.trajectory import Trajectory
 
 def _get_distance_vector_and_image(lattice,frac_coords1,frac_coords2,jimage=None):
@@ -158,6 +161,17 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
     else:
         return False,None
 
+
+def remove_oxidation_state_from_site(site):
+    """
+    Remove oxidation state decoration from site.
+    """
+    new_sp = collections.defaultdict(float)
+    for el, occu in site.species.items():
+        sym = el.symbol
+        new_sp[Element(sym)] += occu
+    site.species = Composition(new_sp)
+    return
 
 def sort_sites_to_ref_coords(structure,structure_ref,extra_sites=[],tol=1e-03,get_indexes=False):
     """

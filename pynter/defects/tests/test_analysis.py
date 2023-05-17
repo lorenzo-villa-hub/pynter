@@ -38,3 +38,33 @@ def test_defects_analysis():
     da = DefectsAnalysis.from_json(get_path('DA_Si.json'))
     CompareEntries().compare(da.entries[3], entry)
     
+    stable_charges = {
+         "Int_Si(mult108)": (1.0, 3.6846594634256036),
+         "Int_Si(mult54)": (1.0, 3.2615360171135395),
+         "Sub_B_on_Si": (0.0, 0.7012506599999799),
+         "Sub_P_on_Si": (1.0, -0.25706887286827396),
+         "Vac_Si": (0.0, 3.2633273699999723)
+         }
+    assert da.stable_charges(chempots) == stable_charges 
+    
+    formation_energies = {
+        'Int_Si(mult108)': [(-1.0, 4.649770703425618),
+         (0.0, 3.8291055299999766),
+         (1.0, 3.6846594634256036)],
+        'Int_Si(mult54)': [(-1.0, 4.673740193780213),
+         (0.0, 3.8109430399999678),
+         (1.0, 3.2615360171135395)],
+        'Sub_B_on_Si': [(-2.0, 1.8952842985270144),
+         (-1.0, 0.793132301342261),
+         (0.0, 0.7012506599999799)],
+        'Sub_P_on_Si': [(0.0, 0.2571857899999852),
+         (1.0, -0.25706887286827396),
+         (2.0, 0.19056955168492085)],
+        'Vac_Si': [(-1.0, 3.698017458184358),
+         (0.0, 3.2633273699999723),
+         (1.0, 3.3491269708159415)]
+         }
+    
+    assert da.formation_energies(chempots == formation_energies)
+    
+    
