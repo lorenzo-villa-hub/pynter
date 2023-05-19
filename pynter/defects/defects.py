@@ -955,6 +955,9 @@ def create_substitutions(structure,elements_to_replace,supercell_size=None,site_
         symbol of the species to be replaced with as values ({'old_El':'new_El'}).
     supercell_size : (int or numpy array), optional
         Input for the generate_defect_structure function of the old pymatgen Substitution class.
+    site_indexes : (list), optional
+        Site indexes where the defects need to be created. If None the first site found is 
+        used. The default is None.
 
     Returns
     -------
@@ -974,7 +977,8 @@ def create_substitutions(structure,elements_to_replace,supercell_size=None,site_
             if site.specie.symbol == el_to_sub:
                 defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
                 defects.append(Substitution(defect_site, bulk_structure,site_in_bulk=site))
-                break
+                if not site_indexes:
+                    break
     return defects   
 
 
@@ -992,6 +996,9 @@ def create_vacancies(structure,elements=None,supercell_size=None,site_indexes=No
     supercell_size : (int or numpy array), optional
         Input for the make_supercell function of the Structure class.
         If None the input structure is not modified. The default is None.
+    site_indexes : (list), optional
+        Site indexes where the defects need to be created. If None the first site found is 
+        used. The default is None.
 
     Returns
     -------
@@ -1014,7 +1021,8 @@ def create_vacancies(structure,elements=None,supercell_size=None,site_indexes=No
                 if site.specie == el:
                     vacancy = Vacancy(site, bulk_structure)
                     defects.append(vacancy)
-                    break
+                    if not site_indexes:
+                        break
     return defects        
 
 
