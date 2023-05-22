@@ -178,14 +178,14 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
         dfs = defects
     else:
         df_found = defect_finder(df,bk,tol=tol)
-        if df_found.classname=='DefectComplex':
+        if df_found.defect_type=='DefectComplex':
             dfs = df_found.defects
         else:
             dfs = [df_found]
    
     for d in dfs:
         dsite = d.site
-        dtype = d.classname
+        dtype = d.defect_type
         if dtype == 'Vacancy':
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
