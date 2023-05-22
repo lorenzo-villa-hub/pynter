@@ -8,15 +8,11 @@ Created on Mon May 22 17:01:20 2023
 
 import os 
 import os.path as op
-import json
 
 from pymatgen.core.composition import Composition
-from pymatgen.core.structure import Structure
 
 from pynter.data.datasets import Dataset
 from pynter.defects.structure import create_def_structure_for_visualization, defect_finder
-from pynter.tests.compare import CompareStructures
-from pynter.tools.utils import get_object_from_json
 
 homedir = os.getenv("HOME")
 test_files_path = op.join(homedir,'pynter/pynter/defects/tests/test_files')
