@@ -12,7 +12,7 @@ from pymatgen.core.sites import PeriodicSite
 import importlib
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pynter.tools.structure import is_site_in_structure_coords, remove_oxidation_state_from_site
+from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, remove_oxidation_state_from_site
 # Adapted from pymatgen.analysis.defect.core 
 
 
@@ -372,7 +372,8 @@ class Interstitial(Defect):
         """
         Index of the defect site in the defect structure
         """
-        return self.defect_structure.index(self.site)
+        is_site,index = is_site_in_structure(self.site, self.defect_structure)
+        return index  # more flexibility with is_site_in_structure
        
     @property
     def delta_atoms(self):

@@ -11,7 +11,6 @@ import json
 
 from pynter.tests.__init__ import get_structure_Si
 from pynter.tools.materials_project import MPDatabase
-from pynter.tools.utils import save_object_as_json, get_object_from_json
 
 homedir = os.getenv("HOME")
 test_files_path = op.join(homedir,'pynter/pynter/tools/tests/test_files')
