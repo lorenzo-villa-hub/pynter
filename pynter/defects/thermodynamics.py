@@ -5,6 +5,7 @@ Created on Thu Jan 14 14:48:55 2021
 
 @author: villa
 """
+import warnings
 from monty.json import MSONable
 from monty.json import jsanitize
 
@@ -296,7 +297,7 @@ class PressureAnalysis:
         res = reservoirs
         if hasattr(res,'temperature'):
             if res.temperature != T1:
-                print('Warning: PressureReservoirs temperature is not set to the initial quenching temperature')
+                warnings.warn('PressureReservoirs temperature is not set to the initial quenching temperature',UserWarning)
         partial_pressures = list(res.keys())
         fermi_levels = []
         if get_final_concentrations:

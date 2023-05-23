@@ -104,9 +104,13 @@ class Stresses:
         stress : (np.array)
             Residual stress matrix.
         """ 
-        stress_def = entry.data['stress']
-        stress = np.array(stress_def) - np.array(self.stress_bulk) # residual stress -> defect - bulk
-        return stress
+        if 'stress' in entry.data.keys():
+            stress_def = entry.data['stress']
+            stress = np.array(stress_def) - np.array(self.stress_bulk) # residual stress -> defect - bulk
+            return stress
+        else:
+            raise UserWarning('Stress needs to be present in the data dictionary as a numpy array with key "stress".')
+            return
     
         
     def plot_relaxation_volumes(self,entries,bulk_modulus,check_in_data=True,add_corrections=True,

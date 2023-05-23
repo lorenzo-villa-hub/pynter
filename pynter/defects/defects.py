@@ -898,6 +898,11 @@ class DefectComplexName(str,MSONable):
         return defect_names,label
 
 
+def get_defect_name_from_string(string):
+    if '-' in string:
+        return DefectComplexName.from_string(string)
+    else:
+        return DefectName.from_string(string)
 
 
 def create_interstitials(structure,elements,supercell_size=None,**kwargs):

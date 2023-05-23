@@ -45,7 +45,7 @@ class ScriptHandler:
             if key in default_settings:
                 setattr(self,key,value)
             else:
-                raise Exception('"%s" is not a possible argument \nPossible arguments are: %s' %(key, self.settings.keys()))
+                raise KeyError('"%s" is not a possible argument \nPossible arguments are: %s' %(key, self.settings.keys()))
   
     
     def __str__(self):

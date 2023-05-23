@@ -12,9 +12,7 @@ import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
 from pymatgen.io.vasp.outputs import Vasprun, Oszicar
 from pymatgen.core.structure import Structure
-from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.analysis.transition_state import NEBAnalysis
-from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pynter.slurm.job_script import ScriptHandler
 import numpy as np
 import json
@@ -151,7 +149,7 @@ class VaspJob(Job):
                 try:
                     outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
                 except:
-                    print('Warning: Reading of vasprun.xml in "%s" failed'%path)
+                    warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
                     outputs['Vasprun'] = None
         
         job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
@@ -207,7 +205,7 @@ class VaspJob(Job):
             return self.outputs['Vasprun']
         else:
             if not op.exists(op.join(self.path,'vasprun.xml')):
-                print('Warning: "vasprun.xml" file is not present in Job directory')
+                warnings.warn('"vasprun.xml" file is not present in Job directory')
             return None
 
     @property
@@ -337,7 +335,7 @@ class VaspJob(Job):
             poscar = self.poscar
             return poscar.structure            
         else:
-            print('Warning: inputs["POSCAR"] is not defined')
+            warnings.warn('inputs["POSCAR"] is not defined')
             return None
     
     
@@ -458,7 +456,7 @@ class VaspJob(Job):
             try:
                 outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
             except:
-                print('Warning: Reading of vasprun.xml in "%s" failed'%path)
+                warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
                 outputs['Vasprun'] = None
         self.outputs = outputs
         if get_output_properties:
@@ -705,7 +703,7 @@ class VaspNEBJob(Job):
             try:
                 outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
             except:
-                print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
+                warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
                 outputs['NEBAnalysis'] = None
         
         job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
@@ -938,7 +936,7 @@ class VaspNEBJob(Job):
         try:
             outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
         except:
-            print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
+            warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
             outputs['NEBAnalysis'] = None
             
         self.outputs = outputs

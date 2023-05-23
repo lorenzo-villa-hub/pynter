@@ -3,14 +3,56 @@ import yaml
 import os
 import subprocess
 
-homedir = os.getenv("HOME")
-cfgfile = os.path.join(homedir,'.pynter','config.yml')
+
+def get_cfgfile():
+    homedir = os.getenv("HOME")
+    cfgfile = os.path.join(homedir,'.pynter','config.yml')
+    return cfgfile
+
+cfgfile = get_cfgfile()
 
 def load_config(cfgfile=cfgfile):
-    with open(cfgfile,"r") as ymlfile:
-        return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
+    """
+    Load dictionary with configuration from yaml cofiguration file. The default is in ~/.pynter/config.yml.
+
+    Parameters
+    ----------
+    cfgfile : (str), optional
+        Path to configuration file. The default is ~/.pynter/config.yml.
+
+    Returns
+    -------
+    (dict)
+        Configuration dictionary.
+    """
+    if os.path.exists(cfgfile):
+        with open(cfgfile,"r") as ymlfile:
+            return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
+    else:
+        raise FileNotFoundError('%s does not exist. Run the setup.py script to create it.'%cfgfile)
+        return
+
 
 def run_local(cmd,printout=True,dry_run=False,**kwargs):
+    """
+    Run a command locally with subprocess package.
+
+    Parameters
+    ----------
+    cmd : (str)
+        Command to run.
+    printout : (bool), optional
+        Print output and error. The default is True.
+    dry_run : (bool), optional
+        Return back the command, without executing it. The default is False.
+    **kwargs : (dict)
+        Kwargs to pass to subprocess.run().
+
+    Returns
+    -------
+    stdout
+    stderr
+    """
     if dry_run:
         return cmd, ''
     command = cmd.split()

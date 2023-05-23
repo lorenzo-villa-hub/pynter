@@ -141,6 +141,9 @@ class OxygenPressure:
                 res = pdh.get_phase_boundaries_chempots(target_comp, fixed_chempot)
                 for el in list(res.values())[0]:
                     chempots_dict[el] = np.mean(np.array([mu[el] for mu in res.values()]))
+                    
+            elif len(pd.elements) > 3: 
+                raise NotImplementedError('Not implemented for PD with more than 3 components')
             
             chempots = Chempots(chempots_dict)
             chempots_abs = chempots.get_absolute(pdh.mu_refs)

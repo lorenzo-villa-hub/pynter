@@ -8,6 +8,7 @@ Created on Tue Jan 14 12:56:45 2020
 
 import os
 import re
+import warnings
 
 def job_status(path=None,job_script_filename='job_vasp.sh'):
         
@@ -45,7 +46,7 @@ def job_status(path=None,job_script_filename='job_vasp.sh'):
                     status_string = 'PENDING'
 
         if count > 1:
-            print(f'\nWARNING: More than one job named "{job_name}" are simultaneously running\n')
+            warnings.warn(f': More than one job named "{job_name}" are simultaneously running\n',UserWarning)
         
         if not status_string:    
             status_string = 'NOT IN QUEUE'

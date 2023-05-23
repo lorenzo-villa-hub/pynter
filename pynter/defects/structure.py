@@ -6,14 +6,11 @@ Created on Tue Apr  4 17:10:46 2023
 @author: villa
 """
 
-import numpy as np
+import warnings
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.periodic_table import Element
-from pymatgen.io.vasp.inputs import Poscar
-from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
 import os.path as op
 import os
-import importlib
 from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
 from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectComplex
 from pymatgen.core.trajectory import Trajectory
@@ -241,8 +238,11 @@ def defect_finder(structure_defect,structure_bulk,tol=1e-03):
     
     if len(defects) > 1:
         return DefectComplex(defects, structure_bulk)
-    else:
+    elif len(defects) == 1:
         return defects[0]
+    else:
+        warnings.warn('No defect has been found. Try to adjust the tolerance parameter.',UserWarning)
+        return defects
 
 
 

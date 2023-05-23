@@ -1,4 +1,5 @@
 
+import warnings
 import json
 import os.path as op
 import numpy as np
@@ -210,7 +211,7 @@ class Reservoirs(MSONable):
             self.mu_refs = PDHandler(self.pd).get_chempots_reference()
         else:
             self.mu_refs = mu_refs
-            print('Warning: Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible')
+            warnings.warn('Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible',UserWarning)
         self.are_chempots_delta = are_chempots_delta
 
 
@@ -282,7 +283,7 @@ class Reservoirs(MSONable):
         return d
 
 
-    def to_json(self,path):
+    def to_json(self,path,cls=MontyEncoder):
         """
         Save Reservoirs object as json string or file
 
@@ -290,6 +291,8 @@ class Reservoirs(MSONable):
         ----------
         path : (str), optional
             Path to the destination file.  If None a string is exported.
+        cls : (cls)
+            Encoder class for json.dump. The default is MontyEncoder.
 
         Returns
         -------
@@ -299,7 +302,7 @@ class Reservoirs(MSONable):
         d = self.as_dict()
         if path:
             with open(path,'w') as file:
-                json.dump(d,file,cls=MontyEncoder)
+                json.dump(d,file,cls=cls)
             return
         else:
             return d.__str__()  
