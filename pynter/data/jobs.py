@@ -91,6 +91,21 @@ class Job:
         
         return 
 
+
+    def copy(self):
+        """
+        Copy Job object
+        """
+        path=self.path
+        inputs=self.inputs.copy() if self.inputs else None
+        job_settings=self.job_settings.copy() if self.job_settings else None
+        outputs=self.outputs.copy() if self.outputs else None
+        job_script_filename=self.job_script_filename
+        name=self.name
+        return self.__class__(path=path,inputs=inputs,job_settings=job_settings,
+                       outputs=outputs,job_script_filename=job_script_filename,
+                       name=name)
+    
     
     def delete_job_files(self,safety=True):
         """

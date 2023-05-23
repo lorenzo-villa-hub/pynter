@@ -7,27 +7,28 @@ Created on Fri Feb 21 10:59:10 2020
 """
 
 from pymatgen.io.vasp.inputs import Kpoints, Poscar, Potcar, VaspInput, Incar
-from pynter.vasp.__init__ import load_vasp_default
-import os
+from pynter.vasp.__init__ import load_vasp_default, get_vasp_cfgfile
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.symmetry.bandstructure import HighSymmKpath
 
-homedir = os.getenv("HOME")
-cfgfile = os.path.join(homedir,'.pynter','vasp.yml')
 
+cfgfile = get_vasp_cfgfile()
 
 class DefaultInputs:
     """
     Class to generate VASP input files with default parameters. Use with extreme care.    
     """
     
-    def __init__(self,structure=None,cfgfile=cfgfile):
+    def __init__(self,structure=None,sort_structure=True,cfgfile=cfgfile):
         """
         Parameters
         ----------
         structure : Pymatgen Structure object. The default is None. If no Structure is given only default INCAR can be generated.
+        sort_structure (bool) : Sort structure to avoid POSCAR/POTCAR inconsistencies. The default is True.
         cfgfile : File with default VASP parameters. The default is "~/.pynter.vasp.yml".
         """
+        if sort_structure:
+            structure.sort()
         self._structure = structure if structure else None 
         defaults = load_vasp_default(cfgfile=cfgfile)
         

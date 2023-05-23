@@ -10,14 +10,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pymatgen.util.plotting import pretty_plot
 import pandas as pd
-from pynter.defects.defects import DefectName, DefectComplexName, format_legend_with_charge_number
+from pynter.defects.defects import DefectName, DefectComplexName, format_legend_with_charge_number, get_defect_name_from_string
 
-def get_defect_name_from_string(string):
-    if '-' in string:
-        return DefectComplexName.from_string(string)
-    else:
-        return DefectName.from_string(string)
-        
 
 class ConcPlotter:
 
@@ -196,6 +190,8 @@ class PressurePlotter:
             plt = self._plot_conc(p,dc,cc,output,size,**kwargs)
         elif output == 'total':
             plt = self._plot_conc_total(p,dc,cc,size,**kwargs)
+        else:
+            raise ValueError('The options for plot output are "all", "stable" or "total".')
             
         plt.xscale('log')
         plt.yscale('log')

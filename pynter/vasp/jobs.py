@@ -12,9 +12,7 @@ import os.path as op
 from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
 from pymatgen.io.vasp.outputs import Vasprun, Oszicar
 from pymatgen.core.structure import Structure
-from pymatgen.electronic_structure.bandstructure import BandStructure
 from pymatgen.analysis.transition_state import NEBAnalysis
-from pymatgen.entries.computed_entries import ComputedStructureEntry
 from pynter.slurm.job_script import ScriptHandler
 import numpy as np
 import json
@@ -49,7 +47,6 @@ class VaspJob(Job):
                 
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-            # "path": self.path, # old path version in dict 
              "path_relative":self.path_relative,
              "inputs": self.inputs.as_dict(),             
              "job_settings": self.job_settings,
@@ -57,11 +54,12 @@ class VaspJob(Job):
              "name":self.name}
         
         d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
-        if "Vasprun" in d["outputs"].keys():
+        if d["outputs"] and "Vasprun" in d["outputs"].keys():
             del d["outputs"]["Vasprun"] # Vasprun has no from_dict
         
         d["is_converged"] = self.is_converged
-        d["band_structure"] = self.band_structure.as_dict() if kwargs['get_band_structure'] else None
+        # BandStructureSymmLine has problems with JSON encoding
+        d["band_structure"] = json.loads(json.dumps(self.band_structure,cls=MontyEncoder)) if kwargs['get_band_structure'] else None
         return d
 
 
@@ -113,7 +111,7 @@ class VaspJob(Job):
         
         vaspjob = VaspJob(path,inputs,job_settings,outputs,job_script_filename,name)
         
-        vaspjob._band_structure = BandStructure.from_dict(d['band_structure']) if d['band_structure'] else None
+        vaspjob._band_structure = MontyDecoder().process_decoded(d['band_structure']) if d['band_structure'] else None
         vaspjob._is_converged = d['is_converged']
         if outputs and 'ComputedStructureEntry' in outputs.keys():
             for k,v in vaspjob.computed_entry.data.items():
@@ -151,7 +149,7 @@ class VaspJob(Job):
                 try:
                     outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
                 except:
-                    print('Warning: Reading of vasprun.xml in "%s" failed'%path)
+                    warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
                     outputs['Vasprun'] = None
         
         job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
@@ -181,7 +179,7 @@ class VaspJob(Job):
             with open(path_or_string) as file:
                 d = json.load(file)
         else:
-            d = json.load(path_or_string)
+            d = json.loads(path_or_string)
         return VaspJob.from_dict(d)
         
 
@@ -207,7 +205,7 @@ class VaspJob(Job):
             return self.outputs['Vasprun']
         else:
             if not op.exists(op.join(self.path,'vasprun.xml')):
-                print('Warning: "vasprun.xml" file is not present in Job directory')
+                warnings.warn('"vasprun.xml" file is not present in Job directory')
             return None
 
     @property
@@ -280,6 +278,11 @@ class VaspJob(Job):
             
         return final_energy
     
+    @property
+    def final_energy_per_atom(self):
+        if self.final_energy:
+            return self.final_energy/len(self.final_structure)
+    
     
     @property
     def final_structure(self):
@@ -332,7 +335,7 @@ class VaspJob(Job):
             poscar = self.poscar
             return poscar.structure            
         else:
-            print('Warning: inputs["POSCAR"] is not defined')
+            warnings.warn('inputs["POSCAR"] is not defined')
             return None
     
     
@@ -453,7 +456,7 @@ class VaspJob(Job):
             try:
                 outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
             except:
-                print('Warning: Reading of vasprun.xml in "%s" failed'%path)
+                warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
                 outputs['Vasprun'] = None
         self.outputs = outputs
         if get_output_properties:
@@ -700,7 +703,7 @@ class VaspNEBJob(Job):
             try:
                 outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
             except:
-                print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
+                warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
                 outputs['NEBAnalysis'] = None
         
         job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
@@ -933,7 +936,7 @@ class VaspNEBJob(Job):
         try:
             outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
         except:
-            print('Warning: NEB output reading with NEBAnalysis in "%s" failed'%path)
+            warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
             outputs['NEBAnalysis'] = None
             
         self.outputs = outputs

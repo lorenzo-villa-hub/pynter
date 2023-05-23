@@ -9,9 +9,12 @@ Created on Fri Nov 27 10:52:08 2020
 import numpy as np
 import os.path as op
 import os
+import collections
 from pymatgen.io.ase import AseAtomsAdaptor
 from ase.visualize import view
 from pymatgen.util.coord import pbc_shortest_vectors
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.composition import Composition
 from pymatgen.core.trajectory import Trajectory
 
 def _get_distance_vector_and_image(lattice,frac_coords1,frac_coords2,jimage=None):
@@ -87,38 +90,6 @@ def get_displacement_vectors(structure1,structure2):
     return structure1.lattice.get_cartesian_coords(disp)
 
 
-def _is_site_in_structure_old(site,structure,tol=1e-03):
-    """
-    Check if Site is part of the Structure list. This function is needed because 
-    sometimes doing a simple check ("site in structure") doesn't work. This function performes
-    a check on the coordinates and the element on the site. Therefore it is more reliable.
-
-    Parameters
-    ----------
-    site : (Site)
-        PeriodicSite or Site object.
-    structure : (Structure)
-        Pymatgen Structure object.
-    tol : (float), optional
-        Tolerance for fractional coordinates. The default is 1e-03.
-
-    Returns
-    -------
-    is_site_in_structure : (bool)
-    index : (int)
-        Index of site in structure in case site is_site_in_structure returns True
-        If False index will be None.
-    """
-    is_site_in_structure = False
-    for s in structure:
-        if np.allclose(site.frac_coords,s.frac_coords,atol=tol) and site.specie.symbol == s.specie.symbol:
-            is_site_in_structure = True
-            index = structure.index(s)
-            return is_site_in_structure,index
-    index=None
-    return is_site_in_structure,index
-
-
 def is_site_in_structure(site,structure,tol=1e-03):
     """
     Check if Site is part of the Structure list. This function is needed because 
@@ -151,41 +122,11 @@ def is_site_in_structure(site,structure,tol=1e-03):
     return is_site_in_structure,index
 
 
-def _is_site_in_structure_coords_old(site,structure,tol=1e-03):
-    """
-    Check if Site coordinates are prensent in the Structure list. 
-
-    Parameters
-    ----------
-    site : (Site)
-        PeriodicSite or Site object.
-    structure : (Structure)
-        Pymatgen Structure object.
-    tol : (float), optional
-        Tolerance for fractional coordinates. The default is 1e-03.
-
-    Returns
-    -------
-    is_site_in_structure_coords : (bool)
-    index : (int)
-        Index of site in structure in case site is_site_in_structure_coords returns True
-        If False index will be None.
-    """
-    is_site_in_structure_coords = False
-    for s in structure:
-        if np.allclose(site.frac_coords,s.frac_coords,atol=tol):
-            is_site_in_structure_coords = True
-            index = structure.index(s)
-            return is_site_in_structure_coords,index
-    index=None
-    return is_site_in_structure_coords,index
-
-
 def is_site_in_structure_coords(site,structure,tol=1e-03):
     """
     Check if Site coordinates are prensent in the Structure. Calculates distance between target site and 
     each site in reference structure, takes the minimum value and returns True if is within a tolerance.
-    The periodicity is accounted for (considering the lattice associated to the PeriodicSite.
+    The periodicity is accounted for (considering the lattice associated to the PeriodicSite).
     The tolerance is normalized with respect to lattice vector size. 
 
     Parameters
@@ -220,6 +161,17 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
     else:
         return False,None
 
+
+def remove_oxidation_state_from_site(site):
+    """
+    Remove oxidation state decoration from site.
+    """
+    new_sp = collections.defaultdict(float)
+    for el, occu in site.species.items():
+        sym = el.symbol
+        new_sp[Element(sym)] += occu
+    site.species = Composition(new_sp)
+    return
 
 def sort_sites_to_ref_coords(structure,structure_ref,extra_sites=[],tol=1e-03,get_indexes=False):
     """

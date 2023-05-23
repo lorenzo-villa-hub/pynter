@@ -1,4 +1,5 @@
 
+import warnings
 import json
 import os.path as op
 import numpy as np
@@ -14,7 +15,7 @@ import copy
 
 class Chempots(MSONable):
     
-    def __init__(self,chempots_dict):
+    def __init__(self,chempots_dict,round_values=2):
         """
         Class to handle set of chemical potentials. Behaves like a python dictionary.
         The dictionary needs to be set with element symbols as keys and chemical potentials 
@@ -25,7 +26,10 @@ class Chempots(MSONable):
         chempots_dict : (dict)
             Dictionary of chemical potentials in the format {el:value}.
         """
-        self._mu = chempots_dict
+        if round_values:
+            self._mu = {el:round(v,round_values) for el,v in chempots_dict.items()}
+        else:
+            self._mu = chempots_dict
     
     @property
     def mu(self):
@@ -58,7 +62,7 @@ class Chempots(MSONable):
         return
     
     def __eq__(self, other):
-        if isinstance(other, str):
+        if isinstance(other, dict):
             return self.mu == other
         elif isinstance(other, Chempots):
             return self.mu == other.mu
@@ -207,7 +211,7 @@ class Reservoirs(MSONable):
             self.mu_refs = PDHandler(self.pd).get_chempots_reference()
         else:
             self.mu_refs = mu_refs
-            print('Warning: Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible')
+            warnings.warn('Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible',UserWarning)
         self.are_chempots_delta = are_chempots_delta
 
 
@@ -232,10 +236,10 @@ class Reservoirs(MSONable):
         return
     
     def __eq__(self, other):
-        if isinstance(other, str):
+        if isinstance(other, dict):
             return self.res_dict == other
         elif isinstance(other, Reservoirs):
-            return self.res_dict == other.mu
+            return self.res_dict == other.res_dict
         else:
             return False
 
@@ -279,7 +283,7 @@ class Reservoirs(MSONable):
         return d
 
 
-    def to_json(self,path):
+    def to_json(self,path,cls=MontyEncoder):
         """
         Save Reservoirs object as json string or file
 
@@ -287,6 +291,8 @@ class Reservoirs(MSONable):
         ----------
         path : (str), optional
             Path to the destination file.  If None a string is exported.
+        cls : (cls)
+            Encoder class for json.dump. The default is MontyEncoder.
 
         Returns
         -------
@@ -296,7 +302,7 @@ class Reservoirs(MSONable):
         d = self.as_dict()
         if path:
             with open(path,'w') as file:
-                json.dump(d,file,cls=MontyEncoder)
+                json.dump(d,file,cls=cls)
             return
         else:
             return d.__str__()  
@@ -526,7 +532,16 @@ class PressureReservoirs(Reservoirs):
         self.temperature = temperature
         self.pressures = list(self.res_dict.keys())
         
+    
+    def __eq__(self, other):
+        if isinstance(other, dict):
+            return self.res_dict == other
+        elif isinstance(other, PressureReservoirs):
+            return self.res_dict == other.res_dict
+        else:
+            return False
         
+    
     def as_dict(self):
         """
         Json-serializable dict representation of a PressureReservoirs object. The Pymatgen element 
@@ -543,7 +558,7 @@ class PressureReservoirs(Reservoirs):
         d['res_dict'] = {r:mu.as_dict() for r,mu in self.res_dict.items()}
         d['temperature'] = self.temperature
         d['phase_diagram'] = self.pd.as_dict() if self.pd else None
-        d['mu_refs'] = {el.symbol:chem for el,chem in self.mu_refs.items()} 
+        d['mu_refs'] = self.mu_refs.as_dict() if self.mu_refs else None
         d['are_chempots_delta'] = self.are_chempots_delta
         return d
 
@@ -592,6 +607,7 @@ class PressureReservoirs(Reservoirs):
         else:
             d = json.load(path_or_string)
         return PressureReservoirs.from_dict(d)    
+    
     
     
     

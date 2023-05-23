@@ -6,7 +6,7 @@ Created on Mon Nov  9 11:12:09 2020
 @author: villa
 """
 
-
+import warnings
 from matgendb.creator import VaspToDbTaskDrone
 from pynter.__init__ import load_config
 
@@ -43,7 +43,7 @@ class VaspJobDrone(VaspToDbTaskDrone):
                 doc = self.get_task_doc_from_files()     
                 self._insert_doc(doc)
             else:
-                print(f'VaspJob "{self.job.name}" is not converged and will not be added into the database')
+                warnings.warn(f'VaspJob "{self.job.name}" is not converged and will not be added into the database',UserWarning)
         else:
             doc = self.get_task_doc_from_files()     
             self._insert_doc(doc)

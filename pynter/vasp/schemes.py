@@ -914,8 +914,9 @@ class AdvancedSchemes(Schemes):
 
         for df, charge_states in defects_with_charges:
             path = op.join(self.path,df.name)
+            defect_name = df.name.replace('(','_').replace(')', '') #replace label parenthesis
             schemes_q = Schemes(path=path,structure=df.defect_structure,incar_settings=self.incar_settings,
-                                job_settings=self.job_settings,name=self.name+'_'+df.name,add_parent_folder=False)
+                                job_settings=self.job_settings,name=self.name+'_'+defect_name,add_parent_folder=False)
             charge_jobs = schemes_q.charge_states(charge_states,locpot)
             for jq in charge_jobs:
                 schemes_rel = Schemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)

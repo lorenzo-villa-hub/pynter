@@ -5,6 +5,9 @@ Created on Thu Jan 14 14:48:55 2021
 
 @author: villa
 """
+import warnings
+from monty.json import MSONable
+from monty.json import jsanitize
 
 from pynter.defects.analysis import DefectConcentrations
 import copy
@@ -27,18 +30,16 @@ class Conductivity:
         self.mobilities = mobilities
         
         
-    def get_conductivity(self,carrier_concentrations,defect_concentrations,temperature=300):
+    def get_conductivity(self,carrier_concentrations,defect_concentrations):
         """
         Calculate conductivity from the concentrations of electrons, holes and defects and their mobilities.
         
         Parameters
         ----------
         carrier_concentrations : (list)
-            List of tuples with intrinsic carriers concentrations (holes,electrons).
+            List of tuples with intrinsic carriers concentrations (holes,electrons) in cm^-3.
         defect_concentrations : (list)
-            Defect concentrations in the same format as the output of DefectsAnalysis. 
-        temperature : float, optional
-            Value of temperature. The default is 300.
+            Defect concentrations in the same format as the output of DefectsAnalysis in cm^-3. 
 
         Returns
         -------
@@ -54,7 +55,8 @@ class Conductivity:
         sigma_ionic = 0
         for d in dc:
             dname = d['name']
-            sigma_ionic += mob[dname] * d['conc'] * abs(d['charge']) * e *1e06 #concentrations need to be in 1/m**3
+            if dname in mob.keys():
+                sigma_ionic += mob[dname] * d['conc'] * abs(d['charge']) * e *1e06 #concentrations need to be in 1/m**3
         sigma = sigma_el + sigma_ionic
         
         return sigma
@@ -295,7 +297,7 @@ class PressureAnalysis:
         res = reservoirs
         if hasattr(res,'temperature'):
             if res.temperature != T1:
-                print('Warning: PressureReservoirs temperature is not set to the initial quenching temperature')
+                warnings.warn('PressureReservoirs temperature is not set to the initial quenching temperature',UserWarning)
         partial_pressures = list(res.keys())
         fermi_levels = []
         if get_final_concentrations:
@@ -343,7 +345,7 @@ class PressureAnalysis:
         return thermodata
 
 
-class ThermoData:
+class ThermoData(MSONable):
     
     "Class to handle defect thermodynamics data"
     
@@ -401,12 +403,13 @@ class ThermoData:
             Json-serializable dict representation of ThermoData
         """
         d = {"@module": self.__class__.__module__,
-             "@class": self.__class__.__name__,
-             "thermodata":self.data.copy(),    
-             "temperature": self.temperature,
-             "name": self.name
-             }
+              "@class": self.__class__.__name__,
+              "thermodata":self.data.copy(),    
+              "temperature": self.temperature,
+              "name": self.name
+              }
         d['thermodata']['defect_concentrations'] = [dc.as_dict() for dc in self.defect_concentrations]
+        d = jsanitize(d) #convert numpy.float64 to float
         return d        
 
     def to_json(self,path=None):

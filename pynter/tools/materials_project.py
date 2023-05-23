@@ -3,9 +3,14 @@
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.inputs import Poscar
 import argparse as ap
-from pynter.__init__ import load_config
+from pynter.__init__ import load_config, get_cfgfile
 
-API_KEY = load_config()['API_KEY']
+try:
+    API_KEY = load_config()['API_KEY']
+except:
+    cfgfile = get_cfgfile()
+    raise KeyError('"API_KEY" needs to be present in the %s file' %cfgfile)
+
 
 with MPRester(API_KEY) as mpr:
 
