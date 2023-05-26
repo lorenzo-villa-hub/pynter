@@ -3,10 +3,15 @@ import subprocess
 import os
 import os.path as op
 from glob import glob
+from shutil import which
+from monty.dev import requires
 from pynter.__init__ import load_config, run_local
 
 
 class HPCInterface:
+    
+    @requires(which("sshpass"),
+    "sshpass needs to be installed, you can install it with 'sudo apt-get install sshpass'.")
     
     def __init__(self,config=None):
         """
