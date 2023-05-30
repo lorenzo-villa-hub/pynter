@@ -8,14 +8,45 @@ Created on Fri May 26 14:04:04 2023
 
 import os
 import json
-import argparse
 
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.electronic_structure.plotter import DosPlotter, BSDOSPlotter # real pymatgen 
+from pymatgen.electronic_structure.plotter import DosPlotter, BSDOSPlotter, BSPlotter 
 from pymatgen.electronic_structure.dos import CompleteDos
+from pymatgen.analysis.transition_state import NEBAnalysis
 
 
-#parser_sub = argparse.Argumentparser_sub(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def setup_plot_bs(subparsers):
+    
+    parser_sub = subparsers.add_parser('plot-bs',help='Plot band structure with pymatgen')
+    
+    parser_sub.add_argument('-k','--kpoints-filename',help='KPOINTS filename',required=False,type=str,default=None,metavar='',dest='kpoints_filename')    
+    parser_sub.add_argument('-s','--save',help='Save fig as pdf',required=False,default=False,action='store_true',dest='savefig')   
+    parser_sub.add_argument('-hy','--hybrid-mode',help='Force hybrid mode for BS',required=False,default=False,action='store_true',dest='force_hybrid_mode') 
+    parser_sub.add_argument('-l','--line-mode',help='Line mode for BS',required=False,default=True,action='store_true',dest='line_mode')   
+    parser_sub.add_argument('-y','--ylim',help='Range for y-axis',required=False,default=None,nargs='+',type=float,metavar='',dest='ylim')
+    parser_sub.add_argument('-sm','--smooth',help='Smooth band structure',required=False,default=False,action='store_true',dest='smooth')  
+    parser_sub.add_argument('-t','--title',help='Title of the plot',required=False,type=str,default=None,metavar='',dest='title') 
+    parser_sub.set_defaults(func=plot_bs) 
+    
+    return
+
+
+def plot_bs(args):
+    
+    v = Vasprun("vasprun.xml")
+    bs = v.get_band_structure(kpoints_filename=args.kpoints_filename,line_mode=args.line_mode,
+                              force_hybrid_mode=args.force_hybrid_mode)
+    plt = BSPlotter(bs).get_plot(ylim=args.ylim,smooth=args.smooth)
+    plt.gca().get_legend().remove()
+    
+    if args.title:
+        plt.title(args.title,fontdict={'fontsize':25})
+    if args.savefig:
+        plt.savefig('BS.pdf',bbox_inches='tight')
+    else:
+        plt.show()
+    return    
+    
 
 def setup_plot_dos(subparsers):
 
@@ -105,6 +136,35 @@ def plot_dos_bs(args):
         plt.savefig('DOS-BS.pdf')
     else:
         plt.show()
+    
+    
+def setup_plot_neb(subparsers):
+    
+    parser_sub = subparsers.add_parser('plot-neb',help='Plot NEB energy landscape with pymatgen')
+    
+    parser_sub.add_argument('-p','--path',help='Path to NEB calculation',required=False,type=str,default=None,metavar='',dest='path')
+    parser_sub.add_argument('-pr','--print',help='Print energies and forces',required=False,default=False,action='store_true',dest='print_energies')
+    parser_sub.add_argument('-s','--save',help='Save fig as pdf',required=False,default=False,action='store_true',dest='savefig')
+    parser_sub.add_argument('-t','--title',help='Title of the plot',required=False,type=str,default=None,metavar='',dest='title')
+    parser_sub.set_defaults(func=plot_neb)
+    
+    
+def plot_neb(args):
+    path = args.path if args.path else os.getcwd()
+    path = os.path.abspath(path)
+    neb_analysis = NEBAnalysis.from_dir(path)
+    if args.print_energies:
+        print('Energies:\n',neb_analysis.energies)
+        print('Forces:\n',neb_analysis.forces)
+    plt = neb_analysis.get_plot()
+    plt.title(args.title)
+    if args.savefig:
+        plt.savefig('NEB.pdf')
+    else:
+        plt.show()
+        
+    
+    
     
     
     

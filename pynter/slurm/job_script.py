@@ -3,7 +3,6 @@
 import re
 import os
 import os.path as op
-import argparse as ap
 from pynter.__init__ import load_config
 from pynter.tools.utils import grep_list
 
@@ -204,44 +203,7 @@ class ScriptHandler:
         
         return ScriptHandler(**d)
 
-        
-    # write here staticmethod from_file
-    def args(self):
-        """
-        Add and parse arguments from command line
-        """
-        
-        parser = ap.ArgumentParser()
-        
-        parser.add_argument('-A','--project',help='Project ID, default is 01136',required=False,default=self.project_id,type=str,metavar='',dest='project_id')
-        parser.add_argument('-n','--name',help='Job name',required=False,default=self.name,type=str,metavar='',dest='name')
-        parser.add_argument('-a','--array',help='Size of job array',required=False,default=self.array_size,type=int,metavar='',dest='array_size')
-        parser.add_argument('-e','--email',help='Email address for job notification',required=False,default=self.email,type=str,metavar='',dest='email')
-        parser.add_argument('-N','--nodes',help='Number of nodes, default is 4',required=False,default=self.nodes,type=int,metavar='',dest='nodes')
-        parser.add_argument('-c','--cores-per-node',help='Number of cores per node, default is 24',required=False,default=self.cores_per_node,type=int,metavar='',dest='cores_per_node')
-        parser.add_argument('-out','--output',help='Output filename',required=False,default=self.output_filename,type=str,metavar='',dest='output_filename')
-        parser.add_argument('-err','--error',help='Error filename',required=False,default=self.error_filename,type=str,metavar='',dest='error_filename')
-        parser.add_argument('-t','--timelimit',help='Timelimit, default is 24:00:00',required=False,default=self.timelimit,type=str,metavar='',dest='timelimit')
-        parser.add_argument('-M','--memory-per-cpu',help='Memory per cpu, default is 2400',required=False,default=self.memory_per_cpu,type=int,metavar='',dest='memory_per_cpu')
-        parser.add_argument('-p','--partition',help='(Partition)',required=False,default=self.partition,type=str,metavar='',dest='partition')
-        parser.add_argument('-C','--processor',help='(avx or avx2, default is avx2)',required=False,default=self.processor,type=str,metavar='',dest='processor')
-        parser.add_argument('-ml','--modules',action='append',help="Modules to load, default are 'intel/2019.2','intel/2019.3','intelmpi/2019.3','fftw/3.3.8'" ,required=False,default=self.modules,type=str,metavar='',dest='modules')
-        parser.add_argument('-x','--exe',help='Path to executable, default is "/home/lv51dypu/vasp-5-3-3"',required=False,default=self.path_exe,type=str,metavar='',dest='path_exe')
-        parser.add_argument('-s','--stop-array',action='store_true',help='Add lines to stop array jobs when converged, default is False',required=False,default=False,dest='add_stop_array')
-        parser.add_argument('-S','--automation',help='Script with automation to add',required=False,default=self.add_automation,type=str,metavar='',dest='add_automation')
-        parser.add_argument('-H','--header',action='append',help='Add line to header part of script',required=False,default=self.add_lines_header,type=str,metavar='',dest='add_lines_header')
-        parser.add_argument('-B','--body',action='append',help='Add line to body part of script',required=False,default=self.add_lines_body,type=str,metavar='',dest='add_lines_body')
-        parser.add_argument('-f','--filename',help='File name, default is "job.sh"',required=False,default=self.filename,type=str,metavar='',dest='filename')
-        
-        args = parser.parse_args()
-        
-        # update settings
-        for key,value in args.__dict__.items():
-            setattr(self,key,value)
-                
-        return
-
-    
+            
     def script_body(self):
         """
         Body lines part of the job script (part after #SBATCH commands) 
@@ -337,13 +299,3 @@ class ScriptHandler:
         with open(complete_path,'w') as f:
             f.write(self.__str__())        
         return
-
-        
-# part to execute if script is used directly        
-if __name__ == '__main__':
-    
-    s = ScriptHandler()
-    # getting arguments
-    s.args()
-    # write file
-    s.write_script()

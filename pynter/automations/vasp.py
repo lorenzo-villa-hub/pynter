@@ -207,14 +207,16 @@ class Schemes(Base):
         super().__init__(job_script_filename,status_filename,path)
         
         self.status = status
-        
-        args = CommandHandler().vasp_args() # default args
-        for key, value in args.__dict__.items():
-            setattr(self,key,value)
 
         if kwargs: # custom args
             for key, value in kwargs.items():
                 setattr(self,key,value)
+        
+        else:
+            args = CommandHandler().vasp_args() # default args
+            for key, value in args.__dict__.items():
+                setattr(self,key,value)
+
     
     def compare_next_step_kpoints(self):
         """

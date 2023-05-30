@@ -141,7 +141,7 @@ class CommandHandler(Automation):
         Returns
         -------
         args : ArgumentParser object
-           ArgumentParser object with parsed arguments. An attribute named with every argument "dest" is created.
+            ArgumentParser object with parsed arguments. An attribute named with every argument "dest" is created.
         """
         
         parser = self.parser_common_args()
