@@ -9,21 +9,28 @@ Created on Tue May 30 14:07:47 2023
 import os
 import json
 import warnings
+import numpy as np
 
 from pymatgen.io.vasp.outputs import Vasprun
 
-    
 
-def setup_analyse_vasprun(subparsers):
+def setup_analysis(subparsers):
     
-    parser_sub = subparsers.add_parser('analyse-vasprun',help='Analyse vasprun.xml file with pymatgen')
+    parser_analyse = subparsers.add_parser('analysis',help='Analysis tools for VASP')
+    subparsers_analysis = parser_analyse.add_subparsers()
     
+    parser_vasprun = subparsers_analysis.add_parser('vasprun',help='Analyse vasprun.xml file with pymatgen')
+    setup_analyse_vasprun(parser_vasprun)
+    
+    
+def setup_analyse_vasprun(parser_sub):    
     parser_sub.add_argument('-p','--path',help='Path to VASP calculation',required=False,type=str,default=None,metavar='',dest='path')
     parser_sub.add_argument('--bandgap',help='Analyse band gap',required=False,default=False,action='store_true',dest='bandgap') 
     parser_sub.add_argument('--convergence',help='Analyse convergence of VASP calculation',required=False,default=False,action='store_true',dest='convergence') 
     parser_sub.add_argument('--dielectric-properties',help='Analyse dielectric properties',required=False,default=False,action='store_true',dest='dielectric_properties') 
     parser_sub.set_defaults(func=analyse_vasprun)
     return
+
 
 def analyse_vasprun(args):
     path = args.path if args.path else os.getcwd()
@@ -38,9 +45,9 @@ def analyse_vasprun(args):
         
     return 
     
-
 def analyse_bandgap(vasprun):
     gap, cbm, vbm, is_direct = vasprun.eigenvalue_band_properties
+    gap = np.around(gap,decimals=4)
     print(f'Energy gap is {gap} eV')
     if is_direct:
       print('Direct gap')

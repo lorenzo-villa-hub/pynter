@@ -220,6 +220,37 @@ def save_object_as_json(object,path,sanitize=False,cls=MontyEncoder):
         return d.__str__() 
 
 
+def sort_objects(objects,features,reverse=False):
+    """
+    Sort objects based on a list of features (attributes or methods of the objects, or functions)
+
+    Parameters
+    ----------
+    objects : (list)
+        List of objects to sort.
+    features : (list)
+        List of features (see get_object_feature).
+    reverse : (bool)
+        Reverse order.
+
+    Returns
+    -------
+    (list)
+        Sorted objects.
+    """
+    def criteria(obj):
+        criteria = []
+        for feature in features:
+            if callable(feature):
+                criteria.append(feature(obj))
+            else:
+                criteria.append(get_object_feature(obj,feature))
+        return criteria
+    sort_function = lambda obj : criteria(obj)
+    sorted_objects = sorted(objects,key=sort_function,reverse=reverse)
+    
+    return sorted_objects
+
 
 def grep(search_string,file):    
     '''

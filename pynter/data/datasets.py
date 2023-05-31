@@ -6,7 +6,7 @@ from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import json
 from monty.json import MontyDecoder
-from pynter.tools.utils import get_object_feature
+from pynter.tools.utils import get_object_feature, sort_objects
 
 def _check_job_script(job_script_filenames,files):
     """ Check if job script names are in a list of files. Can be either a str or list of str"""
@@ -33,7 +33,7 @@ def _check_job_script(job_script_filenames,files):
 def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
-    The folder contained jobs are selected based on the presence of the file job_script_filename
+    The folder containing jobs are selected based on the presence of the file job_script_filename
 
     Parameters
     ----------
@@ -43,7 +43,7 @@ def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,j
         Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
         file names are present. The default is 'job.sh'.
     sort : (str or list), optional
-        Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
+        Sort list of jobs by features. If False or None jobs are not sorted. The default is 'name'.
     jobs_kwargs : (dict), optional
         Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
         from directory for each job class.
@@ -74,7 +74,7 @@ def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,j
                     j.job_script_filename = job_script_filename
                     jobs.append(j)
     if sort:
-        jobs = Dataset().sort_jobs(jobs_to_sort=jobs,feature=sort)
+        jobs = Dataset().sort_jobs(jobs_to_sort=jobs,features=sort)
                 
     return jobs
 
@@ -109,7 +109,7 @@ class Dataset:
         if jobs:
             self._group_jobs()
             if sort:
-                self.sort_jobs(reset=True,feature=sort)
+                self.sort_jobs(reset=True,features=sort)
 
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
@@ -180,10 +180,7 @@ class Dataset:
         jobs = []
         for j in d['jobs']:
             jobs.append(MontyDecoder().process_decoded(j))
-        if "sort_by_name" in d.keys(): #ensure compatibility with old dict
-            sort = 'name' if d['sort_by_name'] else False
-        else:
-            sort = d['sort']
+        sort = d['sort']
         
         return cls(jobs,path,name,sort)
     
@@ -271,6 +268,7 @@ class Dataset:
                     nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
                     job.group = group
                     job.nodes = nodes
+                    job.node_points = nodes.split('/')[1:]
         return
 
 
@@ -557,10 +555,11 @@ class Dataset:
                     gjobs[group][nodes] = job
                     job.group = group
                     job.nodes = nodes 
+                    job.node_points = nodes.split('/')[1:]
         return
 
 
-    def sort_jobs(self,jobs_to_sort=None,feature='name',reset=True,reverse=False):
+    def sort_jobs(self,jobs_to_sort=None,features=['name'],reset=True,reverse=False):
         """
         Sort jobs according to the target feature. If list of jobs is not given
         and reset is True the attribute self.jobs is rewritten with the sorted list.
@@ -569,8 +568,9 @@ class Dataset:
         ----------
         jobs_to_sort : (list), optional
             List of Job objects. If None self.jobs is used. The default is None.
-        feature : (str or list), optional
-            Feature to use to sort the list (see get_object_feature). The default is 'name'.
+        features : (str or list), optional
+            Features to use to sort the list (see get_object_feature).
+            Both a single variable or a list can be provided. The default is 'name'.
         reset : (bool), optional
             Reset the self.jobs attribute if jobs_to_sort is None. The default is True.
         reverse : (bool), optional
@@ -581,13 +581,16 @@ class Dataset:
         sorted_jobs : (list)
             List of sorted Job objects.
         """
+        if not isinstance(features,list):
+            features = [features]
         jobs = jobs_to_sort if jobs_to_sort else self.jobs
-        sorted_jobs = sorted(jobs, key=lambda x: get_object_feature(x,feature),reverse=reverse)
+        sorted_jobs = sort_objects(jobs, features, reverse)
+       # sorted_jobs = sorted(jobs, key=lambda x: get_object_feature(x,feature),reverse=reverse)
 
         if not jobs_to_sort:
             if reset:
                 self.jobs = sorted_jobs
-                self.sort = feature
+                self.sort = features
                 return
             else:
                 return sorted_jobs

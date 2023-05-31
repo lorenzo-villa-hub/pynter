@@ -7,7 +7,7 @@ Created on Tue May 30 15:30:49 2023
 """
 
 from pynter.automations.core import Automation
-from pynter.automations.vasp import Schemes
+from pynter.automations.vasp import Schemes, NEBSchemes
 
 def parse_common_args(parser):
     auto = Automation()
@@ -29,15 +29,33 @@ def setup_automation(subparsers):
     parser_vasp.add_argument('-C','--chgcar',action='store_true',help='Copy CHGCAR to next step',required=False,default=False,dest='chgcar')
     parser_vasp.add_argument('-K','--check-kpoints',action='store_true',help='Copy WAVECAR and POSCAR only if KPOINTS of next step are the same',required=False,default=False,dest='check_kpoints')
     parser_vasp.set_defaults(func=run_automation_vasp)
+    
+    parser_vasp_neb = subparsers_automation.add_parser('vasp-NEB',help='VASP automation for NEB calculations')
+    parser_vasp_neb = parse_common_args(parser_vasp_neb)
+    parser_vasp_neb.add_argument('-c','--contcar',action='store_true',help='Copy CONTCAR to POSCAR of next step',required=False,default=False,dest='contcar')
+    parser_vasp_neb.add_argument('-W','--wavecar',action='store_true',help='Copy WAVECAR to next step',required=False,default=False,dest='wavecar')
+    parser_vasp_neb.add_argument('-C','--chgcar',action='store_true',help='Copy CHGCAR to next step',required=False,default=False,dest='chgcar')
+    parser_vasp_neb.add_argument('-K','--check-kpoints',action='store_true',help='Copy WAVECAR and POSCAR only if KPOINTS of next step are the same',required=False,default=False,dest='check_kpoints')
+    parser_vasp_neb.set_defaults(func=run_automation_vasp_neb)
 
 
 def run_automation_vasp(args):
-    
     s = Schemes(path=None,status=[], **args.__dict__)
     conv_el, conv_ionic = s.check_convergence()    
     if conv_el and conv_ionic:
         s.next_step_relaxation_schemes()
     elif s.error_check:
         s.resubmit_if_step_limits_reached()
+    s.write_status()    
+    
+    
+def run_automation_vasp_neb(args):
+    s = NEBSchemes(path=None,status=[], **args.__dict__)    
+    if s.is_preconvergence():
+        if s.check_preconvergence_images():
+            s.copy_images_next_step_and_submit()
+    else:
+        if s.is_NEB_job_finished():
+            s.copy_images_next_step_and_submit()
     s.write_status()    
     

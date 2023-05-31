@@ -53,9 +53,9 @@ def test_dataset():
     CompareDatasets().compare_jobs(ds_filtered,ds_test)
     
     ds = Dataset.from_json(get_path('ds_Si_vacancies_pbe_relaxation.json'))
-    assert ds.sort_jobs(feature='charge',reset=False) == ds.sort_jobs(feature='name',reset=False)
+    assert ds.sort_jobs(features='charge',reset=False) == ds.sort_jobs(features='name',reset=False)
     sorted_jobs = [ds[i] for i in [0,2,4,1,3,5]]
     sorted_ds_test = Dataset(sorted_jobs,path=ds.path,name=ds.name,sort=False)
-    ds.sort_jobs(feature='nodes',reset=True)
+    ds.sort_jobs(features='nodes',reset=True)
     assert ds.jobs == sorted_ds_test.jobs
     

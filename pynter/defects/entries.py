@@ -11,6 +11,8 @@ from monty.json import MSONable
 import json
 import numpy as np
 import importlib
+import warnings
+
 from pymatgen.core.units import kb
 from pymatgen.core.structure import Structure
 from pynter.defects.structure import defect_finder
@@ -164,7 +166,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         defect_structure : (Structure)
             Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
         multiplicity : (int), optional
-            Multiplicity of defect within the supercell. The default is 1.
+            Multiplicity of defect within the supercell. 
+            If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
         data : (dict), optional
             Store additional data in dict format.
         label : (str), optional
@@ -186,7 +189,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
 
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=None,data=None,label=None,tol=1e-03):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=1,data=None,label=None,tol=1e-03):
         """
         Generate DefectEntry object from Structure objects.
 
@@ -204,8 +207,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         charge : (int), optional
             Charge of the defect system. The default is 0.
         multiplicity : (int), optional
-            multiplicity of defect within the supercell. The default is None.
-            If not provided is calculated by Pymatgen analysing the symmetry of the structure.
+            multiplicity of defect within the supercell. 
+            If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
         data : (dict), optional
             Store additional data in dict format.
         label : (str), optional
@@ -219,7 +222,15 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         """
         defect = defect_finder(defect_structure, bulk_structure,tol=tol)
         defect.set_charge(charge)
-        defect.set_multiplicity(multiplicity)
+        if multiplicity:
+            defect.set_multiplicity(multiplicity)
+        else:
+            try:
+                new_multiplicity = defect.get_multiplicity()
+                defect.set_multiplicity(new_multiplicity)
+            except NotImplementedError:
+                warnings.warn(f'get_multiplicity not implemented for {defect.defect_type}, setting multiplicity to 1')
+                defect.set_multiplicity(1)
         
         return DefectEntry(defect, bulk_structure, energy_diff, corrections,data,label)
 

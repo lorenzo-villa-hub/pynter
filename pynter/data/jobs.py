@@ -6,6 +6,7 @@ import shutil
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import grep_list
+from pynter.__init__ import load_config, run_local
 
 class Job:
     
@@ -317,3 +318,4 @@ class Job:
     def write_input():
         pass
         
+            
