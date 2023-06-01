@@ -121,6 +121,20 @@ class DefectsAnalysis:
         return DefectsAnalysis.from_dict(d)
 
 
+    @property
+    def elements(self):
+        """
+        List of all the elements involved in exchange of atoms with a reservoir 
+        (elements present in entry.delta_atoms for all entries).
+        """
+        elements = []
+        for entry in self.entries:
+            for el in entry.delta_atoms.keys():
+                if el not in elements:
+                    elements.append(el)
+        return elements
+
+
     def to_json(self,path='',**kwargs):
         """
         Save DefectsAnalysis object as json string or file.

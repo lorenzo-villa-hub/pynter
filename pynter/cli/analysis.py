@@ -28,6 +28,7 @@ def setup_analyse_vasprun(parser_sub):
     parser_sub.add_argument('--bandgap',help='Analyse band gap',required=False,default=False,action='store_true',dest='bandgap') 
     parser_sub.add_argument('--convergence',help='Analyse convergence of VASP calculation',required=False,default=False,action='store_true',dest='convergence') 
     parser_sub.add_argument('--dielectric-properties',help='Analyse dielectric properties',required=False,default=False,action='store_true',dest='dielectric_properties') 
+    parser_sub.add_argument('--export-dos',help='Export DOS object as json file',required=False,default=False,action='store_true',dest='export_dos') 
     parser_sub.set_defaults(func=analyse_vasprun)
     return
 

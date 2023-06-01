@@ -75,11 +75,11 @@ def get_chempots(pd,composition):
     return PDHandler(pd).get_all_boundaries_chempots(composition)
     
 def get_phase_diagram(elements):  
-    mpr = MPRester(load_config()['API_KEY'])  
-    compat = MaterialsProjectCompatibility()  # sets energy corrections and +U/pseudopotential choice
-    unprocessed_entries = mpr.get_entries_in_chemsys(elements,inc_structure=True)
-    processed_entries = compat.process_entries(unprocessed_entries)  # filter and add energy corrections    
-    return PhaseDiagram(processed_entries)
+    with MPRester(load_config()['API_KEY']) as mpr:
+        compat = MaterialsProjectCompatibility()  # sets energy corrections and +U/pseudopotential choice
+        unprocessed_entries = mpr.get_entries_in_chemsys(elements,inc_structure=True)
+        processed_entries = compat.process_entries(unprocessed_entries)  # filter and add energy corrections    
+        return PhaseDiagram(processed_entries)
 
 def plot_pd(pd):
     return PDHandler(pd).get_plot()

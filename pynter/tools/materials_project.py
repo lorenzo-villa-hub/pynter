@@ -2,6 +2,8 @@
 
 from pymatgen.ext.matproj import MPRester
 from pymatgen.io.vasp.inputs import Poscar
+from pymatgen.core.composition import Composition
+
 import argparse as ap
 from pynter.__init__ import load_config, get_cfgfile
 
@@ -82,6 +84,90 @@ with MPRester(API_KEY) as mpr:
             
             return data
 
+
+        def get_entries(self,chemsys_formula_id_criteria,compatible_only=True,inc_structure='initial',
+                        property_data=None,conventional_unit_cell=False,sort_by_e_above_hull=True):
+            """
+            Get a list of ComputedEntries or ComputedStructureEntries corresponding
+            to a chemical system, formula, or materials_id or full criteria.
+    
+            Parameters
+            ----------
+                chemsys_formula_id_criteria (str/dict): A chemical system
+                    (e.g., Li-Fe-O), or formula (e.g., Fe2O3) or materials_id
+                    (e.g., mp-1234) or full Mongo-style dict criteria.
+                compatible_only (bool): Whether to return only "compatible"
+                    entries. Compatible entries are entries that have been
+                    processed using the MaterialsProject2020Compatibility class,
+                    which performs adjustments to allow mixing of GGA and GGA+U
+                    calculations for more accurate phase diagrams and reaction
+                    energies.
+                inc_structure (str): If None, entries returned are
+                    ComputedEntries. If inc_structure="initial",
+                    ComputedStructureEntries with initial structures are returned.
+                    Otherwise, ComputedStructureEntries with final structures
+                    are returned.
+                property_data (list): Specify additional properties to include in
+                    entry.data. If None, no data. Should be a subset of
+                    supported_properties.
+                conventional_unit_cell (bool): Whether to get the standard
+                    conventional unit cell
+                sort_by_e_above_hull (bool): Whether to sort the list of entries by
+                    e_above_hull (will query e_above_hull as a property_data if True).
+    
+            Returns:
+                List of ComputedEntry or ComputedStructureEntry objects.
+            """
+            return mpr.get_entries(chemsys_formula_id_criteria,compatible_only,inc_structure,
+                                   property_data,conventional_unit_cell,sort_by_e_above_hull)
+        
+        
+        def get_entries_from_compositions(self,compositions,stable_only=False,compatible_only=True,
+                                          inc_structure='initial',property_data=None,
+                                          conventional_unit_cell=False):
+            """
+            Get a dictionary with compositions as keys and a list of ComputedEntries 
+            or ComputedStructureEntries as values.
+    
+            Parameters
+            ----------
+                compositions (list): List of strings with compositions.
+                stable_only ()
+                compatible_only (bool): 
+                    Whether to return only "compatible"
+                    entries. Compatible entries are entries that have been
+                    processed using the MaterialsProject2020Compatibility class,
+                    which performs adjustments to allow mixing of GGA and GGA+U
+                    calculations for more accurate phase diagrams and reaction
+                    energies.
+                inc_structure (str):
+                    If None, entries returned are
+                    ComputedEntries. If inc_structure="initial",
+                    ComputedStructureEntries with initial structures are returned.
+                    Otherwise, ComputedStructureEntries with final structures
+                    are returned.
+                property_data (list):
+                    Specify additional properties to include in
+                    entry.data. If None, no data. Should be a subset of
+                    supported_properties.
+                conventional_unit_cell (bool):
+                    Whether to get the standard conventional unit cell
+                sort_by_e_above_hull (bool): Whether to sort the list of entries by
+                    e_above_hull (will query e_above_hull as a property_data if True).
+    
+            Returns:
+                List of ComputedEntry or ComputedStructureEntry objects.
+            """
+            entries_dict = {}
+            for comp in compositions:
+                entries = self.get_entries(comp,compatible_only,inc_structure,property_data,
+                                                      conventional_unit_cell,sort_by_e_above_hull=True)
+                if stable_only:
+                    entries_dict[comp] = entries[0] # sorted by e_above_hull
+                else:
+                    entries_dict[comp] = entries
+            return entries_dict
+        
 
         def get_structure(self,final=False,conventional_unit_cell=False):
             """
