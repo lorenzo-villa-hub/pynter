@@ -16,6 +16,7 @@ from pymatgen.electronic_structure.dos import FermiDos
 
 from pynter.data.datasets import Dataset
 from pynter.vasp.jobs import VaspJob
+from pynter.vasp.schemes import AdvancedSchemes
 from pynter.slurm.job_script import ScriptHandler
 from pynter.defects.entries import DefectEntry
 from pynter.defects.analysis import DefectsAnalysis
@@ -31,6 +32,9 @@ def setup_defects(subparsers):
     
     parser_defects = subparsers.add_parser('defects',help='Import and analyse defect calculations. Use with extreme care.')
     subparsers_defects = parser_defects.add_subparsers()
+
+    parser_inputs = subparsers_defects.add_parser('inputs',help='Create inputs for VASP DFT calculations')
+    setup_import(parser_inputs)
     
     parser_import = subparsers_defects.add_parser('import',help='Create defect entries from VASP DFT calculations')
     setup_import(parser_import)
@@ -44,7 +48,12 @@ def setup_defects(subparsers):
     return
     
 
+# to be implemented
+def setup_inputs(parser):
+    pass
 
+def create_inputs(args):
+    pass
 
 
 def setup_import(parser):
@@ -147,6 +156,9 @@ def parse_common_args(parser):
     
     parser.add_argument('-e','--exclude',action='append',help='Exclude specific defect types (Vacancy, Substitution, Interstitial, Polaron, DefectComplex)',
                         required=False,default=None,dest='exclude')
+    
+    parser.add_argument('-ee','--exclude-elements',action='append',help='Exclude defects containing these elements',required=False,
+                    default=None,dest='exclude_elements')
     return parser    
 
 def get_defects_analysis(args):
@@ -154,6 +166,8 @@ def get_defects_analysis(args):
         da = DefectsAnalysis.from_json(args.file)
         if args.exclude:
             da.filter_entries(inplace=True,exclude=True,types=args.exclude)
+        if args.exclude_elements:
+            da.filter_entries(inplace=True,exclude=True,elements=args.exclude_elements)
     else:
         raise ValueError('DefectsAnalysis object must be provided as json file')
     return da
@@ -164,10 +178,12 @@ def get_chempots(args):
     else:
         mpd = MPDatabase()
         compositions = args.da.elements
-        entries_dict = mpd.get_entries_from_compositions(compositions,stable_only=True)
+        entries_dict = mpd.get_entries_from_compositions(compositions,lowest_e_above_hull=True)
         chempots_dict = {el:entry.energy_per_atom for el,entry in entries_dict.items()} #get elemental chempots from MP
         warnings.warn('Chemical potentials have not been provided, elemental chemical potentials taken ' \
                       'from the Materials Project database. Use with care.')
+        print('Chemical potentials:')
+        pprint(round_floats(chempots_dict))
     return Chempots(chempots_dict)
     
 

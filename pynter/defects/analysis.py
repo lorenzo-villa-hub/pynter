@@ -349,7 +349,8 @@ class DefectsAnalysis:
         -------
         DefectsAnalysis object.
         """
-        output_entries = self.select_entries(exclude,mode,entries,types,elements,names,**kwargs)
+        output_entries = self.select_entries(exclude=exclude,mode=mode,entries=entries,types=types,
+                                             elements=elements,names=names,**kwargs)
         
         if inplace:
             self.entries = output_entries

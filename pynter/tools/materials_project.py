@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
 from pymatgen.ext.matproj import MPRester
-from pymatgen.io.vasp.inputs import Poscar
-from pymatgen.core.composition import Composition
 
-import argparse as ap
 from pynter.__init__ import load_config, get_cfgfile
 
 try:
@@ -34,29 +31,6 @@ with MPRester(API_KEY) as mpr:
         @property
         def mp_rester(self):
             return mpr
-            
-            
-        def args(self):
-            """
-            Get arguments for use from terminal
-
-            Returns
-            -------
-            args :
-                ArgumentParser object.
-            """
-            
-            parser = ap.ArgumentParser()
-            
-            parser.add_argument('-id','--mp-id',help='Materials project ID',required=True,type=str,metavar='',dest='mp_id')
-            parser.add_argument('-s','--structure',help='print Structure',action='store_true',required=False,default=False,dest='print_structure')
-            parser.add_argument('-P','--poscar',help='create POSCAR',action='store_true',required=False,default=False,dest='write_poscar')
-            parser.add_argument('-c','--conv-cell',help='Get conventional unit cell, Default is primitive',action='store_true',required=False,default=False,dest='get_conventional')
-            parser.add_argument('-f','--final-structure',help='Get final structure, Default is False',action='store_true',required=False,default=False,dest='get_final')     
-            parser.add_argument('-n','--filename',help='Filename for POSCAR, default is "POSCAR"',required=False,default='POSCAR',type=str,metavar='',dest='filename')
-            
-            args =  parser.parse_args()
-            return args
             
             
         def get_data(self,data_type='vasp'):    
@@ -122,17 +96,17 @@ with MPRester(API_KEY) as mpr:
                                    property_data,conventional_unit_cell,sort_by_e_above_hull)
         
         
-        def get_entries_from_compositions(self,compositions,stable_only=False,compatible_only=True,
+        def get_entries_from_compositions(self,compositions,lowest_e_above_hull=False,compatible_only=True,
                                           inc_structure='initial',property_data=None,
                                           conventional_unit_cell=False):
             """
-            Get a dictionary with compositions as keys and a list of ComputedEntries 
+            Get a dictionary with compositions (strings) as keys and a list of ComputedEntries 
             or ComputedStructureEntries as values.
     
             Parameters
             ----------
                 compositions (list): List of strings with compositions.
-                stable_only ()
+                stable_only (bool): Get phase with lowest E above hull.
                 compatible_only (bool): 
                     Whether to return only "compatible"
                     entries. Compatible entries are entries that have been
@@ -162,7 +136,7 @@ with MPRester(API_KEY) as mpr:
             for comp in compositions:
                 entries = self.get_entries(comp,compatible_only,inc_structure,property_data,
                                                       conventional_unit_cell,sort_by_e_above_hull=True)
-                if stable_only:
+                if lowest_e_above_hull:
                     entries_dict[comp] = entries[0] # sorted by e_above_hull
                 else:
                     entries_dict[comp] = entries
@@ -187,18 +161,6 @@ with MPRester(API_KEY) as mpr:
             """
             return mpr.get_structure_by_material_id(self.mp_id,final=final,conventional_unit_cell=conventional_unit_cell).get_sorted_structure()  
 
-        
-if __name__ == '__main__':
-    
-    mp = MPDatabase()
-    args = mp.args()
-    mp.mp_id = args.mp_id    
-    structure = mp.get_structure(final=args.get_final,conventional_unit_cell=args.get_conventional)
-    
-    if args.print_structure:
-        print(structure)
-    if args.write_poscar:
-        Poscar(structure).write_file(args.filename)
     
     
     
