@@ -54,6 +54,8 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
     stderr
     """
     if dry_run:
+        if printout:
+            print(cmd)
         return cmd, ''
     command = cmd.split()
     proc = subprocess.run(command, capture_output=True, shell=False, text=True,**kwargs)

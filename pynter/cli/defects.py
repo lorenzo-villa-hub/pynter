@@ -7,6 +7,7 @@ Created on Wed May 31 16:09:45 2023
 """
 
 import os
+import json
 from glob import glob
 import numpy as np
 import warnings
@@ -24,6 +25,7 @@ from pynter.defects.corrections import get_kumagai_correction_from_jobs
 from pynter.phase_diagram.chempots import Chempots, Reservoirs
 from pynter.tools.materials_project import MPDatabase
 from pynter.tools.utils import save_object_as_json, get_object_from_json
+from pynter.cli import inputs
 from pynter.cli.utils import get_dict_from_line_string, round_floats
 
 
@@ -34,7 +36,7 @@ def setup_defects(subparsers):
     subparsers_defects = parser_defects.add_subparsers()
 
     parser_inputs = subparsers_defects.add_parser('inputs',help='Create inputs for VASP DFT calculations')
-    setup_import(parser_inputs)
+    setup_inputs(parser_inputs)
     
     parser_import = subparsers_defects.add_parser('import',help='Create defect entries from VASP DFT calculations')
     setup_import(parser_import)
@@ -48,12 +50,51 @@ def setup_defects(subparsers):
     return
     
 
-# to be implemented
-def setup_inputs(parser):
-    pass
 
-def create_inputs(args):
-    pass
+def setup_inputs(parser):
+    subparsers = parser.add_subparsers()
+    
+    parser_vasp = subparsers.add_parser('vasp',help='VASP DFT calculations')
+    
+    parser_vasp = inputs.parse_common_args(parser_vasp)
+    parser_vasp = inputs.parse_vasp_args(parser_vasp)
+
+    parser_vasp.add_argument('-auto','--automation',action='store_true',help='Add default automation to job script',required=False,
+                        default=False,dest='automation')    
+
+    parser_vasp.add_argument('-ss','--supercell-size',action='append',help='Size of the supercell',type=int,required=False,
+                        default=None,metavar='',dest='supercell_size')
+
+    parser_vasp.add_argument('-rel','--relaxation-scheme',help='Relaxation scheme to use, choose between "default" (2-step PBE) and "gamma" (4-step PBE) (default: %(default)s)',
+                        required=False,default='default',type=str,metavar='',dest='relaxation_scheme')
+    
+    parser_vasp.add_argument('-sub','--substitutions',help='Substituions inputs. Provide elements and charges as {"<new_el>-on-<old_el>":[q0,q1,q2]}',type=str,required=False,
+                        default=None,metavar='',dest='substitutions')
+    
+    parser_vasp.add_argument('-vac','--vacancies',help='Vacancies inputs. Provide elements and charges as {"el":[q0,q1,q2]}',type=str,required=False,
+                        default=None,metavar='',dest='vacancies')
+    
+    parser_vasp.set_defaults(func=create_vasp_inputs)
+    return
+
+
+def create_vasp_inputs(args):
+    schemes = inputs.get_schemes(args)
+    if args.substitutions:
+        elements_to_replace_with_charges = json.loads(args.substitutions)
+        jobs_sub = schemes.substitutions_pbe_relaxation(elements_to_replace_with_charges=elements_to_replace_with_charges,
+                                                    supercell_size=args.supercell_size,automation=args.automation,
+                                                    locpot=True,rel_scheme=args.relaxation_scheme)
+    if args.vacancies:
+        elements_with_charges = json.loads(args.vacancies)
+        jobs_vac = schemes.vacancies_pbe_relaxation(elements_with_charges=elements_with_charges,
+                                                    supercell_size=args.supercell_size,automation=args.automation,
+                                                    locpot=True,rel_scheme=args.relaxation_scheme)
+    
+    jobs = jobs_sub + jobs_vac
+    ds = Dataset(jobs)
+    ds.write_jobs_input()
+    return
 
 
 def setup_import(parser):
@@ -62,7 +103,7 @@ def setup_import(parser):
     parser.add_argument('-p','--path',help='Path to defect calculations, can contain wildcards (default: %(default)s)',required=False,type=str,default=os.getcwd(),metavar='',dest='path')
     
     parser.add_argument('-e','--exclude',action='append',help='Exclude specific defect types (Vacancy, Substitution, Interstitial, Polaron, DefectComplex)',
-                        required=False,default=None,dest='exclude')
+                        required=False,default=None,metavar='',dest='exclude')
     parser.add_argument('-c','--corrections',action='store_true',help='Compute Kumagai corrections (default: %(default)s)',required=False,default=False,dest='corrections')
     parser.add_argument('-dt','--dielectric-tensor',help='Dielectric constant or tensor, if tensor write the matrix in a line (a11 a12 a13 a21 a22 a23 a31 a32 a33)',
                         required=False,type=str,default=None,metavar='',dest='dielectric_tensor')    
@@ -155,10 +196,10 @@ def parse_common_args(parser):
                         required=False,type=str,default=None,metavar='',dest='chempots')
     
     parser.add_argument('-e','--exclude',action='append',help='Exclude specific defect types (Vacancy, Substitution, Interstitial, Polaron, DefectComplex)',
-                        required=False,default=None,dest='exclude')
+                        required=False,default=None,metavar='',dest='exclude')
     
     parser.add_argument('-ee','--exclude-elements',action='append',help='Exclude defects containing these elements',required=False,
-                    default=None,dest='exclude_elements')
+                    default=None,metavar='',dest='exclude_elements')
     return parser    
 
 def get_defects_analysis(args):

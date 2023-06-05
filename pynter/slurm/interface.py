@@ -11,7 +11,9 @@ from pynter.__init__ import load_config, run_local
 class HPCInterface:
     
     @requires(which("sshpass"),
-    "sshpass needs to be installed, you can install it with 'sudo apt-get install sshpass'.")
+              "sshpass needs to be installed, you can install it with 'sudo apt-get install sshpass'.")
+    @requires(which("rsync"),
+          "rsync needs to be installed, you can install it with 'sudo apt-get install rsync'.")
     
     def __init__(self,config=None):
         """

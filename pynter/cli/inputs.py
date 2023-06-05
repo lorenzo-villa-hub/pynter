@@ -8,9 +8,12 @@ Created on Fri Jun  2 15:05:08 2023
 import os
 import importlib
 
+from pymatgen.io.vasp.inputs import Incar,Kpoints,Poscar,Potcar
+
+from pynter.data.datasets import Dataset
 from pynter.slurm.job_script import ScriptHandler
 from pynter.tools.materials_project import MPDatabase
-from pynter.vasp.schemes import InputSets,Schemes
+from pynter.vasp.schemes import InputSets,AdvancedSchemes
 
 
 def setup_inputs(subparsers):
@@ -27,36 +30,94 @@ def setup_inputs(subparsers):
 def setup_inputs_vasp(parser):
     parser = parse_common_args(parser)
     parser = parse_vasp_args(parser)
+    
+    parser.add_argument('-cs','--charge-states',action='append',help='Charged states. Provide a list of integer charge states',required=False,
+                        type=int,default=None,dest='charge_states')
+    
+    parser.add_argument('-dp','--dielectric-properties',action='store_true',help='Electronic and ionic parts of the dielectric tensor',required=False,
+                        default=False,dest='dielectric_properties')
+
+    parser.add_argument('-ec','--encut-convergence',action='store_true',help='Energy cutoff convergence',required=False,
+                        default=False,dest='encut_convergence')
+    
+    parser.add_argument('-fc','--fractional-charge',action='store_true',help='Fractional charge linearity',required=False,
+                        default=False,dest='fractional_charge')
+    
+    parser.add_argument('-kc','--kpoints-convergence',action='store_true',help='Kpoints convergence',required=False,
+                        default=False,dest='kpoints_convergence')
+        
+    parser.add_argument('-hse','--hse-relaxation',action='store_true',help='5 steps atomic and volume relaxation with HSE',required=False,
+                        default=False,dest='hse_relaxation')
+    
+    parser.add_argument('-pbe','--pbe-relaxation',action='store_true',help='3 steps atomic and volume relaxation with PBE',required=False,
+                        default=False,dest='pbe_relaxation')
+    
     parser.add_argument('-is','--inputsets',help='Name of a set of inputs from the InputSets class',required=False,type=str,
                         default=None,metavar='',dest='input_sets')
+    
     parser.set_defaults(func=create_inputs_vasp)
     return
 
+
 def create_inputs_vasp(args):
-    if args.poscar:
-        structure = args.poscar.structure
-    elif args.mp_id:
-        structure = MPDatabase(args.mp_id).get_structure()
-    else:
-        raise ValueError('Either POSCAR or Materials Project ID needs to be provided')
-    if args.job_script:
-        script_path = os.path.abspath(os.path.dirname(args.job_script))
-        job_settings = ScriptHandler.from_file(path=script_path,filename=os.path.basename(args.job_script)).settings
-    else:
-        job_settings = None
+    schemes = get_schemes(args)
+    jobs = None
+    if args.encut_convergence:
+        jobs = schemes.convergence_encut()
     
-    if args.input_sets:
-        input_sets = InputSets(path=args.path,structure=structure,incar_settings=args.incar,
-                               kpoints=args.kpoints,potcar=args.potcar,job_settings=job_settings,
-                               name=args.name,add_parent_folder=True)
-        method = getattr(input_sets, args.input_sets)
+    elif args.kpoints_convergence:
+        jobs = schemes.convergence_kpoints()
+        
+    elif args.charge_states:
+        jobs = schemes.charge_states(args.charge_states,locpot=True)
+        
+    elif args.dielectric_properties:
+        jobs = schemes.dielectric_properties_complete()
+        
+    elif args.fractional_charge:
+        jobs = schemes.fractional_charge_linearity()
+        
+    elif args.pbe_relaxation:
+        jobs = schemes.pbe_vol_relaxation()
+    
+    elif args.hse_relaxation:
+        jobs = schemes.hse_vol_relaxation()
+    
+    if jobs:
+        ds = Dataset(jobs)
+        ds.write_jobs_input()        
+ 
+    elif args.input_sets:
+        method = getattr(schemes, args.input_sets)
         job = method()
         job.write_input()
     else:
         raise ValueError('Either method of InputSets or scheme must be provided')
     return
         
+
+def get_schemes(args):    
+    if args.poscar:
+        poscar = Poscar.from_file(os.path.abspath(args.poscar))
+        structure = poscar.structure
+    elif args.mp_id:
+        structure = MPDatabase(args.mp_id).get_structure()
+    else:
+        raise ValueError('Either POSCAR or Materials Project ID needs to be provided')
+
+    incar = Incar.from_file(os.path.abspath(args.incar)) if args.incar else None
+    kpoints = Incar.from_file(os.path.abspath(args.kpoints)) if args.kpoints else None
+    potcar = Potcar.from_file(os.path.abspath(args.potcar)) if args.potcar else None
+    if args.job_script:
+        script_path = os.path.abspath(os.path.dirname(args.job_script))
+        job_settings = ScriptHandler.from_file(path=script_path,filename=os.path.basename(args.job_script)).settings
+    else:
+        job_settings = None
     
+    schemes = AdvancedSchemes(path=args.path,structure=structure,incar_settings=incar,
+                               kpoints=kpoints,potcar=potcar,job_settings=job_settings,
+                               name=args.name,add_parent_folder=True)
+    return schemes
 
 
 def parse_common_args(parser):

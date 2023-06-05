@@ -940,7 +940,7 @@ class AdvancedSchemes(Schemes):
             
     def substitutions_pbe_relaxation(self,elements_to_replace_with_charges,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
         """
-        Generate jobs for default vacancies calculation scheme with PBE.
+        Generate jobs for default substitutions calculation scheme with PBE.
 
         Parameters
         ----------

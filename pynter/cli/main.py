@@ -10,7 +10,9 @@ import argparse
 
 from pynter.cli.automations import setup_automation
 from pynter.cli.analysis import setup_analysis
+from pynter.cli.config import setup_config
 from pynter.cli.defects import setup_defects
+from pynter.cli.hpc import setup_hpc
 from pynter.cli.inputs import setup_inputs
 from pynter.cli.materials_project import setup_mp_database
 from pynter.cli.plotter import setup_plotter
@@ -21,7 +23,7 @@ from pynter.cli.phase_diagram import setup_phase_diagram
 def main():
     """
     Handle main.
-    """
+    """    
     parser = argparse.ArgumentParser(
         description="""
         This script works based on several sub-commands with their own options.
@@ -33,8 +35,10 @@ def main():
     
     setup_automation(subparsers)
     setup_analysis(subparsers)
+    setup_config(subparsers)
     setup_defects(subparsers)
     setup_inputs(subparsers)
+    setup_hpc(subparsers)
     setup_mp_database(subparsers)
     setup_plotter(subparsers)
     setup_job_script(subparsers)
