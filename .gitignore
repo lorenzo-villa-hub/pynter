@@ -1,3 +1,5 @@
-
+/dist
+/build
+/pynter.egg-info
 *.pyc
 *checkpoint.ipynb

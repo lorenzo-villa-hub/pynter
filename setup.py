@@ -19,6 +19,8 @@ def post_install():
 setup(
     name='pynter',
     version='1.0.0',
+    author='Lorenzo Villa',
+    description='Tools for atomistic calculations',
     packages=find_namespace_packages(exclude=["pynter.tests","pynter.*.tests", "pynter.*.*.tests"]),
     install_requires=[
         'ase',
