@@ -57,6 +57,8 @@ def create_config(args):
         path_exe = input('Path of default executable: ')
         job_script_filename = input('Job script filename (default job.sh): ')
         
+        API_KEY = input('\nMaterials Project API_KEY (default None):')
+        
         print('\nDatabase configuration:')
         host = input('Host (default: 127.0.0.1 ): ')
         port = input('Port (default: 27017): ')
@@ -76,7 +78,7 @@ def create_config(args):
                   {'hostname': hostname,
                   'localdir': localdir,
                   'workdir': workdir},
-            'API_KEY': None,
+            'API_KEY': API_KEY,
             'job_settings': 
                   {'project_id': project_id,
                   'name': 'no_name',
