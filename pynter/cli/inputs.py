@@ -6,14 +6,12 @@ Created on Fri Jun  2 15:05:08 2023
 @author: villa
 """
 import os
-import importlib
 
 from pymatgen.io.vasp.inputs import Incar,Kpoints,Poscar,Potcar
 
 from pynter.data.datasets import Dataset
 from pynter.slurm.job_script import ScriptHandler
-from pynter.tools.materials_project import MPDatabase
-from pynter.vasp.schemes import InputSets,AdvancedSchemes
+from pynter.vasp.schemes import AdvancedSchemes
 
 
 def setup_inputs(subparsers):
@@ -32,7 +30,7 @@ def setup_inputs_vasp(parser):
     parser = parse_vasp_args(parser)
     
     parser.add_argument('-cs','--charge-states',action='append',help='Charged states. Provide a list of integer charge states',required=False,
-                        type=int,default=None,dest='charge_states')
+                        type=int,default=None,metavar='',dest='charge_states')
     
     parser.add_argument('-dp','--dielectric-properties',action='store_true',help='Electronic and ionic parts of the dielectric tensor',required=False,
                         default=False,dest='dielectric_properties')
@@ -101,12 +99,13 @@ def get_schemes(args):
         poscar = Poscar.from_file(os.path.abspath(args.poscar))
         structure = poscar.structure
     elif args.mp_id:
+        from pynter.tools.materials_project import MPDatabase
         structure = MPDatabase(args.mp_id).get_structure()
     else:
         raise ValueError('Either POSCAR or Materials Project ID needs to be provided')
 
     incar = Incar.from_file(os.path.abspath(args.incar)) if args.incar else None
-    kpoints = Incar.from_file(os.path.abspath(args.kpoints)) if args.kpoints else None
+    kpoints = Kpoints.from_file(os.path.abspath(args.kpoints)) if args.kpoints else None
     potcar = Potcar.from_file(os.path.abspath(args.potcar)) if args.potcar else None
     if args.job_script:
         script_path = os.path.abspath(os.path.dirname(args.job_script))
@@ -121,13 +120,13 @@ def get_schemes(args):
 
 
 def parse_common_args(parser):
-    parser.add_argument('-id','--materials-project-id',help='Materials project ID containing the structure, in case the POSCAR is not provided (default %(default)s)',
+    parser.add_argument('-id','--materials-project-id',help='Materials project ID containing the structure, in case the POSCAR is not provided (default: %(default)s)',
                         required=False,type=str,default=None,metavar='',dest='mp_id')
 
-    parser.add_argument('-n','--name',help='Name of the folder containing input files (default %(default)s)',required=False,type=str,
+    parser.add_argument('-n','--name',help='Name of the folder containing input files (default: %(default)s)',required=False,type=str,
                         default='inputs',metavar='',dest='name')
     
-    parser.add_argument('-p','--path',help='Path for input files (default %(default)s)',required=False,type=str,
+    parser.add_argument('-p','--path',help='Path for input files (default: %(default)s)',required=False,type=str,
                         default=os.getcwd(),metavar='',dest='path')
     
     return parser

@@ -8,7 +8,6 @@ Created on Wed May 31 14:50:11 2023
 import os
 
 from pymatgen.core.composition import Composition
-from pymatgen.ext.matproj import MPRester
 from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 
@@ -75,6 +74,7 @@ def get_chempots(pd,composition):
     return PDHandler(pd).get_all_boundaries_chempots(composition)
     
 def get_phase_diagram(elements):  
+    from pymatgen.ext.matproj import MPRester
     with MPRester(load_config()['API_KEY']) as mpr:
         compat = MaterialsProjectCompatibility()  # sets energy corrections and +U/pseudopotential choice
         unprocessed_entries = mpr.get_entries_in_chemsys(elements,inc_structure=True)

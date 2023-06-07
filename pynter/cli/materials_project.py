@@ -8,8 +8,6 @@ Created on Fri Jun  2 11:27:24 2023
 
 from pymatgen.io.vasp.inputs import Poscar
 
-from pynter.tools.materials_project import MPDatabase
-
 
 def setup_mp_database(subparsers):
     
@@ -30,7 +28,7 @@ def setup_mp_database(subparsers):
     
 
 def run_mp_database(args):
-    
+    from pynter.tools.materials_project import MPDatabase
     mp = MPDatabase(mp_id=args.mp_id)
     structure = mp.get_structure(final=args.get_final,conventional_unit_cell=args.get_conventional)
     

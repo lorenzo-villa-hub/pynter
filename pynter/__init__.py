@@ -29,7 +29,7 @@ def load_config(cfgfile=cfgfile):
         with open(cfgfile,"r") as ymlfile:
             return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
     else:
-        raise FileNotFoundError('%s does not exist. Run the setup.py script to create it.'%cfgfile)
+        raise FileNotFoundError('%s does not exist. Run "pynter configure" in the terminal to create it.'%cfgfile)
         return
 
 

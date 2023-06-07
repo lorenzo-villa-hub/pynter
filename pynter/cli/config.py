@@ -6,95 +6,111 @@ Created on Mon Jun  5 16:24:40 2023
 @author: villa
 """
 
+import os
+import yaml
+
+
 def setup_config(subparsers):
     parser_configure = subparsers.add_parser('configure',help='Set up pynter configuration files')
-    parser_configure.set_defaults(func=run_config)
+    
+    parser_configure.add_argument('-e','--exclude',help='Exclude file ("config.yml" or "vasp.yml")',
+                               default=None,metavar='',dest='exclude')
+    parser_configure.add_argument('-i','--info',action='store_true',help='Print configuration files paths',
+                               default=False,dest='info')
+    parser_configure.set_defaults(func=create_config)
+    
     return
+  
     
-
-def run_config(args):
-
-    import os
-    import yaml
+def create_config(args):
     
-    print('Set up configuration file for pynter...\n\n')
-    
+    filename_config = 'config.yml'
+    filename_vasp = 'vasp.yml'
     filepath = os.path.join(os.getenv("HOME"),'.pynter')
-    print('Path of configuration file is: %s' %filepath)
-    if not os.path.exists(filepath):
-        os.makedirs(filepath)
     
-    filename = input('Choose file name (default: config.yml): ')
-    filename = filename if filename else 'config.yml' 
-    
-    print('Begin setup\n')
-    print('HPC setup:')
-    hostname = input('Hostname: ')
-    localdir = input('Local calculation directory: ')
-    localdir = os.path.abspath(localdir)
-    workdir = input('Remote calculation directory: ')
-    localdir = os.path.normpath(workdir)
-    
-    print('\nDefault settings for job script setup: ')
-    project_id = input('Project ID: ')
-    email = input('email address (Default None): ')
-    path_exe = input('Path of default executable: ')
-    job_script_filename = input('Job script filename (default job.sh): ')
-    
-    print('\nDatabase configuration:')
-    host = input('Host (default: 127.0.0.1 ): ')
-    port = input('Port (default: 27017): ')
-    database = input('Database (default: pynter): ')
-    collection = input('Collection (default vasp): ')
-    
-    
-    job_script_filename = job_script_filename if job_script_filename else 'job.sh'
-    host = host if host else '127.0.0.1'
-    port = port if port else 27017
-    database = database if database else 'pynter'
-    collection = collection if collection else 'vasp'
-    
-    config = {
+    # print configuration files path
+    if args.info:
+        print('Path of general configuration file: %s' %(os.path.join(filepath,filename_config)))
+        print('Path of vasp configuration file: %s' %(os.path.join(filepath,filename_vasp)))
+        return
+
+    # Set config.yml
+    if args.exclude != filename_config:
+        print('Set up configuration file for pynter...\n\n')
+        print('Path of configuration file is: %s' %filepath)
+        if not os.path.exists(filepath):
+            os.makedirs(filepath)
         
-        'HPC': 
-              {'hostname': hostname,
-              'localdir': localdir,
-              'workdir': workdir},
-        'API_KEY': 'DSR45TfHVuyuB1WvP1',
-        'job_settings': 
-              {'project_id': project_id,
-              'name': 'no_name',
-              'array_size': None,
-              'email': email,
-              'nodes': 4,
-              'cores_per_node': 96,
-              'output_filename': 'out.%j',
-              'error_filename': 'err.%j',
-              'timelimit': '24:00:00',
-              'memory_per_cpu': 3500,
-              'partition': None,
-              'processor': None,
-              'modules': ['intel/2020.2','intelmpi/2020.2','fftw/3.3.8'],
-              'path_exe': path_exe,
-              'add_stop_array': True,
-              'add_automation': None,
-              'add_lines_header': ['I_MPI_PMI_LIBRARY=/opt/slurm/current/lib/libpmi2.so'],
-              'add_lines_body': None,
-              'filename': job_script_filename},
-        'dbconfig': 
-              {'vasp': 
-                   {'collection': collection,
-                   'database': database,
-                   'host': host,
-                   'password': None,
-                   'port': port,
-                   'user': None}}}
-    
+        filename = filename_config
         
-    with open(os.path.join(filepath,filename),'w+') as f:
-        yaml.dump(config,f) 
+        print('Begin setup\n')
+        print('HPC setup:')
+        hostname = input('Hostname: ')
+        localdir = input('Local calculation directory: ')
+        localdir = os.path.abspath(localdir)
+        workdir = input('Remote calculation directory: ')
+        workdir = os.path.normpath(workdir)
         
-    print(f'Configuration file {filename} written in {filepath}\n')    
+        print('\nDefault settings for job script setup: ')
+        project_id = input('Project ID: ')
+        email = input('email address (Default None): ')
+        path_exe = input('Path of default executable: ')
+        job_script_filename = input('Job script filename (default job.sh): ')
+        
+        print('\nDatabase configuration:')
+        host = input('Host (default: 127.0.0.1 ): ')
+        port = input('Port (default: 27017): ')
+        database = input('Database (default: pynter): ')
+        collection = input('Collection (default vasp): ')
+        
+        
+        job_script_filename = job_script_filename if job_script_filename else 'job.sh'
+        host = host if host else '127.0.0.1'
+        port = port if port else 27017
+        database = database if database else 'pynter'
+        collection = collection if collection else 'vasp'
+        
+        config = {
+            
+            'HPC': 
+                  {'hostname': hostname,
+                  'localdir': localdir,
+                  'workdir': workdir},
+            'API_KEY': 'DSR45TfHVuyuB1WvP1',
+            'job_settings': 
+                  {'project_id': project_id,
+                  'name': 'no_name',
+                  'array_size': None,
+                  'email': email,
+                  'nodes': 4,
+                  'cores_per_node': 96,
+                  'output_filename': 'out.%j',
+                  'error_filename': 'err.%j',
+                  'timelimit': '24:00:00',
+                  'memory_per_cpu': 3500,
+                  'partition': None,
+                  'processor': None,
+                  'modules': ['intel/2020.2','intelmpi/2020.2','fftw/3.3.8'],
+                  'path_exe': path_exe,
+                  'add_stop_array': True,
+                  'add_automation': None,
+                  'add_lines_header': ['I_MPI_PMI_LIBRARY=/opt/slurm/current/lib/libpmi2.so'],
+                  'add_lines_body': None,
+                  'filename': job_script_filename},
+            'dbconfig': 
+                  {'vasp': 
+                       {'collection': collection,
+                       'database': database,
+                       'host': host,
+                       'password': None,
+                       'port': port,
+                       'user': None}}}
+        
+        
+        with open(os.path.join(filepath,filename),'w+') as f:
+            yaml.dump(config,f) 
+            
+        print(f'Configuration file {filename} written in {filepath}\n')    
         
     
     vasp_default = {
@@ -116,7 +132,7 @@ def run_config(args):
       'SIGMA': 0.05},
      
      'computed_entry_default': ['final_energy','structures','eigenvalue_band_properties',
-                                'parameters','actual_kpoints'],
+                                'parameters','actual_kpoints','ionic_steps'],
      
      'default_potcar_symbols': {'Ac': 'Ac',
       'Ag': 'Ag',
@@ -208,13 +224,15 @@ def run_config(args):
       'Zn': 'Zn',
       'Zr': 'Zr_sv'}}
     
-    filename = input('Choose file name for vasp default parameters(default: vasp.yml): ')
-    filename = filename if filename else 'vasp.yml' 
+    # set vasp.yml
+    if args.exclude != filename_vasp:
     
-    with open(os.path.join(filepath,filename),'w+') as f:
-        yaml.dump(vasp_default,f) 
-    
-    print(f'Vasp default file {filename} written in {filepath}')  
+        filename = filename_vasp
+        
+        with open(os.path.join(filepath,filename),'w+') as f:
+            yaml.dump(vasp_default,f) 
+        
+        print(f'Vasp default file {filename} written in {filepath}')  
 
 
 

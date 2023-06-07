@@ -17,13 +17,11 @@ from pymatgen.electronic_structure.dos import FermiDos
 
 from pynter.data.datasets import Dataset
 from pynter.vasp.jobs import VaspJob
-from pynter.vasp.schemes import AdvancedSchemes
 from pynter.slurm.job_script import ScriptHandler
 from pynter.defects.entries import DefectEntry
 from pynter.defects.analysis import DefectsAnalysis
 from pynter.defects.corrections import get_kumagai_correction_from_jobs
 from pynter.phase_diagram.chempots import Chempots, Reservoirs
-from pynter.tools.materials_project import MPDatabase
 from pynter.tools.utils import save_object_as_json, get_object_from_json
 from pynter.cli import inputs
 from pynter.cli.utils import get_dict_from_line_string, round_floats
@@ -79,19 +77,21 @@ def setup_inputs(parser):
 
 
 def create_vasp_inputs(args):
+    jobs = []
     schemes = inputs.get_schemes(args)
     if args.substitutions:
         elements_to_replace_with_charges = json.loads(args.substitutions)
         jobs_sub = schemes.substitutions_pbe_relaxation(elements_to_replace_with_charges=elements_to_replace_with_charges,
                                                     supercell_size=args.supercell_size,automation=args.automation,
                                                     locpot=True,rel_scheme=args.relaxation_scheme)
+        jobs = jobs + jobs_sub
     if args.vacancies:
         elements_with_charges = json.loads(args.vacancies)
         jobs_vac = schemes.vacancies_pbe_relaxation(elements_with_charges=elements_with_charges,
                                                     supercell_size=args.supercell_size,automation=args.automation,
                                                     locpot=True,rel_scheme=args.relaxation_scheme)
-    
-    jobs = jobs_sub + jobs_vac
+        jobs = jobs + jobs_vac
+
     ds = Dataset(jobs)
     ds.write_jobs_input()
     return
@@ -217,6 +217,7 @@ def get_chempots(args):
     if args.chempots:
         chempots_dict = get_dict_from_line_string(args.chempots)
     else:
+        from pynter.tools.materials_project import MPDatabase
         mpd = MPDatabase()
         compositions = args.da.elements
         entries_dict = mpd.get_entries_from_compositions(compositions,lowest_e_above_hull=True)
