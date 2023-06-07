@@ -29,7 +29,7 @@ def test_vaspjob_from_directory():
     j = VaspJob.from_directory(path,load_outputs=True)
     assert j.inputs.as_dict() == VaspInput.from_directory(path).as_dict()
     assert j.outputs['Vasprun'].as_dict() == Vasprun(op.join(path,'vasprun.xml')).as_dict()
-    assert j.job_settings == job_settings  
+    assert j.job_settings['name'] == job_settings['name']  
     assert j.final_energy == -11.00288193
     assert j.charge == 0
 

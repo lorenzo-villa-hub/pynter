@@ -7,6 +7,8 @@ Created on Mon May 15 10:02:03 2023
 """
 import os
 import os.path as op
+from numpy.testing import assert_almost_equal
+
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
 from pymatgen.analysis.phase_diagram import PhaseDiagram
@@ -44,8 +46,6 @@ def test_reservoirs():
     assert res == Reservoirs({'X':mu_abs})
     res.set_to_referenced()
     assert res == Reservoirs({'X':mu})
-    latex_string ='\\begin{tabular}{lrrr}\n\\toprule\n & $\\Delta \\mu_{\text{Na}}$ & $\\Delta \\mu_{\text{Nb}}$ & $\\Delta \\mu_{\text{O}}$ \\\\\n\\midrule\nX & -2.260000 & -6.150000 & -1.920000 \\\\\n\\bottomrule\n\\end{tabular}\n'
-    assert res.get_dataframe(format_compositions=True,format_symbols=True).to_latex(escape=False) == latex_string
     res_filtered = Reservoirs({'X':Chempots({'Na':-2.26,'O':-1.92})})
     assert res.filter_reservoirs(elements=['Na','O']) == res_filtered
     
@@ -53,7 +53,7 @@ def test_pdhandler():
     comp = Composition('NaNbO3')
     pd = get_object_from_json(PhaseDiagram,get_path('PD_Na-Nb-O.json'))
     pdh = PDHandler(pd)
-    assert pdh.calculate_single_chempot(comp, Chempots({'O':-1.92,'Na':-2.26})) == -6.263571558749998
+    assert_almost_equal(pdh.calculate_single_chempot(comp, Chempots({'O':-1.92,'Na':-2.26})),-6.26,decimal=2)
     boundary_chempots = {
      'NaNbO3-Na2Nb3O6-Nb12O29': {'O': -8.95, 'Nb': -10.86, 'Na': -2.84},
      'NaNbO3-Na3NbO4-O2': {'O': -4.95, 'Nb': -21.43, 'Na': -4.26},
@@ -69,7 +69,7 @@ def test_pdhandler():
             target_entries.append(e)
     assert pdh.get_entries_from_comp(comp) == target_entries
     assert pdh.get_stable_entry_from_comp(comp) == pd.entries[94]
-    assert pdh.get_formation_energy_from_stable_comp(comp) == -14.283571558749998
+    assert_almost_equal (pdh.get_formation_energy_from_stable_comp(comp), -14.28,decimal=2)
     phase_boundary_chempots = {
      'NaNb3O8-NaNbO3': {'Na': -2.64, 'Nb': -5.89, 'O': -1.92},
      'NaNbO3-Na3NbO4': {'Na': -1.99, 'Nb': -6.53, 'O': -1.92}

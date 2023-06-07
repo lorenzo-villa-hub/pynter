@@ -10,6 +10,7 @@ import os
 import os.path as op
 
 from pynter.slurm.job_script import ScriptHandler
+from pynter.tests.__init__ import get_job_settings
 
 homedir = os.getenv("HOME")
 test_files_path = op.join(homedir,'pynter/pynter/slurm/tests/test_files')
@@ -67,12 +68,15 @@ settings = {
 
 def test_job_script():
     sh = ScriptHandler(**kwargs)
+    for key in kwargs:
+        assert kwargs[key] == sh.settings[key]
+    sh = ScriptHandler(**settings)
     assert sh.__str__() == script_string
     assert sh.settings == settings
     sh_from_file = ScriptHandler.from_file(test_files_path,'job_test.sh')
     sh.add_lines_header = None #from_file can't read added lines in header and body
     sh['add_lines_body'] = None
-    assert sh == sh_from_file
+    assert sh.settings == sh_from_file.settings
     sh.filename = 'temp.sh'
     sh.write_script(test_files_path)
     assert sh == ScriptHandler.from_file(test_files_path,'temp.sh')

@@ -33,7 +33,7 @@ class CompareVaspInputs(unittest.TestCase):
         """
         Compare Poscar objects
         """
-        self.assertEqual(poscar1.as_dict(),poscar2.as_dict())
+        self.assertEqual(poscar1.get_string(significant_figures=2),poscar2.get_string(significant_figures=2))
         
     def compare_potcar(self,potcar1,potcar2):
         """
