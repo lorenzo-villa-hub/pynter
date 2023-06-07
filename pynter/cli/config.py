@@ -76,7 +76,7 @@ def create_config(args):
                   {'hostname': hostname,
                   'localdir': localdir,
                   'workdir': workdir},
-            'API_KEY': 'DSR45TfHVuyuB1WvP1',
+            'API_KEY': None,
             'job_settings': 
                   {'project_id': project_id,
                   'name': 'no_name',
