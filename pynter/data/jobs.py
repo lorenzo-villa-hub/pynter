@@ -318,4 +318,48 @@ class Job:
     def write_input():
         pass
         
-            
+
+
+def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,jobs_kwargs=None):   
+    """
+    Get Job object froma directory. The job type is selected based on the content of the folder.
+    - If ("INCAR","KPOINTS","POSCAR","POTCAR") files are present, VaspJob is initialized.
+    - If ("INCAR","KPOINTS","POTCAR") files are present and "POSCAR" is not present, VaspNEBJob is initialized.
+
+    Parameters
+    ----------
+    path : (str)
+        Directory containing job.
+    job_script_filename : (str), optional
+        Filename of job script. The default is taken from the key 'filename' in the job_settings in the config file.
+    sort : (str or list), optional
+        Sort list of jobs by features. If False or None jobs are not sorted. The default is 'name'.
+    load_outputs : (bool)
+        Load job outputs. The default is True.
+    jobs_kwargs : (dict), optional
+        Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
+        from directory for each job class.
+
+    Returns
+    -------
+    jobs : (list)
+        List of Job objects.
+    """    
+    from pynter.vasp.jobs import VaspJob, VaspNEBJob
+    
+    path = path if path else os.getcwd()
+    job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
+        
+    for root,dirs,files in os.walk(path):      
+        if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
+            path = op.abspath(root)
+            if jobs_kwargs:
+                kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
+            else:
+                kwargs = {}
+            j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
+            return j
+        elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
+            path = op.abspath(root)
+            j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
+            return j

@@ -134,6 +134,8 @@ class VaspJob(Job):
             Path were job data is stored. If None the current wdir is used. The default is None.
         job_script_filename : (str), optional
             Filename of job script. The default is set in the config file.
+        load_outputs : (bool)
+            Load job outputs. The default is True.
         kwargs : (dict)
             Arguments to pass to Vasprun parser.
         Returns
@@ -156,7 +158,8 @@ class VaspJob(Job):
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
-        return VaspJob(path,inputs,job_settings,outputs,job_script_filename)
+        return VaspJob(path=path,inputs=inputs,job_settings=job_settings,
+                       outputs=outputs,job_script_filename=job_script_filename)
 
 
     @staticmethod
@@ -675,6 +678,8 @@ class VaspNEBJob(Job):
             Path were job data is stored. If None the current wdir is used. The default is None.
         job_script_filename : (str), optional
             Filename of job script. The default is set in the config file.
+        load_outputs : (bool)
+            Load job outputs. The default is True.
 
         Returns
         -------
@@ -710,7 +715,8 @@ class VaspNEBJob(Job):
         s = ScriptHandler.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
-        return VaspNEBJob(path,inputs,job_settings,outputs,job_script_filename)
+        return VaspNEBJob(path=path,inputs=inputs,job_settings=job_settings,
+                       outputs=outputs,job_script_filename=job_script_filename)
 
 
     @staticmethod

@@ -42,7 +42,7 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
     cmd : (str)
         Command to run.
     printout : (bool), optional
-        Print output and error. The default is True.
+        Print command, output and error. The default is True.
     dry_run : (bool), optional
         Return back the command, without executing it. The default is False.
     **kwargs : (dict)
@@ -57,6 +57,8 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
         if printout:
             print(cmd)
         return cmd, ''
+    if printout:
+        print("Run command: %s" %cmd)
     command = cmd.split()
     proc = subprocess.run(command, capture_output=True, shell=False, text=True,**kwargs)
     stdout = proc.stdout

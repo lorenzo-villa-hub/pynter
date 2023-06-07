@@ -2,6 +2,7 @@
 import os
 import os.path as op
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
+from pynter.data.jobs import get_job_from_directory
 from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import json
@@ -9,7 +10,9 @@ from monty.json import MontyDecoder
 from pynter.tools.utils import get_object_feature, sort_objects
 
 def _check_job_script(job_script_filenames,files):
-    """ Check if job script names are in a list of files. Can be either a str or list of str"""
+    """
+    Check if job script names are in a list of files. Can be either a str or list of str
+    """
     check = False
     if isinstance(job_script_filenames,str):    
         if job_script_filenames in files:
@@ -44,8 +47,10 @@ def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,j
         file names are present. The default is 'job.sh'.
     sort : (str or list), optional
         Sort list of jobs by features. If False or None jobs are not sorted. The default is 'name'.
+    load_outputs : (bool)
+        Load job outputs. The default is True.
     jobs_kwargs : (dict), optional
-        Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
+        Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
         from directory for each job class.
 
     Returns
@@ -59,20 +64,9 @@ def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,j
         if files != []:
             check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)
             if check_job_script:
-                if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
-                    path = op.abspath(root)
-                    if jobs_kwargs:
-                        kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
-                    else:
-                        kwargs = {}
-                    j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
-                    j.job_script_filename = job_script_filename
-                    jobs.append(j)
-                elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
-                    path = op.abspath(root)
-                    j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
-                    j.job_script_filename = job_script_filename
-                    jobs.append(j)
+                j = get_job_from_directory(path=root,job_script_filename=job_script_filename,
+                                           load_outputs=load_outputs,jobs_kwargs=jobs_kwargs)
+                jobs.append(j)
     if sort:
         jobs = Dataset().sort_jobs(jobs_to_sort=jobs,features=sort)
                 
@@ -225,13 +219,15 @@ class Dataset:
             file names are present. The default is 'job.sh'.
         sort : (str or list), optional
             Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
+        load_outputs : (bool)
+            Load job outputs. The default is True.
         jobs_kwargs : (dict), optional
-            Dictionay with job class name as keys and kwargs as values. Kwargs to be used when importing job 
+            Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
             from directory for each job class.
         """
         path = path if path else os.getcwd()
         jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort='name',
-                         load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) # names are sorted in __init__ method
+                         load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) 
         
         return  Dataset(path=path,jobs=jobs,sort=sort)
     

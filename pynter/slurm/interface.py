@@ -185,7 +185,7 @@ class HPCInterface:
                 cmd += f'--exclude={s} ' 
         cmd += f"-e ssh {self.hostname}:{remotedir} {localdir} "
 
-        stdout,stderr = run_local(cmd,printout,dry_run=False,**kwargs)
+        stdout,stderr = run_local(cmd,printout=printout,dry_run=False,**kwargs)
         return stdout,stderr
 
 
@@ -230,7 +230,7 @@ class HPCInterface:
                 cmd += f'--exclude={s} '
         cmd += f"-e ssh  {localdir} {self.hostname}:{remotedir} "
         
-        stdout,stderr = run_local(cmd,printout,dry_run=False,**kwargs)
+        stdout,stderr = run_local(cmd,printout=printout,dry_run=False,**kwargs)
 
         return stdout,stderr
     
