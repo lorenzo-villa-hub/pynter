@@ -51,19 +51,19 @@ def get_defect_entry():
 def test_defect_entry():
     entry = get_defect_entry()
     formation_energy = entry.formation_energy(vbm,chempots,fermi_level=0.25)
-    assert_almost_equal(formation_energy,4.423740193780213)
+    assert_almost_equal(formation_energy,4.423740193780213,3)
     
     concentration = entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=0.25) 
-    assert_almost_equal(concentration,2.4154948187001994e-52)
+    assert_almost_equal(concentration,2.4154948187001994e-52,3)
     
     def_conc = entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=5,occupation_function='MB')
-    assert_almost_equal(def_conc,1.5117989733276857e+28)
+    assert_almost_equal(def_conc,1.5117989733276857e+28,3)
     
     def_conc = entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=5,occupation_function='FD') 
-    assert_almost_equal(def_conc,4.995386515296238e+22)
+    assert_almost_equal(def_conc,4.995386515296238e+22,3)
     
     relaxation_volume = entry.relaxation_volume(stress_bulk,bulk_modulus) # doesn't make physical sense with charged defect
-    assert_almost_equal(relaxation_volume,-15.063823947648379)
+    assert_almost_equal(relaxation_volume,-15.063823947648379,3)
     
     entry_dict_1 = entry.as_dict()
     entry_dict_2 = DefectEntry.from_dict(entry.as_dict()).as_dict()

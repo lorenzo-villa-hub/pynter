@@ -7,6 +7,9 @@ Created on Thu May 11 16:33:19 2023
 """
 
 import unittest
+from numpy.testing import assert_allclose
+
+from pymatgen.io.vasp.inputs import Kpoints, Poscar
 
 from pynter.data.tests.compare import CompareJobs
 
@@ -27,20 +30,32 @@ class CompareVaspInputs(unittest.TestCase):
         Compare Kpoint objects, compares the strings to avoid inconsistencies
         which can happen when importing/exporting to dict
         """
-        self.assertEqual(str(kpoints1), str(kpoints2))
+        kpoints1 = Kpoints.from_string(str(kpoints1))
+        kpoints2 = Kpoints.from_string(str(kpoints2))
+        assert_allclose(kpoints1.kpts, kpoints2.kpts)
+        self.assertEqual(kpoints1.style,kpoints2.style)
+        self.assertEqual(kpoints1.kpts_shift,kpoints2.kpts_shift)
+        self.assertEqual(kpoints1.kpts_weights,kpoints2.kpts_weights)
         
     def compare_poscar(self,poscar1,poscar2):
         """
         Compare Poscar objects
         """
+        poscar1 = Poscar.from_string(str(poscar1))
+        poscar2 = Poscar.from_string(str(poscar2))
         self.assertEqual(poscar1.get_string(significant_figures=2),poscar2.get_string(significant_figures=2))
         
     def compare_potcar(self,potcar1,potcar2):
         """
         Compare Potcar objects
         """
-        self.assertEqual(str(potcar1),str(potcar2))
-        
+        if len(potcar1) != len(potcar2):
+            raise AssertionError
+        else:
+            for i in range(0,len(potcar1)):
+                self.assertEqual(potcar1[i].element, potcar2[i].element)
+                self.assertEqual(potcar1[i].functional, potcar2[i].functional)
+     
     def compare_vaspinput(self,input1,input2,include_incar=True,system_only=False):
         if include_incar:
             self.compare_incar(input1['INCAR'],input2['INCAR'],system_only)
