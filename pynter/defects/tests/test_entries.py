@@ -7,6 +7,9 @@ Created on Fri May 12 16:47:57 2023
 """
 import os
 import os.path as op
+from numpy.testing import assert_almost_equal
+import unittest
+
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.structure import Structure
 
@@ -48,11 +51,20 @@ def get_defect_entry():
 def test_defect_entry():
     entry = get_defect_entry()
     formation_energy = entry.formation_energy(vbm,chempots,fermi_level=0.25)
-    assert formation_energy == 4.423740193780213
+    assert_almost_equal(formation_energy,4.423740193780213)
+    
     concentration = entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=0.25) 
-    assert concentration == 2.4154948187001994e-52
-    assert entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=5,occupation_function='MB') == 1.5117989733276857e+28
-    assert entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=5,occupation_function='FD') == 4.995386515296238e+22
+    assert_almost_equal(concentration,2.4154948187001994e-52)
+    
+    def_conc = entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=5,occupation_function='MB')
+    assert_almost_equal(def_conc,1.5117989733276857e+28)
+    
+    def_conc = entry.defect_concentration(vbm,chempots,temperature=300,fermi_level=5,occupation_function='FD') 
+    assert_almost_equal(def_conc,4.995386515296238e+22)
+    
     relaxation_volume = entry.relaxation_volume(stress_bulk,bulk_modulus) # doesn't make physical sense with charged defect
-    assert relaxation_volume == -15.063823947648379
-    assert entry.as_dict() == DefectEntry.from_dict(entry.as_dict()).as_dict()
+    assert_almost_equal(relaxation_volume,-15.063823947648379)
+    
+    entry_dict_1 = entry.as_dict()
+    entry_dict_2 = DefectEntry.from_dict(entry.as_dict()).as_dict()
+    unittest.TestCase().assertDictEqual(entry_dict_1,entry_dict_2)

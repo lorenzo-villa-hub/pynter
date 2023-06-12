@@ -17,6 +17,8 @@ module purge
 ml intel/2020.4 
 ml intelmpi/2020.4 
 ml fftw/3.3.10 
+test_HEADER
+test_HEADER2
 
 if [ ! -f POSCAR_initial ] ; then
     cp POSCAR POSCAR_initial
@@ -28,8 +30,10 @@ fi
 
 srun /home/test/code
 
-convergence.py > convergence.txt
+pynter analysis vasprun --convergence > convergence.txt
 if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then
     automation.py
     scancel ${SLURM_ARRAY_JOB_ID}_*
 fi
+test_BODY
+test_BODY2

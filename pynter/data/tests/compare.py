@@ -9,6 +9,7 @@ Created on Thu May 11 16:33:19 2023
 import unittest
 import importlib
 
+from pynter.slurm.tests.compare import CompareJobSettings
 
 class CompareJobs(unittest.TestCase):
     
@@ -27,7 +28,7 @@ class CompareJobs(unittest.TestCase):
         return
         
     def compare_settings(self,job1,job2):
-        self.assertEqual(job1.job_settings,job2.job_settings)
+        CompareJobSettings().compare_settings(job1.job_settings,job2.job_settings)
         self.assertEqual(job1.name,job2.name)
         
     def compare(self,job1,job2,kwargs_input={},kwargs_output={}):

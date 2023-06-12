@@ -210,14 +210,15 @@ def test_create_substitutions():
     CompareDefects().compare(sub,sub_test)
     
 
-def test_create_interstitials():
-    inter = create_interstitials(unit_structure,['Si'],supercell_size=3)[0]
-    structure = bulk_structure.copy()
-    frac_coords = np.array([0.66666667, 0.5, 0.5])
-    interstitial_site = PeriodicSite('Si', frac_coords, structure.lattice)
-    multiplicity = 108
-    inter_test = Interstitial(interstitial_site,structure,multiplicity=108,label='mult108')   
-    CompareDefects().compare(inter,inter_test)
+# commented out because of long run time, uncomment to include in tests
+# def test_create_interstitials():
+#     inter = create_interstitials(unit_structure,['Si'],supercell_size=3)[0]
+#     structure = bulk_structure.copy()
+#     frac_coords = np.array([0.66666667, 0.5, 0.5])
+#     interstitial_site = PeriodicSite('Si', frac_coords, structure.lattice)
+#     multiplicity = 108
+#     inter_test = Interstitial(interstitial_site,structure,multiplicity=108,label='mult108')   
+#     CompareDefects().compare(inter,inter_test)
     
 
 

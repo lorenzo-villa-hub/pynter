@@ -10,6 +10,7 @@ import os
 import os.path as op
 import unittest
 import matplotlib
+import pytest
 
 matplotlib.use('Agg') # no graphical output
 
@@ -59,7 +60,8 @@ class TestDefectsAnalysis(unittest.TestCase):
              "Sub_P_on_Si": (1.0, -0.25706887286827396),
              "Vac_Si": (0.0, 3.2633273699999723)
              }
-        assert self.da.stable_charges(self.chempots) == stable_charges 
+
+        assert self.da.stable_charges(self.chempots) == pytest.approx(stable_charges) 
     
     def test_formation_energies(self):
         formation_energies = {

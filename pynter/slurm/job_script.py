@@ -226,7 +226,7 @@ class ScriptHandler:
         if self.array_size:
             if self.add_stop_array:
                 f.append('\n')
-                f.append('convergence.py > convergence.txt\n')
+                f.append('pynter analysis vasprun --convergence > convergence.txt\n')
                 f.append("if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then\n")
                 if self.add_automation:
                     f.append('    %s\n' %self.add_automation) # KEEP THE TAB!

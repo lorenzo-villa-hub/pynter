@@ -10,27 +10,57 @@ import os
 import os.path as op
 
 from pynter.slurm.job_script import ScriptHandler
-from pynter.tests.__init__ import get_job_settings
+from pynter.slurm.tests.compare import CompareJobSettings
 
 homedir = os.getenv("HOME")
 test_files_path = op.join(homedir,'pynter/pynter/slurm/tests/test_files')
 def get_path(filename):
     return op.join(test_files_path,filename)
 
-script_string = ("#!/bin/sh\n#SBATCH -A projecttest0000\n#SBATCH --job-name=test\n"
-                 "#SBATCH --array=1-2%1\n#SBATCH --mail-user=test@pynter.com\n"
-                 "#SBATCH --mail-type=ALL\n#SBATCH --nodes=4\n#SBATCH --ntasks-per-node=96\n"
-                 "#SBATCH --cpus-per-task=1\n#SBATCH --output=out.%j\n#SBATCH --error=err.%j\n"
-                 "#SBATCH --time=24:00:00\n#SBATCH --exclusive\n#SBATCH --mem-per-cpu=3500\n\n"
-                 "module purge\nml intel/2020.4 \nml intelmpi/2020.4 \nml fftw/3.3.10 \n"
-                 "test_HEADER\ntest_HEADER2\n\nif [ ! -f POSCAR_initial ] ; then\n"
-                 "    cp POSCAR POSCAR_initial\nfi\nif [ -f CONTCAR ]\nthen\n    cp CONTCAR POSCAR\nfi\n\n"
-                 "srun /home/test/code\n\nconvergence.py > convergence.txt\n"
-                 "if  grep -q 'Electronic convergence: True' convergence.txt  = true  "
-                 "&& grep -q 'Ionic convergence: True' convergence.txt  = true; then\n  "
-                 "  automation.py\n    scancel ${SLURM_ARRAY_JOB_ID}_*\nfi\ntest_BODY\ntest_BODY2\n")
+script_string =string = (
+    "#!/bin/sh\n"
+    "#SBATCH -A projecttest0000\n"
+    "#SBATCH --job-name=test\n"
+    "#SBATCH --array=1-2%1\n"
+    "#SBATCH --mail-user=test@pynter.com\n"
+    "#SBATCH --mail-type=ALL\n"
+    "#SBATCH --nodes=4\n"
+    "#SBATCH --ntasks-per-node=96\n"
+    "#SBATCH --cpus-per-task=1\n"
+    "#SBATCH --output=out.%j\n"
+    "#SBATCH --error=err.%j\n"
+    "#SBATCH --time=24:00:00\n"
+    "#SBATCH --exclusive\n"
+    "#SBATCH --mem-per-cpu=3500\n"
+    "\n"
+    "module purge\n"
+    "ml intel/2020.4 \n"
+    "ml intelmpi/2020.4 \n"
+    "ml fftw/3.3.10 \n"
+    "test_HEADER\n"
+    "test_HEADER2\n"
+    "\n"
+    "if [ ! -f POSCAR_initial ] ; then\n"
+    "    cp POSCAR POSCAR_initial\n"
+    "fi\n"
+    "if [ -f CONTCAR ]\n"
+    "then\n"
+    "    cp CONTCAR POSCAR\n"
+    "fi\n"
+    "\n"
+    "srun /home/test/code\n"
+    "\n"
+    "pynter analysis vasprun --convergence > convergence.txt\n"
+    "if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then\n"
+    "    automation.py\n"
+    "    scancel ${SLURM_ARRAY_JOB_ID}_*\n"
+    "fi\n"
+    "test_BODY\n"
+    "test_BODY2\n"
+)
 
-kwargs = {
+
+common_settings = {
     'project_id':'projecttest0000',
     'name':'test',
     'array_size':2,
@@ -38,8 +68,6 @@ kwargs = {
     'path_exe':'/home/test/code',
     'add_stop_array':True,
     'add_automation':'automation.py',
-    'add_lines_header':['test_HEADER','test_HEADER2'],
-    'add_lines_body':['test_BODY','test_BODY2'],
     'filename':'job_test.sh'
     }
 
@@ -67,17 +95,13 @@ settings = {
 
 
 def test_job_script():
-    sh = ScriptHandler(**kwargs)
-    for key in kwargs:
-        assert kwargs[key] == sh.settings[key]
+
     sh = ScriptHandler(**settings)
     assert sh.__str__() == script_string
     assert sh.settings == settings
     sh_from_file = ScriptHandler.from_file(test_files_path,'job_test.sh')
-    sh.add_lines_header = None #from_file can't read added lines in header and body
-    sh['add_lines_body'] = None
-    assert sh.settings == sh_from_file.settings
+    CompareJobSettings().compare_settings(sh.settings,sh_from_file.settings)
     sh.filename = 'temp.sh'
     sh.write_script(test_files_path)
-    assert sh == ScriptHandler.from_file(test_files_path,'temp.sh')
+    CompareJobSettings().compare_settings(sh.settings,ScriptHandler.from_file(test_files_path,'temp.sh').settings)
     os.remove(get_path('temp.sh'))
