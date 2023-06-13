@@ -12,18 +12,18 @@ from numpy.testing import assert_array_almost_equal
 
 class StructureTest(unittest.TestCase):
     
-    def assertSiteEqual(self,site1,site2,decimal=3):
+    def assert_Site_equal(self,site1,site2,decimal=3):
         assert_array_almost_equal(site1.frac_coords,site2.frac_coords,decimal=decimal)
         
-    def assertLatticeEqual(self,lattice1,lattice2):
+    def assert_Lattice_equal(self,lattice1,lattice2):
         assert_array_almost_equal(lattice1,lattice2)
         
-    def assertStructureEqual(self,structure1,structure2):
+    def assert_Structure_equal(self,structure1,structure2):
         if len(structure1) != len(structure2):
             raise AssertionError
         else:
-            for i in len(structure1):
-                self.assertSiteEqual(structure1[i], structure2[i])
+            for i in range(0,len(structure1)):
+                self.assert_Site_equal(structure1[i], structure2[i])
         
             
 

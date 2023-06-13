@@ -18,6 +18,8 @@ from pynter.defects.thermodynamics import PressureAnalysis, ThermoData, Conducti
 from pynter.phase_diagram.chempots import PressureReservoirs
 from pynter.tools.utils import get_object_from_json
 
+from pynter.testing.core import PynterTest
+
 homedir = os.getenv("HOME")
 test_files_path = op.join(homedir,'pynter/pynter/defects/tests/test_files')
 def get_path(filename):
@@ -28,7 +30,7 @@ e = constants.e
 kb = physical_constants['Boltzmann constant in eV/K'][0]
 
 
-class TestCoductivity(unittest.TestCase):
+class TestConductivity(PynterTest):
     
     def setUp(self):
         self.T = 1300
