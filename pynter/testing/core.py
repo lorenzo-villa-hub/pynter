@@ -50,9 +50,10 @@ class PynterTest(unittest.TestCase):
         elif isinstance(actual, str):
               self.assert_str_content_equal(actual, desired, err_msg=err_msg, verbose=verbose)
         
-        elif isinstance(actual, (str,bool,type(None))):
-                    assert actual == desired
-            
+        elif isinstance(actual, (bool,type(None))):
+            assert actual == desired
+        
+
         else:
             raise AssertionError(f"Unsupported object type: {type(actual)}")
 
@@ -162,6 +163,9 @@ class PynterTest(unittest.TestCase):
     
     @property
     def test_files_path(self):
+        """
+        Path with test files ("./test_files")
+        """
         module_file = inspect.getmodule(self.__class__).__file__
         module_dir = module_file.strip(op.basename(module_file))
         return op.join(module_dir,'test_files')

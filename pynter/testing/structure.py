@@ -11,7 +11,9 @@ from numpy.testing import assert_array_almost_equal
 
 
 class StructureTest(unittest.TestCase):
-    
+    """
+    Provides methods to test pymatgen Structure objects
+    """
     def assert_Site_equal(self,site1,site2,decimal=3):
         assert_array_almost_equal(site1.frac_coords,site2.frac_coords,decimal=decimal)
         

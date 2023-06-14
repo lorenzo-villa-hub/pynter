@@ -34,7 +34,7 @@ class TestVaspSchemes(PynterTest):
         jobs = schemes.hse_relaxation_gamma_extended()
         ds = Dataset(jobs)
         
-        DatasetTest().assert_jobs_equal(ds, ds_test)
+        DatasetTest().assert_jobs_equal(ds.jobs, ds_test.jobs)
         return
         
     def test_advanced_scheme(self):

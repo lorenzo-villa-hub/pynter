@@ -7,18 +7,10 @@ Created on Thu May 25 14:39:37 2023
 """
 
 from setuptools import setup, find_namespace_packages
-import atexit
-
-from pynter.cli.config import run_config
-
-def post_install():
-    print("\nRunning configuration setup\n")
-    run_config(None)
-    return
 
 setup(
     name='pynter',
-    version='1.0.0',
+    version='1.0.1',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations',
     packages=find_namespace_packages(exclude=["pynter.tests","pynter.*.tests", "pynter.*.*.tests"]),
@@ -36,4 +28,3 @@ setup(
         "pynter = pynter.cli.main:main"]}
 )
 
-atexit.register(post_install)

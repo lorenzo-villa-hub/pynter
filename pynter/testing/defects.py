@@ -10,17 +10,21 @@ from pynter.testing.structure import StructureTest
 
 
 class DefectTest(PynterTest):
-    
+    """
+    Provides methods to test Defect objects
+    """
     def assert_Defect_equal(self,defect1,defect2):
         StructureTest().assert_Site_equal(defect1.site,defect2.site)
         StructureTest().assert_Structure_equal(defect1.bulk_structure,defect2.bulk_structure)
         self.assertEqual(defect1.charge,defect2.charge)
         self.assertEqual(defect1.multiplicity,defect2.multiplicity)
         self.assertEqual(defect1.label,defect2.label)
-        return
+        
         
 class DefectEntryTest(PynterTest):
-    
+    """
+    Provides methods to test DefectEntry objects
+    """
     def assert_DefectEntry_equal(self,entry1,entry2):
         DefectTest().assert_Defect_equal(entry1.defect,entry2.defect)
         StructureTest().assert_Structure_equal(entry1.bulk_structure,entry2.bulk_structure)

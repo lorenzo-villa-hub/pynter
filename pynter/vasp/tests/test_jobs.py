@@ -7,15 +7,15 @@ Created on Wed May 10 16:49:47 2023
 """
 import os.path as op
 import json
+import numpy as np
 
 from pymatgen.io.vasp.inputs import VaspInput
 from pymatgen.io.vasp.outputs import Vasprun
 
-from pynter.vasp.jobs import VaspJob
+from pynter.vasp.jobs import VaspJob, VaspNEBJob
 from pynter.vasp.__init__ import load_vasp_default
 from pynter.testing.core import PynterTest
 from pynter.testing.vasp import VaspInputsTest, VaspOutputsTest
-
 
 
 class TestVaspJob(PynterTest):
@@ -60,4 +60,21 @@ class TestVaspJob(PynterTest):
         assert j.name == 'Si-BS_PBE-el-str_3'
         
 
+class TestVaspNEBJob(PynterTest):
     
+    def test_vaspnebjob_from_json(self):
+        j = VaspNEBJob.from_json(self.get_testfile_path('vaspnebjob_NN_VO.json'))
+        neba = j.neb_analysis
+        r = np.array([0.        , 0.64591638, 1.29416299, 1.94391391, 2.58088582,
+               3.2171647 , 3.85151573])
+        self.assert_all_close( neba.r , r)
+        
+        energies = np.array([-611.37449618, -611.20389509, -610.79989855, -610.64320248,
+       -610.78631166, -611.14814619, -611.37438141])
+        self.assert_all_close( neba.energies , energies)
+        
+        forces = np.array([ 0.      , -0.572757, -0.500791, -0.004058,  0.447456,  0.638393,
+        0.      ])
+        self.assert_all_close( neba.forces , forces)
+        
+        

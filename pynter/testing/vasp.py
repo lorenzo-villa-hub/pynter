@@ -11,11 +11,15 @@ from numpy.testing import assert_allclose
 from pymatgen.io.vasp.inputs import Kpoints, Poscar
 
 from pynter.testing.data import JobTest
+from pynter.testing.core import PynterTest
+from pynter.testing.structure import StructureTest
 
 
 
 class VaspInputsTest(unittest.TestCase):
-    
+    """
+    Provides methods to test pymatgen.io.vasp.inputs objects
+    """
     def assert_Incar_equal(self, incar1, incar2, system_only=False):
         """
         Compare Incar objects. Use system_only when default parameters are not known.
@@ -64,28 +68,64 @@ class VaspInputsTest(unittest.TestCase):
         self.assert_Potcar_equal(input1['POTCAR'],input2['POTCAR'])
         
         
-class VaspOutputsTest(unittest.TestCase):
-    
+class VaspOutputsTest(PynterTest):
+    """
+    Provides methods to test pymatgen.io.vasp.outputs objects and pymatgen ComputedEntry
+    """
     def assert_ComputedEntry_equal(self,entry1,entry2):
         attributes = ['correction','correction_uncertainty','energy_adjustments',
                       'energy','uncorrected_energy']
         for attr in attributes:
             value1, value2 = getattr(entry1,attr), getattr(entry2,attr)
-            self.assert_object_equal(value1,value2)   
+            self.assert_object_almost_equal(value1,value2)   
         self.assertEqual(entry1.data.keys(),entry2.data.keys())
             
     
     def assert_Vasprun_equal(self,vasprun1,vasprun2):
-        self.assert_object_equal(vasprun1.as_dict(),vasprun2.as_dict())
+        self.assert_object_almost_equal(vasprun1.as_dict(),vasprun2.as_dict())
         
         
         
 class VaspJobTest(JobTest):
-    
+    """
+    Provides methods to test VaspJob objects
+    """
     def assert_inputs_equal(self,job1,job2,include_incar=True,system_only=False):
         VaspInputsTest().assert_VaspInput_equal(job1.inputs,job2.inputs,include_incar,system_only)
 
-    def assert_outputs_equal(self,job1,job2,flexible=True):
-        VaspOutputsTest().assert_ComputedEntry_equal(job1.computed_entry,job2.computed_entry,flexible)
+    def assert_outputs_equal(self,job1,job2):
+        VaspOutputsTest().assert_ComputedEntry_equal(job1.computed_entry,job2.computed_entry)
         if "Vasprun" in [job1.outputs.keys(),job2.outputs.keys()]:
             VaspOutputsTest().assert_Vasprun_equal(job1.vasprun, job2.vasprun)
+            
+            
+class VaspNEBJobTest(JobTest):
+    """
+    Provides methods to test VaspNEBJob objects
+    """
+    def assert_inputs_equal(self,job1,job2,include_incar=True,system_only=False):
+        """
+        Assert incar, kpoints, potcar and images.
+        """
+        VaspInputsTest().assert_Incar_equal(job1.incar, job2.incar, system_only=system_only)
+        VaspInputsTest().assert_Kpoints_equal(job1.kpoints, job2.kpoints)
+        VaspInputsTest().assert_Potcar_equal(job1.potcar, job2.potcar)
+
+        if len(job1.structures) != len(job2.structures):
+            raise AssertionError('Number of images differ')
+        else:
+            for i in range(0,len(job1.structures)):
+                StructureTest().assert_Structure_equal(
+                    job1.structures[i], job2.structures[i])
+            
+    def assert_outputs_equal(self,job1,job2):
+        """
+        Assert pymatgen NEBAnalysis object
+        """
+        self.assert_object_almost_equal(job1.neb_analysis.as_dict(), job2.neb_analysis.as_dict())
+        
+        
+        
+        
+        
+        

@@ -13,11 +13,20 @@ from pynter.testing.core import PynterTest
 from pynter.testing.slurm import JobSettingsTest
 
 class JobTest(PynterTest):
+    """
+    Contains methods to test Job objects
+    """
     
     def __init__(self,jobclass='VaspJob'):
+        """
+        Specify which class the job object belongs to. Currently only "VaspJob" is available.
+        """
         if jobclass == 'VaspJob':
             module = importlib.import_module("pynter.testing.vasp")
             self.cls = getattr(module,'VaspJobTest')
+        elif jobclass == 'VaspNEBJob':
+            module = importlib.import_module("pynter.testing.vasp")
+            self.cls = getattr(module,'VaspNEBJobTest')
         super().__init__()
         
     def assert_inputs_equal(self,job1,job2,**kwargs):
@@ -41,6 +50,9 @@ class JobTest(PynterTest):
 class DatasetTest(PynterTest):
     
     def assert_dataset_equal(self,ds1,ds2,kwargs_input={},kwargs_output={}):
+        """
+        Check if jobs in dataset are equal. Jobs are sorted before they are checked.
+        """
         ds1.sort_jobs()
         ds2.sort_jobs()
         for i in range(len(ds1.jobs)):
@@ -48,6 +60,9 @@ class DatasetTest(PynterTest):
             JobTest(jobclass=job1.jobclass).assert_job_equal(job1, job2,kwargs_input,kwargs_output)
             
     def assert_jobs_equal(self,jobs1,jobs2,kwargs_input={},kwargs_output={}):
+        """
+        Check if lists of jobs are equal.
+        """
         assert len(jobs1) == len(jobs2), "Job lists have different lengths"
         for i in range(0,len(jobs1)):
             j1, j2 = jobs1[i], jobs2[i]
