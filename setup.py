@@ -9,7 +9,7 @@ Created on Thu May 25 14:39:37 2023
 from setuptools import setup, find_namespace_packages
 
 setup(
-    name='pynter',
+    name='pynter-defects',
     version='1.0.1',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations',
