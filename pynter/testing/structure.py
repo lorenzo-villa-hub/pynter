@@ -16,6 +16,7 @@ class StructureTest(unittest.TestCase):
     """
     def assert_Site_equal(self,site1,site2,decimal=3):
         assert_array_almost_equal(site1.frac_coords,site2.frac_coords,decimal=decimal)
+        self.assertEqual(site1.specie.symbol,site2.specie.symbol)
         
     def assert_Lattice_equal(self,lattice1,lattice2):
         assert_array_almost_equal(lattice1,lattice2)
