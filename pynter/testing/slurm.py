@@ -5,10 +5,12 @@ Created on Mon Jun 12 15:37:44 2023
 
 @author: lorenzo
 """
-import unittest
+from pynter.testing.core import PynterTest
 
-class CompareJobSettings(unittest.TestCase):
-    
+class JobSettingsTest(PynterTest):
+    """
+    Provides methods to test job settings dictionary
+    """
     @property
     def common_keys(self):
         common_keys = [
@@ -28,7 +30,10 @@ class CompareJobSettings(unittest.TestCase):
             ]
         return common_keys
     
-    def compare_settings(self,settings1,settings2):
+    def assert_job_settings_equal(self,settings1,settings2):
+        """
+        Check only common keys to avoid system dependent differences
+        """
         for key in self.common_keys:
-            self.assertEqual(settings1[key],settings2[key])
+            self.assert_object_almost_equal(settings1[key],settings2[key])
         

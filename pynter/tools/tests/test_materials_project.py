@@ -5,22 +5,23 @@ Created on Tue May 16 10:24:50 2023
 
 @author: villa
 """
-import os 
-import os.path as op
 import json
 
-from pynter.tests.__init__ import get_structure_Si
 from pynter.tools.materials_project import MPDatabase
 
-homedir = os.getenv("HOME")
-test_files_path = op.join(homedir,'pynter/pynter/tools/tests/test_files')
-def get_path(filename):
-    return op.join(test_files_path,filename)
+from pynter.testing.core import PynterTest
+from pynter.testing.structure import StructureTest
 
-def test_mp_database():
-    mpd = MPDatabase('mp-149')
-    structure = mpd.get_structure()
-    assert structure == get_structure_Si()
-    with open(get_path('Si_docs.json')) as file:
-        docs_test = json.load(file)
-    assert mpd.get_data() == docs_test
+class TestMPDatabase(PynterTest):
+
+    def setUp(self):
+        self.mpd = MPDatabase('mp-149')
+
+    def test_get_structure(self):
+        structure = self.mpd.get_structure()
+        StructureTest().assert_Structure_equal( structure , self.structure )
+        
+    def test_get_data(self):
+        with open(self.get_testfile_path('Si_docs.json')) as file:
+            docs_test = json.load(file)
+        self.assert_object_almost_equal( self.mpd.get_data() , docs_test )
