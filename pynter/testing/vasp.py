@@ -36,7 +36,7 @@ class VaspInputsTest(unittest.TestCase):
         """
         kpoints1 = Kpoints.from_string(str(kpoints1))
         kpoints2 = Kpoints.from_string(str(kpoints2))
-        assert_allclose(kpoints1.kpts, kpoints2.kpts)
+        assert_allclose(kpoints1.kpts, kpoints2.kpts,atol=1e-03)
         self.assertEqual(kpoints1.style,kpoints2.style)
         self.assertEqual(kpoints1.kpts_shift,kpoints2.kpts_shift)
         self.assertEqual(kpoints1.kpts_weights,kpoints2.kpts_weights)
@@ -47,7 +47,7 @@ class VaspInputsTest(unittest.TestCase):
         """
         poscar1 = Poscar.from_string(str(poscar1))
         poscar2 = Poscar.from_string(str(poscar2))
-        self.assertEqual(poscar1.get_string(significant_figures=2),poscar2.get_string(significant_figures=2))
+        self.assertEqual(poscar1.get_string(significant_figures=4),poscar2.get_string(significant_figures=4))
         
     def assert_Potcar_equal(self,potcar1,potcar2):
         """

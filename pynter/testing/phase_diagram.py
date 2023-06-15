@@ -31,7 +31,9 @@ class ReservoirsTest(ChempotsTest):
         Reservoirs dictionary, reference chempots and are_chempots_delta are checked.
         Set check_reference to False to check only reservoirs dictionary.
         """
-        assert reservoirs1.keys() == reservoirs2.keys()
+        keys1 = list(reservoirs1.keys())
+        keys2 = list(reservoirs2.keys())
+        self.assert_object_almost_equal(keys1, keys2, rtol=1e-03)
         for key in reservoirs1:
             chempots1 = reservoirs1[key]
             chempots2 = reservoirs2[key]

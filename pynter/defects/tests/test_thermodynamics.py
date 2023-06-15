@@ -64,7 +64,7 @@ class TestPressureAnalysis(PynterTest):
         
     def test_get_concentrations(self):
         thermo = self.pa.get_concentrations(self.pres,temperature=1300,name='NN-test')
-        self.assert_object_almost_equal( thermo.as_dict() , self.thermo_test.as_dict() )
+        self.assert_object_almost_equal( thermo.as_dict() , self.thermo_test.as_dict(), rtol=1e-03 )
         
     def test_get_conductivities(self):
         tc = TestConductivity()

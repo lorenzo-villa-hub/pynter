@@ -156,6 +156,8 @@ class OxygenPressure:
             if get_pressures_as_strings:
                 p = "%.1g" % p
                 p = str(p)
+            else:
+                p = float("{:.3e}".format(p))
             reservoirs[p] = chempots_abs
     
             
@@ -196,6 +198,8 @@ class OxygenPressure:
             if get_pressures_as_strings:
                 p = "%.1g" % p
                 p = str(p)
+            else:
+                p = float("{:.3e}".format(p))
             reservoirs[p] = Chempots(mu)
         
         return PressureReservoirs(reservoirs,temperature,phase_diagram=None,

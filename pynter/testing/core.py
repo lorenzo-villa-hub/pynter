@@ -24,7 +24,7 @@ class PynterTest(unittest.TestCase):
         return np.testing.assert_allclose(actual, desired, rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
 
 
-    def assert_object_almost_equal(self, actual, desired, decimal=7, err_msg='', verbose=True):
+    def assert_object_almost_equal(self, actual, desired, rtol=1e-07, atol=0, err_msg='', verbose=True):
         """
         Custom assertion function to check if two objects are almost equal.
         Supports dictionaries, numbers (int, float), tuples, lists, str, bool and NoneType.
@@ -37,15 +37,15 @@ class PynterTest(unittest.TestCase):
             assert len(actual) == len(desired), "Dictionaries have different lengths."
             for key in actual:
                 assert key in desired, f"Key '{key}' not found in the second dictionary."
-                self.assert_object_almost_equal(actual[key], desired[key], decimal, err_msg, verbose)
+                self.assert_object_almost_equal(actual[key], desired[key], rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
     
         elif isinstance(actual, (int, float)):
-            np.testing.assert_almost_equal(actual, desired, decimal=decimal, err_msg=err_msg, verbose=verbose)
+            np.testing.assert_allclose(actual, desired, rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
     
         elif isinstance(actual, (tuple, list)):
             assert len(actual) == len(desired), "Sequences have different lengths."
             for elem1, elem2 in zip(actual, desired):
-                self.assert_object_almost_equal(elem1, elem2, decimal=decimal, err_msg=err_msg, verbose=verbose)
+                self.assert_object_almost_equal(elem1, elem2, rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
                 
         elif isinstance(actual, str):
               self.assert_str_content_equal(actual, desired, err_msg=err_msg, verbose=verbose)
