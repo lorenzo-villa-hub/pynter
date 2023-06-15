@@ -13,7 +13,7 @@ setup(
     version='1.0.1',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations',
-    packages=find_namespace_packages(exclude=["pynter.tests","pynter.*.tests", "pynter.*.*.tests"]),
+    packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
     install_requires=[
         'ase',
         'pymatgen>=2023.3.23',
