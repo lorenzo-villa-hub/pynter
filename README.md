@@ -11,6 +11,5 @@ To configure settings for High-Performance Computer job submissions and for VASP
 pynter configure
 ```
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lorenzo-villa-hub/<pynter>/blob/master/<notebook>.ipynb)
-
-Check out the notebooks in the tutorials folder to get started.
+Check-out the tutorials in the `pynter-tutorials` repository. For an introduction consult this notebook:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lorenzo-villa-hub/pynter-tutorials/blob/master/notebooks/intro.ipynb)
