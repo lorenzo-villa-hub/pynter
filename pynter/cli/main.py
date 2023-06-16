@@ -7,10 +7,12 @@ Created on Fri May 26 13:59:39 2023
 """
 
 import argparse
+import os
+import warnings
 
 from pynter.cli.automations import setup_automation
 from pynter.cli.analysis import setup_analysis
-from pynter.cli.config import setup_config
+from pynter.cli.config import setup_config, run_config
 from pynter.cli.defects import setup_defects
 from pynter.cli.hpc import setup_hpc
 from pynter.cli.inputs import setup_inputs
@@ -33,25 +35,34 @@ def main():
 
     subparsers = parser.add_subparsers()
     
-    setup_analysis(subparsers)
-    setup_automation(subparsers)    
-    setup_config(subparsers)
-    setup_defects(subparsers)
-    setup_hpc(subparsers)
-    setup_inputs(subparsers)
-    setup_job_script(subparsers)
-    setup_mp_database(subparsers)
-    setup_phase_diagram(subparsers)
-    setup_plotter(subparsers)
-    
-    args = parser.parse_args()
-    
-    try:
-        args.func
-    except AttributeError:
-        parser.print_help()
-        raise SystemExit("Please specify a command.")
-    return args.func(args)
+    homedir = os.getenv("HOME")
+    config_exists = os.path.exists(os.path.join(homedir,'.pynter/config.yml'))
+    config_vasp_exists = os.path.exists(os.path.join(homedir,'.pynter/vasp.yml'))
+    if config_exists is False and config_vasp_exists is False:
+        inp = input("configuration files do not exist, do you wish to create them? (y/n)")
+        if inp in ['y','Y','yes']:
+            run_config()
+            
+    else:
+        setup_analysis(subparsers)
+        setup_automation(subparsers)  
+        setup_config(subparsers)
+        setup_defects(subparsers)
+        setup_hpc(subparsers)
+        setup_inputs(subparsers)
+        setup_job_script(subparsers)
+        setup_mp_database(subparsers)
+        setup_phase_diagram(subparsers)
+        setup_plotter(subparsers)
+        
+        args = parser.parse_args()
+        
+        try:
+            args.func
+        except AttributeError:
+            parser.print_help()
+            raise SystemExit("Please specify a command.")
+        return args.func(args)
 
 if __name__ == '__main__':
     main()

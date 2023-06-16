@@ -21,22 +21,26 @@ def setup_config(subparsers):
     
     return
   
-    
+
 def create_config(args):
+    run_config(exclude=args.exclude,info=args.info)
+    return
+  
+def run_config(exclude=None,info=False):
     
     filename_config = 'config.yml'
     filename_vasp = 'vasp.yml'
     filepath = os.path.join(os.getenv("HOME"),'.pynter')
     
     # print configuration files path
-    if args.info:
+    if info:
         print('Path of general configuration file: %s' %(os.path.join(filepath,filename_config)))
         print('Path of vasp configuration file: %s' %(os.path.join(filepath,filename_vasp)))
         return
 
     # Set config.yml
-    if args.exclude != filename_config:
-        print('Set up configuration file for pynter...\n\n')
+    if exclude != filename_config:
+        print('\nSet up configuration file for pynter...\n')
         print('Path of configuration file is: %s' %filepath)
         if not os.path.exists(filepath):
             os.makedirs(filepath)
@@ -227,7 +231,7 @@ def create_config(args):
       'Zr': 'Zr_sv'}}
     
     # set vasp.yml
-    if args.exclude != filename_vasp:
+    if exclude != filename_vasp:
     
         filename = filename_vasp
         
