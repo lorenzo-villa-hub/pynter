@@ -33,16 +33,16 @@ def main():
 
     subparsers = parser.add_subparsers()
     
-    setup_automation(subparsers)
     setup_analysis(subparsers)
+    setup_automation(subparsers)    
     setup_config(subparsers)
     setup_defects(subparsers)
-    setup_inputs(subparsers)
     setup_hpc(subparsers)
-    setup_mp_database(subparsers)
-    setup_plotter(subparsers)
+    setup_inputs(subparsers)
     setup_job_script(subparsers)
+    setup_mp_database(subparsers)
     setup_phase_diagram(subparsers)
+    setup_plotter(subparsers)
     
     args = parser.parse_args()
     

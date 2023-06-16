@@ -1,5 +1,5 @@
 /dist
 /build
-/pynter.egg-info
+*.egg-info
 *.pyc
 *checkpoint.ipynb
