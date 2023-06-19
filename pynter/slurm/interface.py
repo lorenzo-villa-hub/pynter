@@ -1,12 +1,11 @@
 
-import subprocess
-import os
 import os.path as op
-from glob import glob
 from shutil import which
-from monty.dev import requires
-from pynter.__init__ import load_config, run_local
 
+from monty.dev import requires
+
+from pynter import run_local, SETTINGS
+    
 
 class HPCInterface:
     
@@ -25,7 +24,7 @@ class HPCInterface:
             Configuration dictionary. If None is loaded from .pynter/config.yml.
         """
         if not config:
-            config = load_config()['HPC']
+            config = SETTINGS['HPC']
         
         for key,value in config.items():
             setattr(self, key, value)      

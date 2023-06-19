@@ -9,20 +9,25 @@ Created on Mon May 10 14:34:48 2021
 
 import os
 import os.path as op
+import warnings
+import numpy as np
+import json
+from glob import glob
+
+from monty.json import MontyDecoder, MontyEncoder
+
 from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
 from pymatgen.io.vasp.outputs import Vasprun, Oszicar
 from pymatgen.core.structure import Structure
 from pymatgen.analysis.transition_state import NEBAnalysis
-from pynter.slurm.job_script import ScriptHandler
-import numpy as np
-import json
-from monty.json import MontyDecoder, MontyEncoder
-from glob import glob
+
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
 from pynter.slurm.interface import HPCInterface
-from pynter.vasp.__init__ import load_vasp_default
-import warnings
+from pynter.slurm.job_script import ScriptHandler
+from pynter import SETTINGS
+
+
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
@@ -483,7 +488,7 @@ class VaspJob(Job):
         """                
         self._is_converged = self._get_convergence()
         
-        self._default_data_computed_entry = load_vasp_default()['computed_entry_default'] # default imports from Vasprun
+        self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
 
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:

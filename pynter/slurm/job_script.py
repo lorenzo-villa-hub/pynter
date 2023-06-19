@@ -3,7 +3,8 @@
 import re
 import os
 import os.path as op
-from pynter.__init__ import load_config
+
+from pynter import SETTINGS
 from pynter.tools.utils import grep_list
 
 class ScriptHandler:
@@ -34,8 +35,7 @@ class ScriptHandler:
             add_lines_body : (List) , Lines to add in the body part of the file.
         """
         
-        config = load_config()
-        default_settings = config['job_settings']
+        default_settings = SETTINGS['job_settings']
         
         for key,value in default_settings.items():
             setattr(self,key,value)

@@ -10,10 +10,10 @@ Created on Mon Nov  9 14:55:50 2020
 from matgendb.query_engine import QueryEngine
 from pymatgen.io.vasp.inputs import VaspInput, Incar,Kpoints,Poscar,Potcar
 from pynter.vasp.jobs import VaspJob
-from pynter.__init__ import load_config
+from pynter import SETTINGS
 
 
-dbconfig = load_config()['dbconfig']
+dbconfig = SETTINGS['dbconfig']
 
 class VaspJobQuery(QueryEngine):
     """

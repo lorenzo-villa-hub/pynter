@@ -1,12 +1,12 @@
 
-import os
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+
 from pymatgen.core.periodic_table import Element
-from pymatgen.electronic_structure.plotter import BSDOSPlotter
 from pymatgen.analysis.eos import EOS
-from pynter.vasp.plotter import plot_spd_dos
+
 
 matplotlib.rcParams.update({'font.size': 15})
 

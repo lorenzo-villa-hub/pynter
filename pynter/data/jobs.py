@@ -3,10 +3,11 @@ from abc import abstractmethod
 import os
 import os.path as op
 import shutil
+
 from pynter.slurm.job_script import ScriptHandler
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import grep_list
-from pynter.__init__ import load_config, run_local
+
 
 class Job:
     
@@ -33,7 +34,7 @@ class Job:
                 
         self.path = path if path else os.getcwd()
         self.inputs = inputs
-        self.job_settings = job_settings.copy()
+        self.job_settings = job_settings.copy() if job_settings else job_settings
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
         

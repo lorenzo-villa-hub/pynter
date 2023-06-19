@@ -1,7 +1,7 @@
 
 import yaml
 import os
-
+from pynter import SETTINGS
 
 def get_vasp_cfgfile():
     homedir = os.getenv("HOME")
@@ -30,3 +30,7 @@ def load_vasp_default(cfgfile=cfgfile):
     else:
         raise FileNotFoundError('%s does not exist. Run "pynter configure" in the terminal to create it.'%cfgfile)
         return        
+    
+    
+SETTINGS['vasp'] = load_vasp_default()
+locals().update(SETTINGS)

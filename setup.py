@@ -10,9 +10,9 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name='pynter-defects',
-    version='1.0.2',
+    version='1.0.3',
     author='Lorenzo Villa',
-    description='Tools for atomistic calculations',
+    description='Tools for atomistic calculations, provides features for point-defect calculations with VASP',
     packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
     install_requires=[
         'ase',
