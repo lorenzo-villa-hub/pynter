@@ -8,13 +8,13 @@ Created on Wed Feb 19 14:52:51 2020
 import os
 import os.path as op
 import numpy as np
+
 from pymatgen.core.periodic_table import Element
-from pymatgen.symmetry.bandstructure import HighSymmKpath
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
+
 from pynter.vasp.default_inputs import DefaultInputs
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
-from pynter.defects.structure import create_vacancy_structures, create_substitution_structures
-from pynter.defects.defects import create_vacancies, create_substitutions, create_interstitials
+from pynter.defects.defects import create_vacancies, create_substitutions
 
 
 class InputSets:

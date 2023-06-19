@@ -8,9 +8,9 @@ Created on Mon Nov  9 11:12:09 2020
 
 import warnings
 from matgendb.creator import VaspToDbTaskDrone
-from pynter.__init__ import load_config
+from pynter import SETTINGS
 
-dbconfig = load_config()['dbconfig']
+dbconfig = SETTINGS['dbconfig']
 
 # for VaspJob we use pymatgen-db interface
 class VaspJobDrone(VaspToDbTaskDrone):

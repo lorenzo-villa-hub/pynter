@@ -11,7 +11,7 @@ from pymatgen.core.composition import Composition
 from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 
-from pynter.__init__ import load_config
+from pynter import SETTINGS
 from pynter.phase_diagram.chempots import PDHandler, Reservoirs
 from pynter.tools.utils import save_object_as_json
 
@@ -75,7 +75,7 @@ def get_chempots(pd,composition):
     
 def get_phase_diagram(elements):  
     from pymatgen.ext.matproj import MPRester
-    with MPRester(load_config()['API_KEY']) as mpr:
+    with MPRester(SETTINGS['API_KEY']) as mpr:
         compat = MaterialsProjectCompatibility()  # sets energy corrections and +U/pseudopotential choice
         unprocessed_entries = mpr.get_entries_in_chemsys(elements,inc_structure=True)
     processed_entries = compat.process_entries(unprocessed_entries)  # filter and add energy corrections    

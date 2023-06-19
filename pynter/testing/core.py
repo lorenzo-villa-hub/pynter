@@ -74,16 +74,6 @@ class PynterTest(unittest.TestCase):
     
     
     @property
-    def cfgfile(self):
-        homedir = os.getenv("HOME")
-        return op.join(homedir,'.pynter','config.yml')
-    
-    @property
-    def cfgfile_vasp(self):
-        homedir = os.getenv("HOME")
-        return op.join(homedir,'.pynter','vasp.yml')
-    
-    @property
     def incar_settings(self):
         incar_settings = {'ALGO': 'Normal',
          'AMIX': 0.2,
