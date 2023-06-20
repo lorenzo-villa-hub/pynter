@@ -7,12 +7,16 @@ Created on Thu May 25 14:39:37 2023
 """
 from setuptools import setup, find_namespace_packages
 
+with open("README.md") as file:
+    long_description = file.read()
 
 setup(
     name='pynter-defects',
-    version='1.0.4',
+    version='1.0.5',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations, provides features for point-defect calculations with VASP',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
     install_requires=[
         'ase',
