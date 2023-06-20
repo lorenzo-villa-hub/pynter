@@ -5,7 +5,6 @@ Created on Thu May 25 14:39:37 2023
 
 @author: villa
 """
-import yaml
 from setuptools import setup, find_namespace_packages
 import atexit
 import os
@@ -37,6 +36,7 @@ config_filename = 'config.yml'
 vasp_config_filename = 'vasp.yml'
 
 def post_install():
+
     
     if not os.path.exists(os.path.join(settings_path,config_filename)):
         set_default_config()
@@ -46,6 +46,7 @@ def post_install():
 
 
 def set_default_config():
+    import yaml
     config = {        
         'HPC': 
               {'hostname': None,
@@ -87,6 +88,7 @@ def set_default_config():
 
 
 def set_default_vasp_config():
+    import yaml
     vasp_default = {
       'incar_default': {'ALGO': 'Normal',
       'AMIX': 0.2,
