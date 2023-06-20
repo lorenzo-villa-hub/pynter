@@ -13,7 +13,7 @@ from pymatgen.io.vasp.inputs import VaspInput
 from pymatgen.io.vasp.outputs import Vasprun
 
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
-from pynter.vasp.__init__ import load_vasp_default
+from pynter import SETTINGS
 from pynter.testing.core import PynterTest
 from pynter.testing.vasp import VaspInputsTest, VaspOutputsTest
 
@@ -41,7 +41,7 @@ class TestVaspJob(PynterTest):
         assert j.job_settings == self.job_settings    
         assert j.final_energy == -11.00288193
         assert j.charge == 0
-        keys = load_vasp_default()['computed_entry_default']
+        keys = SETTINGS['vasp']['computed_entry_default']
         assert list(j.computed_entry.data.keys()) == keys
         
     def test_vaspjob_with_band_structure(self):
