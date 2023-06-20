@@ -9,10 +9,6 @@ from pynter import run_local, SETTINGS
 
 class HPCInterface:
     
-    @requires(which("sshpass"),
-              "sshpass needs to be installed, you can install it with 'sudo apt-get install sshpass'.")
-    @requires(which("rsync"),
-          "rsync needs to be installed, you can install it with 'sudo apt-get install rsync'.")
     
     def __init__(self,config=None):
         """
@@ -52,7 +48,9 @@ class HPCInterface:
         stdout,stderr = self.command(cmd,printout,dry_run,**kwargs)
         return stdout,stderr
 
-            
+
+    @requires(which("sshpass"),
+              "sshpass needs to be installed, you can install it with 'sudo apt-get install sshpass'.")     
     def command(self,cmd,printout=True,dry_run=False,**kwargs):   
         """
         Run command on HPC
@@ -141,7 +139,9 @@ class HPCInterface:
         stdout,stderr = self.command(cmd,printout,dry_run,**kwargs)
         return stdout, stderr
     
-
+    
+    @requires(which("rsync"),
+          "rsync needs to be installed, you can install it with 'sudo apt-get install rsync'.")
     def rsync_from_hpc(self,remotedir=None,localdir=None,exclude=None,printout=True,dry_run=False,**kwargs):
         """
         Sync folders from HPC to local machine. The command "rsync" is used. With this function all
@@ -188,6 +188,8 @@ class HPCInterface:
         return stdout,stderr
 
 
+    @requires(which("rsync"),
+          "rsync needs to be installed, you can install it with 'sudo apt-get install rsync'.")
     def rsync_to_hpc(self,localdir=None,remotedir=None,exclude=None,printout=True,dry_run=False,**kwargs):
         """
         Sync folders from local machine to HPC. The command "rsync" is used. With this function all
@@ -233,7 +235,9 @@ class HPCInterface:
 
         return stdout,stderr
     
-          
+    
+    @requires(which("sshpass"),
+              "sshpass needs to be installed, you can install it with 'sudo apt-get install sshpass'.")      
     def sbatch(self,path='',job_script_filename='job.sh',printout=True,dry_run=False,**kwargs):
         """
         Execute "sbatch" command on HPC to run job.
