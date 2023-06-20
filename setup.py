@@ -10,7 +10,7 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name='pynter-defects',
-    version='1.0.3',
+    version='1.0.4',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations, provides features for point-defect calculations with VASP',
     packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
