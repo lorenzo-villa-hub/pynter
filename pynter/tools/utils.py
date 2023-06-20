@@ -133,6 +133,24 @@ def explore_pynter_packages():
     return explore_packages(path)            
 
 
+def get_content_from_url(file_url):
+    """
+    Get content from URL.
+
+    Parameters
+    ----------
+    file_url: URL to retrieve content from.
+
+    Returns
+    -------
+    String with content.
+    """
+    import urllib.request
+    with urllib.request.urlopen(file_url) as url:
+       content = url.read().decode('utf-8')
+    return content
+    
+
 def get_object_feature(obj,feature):
     """
     Get value of attribute or method of a generic Object.
