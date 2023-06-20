@@ -30,14 +30,16 @@ setup(
 )
 
 
+
+
+
+
+
 homedir = os.getenv("HOME")
 settings_path = os.path.join(homedir,'.pynter')
 config_filename = 'config.yml'
 vasp_config_filename = 'vasp.yml'
-
-def post_install():
-
-    
+def post_install():    
     if not os.path.exists(os.path.join(settings_path,config_filename)):
         set_default_config()
     if not os.path.exists(os.path.join(settings_path,vasp_config_filename)):
