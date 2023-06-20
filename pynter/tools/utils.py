@@ -207,7 +207,7 @@ def get_object_from_json(cls,path_or_string):
         with open(path_or_string) as file:
             d = json.load(file)
     else:
-        d = json.load(path_or_string)
+        d = json.loads(path_or_string)
 
     return cls.from_dict(d)
 
