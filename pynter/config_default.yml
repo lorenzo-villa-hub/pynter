@@ -1,0 +1,33 @@
+API_KEY: null
+HPC:
+  hostname: null
+  localdir: /nfshome/villa/pynter-data
+  workdir: null
+dbconfig:
+  vasp:
+    collection: vasp
+    database: pynter
+    host: 127.0.0.1
+    password: null
+    port: 27017
+    user: null
+job_settings:
+  add_automation: null
+  add_lines_body: null
+  add_lines_header: null
+  add_stop_array: true
+  array_size: null
+  cores_per_node: 1
+  email: null
+  error_filename: err.%j
+  filename: job.sh
+  memory_per_cpu: 3500
+  modules: null
+  name: no_name
+  nodes: 1
+  output_filename: out.%j
+  partition: null
+  path_exe: ''
+  processor: null
+  project_id: ''
+  timelimit: 01:00:00

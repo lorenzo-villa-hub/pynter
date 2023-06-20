@@ -2,6 +2,30 @@
 import yaml
 import os
 import subprocess
+import warnings
+
+def get_config_from_default_file():
+    """
+    Get initial settings from config_default.yml
+    """
+    path = os.path.abspath(__file__).strip(os.path.basename(__file__))
+    filename = 'config_default.yml'
+    with open(os.path.join(path,filename),'r') as ymlfile:
+        return yaml.load(ymlfile,Loader=yaml.FullLoader)
+    
+def get_vasp_defaults_from_default_file():
+    """
+    Get initial vasp settings from ./vasp/vasp_default.yml
+    """
+    from pynter import vasp
+    path = os.path.abspath(vasp.__file__).strip(os.path.basename(vasp.__file__))
+    filename = 'vasp_default.yml'
+    with open(os.path.join(path,filename),'r') as ymlfile:
+        return yaml.load(ymlfile,Loader=yaml.FullLoader)
+
+
+SETTINGS = get_config_from_default_file()
+SETTINGS['vasp'] = get_vasp_defaults_from_default_file()
 
 
 def get_cfgfile():
@@ -28,7 +52,7 @@ def load_config(cfgfile=cfgfile):
         with open(cfgfile,"r") as ymlfile:
             return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
     else:
-        raise FileNotFoundError('%s does not exist. Run "pynter configure" in the terminal to create it.'%cfgfile)
+        warnings.warn('%s does not exist. Run "pynter configure" in the terminal to create it. Using default settings for now. '%cfgfile)
         return
 
 
@@ -57,12 +81,17 @@ def load_vasp_default(cfgfile=cfgfile):
         with open(cfgfile,"r") as ymlfile:
             return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
     else:
-        raise FileNotFoundError('%s does not exist. Run "pynter configure" in the terminal to create it.'%cfgfile)
+        warnings.warn('%s does not exist. Run "pynter configure" in the terminal to create it. Using default settings for now'%cfgfile)
         return  
 
-
-SETTINGS = load_config()
-SETTINGS['vasp'] = load_vasp_default()
+# Overwrite initial settings
+config = load_config()
+if config:
+    SETTINGS.update(config)
+    
+vasp_defaults = load_vasp_default()
+if vasp_defaults:
+    SETTINGS['vasp'].update(vasp_defaults)
 
 
 
