@@ -351,7 +351,7 @@ class Reservoirs(MSONable):
             with open(path_or_string) as file:
                 d = json.load(file)
         else:
-            d = json.load(path_or_string)
+            d = json.loads(path_or_string)
         return Reservoirs.from_dict(d)
 
 

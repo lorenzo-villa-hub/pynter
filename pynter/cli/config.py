@@ -51,9 +51,9 @@ def run_config(exclude=None,info=False):
         print('HPC setup:')
         hostname = input('Hostname: ')
         localdir = input('Local calculation directory: ')
-        localdir = os.path.abspath(localdir)
+        localdir = os.path.abspath(localdir) if localdir else None
         workdir = input('Remote calculation directory: ')
-        workdir = os.path.normpath(workdir)
+        workdir = os.path.normpath(workdir) if workdir else None
         
         print('\nDefault settings for job script setup: ')
         project_id = input('Project ID: ')
