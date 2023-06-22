@@ -28,7 +28,7 @@ class TestDefectsAnalysis(PynterTest):
         mu_B = -6.6794
         mu_P = -5.4133
         mu_Si = -5.4224
-        self.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B})
+        self.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},round_values=2)
         self.dos = get_object_from_json(CompleteDos, self.get_testfile_path('Si_DOS.json')) 
 
     def test_import(self):
@@ -101,7 +101,8 @@ class TestDefectsAnalysis(PynterTest):
               'charge=1.0, conc=5.20e-41, name=Vac_Si, stable=True]'
               )
         
-        self.assert_str_content_equal( self.da.defect_concentrations(self.chempots,fermi_level=0.4).__str__() , concentrations_string )
+        self.assert_str_content_equal( self.da.defect_concentrations(self.chempots,fermi_level=0.4).__str__() ,
+                                      concentrations_string  )
     
     
     def test_defect_concentrations_fixed(self):    

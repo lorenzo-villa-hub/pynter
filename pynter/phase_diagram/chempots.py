@@ -15,7 +15,7 @@ import copy
 
 class Chempots(MSONable):
     
-    def __init__(self,chempots_dict,round_values=2):
+    def __init__(self,chempots_dict,round_values=6):
         """
         Class to handle set of chemical potentials. Behaves like a python dictionary.
         The dictionary needs to be set with element symbols as keys and chemical potentials 
