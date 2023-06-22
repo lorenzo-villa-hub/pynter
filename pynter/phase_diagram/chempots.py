@@ -5,7 +5,7 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
-from monty.json import MSONable, jsanitize, MontyEncoder
+from monty.json import MSONable, MontyEncoder
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.phase_diagram import PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pymatgen.symmetry.groups import SpaceGroup

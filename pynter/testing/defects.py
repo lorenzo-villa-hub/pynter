@@ -32,6 +32,8 @@ class DefectEntryTest(PynterTest):
         self.assertEqual(entry1.corrections,entry2.corrections)
         self.assertEqual(entry1.data,entry2.data)
         self.assertEqual(entry1.label,entry2.label)
+        
+
             
         
             
