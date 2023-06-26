@@ -5,7 +5,7 @@ import os.path as op
 import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
-from monty.json import MSONable, jsanitize, MontyEncoder
+from monty.json import MSONable, MontyEncoder
 from pymatgen.core.periodic_table import Element
 from pymatgen.analysis.phase_diagram import PhaseDiagram, GrandPotentialPhaseDiagram, PDPlotter
 from pymatgen.symmetry.groups import SpaceGroup
@@ -15,7 +15,7 @@ import copy
 
 class Chempots(MSONable):
     
-    def __init__(self,chempots_dict,round_values=6):
+    def __init__(self,chempots_dict,ndecimals=6):
         """
         Class to handle set of chemical potentials. Behaves like a python dictionary.
         The dictionary needs to be set with element symbols as keys and chemical potentials 
@@ -25,9 +25,13 @@ class Chempots(MSONable):
         ----------
         chempots_dict : (dict)
             Dictionary of chemical potentials in the format {el:value}.
+        ndecimals : (int)
+            Round the chemical potentials to this number of decimals. If None
+            the numbers are left untouched. the default is 6.
+            
         """
-        if round_values:
-            self._mu = {el:round(v,round_values) for el,v in chempots_dict.items()}
+        if ndecimals:
+            self._mu = {el:round(v,ndecimals) for el,v in chempots_dict.items()}
         else:
             self._mu = chempots_dict
     
@@ -253,7 +257,8 @@ class Reservoirs(MSONable):
         return self.res_dict.items()
 
     def copy(self):
-        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.pd,are_chempots_delta=self.are_chempots_delta,mu_refs=self.mu_refs)
+        return Reservoirs(copy.deepcopy(self.res_dict),phase_diagram=self.pd,
+                          are_chempots_delta=self.are_chempots_delta,mu_refs=self.mu_refs)
     
     def update(self, other):
         if isinstance(other, dict):

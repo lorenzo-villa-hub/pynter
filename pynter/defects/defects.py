@@ -333,7 +333,7 @@ class Substitution(Defect):
         """
         Name for this defect. Behaves like a string with additional attributes.
         """
-        return DefectName(self.defect_type,self.site.specie.symbol,self.site_in_bulk.specie,self.label)   
+        return DefectName(self.defect_type,self.site.specie.symbol,self.site_in_bulk.specie.symbol,self.label)   
     
     @property
     def site_in_bulk(self):
