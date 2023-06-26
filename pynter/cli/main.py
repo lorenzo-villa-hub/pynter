@@ -39,30 +39,28 @@ def main():
     config_exists = os.path.exists(os.path.join(homedir,'.pynter/config.yml'))
     config_vasp_exists = os.path.exists(os.path.join(homedir,'.pynter/vasp.yml'))
     if config_exists is False and config_vasp_exists is False:
-        inp = input("configuration files do not exist, do you wish to create them? (y/n)")
-        if inp in ['y','Y','yes']:
-            run_config()
-            
-    else:
-        setup_analysis(subparsers)
-        setup_automation(subparsers)  
-        setup_config(subparsers)
-        setup_defects(subparsers)
-        setup_hpc(subparsers)
-        setup_inputs(subparsers)
-        setup_job_script(subparsers)
-        setup_mp_database(subparsers)
-        setup_phase_diagram(subparsers)
-        setup_plotter(subparsers)
-        
-        args = parser.parse_args()
-        
-        try:
-            args.func
-        except AttributeError:
-            parser.print_help()
-            raise SystemExit("Please specify a command.")
-        return args.func(args)
+        warnings.warn('configuration files do not exist, run "pynter configure" in the terminal to create them')
+
+
+    setup_analysis(subparsers)
+    setup_automation(subparsers)  
+    setup_config(subparsers)
+    setup_defects(subparsers)
+    setup_hpc(subparsers)
+    setup_inputs(subparsers)
+    setup_job_script(subparsers)
+    setup_mp_database(subparsers)
+    setup_phase_diagram(subparsers)
+    setup_plotter(subparsers)
+    
+    args = parser.parse_args()
+    
+    try:
+        args.func
+    except AttributeError:
+        parser.print_help()
+        raise SystemExit("Please specify a command.")
+    return args.func(args)
 
 if __name__ == '__main__':
     main()
