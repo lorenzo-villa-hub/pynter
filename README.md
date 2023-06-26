@@ -1,5 +1,5 @@
 # pynter
-Tools for atomistic calculations. Uses [`pymatgen`](https://pymatgen.org) package. The main features are designed to systematically run, analyse and plot DFT point defect calculations with VASP. 
+Tools for atomistic calculations. Uses the [`pymatgen`](https://pymatgen.org) package. The main features are designed to systematically run, analyse and plot DFT point defect calculations with VASP. 
 
 It can be installed with the Python Package Index (PyPI) by running:
 ```sh

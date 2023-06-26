@@ -29,7 +29,7 @@ class TestDefectsAnalysis(PynterTest):
         mu_B = -6.6794
         mu_P = -5.4133
         mu_Si = -5.4224
-        self.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},round_values=2)
+        self.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},ndecimals=2)
         self.dos = get_object_from_json(CompleteDos, self.get_testfile_path('Si_DOS.json')) 
 
     def test_import(self):

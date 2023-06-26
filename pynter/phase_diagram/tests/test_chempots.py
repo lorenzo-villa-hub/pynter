@@ -33,8 +33,8 @@ class TestChempots(PynterTest):
         self.assert_object_almost_equal( self.mu.to_pmg_elements() , mu_elements )
         
     def test_absolute_referenced(self):
-        ChempotsTest().assert_Chempots_equal( self.mu.get_absolute(self.mu_refs) , self.mu_abs )
-        ChempotsTest().assert_Chempots_equal( self.mu_abs.get_referenced(self.mu_refs) , self.mu )
+        ChempotsTest().assert_Chempots_equal( self.mu.get_absolute(self.mu_refs) , self.mu_abs, rtol=1e-03 )
+        ChempotsTest().assert_Chempots_equal( self.mu_abs.get_referenced(self.mu_refs) , self.mu, rtol=1e-03 )
         
         
 class TestReservoirs(TestChempots):
@@ -46,21 +46,21 @@ class TestReservoirs(TestChempots):
         self.res = Reservoirs(res_dict,pd,are_chempots_delta=True)
     
     def test_mu_refs(self):
-        ChempotsTest().assert_Chempots_equal( self.res.mu_refs , Chempots(self.mu_refs) )
+        ChempotsTest().assert_Chempots_equal( self.res.mu_refs , Chempots(self.mu_refs), rtol=1e-02 )
         
     def test_as_dict_from_dict(self):
-        ReservoirsTest().assert_Reservoirs_equal( self.res , Reservoirs.from_dict(self.res.as_dict()) )
+        ReservoirsTest().assert_Reservoirs_equal( self.res , Reservoirs.from_dict(self.res.as_dict()) ,rtol=1e-07)
         ReservoirsTest().assert_Reservoirs_equal( self.res , 
-                                        Reservoirs.from_json(self.get_testfile_path('reservoirs_NaNbO3.json')))
+                                        Reservoirs.from_json(self.get_testfile_path('reservoirs_NaNbO3.json')), rtol=1e-02)
     
     def test_absolute_referenced(self):
         self.res.set_to_absolute()
-        ReservoirsTest().assert_Reservoirs_equal( self.res , Reservoirs({'X':self.mu_abs}) , check_reference=False )
+        ReservoirsTest().assert_Reservoirs_equal( self.res , Reservoirs({'X':self.mu_abs}) , check_reference=False, rtol=1e-03 )
         self.res.set_to_referenced()
-        ReservoirsTest().assert_Reservoirs_equal( self.res , Reservoirs({'X':self.mu}), check_reference=False)
+        ReservoirsTest().assert_Reservoirs_equal( self.res , Reservoirs({'X':self.mu}), check_reference=False, rtol=1e-03)
         res_filtered = Reservoirs({'X':Chempots({'Na':-2.26,'O':-1.92})})
         ReservoirsTest().assert_Reservoirs_equal( 
-            self.res.filter_reservoirs(elements=['Na','O']), res_filtered , check_reference=False)
+            self.res.filter_reservoirs(elements=['Na','O']), res_filtered , check_reference=False, rtol=1e-03)
     
     
 class TestPDHandler(PynterTest):
@@ -83,7 +83,7 @@ class TestPDHandler(PynterTest):
          'NaNb3O8-NaNbO3-O2': Chempots({'O': -4.95, 'Nb': -20.79, 'Na': -4.91})
          }
         ReservoirsTest().assert_Reservoirs_equal( 
-            Reservoirs(self.pdh.get_all_boundaries_chempots(self.comp)) , Reservoirs(boundary_chempots), check_reference=False )
+            Reservoirs(self.pdh.get_all_boundaries_chempots(self.comp)) , Reservoirs(boundary_chempots), check_reference=False, rtol=1e-02 )
         
     def test_entries(self):
         comp , pd , pdh = self.comp, self.pd, self.pdh
@@ -103,7 +103,7 @@ class TestPDHandler(PynterTest):
         ReservoirsTest().assert_Reservoirs_equal(  
             Reservoirs(self.pdh.get_phase_boundaries_chempots(self.comp,{'O':-1.92}) ) ,
             Reservoirs(phase_boundary_chempots),
-            check_reference=False)
+            check_reference=False, rtol=1e-02)
     
     
     

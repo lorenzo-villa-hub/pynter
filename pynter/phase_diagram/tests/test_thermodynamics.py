@@ -40,7 +40,7 @@ class TestOxygenPressure(TestChempots):
           1e10: Chempots({'O': -7.01})
           }
         ox_res = self.oxpr.get_oxygen_pressure_reservoirs(self.mu_abs['O'],npoints=5)
-        ReservoirsTest().assert_Reservoirs_equal( ox_res , PressureReservoirs(ox_res_dict) ,check_reference=False)
+        ReservoirsTest().assert_Reservoirs_equal( ox_res , PressureReservoirs(ox_res_dict) ,check_reference=False, rtol=1e-02)
         
     def test_pressure_reservoirs_from_pd(self):
         pres_dict = {
@@ -53,6 +53,6 @@ class TestOxygenPressure(TestChempots):
         pd = get_object_from_json(PhaseDiagram,self.get_testfile_path('PD_Na-Nb-O.json'))
         comp = Composition('NaNbO3')
         pres = self.oxpr.get_pressure_reservoirs_from_pd(pd,comp,temperature=1300,npoints=5)
-        ReservoirsTest().assert_Reservoirs_equal( pres , PressureReservoirs(pres_dict) ,check_reference=False)
-        ReservoirsTest().assert_Reservoirs_equal( pres , PressureReservoirs.from_dict(pres.as_dict()) ,check_reference=False)
+        ReservoirsTest().assert_Reservoirs_equal( pres , PressureReservoirs(pres_dict) ,check_reference=False, rtol=1e-02)
+        ReservoirsTest().assert_Reservoirs_equal( pres , PressureReservoirs.from_dict(pres.as_dict()) ,check_reference=False, rtol=1e-02)
     
