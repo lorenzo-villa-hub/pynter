@@ -320,8 +320,8 @@ class DefectsAnalysis:
         return corr
 
     
-    def filter_entries(self,inplace=False,exclude=False,mode='and',entries=None,
-                       types=None,elements=None,names=None,**kwargs):
+    def filter_entries(self,inplace=False,exclude=False,mode='and',entries=None,types=None,
+                       elements=None,names=None,complex_features=None,function=None,**kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
@@ -342,15 +342,27 @@ class DefectsAnalysis:
             If None this criterion is ignored. The default is None.
         names : (list)
             List of entry names.
+        complex_features : (list of tuples) , optional
+            List of properties that need to be satisfied.
+            To use when the property of interest is stored in a dictionary.
+            The first element of the tuple indentifies the property (see get_object_feature),
+            the second corrisponds to the target value. To address more than one condition 
+            relative to the same property, use lists or tuples.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function must take a DefectEntry
+            object as argument and return a bool.
         **kwargs : (dict)
-            Criterion based on attributes or methods of defect entry (e.g. charge=1).
+            Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
+            of the defect entry. To address more than one condition relative to
+            the same attribute, use lists or tuples (e.g. charge=[0,1]).
 
         Returns
         -------
         DefectsAnalysis object.
         """
         output_entries = self.select_entries(exclude=exclude,mode=mode,entries=entries,types=types,
-                                             elements=elements,names=names,**kwargs)
+                                             elements=elements,names=names,complex_features=complex_features,
+                                             function=function,**kwargs)
         
         if inplace:
             self.entries = output_entries
@@ -703,8 +715,8 @@ class DefectsAnalysis:
         return plt    
     
     
-    def select_entries(self,exclude=False,mode='and',entries=None,
-                       types=None,elements=None,names=None,**kwargs):
+    def select_entries(self,exclude=False,mode='and',entries=None,types=None,elements=None,
+                       names=None,complex_features=None,function=None,**kwargs):
         """
         Find entries based on different criteria. Returns a list of DefectEntry objects.
 
@@ -723,8 +735,19 @@ class DefectsAnalysis:
             If None this criterion is ignored. The default is None.
         names : (list)
             List of entry names.
+        complex_features : (list of tuples) , optional
+            List of properties that need to be satisfied.
+            To use when the property of interest is stored in a dictionary.
+            The first element of the tuple indentifies the property (see get_object_feature),
+            the second corrisponds to the target value. To address more than one condition 
+            relative to the same property, use lists or tuples.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function must take a DefectEntry
+            object as argument and return a bool.
         **kwargs : (dict)
-            Criterion based on attributes or methods of defect entry (e.g. charge=1).
+            Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
+            of the defect entry. To address more than one condition relative to
+            the same attribute, use lists or tuples (e.g. charge=[0,1]).
 
         Returns
         -------
@@ -761,14 +784,46 @@ class DefectsAnalysis:
                 if e.name in names:
                     sel_entries.append(e)
         
+        if complex_features:
+            if sel_entries and mode=='and':
+                ent = sel_entries.copy()
+                sel_entries = []
+            for feature in complex_features:
+                feature_name = feature[0]
+                feature_value = feature[1]
+                for e in ent:
+                    entry_feature = get_object_feature(e,feature_name)
+                    if type(feature_value) in [list,tuple]:
+                        for v in feature_value:
+                            if entry_feature == v:
+                                sel_entries.append(e)
+                    elif entry_feature == feature_value:
+                        if e not in sel_entries:
+                            sel_entries.append(e)
+
         for feature in kwargs:
             if sel_entries and mode=='and':
                 ent = sel_entries.copy()
                 sel_entries = []
             for e in ent:
-                attr = get_object_feature(e,feature)
-                if attr == kwargs[feature]:
-                    sel_entries.append(e)        
+                entry_feature = get_object_feature(e,feature)
+                if type(kwargs[feature]) in [list,tuple]:
+                    for v in kwargs[feature]:
+                        if entry_feature == v:
+                            if e not in sel_entries:
+                                sel_entries.append(e)
+                elif entry_feature == kwargs[feature]:
+                    if e not in sel_entries:
+                        sel_entries.append(e) 
+                        
+        if function:
+            if sel_entries and mode=='and':
+                ent = sel_entries.copy()
+                sel_entries = []
+            for e in ent:
+                if function(e):
+                    if e not in sel_entries:
+                        sel_entries.append(e)      
 
         output_entries = []
         for e in input_entries:
@@ -1045,7 +1100,7 @@ class DefectConcentrations:
 
     
     def filter_concentrations(self,inplace=False,mode='and',exclude=False,names=None,
-                              charges=None,indexes=None,**kwargs):
+                              charges=None,indexes=None,function=None,**kwargs):
         """
         Filter concentrations based on different criteria.
 
@@ -1064,6 +1119,9 @@ class DefectConcentrations:
             Charges of the defect.
         indexes : (list), optional
             Indexes of defect in the concentrations list.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function must take a 
+            SingleDefConc object as argument and return a bool.
         **kwargs : (dict)
             Criteria for selection. They need to be attributes of SingleDefConc.
 
@@ -1074,7 +1132,8 @@ class DefectConcentrations:
         """
 
         output_concs = self.select_concentrations(mode=mode,exclude=exclude,names=names,
-                                                  charges=charges,indexes=indexes,**kwargs)
+                                                  charges=charges,indexes=indexes,
+                                                  function=function,**kwargs)
                     
         if inplace:
             self.concentrations = output_concs
@@ -1111,7 +1170,7 @@ class DefectConcentrations:
         
 
     def select_concentrations(self,concentrations=None,mode='and',exclude=False,names=None,
-                    charges=None,indexes=None,**kwargs):
+                    charges=None,indexes=None,function=None,**kwargs):
         """
         Select concentrations based on different criteria.
 
@@ -1130,6 +1189,9 @@ class DefectConcentrations:
             Charges of the defect.
         indexes : (list), optional
             Indexes of defect in the concentrations list.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function must take a 
+            SingleDefConc object as argument and return a bool.
         **kwargs : (dict)
             Criteria for selection. They need to be attributes of SingleDefConc.
 
@@ -1166,6 +1228,15 @@ class DefectConcentrations:
                 sel_concs = []
             for c in concs:
                 if concs.index(c) in indexes:
+                    if c not in sel_concs:
+                        sel_concs.append(c)
+        
+        if function is not None:
+            if sel_concs and mode=='and':
+                concs = sel_concs.copy()
+                sel_concs = []
+            for c in concs:
+                if function(c):
                     if c not in sel_concs:
                         sel_concs.append(c)
         
