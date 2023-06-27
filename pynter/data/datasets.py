@@ -7,7 +7,7 @@ from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import json
 from monty.json import MontyDecoder
-from pynter.tools.utils import get_object_feature, sort_objects
+from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 def _check_job_script(job_script_filenames,files):
     """
@@ -366,8 +366,8 @@ class Dataset:
         return
         
             
-    def filter_jobs(self,jobs=None,inplace=False,mode='and',exclude=False,names=None,groups=None,
-                    common_group=None,common_node=None,complex_features=None,function=None,**kwargs):
+    def filter_jobs(self,inplace=False,jobs=None,mode='and',exclude=False,names=None,groups=None,
+                    common_group=None,common_node=None,function=None,**kwargs):
         """
         Function to filter jobs based on different selection criteria.
         The priority of the selection criterion follows the order of the input
@@ -376,6 +376,8 @@ class Dataset:
 
         Parameters
         ----------
+        inplace : (bool), optional
+            If True update the current object, otherwise returns a new Dataset object.
         jobs : (list), optional
             List of Jobs to search, if None the self.jobs is used. The default is None.
         mode : (str), optional
@@ -390,12 +392,6 @@ class Dataset:
             String that needs to be present in the group.
         common_node : (str), optional
             String that needs to be present in the node.
-        complex_features : (list of tuples) , optional
-            List of properties that need to be satisfied.
-            To use when the property of interest is stored in a dictionary.
-            The first element of the tuple indentifies the property (see get_object_feature),
-            the second corrisponds to the target value. To address more than one condition 
-            relative to the same property, use lists or tuples.
         function : (function), optional
             Specific funtion for more complex criteria. The function needs to return a bool.
         **kwargs : (dict)
@@ -411,7 +407,7 @@ class Dataset:
         """
         jobs = self.select_jobs(jobs=jobs,mode=mode,exclude=exclude,names=names,groups=groups,
                                 common_group=common_group,common_node=common_node,
-                                complex_features=complex_features,function=function,**kwargs)
+                                function=function,**kwargs)
         
         if inplace:
             self.__init__(jobs,self.path,self.name,self.sort)
@@ -553,6 +549,61 @@ class Dataset:
                     job.nodes = nodes 
                     job.node_points = nodes.split('/')[1:]
         return
+            
+
+    def select_jobs(self,jobs=None,mode='and',exclude=False,names=None,groups=None,common_group=None,
+                    common_node=None,function=None,**kwargs):
+        """
+        Function to filter jobs based on different selection criteria.
+        The priority of the selection criterion follows the order of the input
+        parameters. When more than one criterion is present, the arg "mode" 
+        determines the selection criterion.
+
+        Parameters
+        ----------
+        jobs : (list), optional
+            List of Jobs to search, if None the self.jobs is used. The default is None.
+        mode : (str), optional
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+        exclude : (bool), optional
+            Exclude the jobs satisfying the criteria instead of selecting them. The default is False.
+        names : (list), optional
+            List of Job names. 
+        groups : (list), optional
+            List of groups that jobs need to belong to.
+        common_group : (str), optional
+            String that needs to be present in the group.
+        common_node : (str), optional
+            String that needs to be present in the node.
+        function : (function), optional
+            Specific funtion for more complex criteria. The function needs to return a bool.
+        **kwargs : (dict)
+            Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
+            present in the relative Job class. To address more than one condition relative to
+            the same attribute, use lists or tuples (e.g. charge=[0,1]).
+
+        Returns
+        -------
+        output_jobs : (list)
+            List with selected jobs.
+        """
+        input_jobs = jobs.copy() if jobs else self.jobs.copy() 
+        
+        def fnames(job):
+            return job.name in names if names else True
+        
+        def fgroups(job):
+            return job.group in groups if groups else True
+        
+        def fcommon_group(job):
+            return common_group in job.group if common_group else True
+        
+        def fcommon_node(job):
+            return common_node in job.nodes if common_node else True
+        
+        return select_objects(objects=input_jobs,mode=mode,exclude=exclude,
+                              functions=[fnames,fgroups,fcommon_group,
+                                         fcommon_node,function],**kwargs)
 
 
     def sort_jobs(self,jobs_to_sort=None,features=['name'],reset=True,reverse=False):
@@ -581,7 +632,6 @@ class Dataset:
             features = [features]
         jobs = jobs_to_sort if jobs_to_sort else self.jobs
         sorted_jobs = sort_objects(jobs, features, reverse)
-       # sorted_jobs = sorted(jobs, key=lambda x: get_object_feature(x,feature),reverse=reverse)
 
         if not jobs_to_sort:
             if reset:
@@ -592,138 +642,6 @@ class Dataset:
                 return sorted_jobs
         else:
             return sorted_jobs
-            
-
-    def select_jobs(self,jobs=None,mode='and',exclude=False,names=None,groups=None,common_group=None,
-                    common_node=None,complex_features=None,function=None,**kwargs):
-        """
-        Function to filter jobs based on different selection criteria.
-        The priority of the selection criterion follows the order of the input
-        parameters. When more than one criterion is present, the arg "mode" 
-        determines the selection criterion.
-
-        Parameters
-        ----------
-        jobs : (list), optional
-            List of Jobs to search, if None the self.jobs is used. The default is None.
-        mode : (str), optional
-            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
-        exclude : (bool), optional
-            Exclude the jobs satisfying the criteria instead of selecting them. The default is False.
-        names : (list), optional
-            List of Job names. 
-        groups : (list), optional
-            List of groups that jobs need to belong to.
-        common_group : (str), optional
-            String that needs to be present in the group.
-        common_node : (str), optional
-            String that needs to be present in the node.
-        complex_features : (list of tuples) , optional
-            List of properties that need to be satisfied.
-            To use when the property of interest is stored in a dictionary.
-            The first element of the tuple indentifies the property (see get_object_feature),
-            the second corrisponds to the target value. To address more than one condition 
-            relative to the same property, use lists or tuples.
-        function : (function), optional
-            Specific funtion for more complex criteria. The function needs to return a bool.
-        **kwargs : (dict)
-            Properties that the jobs need to satisfy. Keys are referred to attributes/methods 
-            present in the relative Job class. To address more than one condition relative to
-            the same attribute, use lists or tuples (e.g. charge=[0,1]).
-
-        Returns
-        -------
-        output_jobs : (list)
-            List with selected jobs.
-        """
-        input_jobs = jobs.copy() if jobs else self.jobs.copy() 
-        
-        sel_jobs = []
-        jobs = input_jobs.copy()
-        if names:
-            for j in jobs:
-                if j.name in names:
-                    sel_jobs.append(j)
-        
-        if groups:
-            if sel_jobs and mode=='and':
-                jobs = sel_jobs.copy()
-                sel_jobs = []
-            for j in jobs:
-                if j.group in groups:
-                    if j not in sel_jobs:
-                        sel_jobs.append(j)
-
-        if common_group:
-            if sel_jobs and mode=='and':
-                jobs = sel_jobs.copy()
-                sel_jobs = []
-            for j in jobs:
-                if common_group in j.group:
-                    if j not in sel_jobs:
-                        sel_jobs.append(j)
-
-        if common_node:
-            if sel_jobs and mode=='and':
-                jobs = sel_jobs.copy()
-                sel_jobs = []
-            for j in jobs:
-                if common_node in j.nodes:
-                    if j not in sel_jobs:
-                        sel_jobs.append(j)
-        
-        if complex_features:
-            if sel_jobs and mode=='and':
-                jobs = sel_jobs.copy()
-                sel_jobs = []
-            for feature in complex_features:
-                feature_name = feature[0]
-                feature_value = feature[1]
-                for j in jobs:
-                    job_feature = get_object_feature(j,feature_name)
-                    if type(feature_value) in [list,tuple]:
-                        for v in feature_value:
-                            if job_feature == v:
-                                sel_jobs.append(j)
-                    elif job_feature == feature_value:
-                        if j not in sel_jobs:
-                            sel_jobs.append(j)
-
-        for feature in kwargs:
-            if sel_jobs and mode=='and':
-                jobs = sel_jobs.copy()
-                sel_jobs = []
-            for j in jobs:
-                job_feature = get_object_feature(j,feature)
-                if type(kwargs[feature]) in [list,tuple]:
-                    for v in kwargs[feature]:
-                        if job_feature == v:
-                            if j not in sel_jobs:
-                                sel_jobs.append(j)
-                elif job_feature == kwargs[feature]:
-                    if j not in sel_jobs:
-                        sel_jobs.append(j) 
-                        
-        if function:
-            if sel_jobs and mode=='and':
-                jobs = sel_jobs.copy()
-                sel_jobs = []
-            for j in jobs:
-                if function(j):
-                    if j not in sel_jobs:
-                        sel_jobs.append(j)
-        
-        output_jobs = []
-        for j in input_jobs:
-            if exclude:
-                if j not in sel_jobs:
-                    output_jobs.append(j)
-            else:
-                if j in sel_jobs:
-                    output_jobs.append(j)    
-        
-            
-        return output_jobs
 
 
     def sync_dataset_from_hpc(self,stdouts=False,exclude=None,dry_run=False):

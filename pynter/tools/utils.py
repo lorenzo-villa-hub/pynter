@@ -238,6 +238,73 @@ def save_object_as_json(object,path,sanitize=False,cls=MontyEncoder):
         return d.__str__() 
 
 
+def select_objects(objects,mode='and',exclude=False,functions=None,**kwargs):
+    """
+    Filter objects based on different criteria. Returns a list of objects.
+
+    Parameters
+    ----------
+    objects : (list)
+        List of objects.
+    mode : (str), optional
+        Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+    exclude : (bool), optional
+        Exclude the entries satisfying the criteria instead of selecting them. The default is False.
+    functions : (list), optional
+        Functions containing criteria. The functions must take the object as the argument and
+        return a bool. 
+    **kwargs : (dict)
+        Keys are methods/attributes the objects have. Values contain the criteria. 
+        To address more than one condition relative to the same attribute,
+        use lists or tuples (e.g. charge=[0,1]).
+
+    Returns
+    -------
+    output_objects : (list)
+        List with selected objects.
+    """    
+    input_objects = objects.copy()  
+    sel_objects = []
+
+    if functions:
+        for func in functions:
+            if func:
+                if sel_objects and mode=='and':
+                    objects = sel_objects.copy()
+                    sel_objects = []
+                for obj in objects:
+                    if func(obj) == True:
+                        if obj not in sel_objects:
+                            sel_objects.append(obj)
+    
+    for key in kwargs:
+        if sel_objects and mode=='and':
+            objects = sel_objects.copy()
+            sel_objects = []
+        for obj in objects:
+            feature = get_object_feature(obj,key)
+            if type(kwargs[key]) in [list,tuple]:
+                for value in kwargs[key]:
+                    if feature == value:
+                        if obj not in sel_objects:
+                            sel_objects.append(obj)
+            elif feature == kwargs[key]:
+                if obj not in sel_objects:
+                    sel_objects.append(obj)  
+                    
+    output_objects = []
+    for obj in input_objects:
+        if exclude:
+            if obj not in sel_objects:
+                output_objects.append(obj)
+        else:
+            if obj in sel_objects:
+                output_objects.append(obj)    
+    
+    return output_objects
+
+
+
 def sort_objects(objects,features,reverse=False):
     """
     Sort objects based on a list of features (attributes or methods of the objects, or functions)
