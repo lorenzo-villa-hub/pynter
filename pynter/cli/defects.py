@@ -190,7 +190,7 @@ def import_entries(args):
 
 def parse_common_args(parser):
     parser.add_argument('-f','--file',help='Json file representation of a DefectAnalysis object',
-                        required=True,type=str,default=None,metavar='',dest='file')
+                        type=str,default=None,metavar='',dest='file')
     
     parser.add_argument('-c','--chempots',help="""Chemical potentials, written in a line ( el1 -x el2 -y el3 -z ). 
                         If not provided, elemental chempots are taken from the Materials Project. Use with care.""",
@@ -243,8 +243,8 @@ def setup_plot(parser):
     parser.add_argument('-eform','--formation-energies',action='store_true',help='Plot formation energies, provide chempots',required=False,
                     default=False,dest='plot_formation_energies')
     
-    parser.add_argument('-r','--reservoirs',help='Save plots as pdf',type=str,required=False,
-                    default=None,dest='path_reservoirs')
+    parser.add_argument('-r','--reservoirs',help='json file with Reservoirs',type=str,required=False,
+                    default=None,metavar='',dest='path_reservoirs')
 
     parser.add_argument('-s','--savefig',action='store_true',help='Save plots as pdf',required=False,
                     default=False,dest='savefig')
