@@ -168,6 +168,7 @@ def import_entries(args):
         
         if entry.defect.defect_type == 'DefectComplex' and len(entry.defect.defects) > 3:
             warnings.warn('A complex with more than 3 species has been found, something has likely gone wrong in the automatic defect determination. Excluding it for now...')
+        else:    
             entries.append(entry)
     
     band_gap, vbm = job_bulk.energy_gap, job_bulk.vbm
