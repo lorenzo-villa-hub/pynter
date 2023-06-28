@@ -588,22 +588,33 @@ class Dataset:
             List with selected jobs.
         """
         input_jobs = jobs.copy() if jobs else self.jobs.copy() 
+        functions = []
         
-        def fnames(job):
-            return job.name in names if names else True
+        if names:
+            def fnames(job):
+                return job.name in names
+            functions.append(fnames)
         
-        def fgroups(job):
-            return job.group in groups if groups else True
+        if groups:
+            def fgroups(job):
+                return job.group in groups
+            functions.append(fgroups)
         
-        def fcommon_group(job):
-            return common_group in job.group if common_group else True
+        if common_group:
+            def fcommon_group(job):
+                return common_group in job.group
+            functions.append(fcommon_group)
         
-        def fcommon_node(job):
-            return common_node in job.nodes if common_node else True
+        if common_node:
+            def fcommon_node(job):
+                return common_node in job.nodes
+            functions.append(fcommon_node)
         
+        if function:
+            functions.append(function)
+            
         return select_objects(objects=input_jobs,mode=mode,exclude=exclude,
-                              functions=[fnames,fgroups,fcommon_group,
-                                         fcommon_node,function],**kwargs)
+                              functions=functions,**kwargs)
 
 
     def sort_jobs(self,jobs_to_sort=None,features=['name'],reset=True,reverse=False):

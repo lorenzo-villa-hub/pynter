@@ -318,7 +318,7 @@ class DefectsAnalysis:
 
     
     def filter_entries(self,inplace=False,entries=None,mode='and',exclude=False,types=None,
-                       elements=None,names=None,complex_features=None,function=None,**kwargs):
+                       elements=None,names=None,function=None,**kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
@@ -339,12 +339,6 @@ class DefectsAnalysis:
             If None this criterion is ignored. The default is None.
         names : (list)
             List of entry names.
-        complex_features : (list of tuples) , optional
-            List of properties that need to be satisfied.
-            To use when the property of interest is stored in a dictionary.
-            The first element of the tuple indentifies the property (see get_object_feature),
-            the second corrisponds to the target value. To address more than one condition 
-            relative to the same property, use lists or tuples.
         function : (function), optional
             Specific funtion for more complex criteria. The function must take a DefectEntry
             object as argument and return a bool.
@@ -358,8 +352,7 @@ class DefectsAnalysis:
         DefectsAnalysis object.
         """
         output_entries = self.select_entries(entries=entries,mode=mode,exclude=exclude,types=types,
-                                             elements=elements,names=names,complex_features=complex_features,
-                                             function=function,**kwargs)
+                                             elements=elements,names=names,function=function,**kwargs)
         
         if inplace:
             self.entries = output_entries
@@ -745,23 +738,30 @@ class DefectsAnalysis:
         List of DefectEntry objects.
         """        
         input_entries = entries if entries else self.entries 
+        functions = []
         
-        def ftypes(entry):
-            return entry.defect_type in types if types else True
+        if types:
+            def ftypes(entry):
+                return entry.defect_type in types
+            functions.append(ftypes)
         
-        def felements(entry):
-            if elements:
+        if elements:
+            def felements(entry):
                 for name in entry.name:
                     if name.dspecie in elements:
                         return True
-            else:
-                return True
+            functions.append(felements)
                 
-        def fnames(entry):
-            return entry.name in names if names else True
+        if names:
+            def fnames(entry):
+                return entry.name in names
+            functions.append(fnames)
         
+        if function:
+            functions.append(function)
+            
         return select_objects(objects=input_entries,mode=mode,exclude=exclude,
-                              functions=[ftypes,felements,fnames,function],**kwargs)
+                              functions=functions,**kwargs)
     
     
     def solve_fermi_level(self,chemical_potentials,bulk_dos,temperature=300,
@@ -1126,18 +1126,28 @@ class DefectConcentrations:
             List of SingleDefConc objects.
         """
         input_concs = concentrations if concentrations else self.concentrations.copy()
+        functions = []
         
-        def fnames(c):
-            return c.name in names if names != None else True
+        if names is not None:
+            def fnames(c):
+                return c.name in names
+            functions.append(fnames)
         
-        def fcharges(c):
-            return c.charge in charges if charges != None else True
+        if charges is not None:
+            def fcharges(c):
+                return c.charge in charges
+            functions.append(fcharges)
         
-        def findexes(c):
-            return input_concs.index(c) in indexes if indexes != None else True
+        if indexes is not None:
+            def findexes(c):
+                return input_concs.index(c) in indexes
+            functions.append(findexes)
         
+        if function is not None:
+            functions.append(function)
+            
         return select_objects(objects=input_concs,mode=mode,exclude=exclude,
-                              functions=[fnames,fcharges,findexes,function],**kwargs)
+                              functions=functions,**kwargs)
     
                     
         
