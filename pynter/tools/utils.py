@@ -12,7 +12,7 @@ import os.path as op
 import json
 import pkgutil
 import pandas as pd
-from monty.json import jsanitize,MontyEncoder
+from monty.json import jsanitize,MontyEncoder, MontyDecoder
 
 
 def change_file (input_file , output_file=None, back_up_file = True,
@@ -187,21 +187,21 @@ def get_object_feature(obj,feature):
         return attr
 
 
-def get_object_from_json(cls,path_or_string):
+def get_object_from_json(object_class,path_or_string):
     """
     Build class object from json file or string. The class must posses the 'from_dict' method.
 
     Parameters
     ----------
-    cls : (class)
+    object_class : (class)
+        Class of the object to decoder.
     path_or_string : (str)
         If an existing path to a file is given the object is constructed reading the json file.
         Otherwise it will be read as a string.
 
     Returns
     -------
-    PhaseDiagram object.
-
+    Decoded object.
     """
     if op.isfile(path_or_string):
         with open(path_or_string) as file:
@@ -209,7 +209,7 @@ def get_object_from_json(cls,path_or_string):
     else:
         d = json.loads(path_or_string)
 
-    return cls.from_dict(d)
+    return object_class.from_dict(d)
 
 
 def save_object_as_json(object,path,sanitize=False,cls=MontyEncoder):
@@ -235,7 +235,77 @@ def save_object_as_json(object,path,sanitize=False,cls=MontyEncoder):
             json.dump(d,file,cls=cls)
         return
     else:
-        return d.__str__() 
+        return json.dumps(d,cls=cls) 
+
+
+def select_objects(objects,mode='and',exclude=False,functions=None,**kwargs):
+    """
+    Filter objects based on different criteria. Returns a list of objects.
+
+    Parameters
+    ----------
+    objects : (list)
+        List of objects.
+    mode : (str), optional
+        Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+    exclude : (bool), optional
+        Exclude the entries satisfying the criteria instead of selecting them. The default is False.
+    functions : (list), optional
+        Functions containing criteria. The functions must take the object as the argument and
+        return a bool. 
+    **kwargs : (dict)
+        Keys are methods/attributes the objects have. Values contain the criteria. 
+        To address more than one condition relative to the same attribute,
+        use lists or tuples (e.g. charge=[0,1]).
+
+    Returns
+    -------
+    output_objects : (list)
+        List with selected objects.
+    """    
+    selected_objects = []
+    entered_selection = False
+    filtered_objects = objects.copy()
+    if functions:
+        for func in functions:
+            if func:
+                entered_selection = True
+                if mode=='and':
+                    if selected_objects:
+                        filtered_objects = selected_objects.copy()
+                        selected_objects = []
+                for obj in filtered_objects:
+                    if func(obj) == True:
+                        if obj not in selected_objects:
+                            selected_objects.append(obj)
+    
+    for key in kwargs:
+        if mode=='and':
+            if selected_objects or entered_selection is True:
+                filtered_objects = selected_objects.copy()
+                selected_objects = []
+        for obj in filtered_objects:
+            feature = get_object_feature(obj,key)
+            if type(kwargs[key]) in [list,tuple]:
+                for value in kwargs[key]:
+                    if feature == value:
+                        if obj not in selected_objects:
+                            selected_objects.append(obj)
+            elif feature == kwargs[key]:
+                if obj not in selected_objects:
+                    selected_objects.append(obj)  
+    
+    output_objects = []
+    for obj in objects:
+        if exclude:
+            if obj not in selected_objects:
+                output_objects.append(obj)
+        else:
+            if obj in selected_objects:
+                output_objects.append(obj)    
+    
+    return output_objects
+
 
 
 def sort_objects(objects,features,reverse=False):

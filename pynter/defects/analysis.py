@@ -1,5 +1,3 @@
-# module for analysing defect calculations
-
 
 import numpy as np
 from scipy.optimize import bisect
@@ -7,8 +5,7 @@ from pymatgen.electronic_structure.dos import FermiDos
 import matplotlib
 import matplotlib.pyplot as plt
 from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
-from pynter.tools.utils import get_object_feature
-from pynter.defects.defects import DefectName
+from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 import os.path as op
@@ -17,7 +14,7 @@ import json
 
 class DefectsAnalysis:
     
-    def __init__(self, entries, vbm, band_gap, sort_entries = True, occupation_function='MB'):
+    def __init__(self, entries, vbm, band_gap, sort_entries=True, occupation_function='MB'):
         """ 
         Class to compute defect properties starting from single calculations of defects.
         Args:
@@ -37,7 +34,7 @@ class DefectsAnalysis:
                 Function to compute defect occupation. 
                 "FD" for Fermi-Dirac, "MB" for Maxwell-Boltzmann.
         """
-        self.entries = self.sort_entries(entries) if sort_entries else entries
+        self.entries = self.sort_entries(inplace=False,entries=entries) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap
         self.occupation_function = occupation_function
@@ -320,8 +317,8 @@ class DefectsAnalysis:
         return corr
 
     
-    def filter_entries(self,inplace=False,exclude=False,mode='and',entries=None,types=None,
-                       elements=None,names=None,complex_features=None,function=None,**kwargs):
+    def filter_entries(self,inplace=False,entries=None,mode='and',exclude=False,types=None,
+                       elements=None,names=None,function=None,**kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
@@ -329,12 +326,12 @@ class DefectsAnalysis:
         ----------
         inplace : (bool)
             Apply changes to current DefectsAnalysis object.
-        exclude : (bool), optional
-            Exclude the entries satisfying the criteria instead of selecting them. The default is False.
-        mode : (str), optional
-            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'.
         entries : (list)
             List of defect entries.
+        mode : (str), optional
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+        exclude : (bool), optional
+            Exclude the entries satisfying the criteria instead of selecting them. The default is False.
         types : (list), optional
             Class name of the defect in the entry.
         elements : (list), optional
@@ -342,12 +339,6 @@ class DefectsAnalysis:
             If None this criterion is ignored. The default is None.
         names : (list)
             List of entry names.
-        complex_features : (list of tuples) , optional
-            List of properties that need to be satisfied.
-            To use when the property of interest is stored in a dictionary.
-            The first element of the tuple indentifies the property (see get_object_feature),
-            the second corrisponds to the target value. To address more than one condition 
-            relative to the same property, use lists or tuples.
         function : (function), optional
             Specific funtion for more complex criteria. The function must take a DefectEntry
             object as argument and return a bool.
@@ -360,9 +351,8 @@ class DefectsAnalysis:
         -------
         DefectsAnalysis object.
         """
-        output_entries = self.select_entries(exclude=exclude,mode=mode,entries=entries,types=types,
-                                             elements=elements,names=names,complex_features=complex_features,
-                                             function=function,**kwargs)
+        output_entries = self.select_entries(entries=entries,mode=mode,exclude=exclude,types=types,
+                                             elements=elements,names=names,function=function,**kwargs)
         
         if inplace:
             self.entries = output_entries
@@ -713,21 +703,21 @@ class DefectsAnalysis:
         plt.ylabel('Energy(eV)',fontsize=20*size)  
         
         return plt    
-    
-    
-    def select_entries(self,exclude=False,mode='and',entries=None,types=None,elements=None,
-                       names=None,complex_features=None,function=None,**kwargs):
+
+
+    def select_entries(self,entries=None,mode='and',exclude=False,types=None,elements=None,
+                       names=None,function=None,**kwargs):
         """
         Find entries based on different criteria. Returns a list of DefectEntry objects.
 
         Parameters
         ----------
-        exclude : (bool), optional
-            Exclude the entries satisfying the criteria instead of selecting them. The default is False.
-        mode : (str), optional
-            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
         entries : (list)
             List of defect entries.
+        mode : (str), optional
+            Filtering mode, possibilities are: 'and' and 'or'. The default is 'and'. 
+        exclude : (bool), optional
+            Exclude the entries satisfying the criteria instead of selecting them. The default is False.
         types : (list), optional
             Class name of the defect in the entry.
         elements : (list), optional
@@ -735,12 +725,6 @@ class DefectsAnalysis:
             If None this criterion is ignored. The default is None.
         names : (list)
             List of entry names.
-        complex_features : (list of tuples) , optional
-            List of properties that need to be satisfied.
-            To use when the property of interest is stored in a dictionary.
-            The first element of the tuple indentifies the property (see get_object_feature),
-            the second corrisponds to the target value. To address more than one condition 
-            relative to the same property, use lists or tuples.
         function : (function), optional
             Specific funtion for more complex criteria. The function must take a DefectEntry
             object as argument and return a bool.
@@ -754,89 +738,32 @@ class DefectsAnalysis:
         List of DefectEntry objects.
         """        
         input_entries = entries if entries else self.entries 
-        ent = input_entries.copy()
-        sel_entries = []
+        functions = []
+        
         if types:
-            if sel_entries and mode=='and':
-                ent = sel_entries.copy()
-                sel_entries = []
-            for e in ent:
-                if e.defect_type in types:
-                    sel_entries.append(e)
+            def ftypes(entry):
+                return entry.defect_type in types
+            functions.append(ftypes)
         
-        if elements is not None:
-            if sel_entries and mode=='and':
-                ent = sel_entries.copy()
-                sel_entries = []
-            for e in ent:
-                select = False                
-                for dn in e.name:
-                    if dn.dspecie in elements:
-                        select = True
-                if select:
-                    sel_entries.append(e)
-        
+        if elements:
+            def felements(entry):
+                for name in entry.name:
+                    if name.dspecie in elements:
+                        return True
+            functions.append(felements)
+                
         if names:
-            if sel_entries and mode=='and':
-                ent = sel_entries.copy()
-                sel_entries = []
-            for e in ent:
-                if e.name in names:
-                    sel_entries.append(e)
+            def fnames(entry):
+                return entry.name in names
+            functions.append(fnames)
         
-        if complex_features:
-            if sel_entries and mode=='and':
-                ent = sel_entries.copy()
-                sel_entries = []
-            for feature in complex_features:
-                feature_name = feature[0]
-                feature_value = feature[1]
-                for e in ent:
-                    entry_feature = get_object_feature(e,feature_name)
-                    if type(feature_value) in [list,tuple]:
-                        for v in feature_value:
-                            if entry_feature == v:
-                                sel_entries.append(e)
-                    elif entry_feature == feature_value:
-                        if e not in sel_entries:
-                            sel_entries.append(e)
-
-        for feature in kwargs:
-            if sel_entries and mode=='and':
-                ent = sel_entries.copy()
-                sel_entries = []
-            for e in ent:
-                entry_feature = get_object_feature(e,feature)
-                if type(kwargs[feature]) in [list,tuple]:
-                    for v in kwargs[feature]:
-                        if entry_feature == v:
-                            if e not in sel_entries:
-                                sel_entries.append(e)
-                elif entry_feature == kwargs[feature]:
-                    if e not in sel_entries:
-                        sel_entries.append(e) 
-                        
         if function:
-            if sel_entries and mode=='and':
-                ent = sel_entries.copy()
-                sel_entries = []
-            for e in ent:
-                if function(e):
-                    if e not in sel_entries:
-                        sel_entries.append(e)      
-
-        output_entries = []
-        for e in input_entries:
-            if exclude:
-                if e not in sel_entries:
-                    output_entries.append(e)
-            else:
-                if e in sel_entries:
-                    output_entries.append(e) 
+            functions.append(function)
+            
+        return select_objects(objects=input_entries,mode=mode,exclude=exclude,
+                              functions=functions,**kwargs)
     
-        return output_entries    
     
-
     def solve_fermi_level(self,chemical_potentials,bulk_dos,temperature=300,
                                     fixed_concentrations=None,external_defects=[],xtol=1e-05):
         """
@@ -881,19 +808,21 @@ class DefectsAnalysis:
         return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=xtol)
     
     
-    def sort_entries(self,entries=None,features=['name','charge'],inplace=False):
+    def sort_entries(self,inplace=False,entries=None,features=['name','charge'],reverse=False):
         """
         Sort defect entries with different criteria.
 
         Parameters
         ----------
+        inplace : (bool), optional
+            Reset the self.entries attibute with sorted entries. Only works if entries input
+            is not given. The default is False.
         entries : (list), optional
             List of defect entries to sort. If None self.entries is used. The default is None.
         features : (list), optional
             List of strings with attribute/method names. The default is ['name','charge'].
-        inplace : (bool), optional
-            Reset the self.entries attibute with sorted entries. Only works if entries input
-            is not given. The default is False.
+        reverse : (bool)
+            Reverse order.
 
         Returns
         -------
@@ -902,10 +831,7 @@ class DefectsAnalysis:
         """
         inplace = False if entries else inplace
         entries = entries if entries else self.entries
-        def criteria(entry):
-            return [get_object_feature(entry,feature) for feature in features]           
-        sort_function = lambda entry: criteria(entry)
-        sorted_entries = sorted(entries, key=sort_function)
+        sorted_entries = sort_objects(objects=entries, features=features)
         if inplace:
             self.entries = sorted_entries
         else:
@@ -1130,7 +1056,6 @@ class DefectConcentrations:
         output_concs : (list)
             Filtered DefectConcentrations object.
         """
-
         output_concs = self.select_concentrations(mode=mode,exclude=exclude,names=names,
                                                   charges=charges,indexes=indexes,
                                                   function=function,**kwargs)
@@ -1200,67 +1125,30 @@ class DefectConcentrations:
         output_concs : (list)
             List of SingleDefConc objects.
         """
-        sel_concs = []
         input_concs = concentrations if concentrations else self.concentrations.copy()
-        concs = input_concs.copy()  
+        functions = []
         
         if names is not None:
-            if sel_concs and mode=='and':
-                concs = sel_concs.copy()
-                sel_concs = []
-            for c in concs:
-                if c.name in names:
-                    if c not in sel_concs:
-                        sel_concs.append(c)
-                        
+            def fnames(c):
+                return c.name in names
+            functions.append(fnames)
+        
         if charges is not None:
-            if sel_concs and mode=='and':
-                concs = sel_concs.copy()
-                sel_concs = []
-            for c in concs:
-                if c.charge in charges:
-                    if c not in sel_concs:
-                        sel_concs.append(c)
-                        
+            def fcharges(c):
+                return c.charge in charges
+            functions.append(fcharges)
+        
         if indexes is not None:
-            if sel_concs and mode=='and':
-                concs = sel_concs.copy()
-                sel_concs = []
-            for c in concs:
-                if concs.index(c) in indexes:
-                    if c not in sel_concs:
-                        sel_concs.append(c)
+            def findexes(c):
+                return input_concs.index(c) in indexes
+            functions.append(findexes)
         
         if function is not None:
-            if sel_concs and mode=='and':
-                concs = sel_concs.copy()
-                sel_concs = []
-            for c in concs:
-                if function(c):
-                    if c not in sel_concs:
-                        sel_concs.append(c)
-        
-        if kwargs:
-            for k in kwargs:
-                if sel_concs and mode=='and':
-                    concs = sel_concs.copy()
-                    sel_concs = []
-                for c in concs:
-                    feature = get_object_feature(c,k)
-                    if feature == kwargs[k]:
-                        if c not in sel_concs:
-                            sel_concs.append(c)
-                        
-        output_concs = []
-        for c in input_concs:
-            if exclude:
-                if c not in sel_concs:
-                    output_concs.append(c)
-            else:
-                if c in sel_concs:
-                    output_concs.append(c)
-                    
-        return output_concs
+            functions.append(function)
+            
+        return select_objects(objects=input_concs,mode=mode,exclude=exclude,
+                              functions=functions,**kwargs)
+    
                     
         
         
