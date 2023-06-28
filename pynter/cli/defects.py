@@ -182,7 +182,7 @@ def import_entries(args):
         dos = job_bulk.complete_dos
         save_object_as_json(dos,'./DOS_%s.json'%job_bulk.formula.replace(' ',''))
         print('\nDefectsAnalysis object saved as defects_analysis_%s.json' %job_bulk.formula.replace(' ',''))
-        print('DOS object saved as DOS_%s.json' %job_bulk.formula)
+        print('DOS object saved as DOS_%s.json' %job_bulk.formula.replace(' ',''))
     return
   
 
