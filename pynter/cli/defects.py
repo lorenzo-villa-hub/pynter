@@ -305,8 +305,8 @@ def plot(args):
 def setup_analysis(parser):
     parser = parse_common_args(parser)        
     parser.add_argument('-d','--dos',help='Bulk DOS json file',type=str,required=False,default=None,metavar='',dest='dos')
-    parser.add_argument('-ef','--fermi',help='Input Fermi level  (default: %(default)s)',required=False,metavar='',default=0,dest='fermi_level')
-    parser.add_argument('-T','--temperature',help='Input temperature  (default: %(default)s)',required=False,default=300,metavar='',dest='temperature')
+    parser.add_argument('-ef','--fermi',help='Input Fermi level  (default: %(default)s)',required=False,metavar='',default=0,type=float,dest='fermi_level')
+    parser.add_argument('-T','--temperature',help='Input temperature  (default: %(default)s)',required=False,default=300,type=float,metavar='',dest='temperature')
     
     parser.add_argument('-cc','--carrier-concentrations',action='store_true',help='Compute carrier concentrations, provide Fermi level, chempots and DOS json file',required=False,
                     default=False,dest='carrier_concentrations')
