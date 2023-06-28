@@ -177,11 +177,11 @@ def import_entries(args):
     print('\nDefectsAnalysis:')
     print(da.get_dataframe())
     if args.savejson:
-        da.to_json('defects_analysis_%s.json' %job_bulk.formula)
+        da.to_json('defects_analysis_%s.json' %job_bulk.formula.replace(' ',''))
         job_bulk.get_output_properties(data=['complete_dos'])
         dos = job_bulk.complete_dos
-        save_object_as_json(dos,'./DOS_%s.json'%job_bulk.formula)
-        print('\nDefectsAnalysis object saved as defects_analysis_%s.json' %job_bulk.formula)
+        save_object_as_json(dos,'./DOS_%s.json'%job_bulk.formula.replace(' ',''))
+        print('\nDefectsAnalysis object saved as defects_analysis_%s.json' %job_bulk.formula.replace(' ',''))
         print('DOS object saved as DOS_%s.json' %job_bulk.formula)
     return
   
