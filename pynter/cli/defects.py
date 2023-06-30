@@ -61,16 +61,16 @@ def setup_inputs(parser):
     parser_vasp.add_argument('-auto','--automation',action='store_true',help='Add default automation to job script',required=False,
                         default=False,dest='automation')    
 
-    parser_vasp.add_argument('-ss','--supercell-size',action='append',help='Size of the supercell',type=int,required=False,
+    parser_vasp.add_argument('-ss','--supercell-size',action='append',help='Size of the supercell (integer or list)',type=int,required=False,
                         default=None,metavar='',dest='supercell_size')
 
     parser_vasp.add_argument('-rel','--relaxation-scheme',help='Relaxation scheme to use, choose between "default" (2-step PBE) and "gamma" (4-step PBE) (default: %(default)s)',
                         required=False,default='default',type=str,metavar='',dest='relaxation_scheme')
     
-    parser_vasp.add_argument('-sub','--substitutions',help='Substituions inputs. Provide elements and charges as {"<new_el>-on-<old_el>":[q0,q1,q2]}',type=str,required=False,
+    parser_vasp.add_argument('-sub','--substitutions',help=""""Substituions inputs. Provide elements and charges as '{"<new_el>-on-<old_el>":[q0,q1,q2]}'""",type=str,required=False,
                         default=None,metavar='',dest='substitutions')
     
-    parser_vasp.add_argument('-vac','--vacancies',help='Vacancies inputs. Provide elements and charges as {"el":[q0,q1,q2]}',type=str,required=False,
+    parser_vasp.add_argument('-vac','--vacancies',help="""Vacancies inputs. Provide elements and charges as '{"el":[q0,q1,q2]}'""",type=str,required=False,
                         default=None,metavar='',dest='vacancies')
     
     parser_vasp.set_defaults(func=create_vasp_inputs)

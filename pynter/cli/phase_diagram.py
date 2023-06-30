@@ -21,7 +21,7 @@ def setup_phase_diagram(subparsers):
     parser_sub = subparsers.add_parser('phase-diagram',help='Generate phase diagrams with pymatgen from the Materials Project database')
     
     parser_sub.add_argument('-e','--elements',action='append',help='Components of the phase diagram, provide as "el1-el2" or -e el1 -e el2',
-                            required=True,type=str,metavar='',dest='elements')
+                            type=str,metavar='',dest='elements')
     parser_sub.add_argument('-c','--chempots',help='Print boundary chempots of target phase',required=False,default=False,type=str,metavar='',
                             dest='composition_chempots')
     parser_sub.add_argument('-sc','--save-chempots',action='store_true',help='Save chempots in Reservoirs object as json',required=False,default=False,dest='savechempots')
@@ -52,20 +52,26 @@ def run_phase_diagram(args):
     
     if args.plot_pd:
         plt = plot_pd(pd)
+        if args.savefig:
+            fname = 'PD_' + '-'.join(elements) + '.pdf'
+            path = os.path.join(os.getcwd(),fname)
+            plt.savefig(path,bbox_inches='tight')
+        else:
+            plt.show()
     if args.elements_stability:
         elements_stability = args.elements_stability[0].split('-') if len(args.elements_stability)==1 else args.elements_stability
-        plt = plot_stability_diagram(pd,elements_stability)
+        plt_stab = plot_stability_diagram(pd,elements_stability)
+        if args.savefig:
+            fname = 'SD_' + '-'.join(elements) + '.pdf'
+            path = os.path.join(os.getcwd(),fname)
+            plt_stab.savefig(path,bbox_inches='tight')
+        else:
+            plt_stab.show()
     
     if args.savejson:
         fname = 'PD_' + '-'.join(elements) + '.json'
         path = os.path.join(os.getcwd(),fname)
         save_object_as_json(pd,path)
-    if args.savefig:
-        fname = 'PD_' + '-'.join(elements) + '.pdf'
-        path = os.path.join(os.getcwd(),fname)
-        plt.savefig(path,bbox_inches='tight')
-    elif plt:
-        plt.show()
     
     return
 

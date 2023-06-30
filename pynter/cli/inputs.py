@@ -50,6 +50,9 @@ def setup_inputs_vasp(parser):
     parser.add_argument('-pbe','--pbe-relaxation',action='store_true',help='3 steps atomic and volume relaxation with PBE',required=False,
                         default=False,dest='pbe_relaxation')
     
+    parser.add_argument('-pbe-es','--pbe-electronic-structure',action='store_true',help='3 steps electronic structure calculations with PBE',required=False,
+                        default=False,dest='pbe_electronic_structure')
+    
     parser.add_argument('-is','--inputsets',help='Name of a set of inputs from the InputSets class',required=False,type=str,
                         default=None,metavar='',dest='input_sets')
     
@@ -77,6 +80,9 @@ def create_inputs_vasp(args):
         
     elif args.pbe_relaxation:
         jobs = schemes.pbe_vol_relaxation()
+        
+    elif args.pbe_electronic_structure:
+        jobs = schemes.pbe_electronic_structure()
     
     elif args.hse_relaxation:
         jobs = schemes.hse_vol_relaxation()
