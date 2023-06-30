@@ -106,7 +106,7 @@ incar_default:
   ISMEAR: 0
   ISPIN: 1
   LCHARG: .TRUE.
-  LORBIT: 10
+  LORBIT: 11
   LREAL: .FALSE.
   LWAVE: .TRUE.
   NELM: 200

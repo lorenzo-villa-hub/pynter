@@ -13,7 +13,8 @@ import numpy as np
 import warnings
 from pprint import pprint
 
-from pymatgen.electronic_structure.dos import FermiDos
+#from pymatgen.electronic_structure.dos import FermiDos # complete dos from_dict bug
+from pynter.vasp.pmg.pmg_electronic_structure_dos import CompleteDos
 
 from pynter.data.datasets import Dataset
 from pynter.vasp.jobs import VaspJob
@@ -347,7 +348,7 @@ def analysis(args):
             print('\nDefect concentrations:')
             print(da.defect_concentrations(chempots,temperature,ef))
         
-    dos = get_object_from_json(FermiDos,args.dos) if args.dos else None
+    dos = get_object_from_json(CompleteDos,args.dos) if args.dos else None
     if args.carrier_concentrations:
         if dos:
             print('\nCarrier concentrations:')
@@ -356,8 +357,7 @@ def analysis(args):
             raise ValueError('DOS json file needs to be provided to compute carrier concentrations')
     if args.solve_fermi_level:
         if dos and chempots:
-            print('\nEquilibrium Fermi level:')
-            print(round(da.solve_fermi_level(chempots,dos,temperature),4))
+            print('\nEquilibrium Fermi level:\n',round(da.solve_fermi_level(chempots,dos,temperature),4))
         else:
             raise ValueError('DOS json file needs to be provided to compute carrier concentrations')
             
