@@ -12,6 +12,8 @@ import numpy as np
 
 from pymatgen.io.vasp.outputs import Vasprun
 
+from pynter.tools.utils import save_object_as_json
+
 
 def setup_analysis(subparsers):
     
@@ -42,6 +44,9 @@ def analyse_vasprun(args):
         analyse_convergence(vasprun)
     if args.dielectric_properties:
         analyse_dielectric_properties(vasprun)
+    if args.export_dos:
+        dos = vasprun.complete_dos
+        save_object_as_json(dos, 'complete_dos.json')
         
     return 
     
