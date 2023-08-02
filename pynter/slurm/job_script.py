@@ -9,23 +9,15 @@ from pynter.tools.utils import grep_list
 
 class ScriptHandler:
     
-    def __init__(self, **kwargs):
+    # switch to key value format for sbatch args
+    def __init__(self,sbatch_kwargs={},array_size=None,modules=None,path_exe=None,
+                 add_stop_array=False,add_automation=False,add_lines_header=None,
+                 add_lines_body=None):
         """
         Parameters
         ----------
         **kwargs : 
-            project_id: (str) Project ID \n
-            name: (str) Job name \n
             array_size: (int) Number of jobs for array \n
-            email: (str) Email address for info \n
-            nodes: (int) Number of nodes \n
-            cores_per_node: (int) Number of cores per node \n
-            output_filename: (str) Filename of output file \n
-            error_filename: (str) Filename of error file \n
-            timelimit: (int) Time limit in hours \n
-            memory_per_cpu:(int) Memory settings
-            partition (str) Partition
-            processor: (str) CPU architecture
             modules: (list) List of modules to be loaded
             path_exe: (str) Path to executable \n             
             add_stop_array : (Bool), Add lines for stopping array jobs when calculation is converged. \n                
@@ -250,25 +242,7 @@ class ScriptHandler:
         """
         f = []
         f.append('#!/bin/sh\n')
-        f.append('#SBATCH -A %s\n' %self.project_id)
-        f.append('#SBATCH --job-name=%s\n' %self.name)
-        if self.array_size:
-            f.append('#SBATCH --array=1-%i%%1\n' %self.array_size)
-        if self.email:
-            f.append('#SBATCH --mail-user=%s\n' %self.email)
-            f.append('#SBATCH --mail-type=ALL\n')
-        f.append('#SBATCH --nodes=%i\n' %self.nodes)
-        f.append('#SBATCH --ntasks-per-node=%i\n' %self.cores_per_node)
-        f.append('#SBATCH --cpus-per-task=1\n')
-        f.append('#SBATCH --output=%s\n' %self.output_filename)
-        f.append('#SBATCH --error=%s\n' %self.error_filename)
-        f.append('#SBATCH --time=%s\n' %self.timelimit)
-        if self.partition:
-            f.append('#SBATCH -p %s\n' %self.partition)
-        f.append('#SBATCH --exclusive\n')
-        f.append('#SBATCH --mem-per-cpu=%i\n' %self.memory_per_cpu)
-        if self.processor:
-            f.append('#SBATCH -C %s\n' %self.processor)
+        for k,v
         f.append('\n')
         f.append('module purge\n')
         if self.modules:
