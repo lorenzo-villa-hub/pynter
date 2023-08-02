@@ -910,7 +910,7 @@ class AdvancedSchemes(Schemes):
         """
         jobs = []
         if automation:
-            self.job_settings['add_automation'] = 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'
+            self.job_settings['add_automation'] = 'pynter automation vasp --contcar --chgcar --wavecar --error-check --check-kpoints'
 
         for df, charge_states in defects_with_charges:
             path = op.join(self.path,df.name)
