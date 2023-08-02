@@ -8,12 +8,201 @@ Created on Thu Jan 14 14:48:55 2021
 import warnings
 from monty.json import MSONable
 from monty.json import jsanitize
+import numpy as np
 
 from pynter.defects.analysis import DefectConcentrations
 import copy
 import os.path as op
 import json
 import os
+
+
+class ConcentrationAnalysis:
+    """
+    Class that handles the analysis of the oxygen partial pressure dependency.
+    """
+    
+    def __init__(self,defects_analysis,bulk_dos,fixed_concentrations=None,external_defects=[],xtol=1e-05):
+        """
+        Parameters
+        ----------
+        defects_analysis :
+            DefectsAnalysis object.
+        bulk_dos : 
+            Pymatgen Dos object.
+        fixed_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. (ex {'Vac_Na':1e20}) 
+        external_defects : (list)
+            List of external defect concentrations (not present in defect entries).
+        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+        """
+        self.da = defects_analysis
+        self.bulk_dos = bulk_dos
+        self.fixed_concentrations = fixed_concentrations if fixed_concentrations else None
+        self.external_defects = external_defects if external_defects else []
+        self.xtol = xtol
+        
+    
+    def get_concentrations(self,variable_defect_specie,concentration_range,chemical_potentials,
+                           temperature,npoints=50,name=None):
+        """
+        Calculate defect and carrier concentrations as a function of the concentration of a particular 
+        defect species (usually a dopant)
+
+        Parameters
+        ----------
+        variable_defect_specie : (str)
+            Name or element of the variable defect species.
+        concentration_range : (tuple or list)
+            Logaritmic range of the concentration of the variable species in cm^-3 (ex. [1,20]).
+        chemical_potentials : (Chempots)
+            Chempots object containing chemical potentials.
+        temperature : (float)
+            Temperature.
+        npoints : (int), optional
+            Number of points to divide concentration range. The default is 50.
+        name : (str), optional
+            Label for ThermoData. The default is None.
+
+        Returns
+        -------
+        thermodata : (ThermoData)
+            ThermoData object that contains the thermodynamic data:
+                variable_defect_specie : (str)
+                    Name of variable defect species.
+                variable_concentrations : (list)
+                    List of concentrations of variable species. 
+                defect_concentrations : (list or dict)
+                    Defect concentrations in the same format as the output of DefectsAnalysis. 
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+        """
+        carrier_concentrations = []
+        defect_concentrations = []
+        fermi_levels = []
+        
+        concentrations = np.logspace(start=concentration_range[0],stop=concentration_range[1],num=npoints)
+        for c in concentrations:
+            fixed_df = self.fixed_concentrations.copy() if self.fixed_concentrations else {}
+            fixed_df.update({variable_defect_specie:c})
+            
+            mue = self.da.solve_fermi_level(chemical_potentials=chemical_potentials,bulk_dos=self.bulk_dos,
+                                            temperature=temperature,fixed_concentrations=fixed_df,
+                                            external_defects=self.external_defects,xtol=self.xtol)
+            
+            conc = self.da.defect_concentrations(chemical_potentials=chemical_potentials,temperature=temperature,
+                                                 fermi_level=mue,fixed_concentrations=fixed_df)
+            
+            carriers = self.da.carrier_concentrations(self.bulk_dos,temperature=temperature,fermi_level=mue)
+            
+            defect_concentrations.append(conc)
+            carrier_concentrations.append(carriers)
+            fermi_levels.append(mue)
+            
+        data = {}
+        data['variable_defect_specie'] = variable_defect_specie
+        data['variable_concentrations'] = concentrations
+        data['defect_concentrations'] = defect_concentrations
+        data['carrier_concentrations'] = carrier_concentrations
+        data['fermi_levels'] = fermi_levels
+        
+        thermodata = ThermoData(data,temperature=temperature,name=name)
+        
+        return thermodata
+    
+
+    def get_quenched_fermi_levels(self,variable_defect_specie,concentration_range,chemical_potentials,
+                                  initial_temperature,final_temperature,
+                                  quenched_species=None,get_final_concentrations=True,
+                                  quench_elements=False,npoints=50,name=None):
+        """
+        Calculate Fermi level as a function of oxygen partial pressure with quenched defects. 
+        It is possible to select which defect species to quench and which ones are free to equilibrate.
+        Frozen defects in the inputs of the class are still considered.
+
+        Parameters
+        ----------
+        reservoirs : (dict, Reservoirs or PressureReservoirs)
+            Object with partial pressure values as keys and chempots dictionary as values.
+        initial_temperature : (float)
+            Value of initial temperature (K).
+        final_temperature : (float)
+            Value of final temperature (K).
+        quenched_species : (list), optional
+            List of defect species to quench. If None all defect species are quenched.The default is None.
+        name : (str), optional
+            Name to assign to ThermoData.
+        get_final_concentrations : (bool)
+            Save also defect and carrier concentrations after quenching. The default is True.
+        quench_elements : (bool)
+            If True the total concentrations of elements at high temperature go in the charge neutrality at low temperature.
+            If False the quenched concentrations are the ones of single defect species (e.g. elements are not allowed
+            to equilibrate on different sites). The default is False.
+
+        Returns
+        -------
+        Thermodata : (thermoData)
+            ThermoData object that contains the thermodynamic data:
+                partial_pressures : (list)
+                    List of partial pressure values.
+                fermi_levels : (list)
+                    List of Fermi level values
+        """
+        mu = chemical_potentials
+        T1 = initial_temperature
+        T2 = final_temperature
+
+        concentrations = np.logspace(start=concentration_range[0],stop=concentration_range[1],num=npoints)
+        fermi_levels = []
+        if get_final_concentrations:
+            final_defect_conc = []
+            final_carrier_conc = []
+            
+        dos = self.bulk_dos
+        fixed_df = self.fixed_concentrations.copy() if self.fixed_concentrations else {}
+        ext_df = self.external_defects
+                
+        for c in concentrations:
+            fixed_df.update({variable_defect_specie:c})
+            
+            mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T1,
+                                            fixed_concentrations=fixed_df,
+                                            external_defects=ext_df,xtol=self.xtol)
+            if quench_elements:
+                c1 = self.da.defect_concentrations(mu,T1,mue,fixed_df).elemental
+            else:
+                c1 = self.da.defect_concentrations(mu,T1,mue,fixed_df).total
+            if quenched_species is None:
+                quenched_concentrations = c1.copy()
+            else:
+                quenched_concentrations = copy.deepcopy(fixed_df) if fixed_df else {}
+                for k in quenched_species:
+                    quenched_concentrations[k] = c1[k]
+            quenched_mue = self.da.solve_fermi_level(chemical_potentials=mu,bulk_dos=dos,temperature=T2,
+                                            fixed_concentrations=quenched_concentrations,
+                                            external_defects=ext_df,xtol=self.xtol)
+            fermi_levels.append(quenched_mue)
+            
+            conc = self.da.defect_concentrations(mu,T2,quenched_mue,quenched_concentrations)
+            carriers = self.da.carrier_concentrations(dos,temperature=T2,fermi_level=quenched_mue)
+            final_defect_conc.append(conc)
+            final_carrier_conc.append(carriers)
+                
+            
+        data = {}
+        data['variable_defect_specie'] = variable_defect_specie
+        data['variable_concentrations'] = concentrations
+        data['fermi_levels'] = fermi_levels
+        if get_final_concentrations:
+            data['defect_concentrations'] = final_defect_conc
+            data['carrier_concentrations'] = final_carrier_conc
+        
+        thermodata = ThermoData(data,temperature=(initial_temperature,final_temperature),name=name)
+        
+        return thermodata
+            
+
 
 class Conductivity:
     """
@@ -356,11 +545,16 @@ class ThermoData(MSONable):
         Parameters
         ----------
         thermodata : (dict)
-            Dict that contains the thermodynamic data, typically output from PressureAnalysis class.
+            Dict that contains the thermodynamic data, typically output from 
+            ConcentrationAnalysis and PressureAnalysis class.
             Keys of the dict are set as attributes of ThermoData.
             The items of the dict usually can be:
                 partial_pressures : (list)
                     List of partial pressure values.
+                variable_defect_specie : (str)
+                    Name of variable defect species.
+                variable_concentrations : (list)
+                    List of concentrations of variable species. 
                 defect_concentrations : (list)
                     List of DefectConcentrations objects.
                 carrier_concentrations : (list)
@@ -408,7 +602,8 @@ class ThermoData(MSONable):
               "temperature": self.temperature,
               "name": self.name
               }
-        d['thermodata']['defect_concentrations'] = [dc.as_dict() for dc in self.defect_concentrations]
+        if 'defect_concentrations' in self.data.keys():
+            d['thermodata']['defect_concentrations'] = [dc.as_dict() for dc in self.defect_concentrations]
         d = jsanitize(d) #convert numpy.float64 to float
         return d        
 
@@ -448,7 +643,8 @@ class ThermoData(MSONable):
         """
         if 'thermodata' in d.keys():
             data = d['thermodata'].copy()
-            data['defect_concentrations'] = [DefectConcentrations.from_dict(dc) for dc in data['defect_concentrations']]
+            if 'defect_concentrations' in data.keys():
+                data['defect_concentrations'] = [DefectConcentrations.from_dict(dc) for dc in data['defect_concentrations']]
             temperature = d['temperature']
             name = d['name']
         else:
