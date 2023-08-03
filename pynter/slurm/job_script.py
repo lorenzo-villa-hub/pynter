@@ -7,10 +7,38 @@ import os.path as op
 from pynter import SETTINGS
 from pynter.tools.utils import grep_list
 
-class ScriptHandler:
+config = {
+    'HPC': 
+          {'hostname': None,
+          'localdir': None,
+          'workdir': None},
+    'API_KEY': None, 
+    'job_settings': 
+        {'sbatch_kwargs':{
+                        'error':'err.%j',
+                        'mail-user':None,
+                        'mem-per-cpu':3500,
+                        'ntasks':None,                    
+                        'job-name':'no_name',
+                        'output':'out.%j',
+                        'partition':None,
+                        'processor':None,
+                        'account':'',
+                        'time':'01:00:00'},
+        'add_automation':None,
+        'add_lines_body':None,
+        'add_lines_header':None,
+        'add_stop_array':False,
+        'array_size':None,
+        'filename':'job.sh',
+        'modules':None,
+        'path_exe':''}
+    }
+
+class SbatchScript:
     
     # switch to key value format for sbatch args
-    def __init__(self,sbatch_kwargs={},array_size=None,modules=None,path_exe=None,
+    def __init__(self,sbatch_kwargs={},filename='job.sh',array_size=None,modules=None,path_exe=None,
                  add_stop_array=False,add_automation=False,add_lines_header=None,
                  add_lines_body=None):
         """
@@ -27,18 +55,13 @@ class ScriptHandler:
             add_lines_body : (List) , Lines to add in the body part of the file.
         """
         
-        default_settings = SETTINGS['job_settings']
+        default_settings = config['job_settings']
+       # default_settings = SETTINGS['job_settings']
         
         for key,value in default_settings.items():
             setattr(self,key,value)
         
-        for key, value in kwargs.items():
-            if key in default_settings:
-                setattr(self,key,value)
-            else:
-                raise KeyError('"%s" is not a possible argument \nPossible arguments are: %s' %(key, self.settings.keys()))
-  
-    
+
     def __str__(self):
         lines = self.script_header() + self.script_body()
         string = ''.join(lines)
@@ -84,18 +107,6 @@ class ScriptHandler:
             lines = [line.rstrip('\n') for line in f]
             
         
-        string = '#SBATCH -A '
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['project_id'] = line.replace(string,'')
-        
-        string = '#SBATCH --job-name='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['name'] = line.replace(string,'')
-        
         string = '#SBATCH --array=1-'
         line = grep_list(string,lines)
         if line:
@@ -103,59 +114,6 @@ class ScriptHandler:
             line = re.sub("[^2-9]", "", line)
             d['array_size'] = int(line)
             
-        string = '#SBATCH --mail-user='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['email'] = line.replace(string,'')
-        
-        string = '#SBATCH --nodes='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['nodes'] = int(line.replace(string,''))
-        
-        string = '#SBATCH --ntasks-per-node='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['cores_per_node'] = int(line.replace(string,''))
-        
-        string = '#SBATCH --output='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['output_filename'] = line.replace(string,'')
-        
-        string = '#SBATCH --error='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['error_filename'] = line.replace(string,'')
-        
-        string = '#SBATCH --time='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['timelimit'] = line.replace(string,'')
-        
-        string = '#SBATCH --mem-per-cpu='
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['memory_per_cpu'] = int(line.replace(string,''))
-        
-        string = '#SBATCH -p '
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['partition'] = line.replace(string,'')      
-        
-        string = '#SBATCH -C '
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            d['processor'] = line.replace(string,'')
             
         string = 'ml '
         target_lines = grep_list(string,lines)
@@ -193,7 +151,7 @@ class ScriptHandler:
             
         d['filename'] = filename
         
-        return ScriptHandler(**d)
+        return SbatchScript(**d)
 
             
     def script_body(self):
@@ -242,7 +200,9 @@ class ScriptHandler:
         """
         f = []
         f.append('#!/bin/sh\n')
-        for k,v
+        for key,value in self.sbatch_kwargs.items():
+            printed_value = '' if value is True else '=%s' %value
+            f.append(f'#SBATCH --{key}{printed_value} \n')
         f.append('\n')
         f.append('module purge\n')
         if self.modules:

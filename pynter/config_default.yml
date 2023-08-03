@@ -33,37 +33,67 @@ job_settings:
   timelimit: 01:00:00
 
 
-# NEW FORMAT
+# config = {
+#     'HPC': 
+#           {'hostname': None,
+#           'localdir': None,
+#           'workdir': None},
+#     'API_KEY': None, 
+#     'job_settings': 
+#     {'sbatch_kwargs':{
+#                     'error':'err.%j',
+#                     'mail-user':None,
+#                     'mem-per-cpu':3500,
+#                     'ntasks':None,                    
+#                     'job-name':'no_name',
+#                     'output':'out.%j',
+#                     'partition':None,
+#                     'processor':None,
+#                     'account':'',
+#                     'time':'01:00:00'
+#                     }
+#     'add_automation':None,
+#     'add_lines_body':None,
+#     'add_lines_header':None,
+#     'add_stop_array':False,
+#     'array_size':None
+#     'filename':'job.sh',
+#     'modules':None,
+#     'path_exe':''
+#     ''}
 
-API_KEY: null
-HPC:
-  hostname: null
-  localdir: /nfshome/villa/pynter-data
-  workdir: null
-dbconfig:
-  vasp:
-    collection: vasp
-    database: pynter
-    host: 127.0.0.1
-    password: null
-    port: 27017
-    user: null
-job_settings:
-  add_automation: null
-  add_lines_body: null
-  add_lines_header: null
-  add_stop_array: true
-  array_size: null
-  ntasks: null
-  mail-user: null
-  error: err.%j
-  filename: job.sh
-  mem-per-cpu: 3500
-  modules: null
-  job-name: no_name
-  output: out.%j
-  partition: null
-  path_exe: ''
-  processor: null
-  account: ''
-  time: 01:00:00
+
+# # NEW FORMAT
+
+# API_KEY: null
+# HPC:
+#   hostname: null
+#   localdir: /nfshome/villa/pynter-data
+#   workdir: null
+# dbconfig:
+#   vasp:
+#     collection: vasp
+#     database: pynter
+#     host: 127.0.0.1
+#     password: null
+#     port: 27017
+#     user: null
+# job_settings:
+#   add_automation: null
+#   add_lines_body: null
+#   add_lines_header: null
+#   add_stop_array: true
+#   array_size: null
+#   ntasks: null
+#   mail-user: null
+#   error: err.%j
+#   filename: job.sh
+#   mem-per-cpu: 3500
+#   modules: null
+#   job-name: no_name
+#   output: out.%j
+#   partition: null
+#   path_exe: ''
+#   processor: null
+#   account: ''
+#   time: 01:00:00
