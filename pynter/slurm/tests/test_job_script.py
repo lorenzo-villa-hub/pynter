@@ -8,19 +8,19 @@ Created on Mon May 15 13:46:42 2023
 
 import os
 
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_script import SbatchScript
 
 from pynter.testing.core import PynterTest
 from pynter.testing.slurm import JobSettingsTest
 
 
-class TestScriptHandler(PynterTest):
+class TestSbatchScript(PynterTest):
     
     def setUp(self):
 
         self.script_string = (
             "#!/bin/sh\n"
-            "#SBATCH -A projecttest0000\n"
+            "#SBATCH --account=projecttest0000\n"
             "#SBATCH --job-name=test\n"
             "#SBATCH --array=1-2%1\n"
             "#SBATCH --mail-user=test@pynter.com\n"
@@ -94,7 +94,7 @@ class TestScriptHandler(PynterTest):
             'timelimit': '24:00:00'
              }
         
-        self.sh = ScriptHandler(**self.settings)
+        self.sh = SbatchScript(**self.settings)
 
 
     def test_string(self):
@@ -102,14 +102,14 @@ class TestScriptHandler(PynterTest):
         assert self.sh.settings == self.settings
         
     def test_from_file(self):
-        sh_from_file = ScriptHandler.from_file(self.test_files_path,'job_test.sh')
+        sh_from_file = SbatchScript.from_file(self.test_files_path,'job_test.sh')
         JobSettingsTest().assert_job_settings_equal(self.sh.settings,sh_from_file.settings)
         
     def test_write_script(self):
         self.sh.filename = 'temp.sh'
         self.sh.write_script(self.test_files_path)
         JobSettingsTest().assert_job_settings_equal(
-            self.sh.settings,ScriptHandler.from_file(self.test_files_path,'temp.sh').settings)
+            self.sh.settings,SbatchScript.from_file(self.test_files_path,'temp.sh').settings)
         os.remove(self.get_testfile_path('temp.sh'))
             
             

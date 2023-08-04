@@ -60,6 +60,8 @@ class SbatchScript:
         
         for key,value in default_settings.items():
             setattr(self,key,value)
+            
+        
         
 
     def __str__(self):
@@ -86,7 +88,7 @@ class SbatchScript:
     def __eq__(self,other):
         if isinstance(other,str):
             return self.__str__() == other
-        elif isinstance(other,ScriptHandler):
+        elif isinstance(other,SbatchScript):
             return self.settings == other.settings
         elif isinstance(other,dict):
             return self.settings == other
@@ -101,12 +103,30 @@ class SbatchScript:
         """
         Create ScriptHandler object from file. cannot read added lines in header and body
         """
-        d = {'filename':filename}
         file = op.join(path,filename)
         with open(file) as f:
-            lines = [line.rstrip('\n') for line in f]
-            
+            input_string = f.read()
+        sbatch_script = SbatchScript.from_string(input_string)
+        sbatch_script.filename = filename
+        return sbatch_script
         
+    
+    @staticmethod
+    def from_string(input_string):
+        
+        d = {}
+        lines = input_string.split('\n')
+        
+        d['sbatch_kwargs'] = {}
+        string = '#SBATCH'
+        target_lines = grep_list(string,lines)
+        for line in target_lines:            
+            words = line.split(' ')
+            pair =  words[1].strip('--').split('=')
+            key = pair[0]
+            value = pair[1] if len(pair) > 1 else ''
+            d['sbatch_kwargs'].update({key:value})
+            
         string = '#SBATCH --array=1-'
         line = grep_list(string,lines)
         if line:
@@ -149,7 +169,6 @@ class SbatchScript:
         else:
             d['add_automation'] = None
             
-        d['filename'] = filename
         
         return SbatchScript(**d)
 
