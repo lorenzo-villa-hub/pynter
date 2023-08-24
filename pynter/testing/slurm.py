@@ -17,16 +17,15 @@ class JobSettingsTest(PynterTest):
             'add_automation',
             'add_stop_array',
             'array_size',
-            'cores_per_node',
-            'error_filename',
+            'ntasks',
+            'error',
             'filename',
-            'memory_per_cpu',
-            'name',
-            'nodes',
-            'output_filename',
+            'mem-per-cpu',
+            'job-name',
+            'output',
             'partition',
             'processor',
-            'timelimit'
+            'time'
             ]
         return common_keys
     
