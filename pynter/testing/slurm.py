@@ -22,18 +22,16 @@ class JobSettingsTest(PynterTest):
         return common_keys
     
     @property
-    def sbatch_keys(self):
-        sbatch_keys =  [
+    def slurm_keys(self):
+        slurm_keys =  [
             'ntasks',
             'error',
             'mem-per-cpu',
             'job-name',
             'output',
-            'partition',
-            'processor',
             'time'
             ]
-        return sbatch_keys
+        return slurm_keys
     
     def assert_job_settings_equal(self,settings1,settings2):
         """
@@ -44,8 +42,8 @@ class JobSettingsTest(PynterTest):
             desired = settings2[key]
             self.assert_object_almost_equal(actual,desired)
         
-        for kwarg in self.sbatch_keys: 
-            actual = settings1['sbatch_kwargs'][kwarg]
-            desired = settings2['sbatch_kwargs'][kwarg]
+        for kwarg in self.slurm_keys: 
+            actual = settings1['slurm'][kwarg]
+            desired = settings2['slurm'][kwarg]
             self.assert_object_almost_equal(actual,desired)
         

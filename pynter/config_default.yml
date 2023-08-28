@@ -1,7 +1,7 @@
 API_KEY: null
 HPC:
   hostname: null
-  localdir: /nfshome/villa/pynter-data
+  localdir: /home
   workdir: null
 dbconfig:
   vasp:
@@ -12,16 +12,14 @@ dbconfig:
     port: 27017
     user: null
 job_settings:
-  sbatch_kwargs:
+  slurm:
     account: ''
     error: err.%j
     mail-user: null
     mem-per-cpu: 3500
-    ntasks: null
+    ntasks: 96
     job-name: no_name
     output: out.%j
-    partition: null
-    processor: null
     time: 01:00:00
   add_automation: null
   add_lines_body: null

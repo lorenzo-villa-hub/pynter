@@ -86,8 +86,8 @@ def run_config(exclude=None,info=False):
         
         config['job_settings']['filename'] = job_script_filename
         config['job_settings']['path_exe'] = path_exe
-        config['job_settings']['sbatch_kwargs']['account'] = project_id
-        config['job_settings']['sbatch_kwargs']['mail-user'] = email
+        config['job_settings']['slurm']['account'] = project_id
+        config['job_settings']['slurm']['mail-user'] = email
         
         config.update({'dbconfig': 
                           {'vasp': 
@@ -97,44 +97,7 @@ def run_config(exclude=None,info=False):
                                 'password': None,
                                 'port': port,
                                 'user': None}}})
-        
-        # config = {
-            
-        #     'HPC': 
-        #           {'hostname': hostname,
-        #           'localdir': localdir,
-        #           'workdir': workdir},
-        #     'API_KEY': API_KEY,
-        #     'job_settings': 
-        #           {'project_id': project_id,
-        #           'name': 'no_name',
-        #           'array_size': None,
-        #           'email': email,
-        #           'nodes': 4,
-        #           'cores_per_node': 96,
-        #           'output_filename': 'out.%j',
-        #           'error_filename': 'err.%j',
-        #           'timelimit': '24:00:00',
-        #           'memory_per_cpu': 3500,
-        #           'partition': None,
-        #           'processor': None,
-        #           'modules': ['intel/2020.2','intelmpi/2020.2','fftw/3.3.8'],
-        #           'path_exe': path_exe,
-        #           'add_stop_array': True,
-        #           'add_automation': None,
-        #           'add_lines_header': ['I_MPI_PMI_LIBRARY=/opt/slurm/current/lib/libpmi2.so'],
-        #           'add_lines_body': None,
-        #           'filename': job_script_filename},
-        #     'dbconfig': 
-        #           {'vasp': 
-        #                 {'collection': collection,
-        #                 'database': database,
-        #                 'host': host,
-        #                 'password': None,
-        #                 'port': port,
-        #                 'user': None}}}
-        
-        
+                
         with open(os.path.join(filepath,filename),'w+') as f:
             yaml.dump(config,f) 
             

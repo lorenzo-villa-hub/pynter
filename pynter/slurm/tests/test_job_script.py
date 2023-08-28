@@ -8,6 +8,7 @@ Created on Mon May 15 13:46:42 2023
 
 import os
 
+from pynter.slurm.core import Slurm
 from pynter.slurm.job_script import SbatchScript
 
 from pynter.testing.core import PynterTest
@@ -20,7 +21,6 @@ class TestSbatchScript(PynterTest):
 
         self.script_string = (
             "#!/bin/sh\n"
-            "#SBATCH --array=1-2%1\n"
             "#SBATCH --account=projecttest0000\n"
             "#SBATCH --error=err.%j\n"
             "#SBATCH --job-name=test\n"
@@ -29,6 +29,7 @@ class TestSbatchScript(PynterTest):
             "#SBATCH --ntasks=96\n"
             "#SBATCH --output=out.%j\n"
             "#SBATCH --time=24:00:00\n"
+            "#SBATCH --array=1-2%1\n"
             "\n"
             "module purge\n"
             "ml intel/2020.4 \n"
@@ -57,14 +58,12 @@ class TestSbatchScript(PynterTest):
         )
         
         
-        self.sbatch_kwargs = {
+        self.slurm_kwargs = {
             'ntasks': 96,
             'mail-user': 'test@pynter.com',
             'error': 'err.%j',
             'job-name': 'test',
             'output': 'out.%j',
-            'partition': None,
-            'processor': None,
             'account': 'projecttest0000',
             'time': '24:00:00'
              }
@@ -73,7 +72,8 @@ class TestSbatchScript(PynterTest):
                                modules=['intel/2020.4', 'intelmpi/2020.4', 'fftw/3.3.10'],
                                path_exe='/home/test/code',add_stop_array=True,add_automation='automation.py',
                                add_lines_header=['test_HEADER', 'test_HEADER2'],
-                               add_lines_body=['test_BODY', 'test_BODY2'],**self.sbatch_kwargs)
+                               add_lines_body=['test_BODY', 'test_BODY2'],
+                               **self.slurm_kwargs)
         
 
     def test_string(self):
