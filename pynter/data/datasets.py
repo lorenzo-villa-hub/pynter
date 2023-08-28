@@ -334,7 +334,7 @@ class Dataset:
         inputs : (dict), optional
             Dictionary with input data. The default is None.
         job_settings : (dict), optional
-            Dictionary with job settings. The default is None. Documentation in ScriptHandler class in slurm.job_script module
+            Dictionary with job settings. The default is None. Documentation in SbatchScript class in slurm.job_script module
         outputs : (dict), optional
             Dictionary with output data. The default is None.
         job_script_filename : (str), optional

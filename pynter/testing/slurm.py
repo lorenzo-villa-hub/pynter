@@ -17,9 +17,15 @@ class JobSettingsTest(PynterTest):
             'add_automation',
             'add_stop_array',
             'array_size',
+            'filename',
+            ]
+        return common_keys
+    
+    @property
+    def sbatch_keys(self):
+        sbatch_keys =  [
             'ntasks',
             'error',
-            'filename',
             'mem-per-cpu',
             'job-name',
             'output',
@@ -27,12 +33,19 @@ class JobSettingsTest(PynterTest):
             'processor',
             'time'
             ]
-        return common_keys
+        return sbatch_keys
     
     def assert_job_settings_equal(self,settings1,settings2):
         """
         Check only common keys to avoid system dependent differences
         """
         for key in self.common_keys:
-            self.assert_object_almost_equal(settings1[key],settings2[key])
+            actual = settings1[key]
+            desired = settings2[key]
+            self.assert_object_almost_equal(actual,desired)
+        
+        for kwarg in self.sbatch_keys: 
+            actual = settings1['sbatch_kwargs'][kwarg]
+            desired = settings2['sbatch_kwargs'][kwarg]
+            self.assert_object_almost_equal(actual,desired)
         

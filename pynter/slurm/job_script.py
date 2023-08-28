@@ -56,7 +56,7 @@ class SbatchScript:
         """
         
         default_settings = config['job_settings']
-        # default_settings = SETTINGS['job_settings']
+    #    default_settings = SETTINGS['job_settings']
         
         
         self.filename = filename if filename is not None else default_settings['filename']
@@ -70,7 +70,9 @@ class SbatchScript:
         
         sbatch_kwargs = {**default_settings['sbatch_kwargs'], **kwargs}
         self.sbatch_kwargs = dict(sorted(sbatch_kwargs.items(), key=lambda item: item[0]))
-                    
+        
+        self._slurm_arguments, self._slurm_arguments_legend = read_possible_slurm_arguments()
+          
     def __str__(self):
         lines = self.script_header() + self.script_body()
         string = ''.join(lines)
@@ -104,6 +106,15 @@ class SbatchScript:
     @property
     def settings(self):
         return self.__dict__
+    
+    @property
+    def slurm_arguments(self):
+        return self._slurm_arguments
+
+    @property
+    def slurm_arguments_legend(self):
+        return self._slurm_arguments_legend
+
 
     @staticmethod
     def from_file(path,filename='job.sh'):
@@ -131,6 +142,8 @@ class SbatchScript:
             pair =  words[1].strip('--').split('=')
             key = pair[0]
             value = pair[1] if len(pair) > 1 else ''
+            if value.isdigit():
+                value = int(value)
             sbatch_kwargs.update({key:value})
             
         string = '#SBATCH --array=1-'
@@ -263,3 +276,25 @@ class SbatchScript:
         with open(complete_path,'w') as f:
             f.write(self.__str__())        
         return
+
+
+
+def read_possible_slurm_arguments():
+    path = os.path.abspath(__file__).strip(os.path.basename(__file__))
+    filename = 'slurm_arguments.txt'
+    with open(os.path.join(path,filename),'r') as file:
+        lines = file.readlines()
+  
+    arguments = []
+    arguments_legend = {}
+    for line in lines:
+        line = line.strip('\n')
+        elements = line.split(',')
+        arg = elements[0]
+        arguments.append(arg)
+        if len(elements) > 1:
+            arg_short = elements[1]
+            arguments_legend.update({arg_short:arg})
+
+    return arguments, arguments_legend
+

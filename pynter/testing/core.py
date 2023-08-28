@@ -10,6 +10,7 @@ import os
 import os.path as op
 import unittest
 import numpy as np
+import warnings
 
 from pymatgen.core.structure import Structure
 
@@ -30,8 +31,8 @@ class PynterTest(unittest.TestCase):
         Supports dictionaries, numbers (int, float), tuples, lists, str, bool and NoneType.
         Uses numpy.testing.assert_almost_equal for numerical comparisons.
         """
-        # if type(actual) != type(desired):
-        #     raise AssertionError(f"Objects are of different types: {type(actual)}, {type(desired)}")
+        if type(actual) != type(desired):
+            warnings.warn(f"Objects are of different types: {type(actual)}, {type(desired)}")
     
         if isinstance(actual, dict):
             assert len(actual) == len(desired), "Dictionaries have different lengths."

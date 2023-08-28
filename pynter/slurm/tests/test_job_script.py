@@ -57,17 +57,6 @@ class TestSbatchScript(PynterTest):
         )
         
         
-        self.common_settings = {
-            'account':'projecttest0000',
-            'job-name':'test',
-            'array_size':2,
-            'mail-user':'test@pynter.com',
-            'path_exe':'/home/test/code',
-            'add_stop_array':True,
-            'add_automation':'automation.py',
-            'filename':'job_test.sh'
-            }
-        
         self.sbatch_kwargs = {
             'ntasks': 96,
             'mail-user': 'test@pynter.com',
@@ -92,7 +81,6 @@ class TestSbatchScript(PynterTest):
         
     def test_from_file(self):
         sh_from_file = SbatchScript.from_file(self.test_files_path,'job_test.sh')
-        print(sh_from_file.settings)
         JobSettingsTest().assert_job_settings_equal(self.sh.settings,sh_from_file.settings)
         
     def test_write_script(self):

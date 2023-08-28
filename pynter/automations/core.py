@@ -6,7 +6,7 @@ from shutil import copyfile
 from pymatgen.io.vasp.inputs import Kpoints
 from pymatgen.io.vasp.outputs import Vasprun
 import argparse as ap
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_script import SbatchScript
 
 class Automation:
 
@@ -24,7 +24,7 @@ class Automation:
             Path of calculation to automize. The default is None. If None current work dir is used
         """        
         
-        self.job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
+        self.job_script_filename = job_script_filename if job_script_filename else SbatchScript().filename
         self.status_filename = status_filename
         self.path = path if path else os.getcwd()
 

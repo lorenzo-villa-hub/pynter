@@ -24,7 +24,7 @@ from pymatgen.analysis.transition_state import NEBAnalysis
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
 from pynter.slurm.interface import HPCInterface
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_script import SbatchScript
 from pynter import SETTINGS
 
 
@@ -159,8 +159,8 @@ class VaspJob(Job):
                     warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
                     outputs['Vasprun'] = None
         
-        job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
-        s = ScriptHandler.from_file(path,filename=job_script_filename)
+        job_script_filename = job_script_filename if job_script_filename else SbatchScript().filename
+        s = SbatchScript.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
         return VaspJob(path=path,inputs=inputs,job_settings=job_settings,
@@ -548,7 +548,7 @@ class VaspJob(Job):
     
     def write_input(self):
         """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
-        script_handler = ScriptHandler(**self.job_settings)
+        script_handler = SbatchScript(**self.job_settings)
         script_handler.write_script(path=self.path)
         inputs = self.inputs
         inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
@@ -716,8 +716,8 @@ class VaspNEBJob(Job):
                 warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
                 outputs['NEBAnalysis'] = None
         
-        job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
-        s = ScriptHandler.from_file(path,filename=job_script_filename)
+        job_script_filename = job_script_filename if job_script_filename else SbatchScript().filename
+        s = SbatchScript.from_file(path,filename=job_script_filename)
         job_settings =  s.settings
         
         return VaspNEBJob(path=path,inputs=inputs,job_settings=job_settings,
@@ -986,7 +986,7 @@ class VaspNEBJob(Job):
         incar.write_file(op.join(path,'INCAR'))
         kpoints.write_file(op.join(path,'KPOINTS'))
         potcar.write_file(op.join(path,'POTCAR'))
-        ScriptHandler(**job_settings).write_script(path=path)
+        SbatchScript(**job_settings).write_script(path=path)
 
     
     def write_structures(self):

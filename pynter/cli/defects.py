@@ -18,7 +18,7 @@ from pynter.vasp.pmg.pmg_electronic_structure_dos import CompleteDos
 
 from pynter.data.datasets import Dataset
 from pynter.vasp.jobs import VaspJob
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_script import SbatchScript
 from pynter.defects.entries import DefectEntry
 from pynter.defects.analysis import DefectsAnalysis
 from pynter.defects.corrections import get_kumagai_correction_from_jobs
@@ -99,7 +99,7 @@ def create_vasp_inputs(args):
 
 
 def setup_import(parser):
-    job_script_filename = ScriptHandler().filename
+    job_script_filename = SbatchScript().filename
     parser.add_argument('-pb','--path-bulk',help='Path to bulk calculation',required=True,type=str,metavar='',dest='path_bulk')
     parser.add_argument('-p','--path',help='Path to defect calculations, can contain wildcards (default: %(default)s)',required=False,type=str,default=os.getcwd(),metavar='',dest='path')
     

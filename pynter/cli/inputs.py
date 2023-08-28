@@ -10,7 +10,7 @@ import os
 from pymatgen.io.vasp.inputs import Incar,Kpoints,Poscar,Potcar
 
 from pynter.data.datasets import Dataset
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_script import SbatchScript
 from pynter.vasp.schemes import AdvancedSchemes
 
 
@@ -115,7 +115,7 @@ def get_schemes(args):
     potcar = Potcar.from_file(os.path.abspath(args.potcar)) if args.potcar else None
     if args.job_script:
         script_path = os.path.abspath(os.path.dirname(args.job_script))
-        job_settings = ScriptHandler.from_file(path=script_path,filename=os.path.basename(args.job_script)).settings
+        job_settings = SbatchScript.from_file(path=script_path,filename=os.path.basename(args.job_script)).settings
     else:
         job_settings = None
     
