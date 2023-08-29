@@ -59,8 +59,18 @@ class SbatchScript:
         
         default_settings = SETTINGS['job_settings']
         
-        
-        self.slurm = slurm if slurm else Slurm()
+        if slurm:
+            if type(slurm) is dict:
+                self.slurm = Slurm(**slurm)
+            elif slurm.__class__.__name__ == 'Slurm':
+                self.slurm = slurm
+            else:
+                raise ValueError('Slurm settings must be provided either as dictionary or as Slurm object')
+
+        elif not slurm and 'slurm' not in kwargs.keys():
+            self.slurm = Slurm(**kwargs)
+        else:
+            self.slurm = slurm
 
         self.filename = filename if filename is not None else default_settings['filename']
         self.array_size = array_size if array_size is not None else default_settings['array_size']
@@ -70,12 +80,8 @@ class SbatchScript:
         self.add_automation = add_automation if add_automation else default_settings['add_automation']
         self.add_lines_header = add_lines_header if add_lines_header is not None else default_settings['add_lines_header']
         self.add_lines_body = add_lines_body if add_lines_body is not None else default_settings['add_lines_body']
-                        
-        for key,value in kwargs.items():
-            if key not in default_settings.keys():
-                self.slurm.set_argument(key, value)
-                
-            
+
+        
     def __str__(self):
         lines = self.script_header() + self.script_body()
         string = ''.join(lines)
@@ -140,9 +146,10 @@ class SbatchScript:
         lines = input_string.split('\n')
         
         slurm = Slurm.from_string(input_string)
-            
+        
         string = '#SBATCH --array=1-'
         line = grep_list(string,lines)
+        array_size = None
         if line:
             line = line[-1]
             line = re.sub("[^2-9]", "", line)
@@ -168,6 +175,7 @@ class SbatchScript:
         
         string = "if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then"
         line = grep_list(string,lines)
+        add_stop_array = False
         if line:
             if list(line)[0] != '#':
                 add_stop_array = True

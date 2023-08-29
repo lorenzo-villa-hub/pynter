@@ -32,7 +32,7 @@ class TestVaspJob(PynterTest):
 
         VaspOutputsTest().assert_Vasprun_equal(j.outputs['Vasprun'], Vasprun(op.join(path,'vasprun.xml')))
 
-        assert j.job_settings['name'] == 'Si-BS_PBE-el-str_3'  
+        assert j.job_settings['job-name'] == 'Si-BS_PBE-el-str_3'  
         self.assert_all_close(j.final_energy,-11.00288193)
         self.assert_all_close(j.charge,0)
     

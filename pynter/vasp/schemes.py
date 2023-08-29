@@ -8,6 +8,7 @@ Created on Wed Feb 19 14:52:51 2020
 import os
 import os.path as op
 import numpy as np
+import copy
 
 from pymatgen.core.periodic_table import Element
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
@@ -57,11 +58,11 @@ class InputSets:
             self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structure).get_incar_default()
             self.kpoints = kpoints if kpoints else DefaultInputs(self.structure).get_kpoints_default()
             self.potcar = potcar if potcar else DefaultInputs(self.structure).get_potcar()
-            self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
-            self.name = name if name != None else self.job_settings['name'] 
+            self.job_settings = job_settings if job_settings else ({'slurm':{'job-name':name}} if name else {'slurm':{'job-name':'no_name'}})
+            self.name = name if name != None else self.job_settings['slurm']['job-name'] 
             
             if self.name: # this return false if name is '', the previuos line considers only if name is None
-                self.job_settings['name'] = self.name
+                self.job_settings['slurm']['job-name'] = self.name
                 
         else:
             raise ValueError('You need to provide Structure, either as Poscar object in VaspInput or in "structure" arg')
@@ -103,18 +104,19 @@ class InputSets:
         vaspjob : (VaspJob object)
         """        
         incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
+        job_settings = copy.deepcopy(self.job_settings)
         
         incar = Incar(incar_settings)
         kpoints = self.kpoints
         poscar = Poscar(self.structure)
         potcar = self.potcar
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],setname])
+        job_settings['slurm']['job-name'] = '_'.join([job_settings['slurm']['job-name'],setname])
         
         jobname = '_'.join([self.name,setname])
         jobpath = op.join(self.path,pathname)
         job_script_filename = job_settings['filename'] if 'filename' in job_settings.keys() else None
+        print(job_settings['slurm']['job-name'])
         vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,job_script_filename=job_script_filename,name=jobname)
         
         return vaspjob  
@@ -368,7 +370,8 @@ class Schemes(InputSets):
         if not encuts:
             encuts = range(300,800,100)
 
-        for ec in encuts:            
+        for ec in encuts:           
+            print(ec)
             stepname = f'cutoff{ec}'
             vaspjob = self.pbe_scf(setname=stepname,pathname=stepname)            
             vaspjob.incar['ENCUT'] = ec
@@ -1043,9 +1046,9 @@ class NEBSchemes:
         self.name = name if name else None
         
         if 'name' not in self.job_settings.keys():
-            self.job_settings['name'] = self.name
+            self.job_settings['slurm']['job-name'] = self.name
         if 'name' in self.job_settings.keys() and self.name:
-            self.job_settings['name'] = self.name
+            self.job_settings['slurm']['job-name'] = self.name
 
         if add_parent_folder:
             self.path = op.join(self.path,self.name)
@@ -1099,7 +1102,7 @@ class NEBSchemes:
         job_settings['path_exe'] = '/home/lv51dypu/vasp.5.4.4_vtstcode/bin/vasp_std'
         if 'add_automation' not in job_settings:
             job_settings['add_automation'] = None        
-        job_settings['name'] = '_'.join([self.name,scheme_name])
+        job_settings['slurm']['job-name'] = '_'.join([self.name,scheme_name])
 
 
         jobname = '_'.join([self.name,scheme_name])
@@ -1199,7 +1202,7 @@ class NEBSchemes:
         job_settings['nodes'] = self.images
         if 'add_automation' not in job_settings:
             job_settings['add_automation'] = 'automation_vasp_NEB.py'        
-        job_settings['name'] = '_'.join([self.name,scheme_name])
+        job_settings['slurm']['job-name'] = '_'.join([self.name,scheme_name])
 
 
         jobname = '_'.join([self.name,scheme_name])
@@ -1239,7 +1242,7 @@ class NEBSchemes:
                     job_settings['add_automation'] = '(cd ../ && automation_vasp_NEB.py)'
                 else:
                     job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
-            job_settings['name'] = '_'.join([self.name,scheme_name,image_name])
+            job_settings['slurm']['job-name'] = '_'.join([self.name,scheme_name,image_name])
             
             jobname = '_'.join([self.name,scheme_name,image_name])
             jobpath = op.join(self.path,stepnames[0],image_name)

@@ -52,16 +52,16 @@ class Job:
         if name:
             self.name = name
         elif self.job_settings:
-            self.name = self.job_settings['name']
+            self.name = self.job_settings['slurm']['job-name']
         elif op.isfile(op.join(self.path,self.job_script_filename)):
             s = SbatchScript.from_file(self.path,filename=self.job_script_filename)
-            self.name = s.settings['name']
+            self.name = s.settings['slurm']['job-name']
         else:
             self.name = 'no_name'
             
         if not self.job_settings:
             self.job_settings = {}
-        self.job_settings['name'] = self.name
+        self.job_settings['slurm']['job-name'] = self.name
 
 
     def __str__(self):
