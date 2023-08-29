@@ -8,121 +8,96 @@ from pynter import SETTINGS
 from pynter.slurm.core import Slurm
 from pynter.tools.utils import grep_list
 
-# config = {
-#     'HPC': 
-#           {'hostname': None,
-#           'localdir': None,
-#           'workdir': None},
-#     'API_KEY': None, 
-#     'job_settings': 
-#         {'slurm':{
-#                         'account':'',
-#                         'error':'err.%j',
-#                         'mail-user':None,
-#                         'mem-per-cpu':3500,
-#                         'ntasks':None,                    
-#                         'job-name':'no_name',
-#                         'output':'out.%j',
-#                         'time':'01:00:00'},
-#         'add_automation':None,
-#         'add_lines_body':None,
-#         'add_lines_header':None,
-#         'add_stop_array':False,
-#         'array_size':None,
-#         'filename':'job.sh',
-#         'modules':None,
-#         'path_exe':''}
-#     }
 
 class SbatchScript:
     
     # switch to key value format for sbatch args
-    def __init__(self,slurm=None,filename='job.sh',array_size=None,modules=None,path_exe=None,
-                 add_stop_array=False,add_automation=False,add_lines_header=None,
-                 add_lines_body=None,**kwargs):
-        """
-        Parameters
-        ----------
-        slurm : (Slurm) Slurm object. Handles all argments related to #SBATCH. 
-            If None the defualt values are used, which will be updated with the
-            user-defined **kwargs.
-        array_size: (int) Number of jobs for array \n
-        modules: (list) List of modules to be loaded
-        path_exe: (str) Path to executable \n             
-        add_stop_array : (Bool), Add lines for stopping array jobs when calculation is converged. \n                
-            If True is effective only if key 'array_size' is not None
-        add_automation : (str) , Automation script to add to the file.                
-        add_lines_header : (List) , Lines to add in the header part of the file.
-        add_lines_body : (List) , Lines to add in the body part of the file.
-        **kwargs : dict. Additional kwargs which will be automatically assigned to Slurm.
-        """
+    # def __init__(self,slurm=None,filename='job.sh',array_size=None,modules=None,path_exe=None,
+    #              add_stop_array=False,add_automation=False,add_lines_header=None,
+    #              add_lines_body=None,**kwargs):
+    #     """
+    #     Parameters
+    #     ----------
+    #     slurm : (Slurm) Slurm object. Handles all argments related to #SBATCH. 
+    #         If None the defualt values are used, which will be updated with the
+    #         user-defined **kwargs.
+    #     array_size: (int) Number of jobs for array \n
+    #     modules: (list) List of modules to be loaded
+    #     path_exe: (str) Path to executable \n             
+    #     add_stop_array : (Bool), Add lines for stopping array jobs when calculation is converged. \n                
+    #         If True is effective only if key 'array_size' is not None
+    #     add_automation : (str) , Automation script to add to the file.                
+    #     add_lines_header : (List) , Lines to add in the header part of the file.
+    #     add_lines_body : (List) , Lines to add in the body part of the file.
+    #     **kwargs : dict. Additional kwargs which will be automatically assigned to Slurm.
+    #     """
         
-        default_settings = SETTINGS['job_settings']
+    #     default_settings = SETTINGS['job_settings']
         
-        if slurm:
-            if type(slurm) is dict:
-                self.slurm = Slurm(**slurm)
-            elif slurm.__class__.__name__ == 'Slurm':
-                self.slurm = slurm
-            else:
-                raise ValueError('Slurm settings must be provided either as dictionary or as Slurm object')
+    #     if slurm:
+    #         if type(slurm) is dict:
+    #             self.slurm = Slurm(**slurm)
+    #         elif slurm.__class__.__name__ == 'Slurm':
+    #             self.slurm = slurm
+    #         else:
+    #             raise ValueError('Slurm settings must be provided either as dictionary or as Slurm object')
 
-        elif not slurm and 'slurm' not in kwargs.keys():
-            self.slurm = Slurm(**kwargs)
-        else:
-            self.slurm = slurm
+    #     elif not slurm and 'slurm' not in kwargs.keys():
+    #         self.slurm = Slurm(**kwargs)
+    #     else:
+    #         self.slurm = slurm
 
-        self.filename = filename if filename is not None else default_settings['filename']
-        self.array_size = array_size if array_size is not None else default_settings['array_size']
-        self.modules = modules if modules is not None else default_settings['modules']
-        self.path_exe = path_exe if path_exe is not None else default_settings['path_exe']
-        self.add_stop_array = add_stop_array if add_stop_array else default_settings['add_stop_array']
-        self.add_automation = add_automation if add_automation else default_settings['add_automation']
-        self.add_lines_header = add_lines_header if add_lines_header is not None else default_settings['add_lines_header']
-        self.add_lines_body = add_lines_body if add_lines_body is not None else default_settings['add_lines_body']
+    #     self.filename = filename if filename is not None else default_settings['filename']
+    #     self.array_size = array_size if array_size is not None else default_settings['array_size']
+    #     self.modules = modules if modules is not None else default_settings['modules']
+    #     self.path_exe = path_exe if path_exe is not None else default_settings['path_exe']
+    #     self.add_stop_array = add_stop_array if add_stop_array else default_settings['add_stop_array']
+    #     self.add_automation = add_automation if add_automation else default_settings['add_automation']
+    #     self.add_lines_header = add_lines_header if add_lines_header is not None else default_settings['add_lines_header']
+    #     self.add_lines_body = add_lines_body if add_lines_body is not None else default_settings['add_lines_body']
 
         
-    def __str__(self):
-        lines = self.script_header() + self.script_body()
-        string = ''.join(lines)
-        return string
+    # def __str__(self):
+    #     lines = self.script_header() + self.script_body()
+    #     string = ''.join(lines)
+    #     return string
     
-    def __repr__(self):
-        return self.__str__()
+    # def __repr__(self):
+    #     return self.__str__()
     
-    def __len__(self):
-        return len(self.settings)
+    # def __len__(self):
+    #     return len(self.settings)
 
-    def __iter__(self):
-        return self.settings.keys().__iter__()
+    # def __iter__(self):
+    #     return self.settings.keys().__iter__()
     
-    def __getitem__(self,key):
-        if key not in self.settings:
-            return self.slurm.settings[key]
-        else:
-            return self.settings[key]
+    # def __getitem__(self,key):
+    #     if key not in self.settings:
+    #         return self.slurm.settings[key]
+    #     else:
+    #         return self.settings[key]
     
-    def __setitem__(self,key,value):
-        if key not in self.settings:
-            self.slurm.set_argument(key, value)
-        else:
-            setattr(self,key,value)
-        return
+    # def __setitem__(self,key,value):
+    #     if key not in self.settings:
+    #         self.slurm.set_argument(key, value)
+    #     else:
+    #         setattr(self,key,value)
+    #     return
     
-    def __eq__(self,other):
-        if isinstance(other,str):
-            return self.__str__() == other
-        elif isinstance(other,SbatchScript):
-            return self.settings == other.settings
-        elif isinstance(other,dict):
-            return self.settings == other
+    # def __eq__(self,other):
+    #     if isinstance(other,str):
+    #         return self.__str__() == other
+    #     elif isinstance(other,SbatchScript):
+    #         return self.settings == other.settings
+    #     elif isinstance(other,dict):
+    #         return self.settings == other
         
     
-    @property
-    def settings(self):
-        settings = self.__dict__.copy()
-        settings['slurm'] = self.slurm.settings
-        return settings
+    # @property
+    # def settings(self):
+    #     settings = self.__dict__.copy()
+    #     settings['slurm'] = self.slurm.settings
+    #     return settings
     
 
     @staticmethod
