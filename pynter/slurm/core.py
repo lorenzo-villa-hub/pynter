@@ -78,7 +78,7 @@ class Slurm(dict,MSONable):
     
     
     @staticmethod
-    def from_string(input_string):
+    def from_bash_script(input_string):
         """
         Initialize object from a bash script
         """
@@ -104,7 +104,7 @@ class Slurm(dict,MSONable):
         return Slurm(**kwargs)
      
 
-    def script_lines(self):
+    def get_bash_script_lines(self):
         lines = []
         lines.append('#!/bin/sh\n')
         for key,value in self.items():

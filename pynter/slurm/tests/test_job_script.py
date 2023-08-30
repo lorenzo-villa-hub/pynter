@@ -9,13 +9,13 @@ Created on Mon May 15 13:46:42 2023
 import os
 
 from pynter.slurm.core import Slurm
-from pynter.slurm.job_script import SbatchScript
+from pynter.slurm.job_settings import JobSettings
 
 from pynter.testing.core import PynterTest
 from pynter.testing.slurm import JobSettingsTest
 
 
-class TestSbatchScript(PynterTest):
+class TestJobSettings(PynterTest):
     
     def setUp(self):
 
@@ -57,7 +57,6 @@ class TestSbatchScript(PynterTest):
             "test_BODY2\n"
         )
         
-        
         self.slurm_kwargs = {
             'ntasks': 96,
             'mail-user': 'test@pynter.com',
@@ -68,26 +67,37 @@ class TestSbatchScript(PynterTest):
             'time': '24:00:00'
              }
         
-        self.sh = SbatchScript(filename='job_test.sh',array_size=2,
-                               modules=['intel/2020.4', 'intelmpi/2020.4', 'fftw/3.3.10'],
-                               path_exe='/home/test/code',add_stop_array=True,add_automation='automation.py',
-                               add_lines_header=['test_HEADER', 'test_HEADER2'],
-                               add_lines_body=['test_BODY', 'test_BODY2'],
-                               **self.slurm_kwargs)
+        job_settings = JobSettings(filename='job_test.sh',array_size=2,
+                                modules=['intel/2020.4', 'intelmpi/2020.4', 'fftw/3.3.10'],
+                                path_exe='/home/test/code',add_stop_array=True,add_automation='automation.py',
+                                add_lines_header=['test_HEADER', 'test_HEADER2'],
+                                add_lines_body=['test_BODY', 'test_BODY2'],
+                                **self.slurm_kwargs)
+        print(type(job_settings))
+        self._job_settings = job_settings
+        
+        @property
+        def job_settings(self):
+            return self._job_settings
+        
+        @job_settings.setter
+        def job_settings(self,settings):
+            self._job_settings = settings
+            return
         
 
     def test_string(self):
-        assert self.sh.__str__() == self.script_string
+        assert self.job_settings.get_bash_script() == self.script_string
         
     def test_from_file(self):
-        sh_from_file = SbatchScript.from_file(self.test_files_path,'job_test.sh')
-        JobSettingsTest().assert_job_settings_equal(self.sh.settings,sh_from_file.settings)
+        job_settings_from_file = JobSettings.from_bash_file(self.test_files_path,'job_test.sh')
+        JobSettingsTest().assert_job_settings_equal(self.job_settings,job_settings_from_file)
         
     def test_write_script(self):
-        self.sh.filename = 'temp.sh'
-        self.sh.write_script(self.test_files_path)
+        self.job_settings.filename = 'temp.sh'
+        self.job_settings.write_bash_script(self.test_files_path)
         JobSettingsTest().assert_job_settings_equal(
-            self.sh.settings,SbatchScript.from_file(self.test_files_path,'temp.sh').settings)
+            self.job_settings,JobSettings.from_bash_file(self.test_files_path,'temp.sh'))
         os.remove(self.get_testfile_path('temp.sh'))
             
             
