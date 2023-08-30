@@ -58,7 +58,7 @@ class Slurm(dict,MSONable):
     
     @classmethod
     def from_dict(cls,d):
-        return cls(**{k: v for k, v in d.items() if k not in ("@module", "@class")})
+        return cls(**{k: v for k, v in d.items() if k not in ["@module", "@class"]})
     
     
     @property
