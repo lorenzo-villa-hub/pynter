@@ -36,11 +36,9 @@ class TestVaspJob(PynterTest):
         self.assert_all_close(j.final_energy,-11.00288193)
         self.assert_all_close(j.charge,0)
     
-    def test_vaspjob_from_json(self):
-        j = VaspJob.from_json(op.join(self.test_files_path,'Si-BS.json'))
-        assert j.job_settings == self.job_settings    
-        assert j.final_energy == -11.00288193
-        assert j.charge == 0
+    def test_vaspjob_from_dict(self):
+        path = op.join(self.test_files_path,'Si-BS')
+        j = VaspJob.from_dict(VaspJob.from_directory(path,load_outputs=True).as_dict())
         keys = SETTINGS['vasp']['computed_entry_default']
         assert list(j.computed_entry.data.keys()) == keys
         

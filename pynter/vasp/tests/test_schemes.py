@@ -28,12 +28,12 @@ class TestVaspSchemes(PynterTest):
         return
         
     def test_scheme(self):
-        ds_test = Dataset.from_json(op.join(self.test_files_path,'ds_Si_HSE_rel_gamma_inputs.json'))
+        ds_test = Dataset.from_directory(op.join(self.test_files_path,'Si_HSE_rel_gamma'))
+       # ds_test = Dataset.from_json(op.join(self.test_files_path,'ds_Si_HSE_rel_gamma_inputs.json'))
         schemes = Schemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_schemes',job_settings=self.job_settings)
         jobs = schemes.hse_relaxation_gamma_extended()
         ds = Dataset(jobs)
-        
         DatasetTest().assert_jobs_equal(ds.jobs, ds_test.jobs)
         return
         

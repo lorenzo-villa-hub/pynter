@@ -1,12 +1,12 @@
 
 import os
 import os.path as op
-from pynter.vasp.jobs import VaspJob, VaspNEBJob
-from pynter.data.jobs import get_job_from_directory
-from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import json
 from monty.json import MontyDecoder
+
+from pynter.data.jobs import get_job_from_directory
+from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 def _check_job_script(job_script_filenames,files):

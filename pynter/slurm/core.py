@@ -8,6 +8,7 @@ Created on Mon Aug 28 14:23:05 2023
 
 import os
 import warnings
+import copy
 
 from monty.json import MSONable
 
@@ -41,13 +42,16 @@ class Slurm(dict,MSONable):
             settings[key] = value
         
         settings = dict(sorted(settings.items(), key=lambda item: item[0]))
+        # for k,v in settings.items():
+        #     self[k] = v # u
         self.update(settings)
         
     
     def __setitem__(self,key,value):
         if key not in self.arguments:
             warnings.warn(f'"{key}" is not listed as possible slurm argument')
-        super().__setitem__(key,value)
+        else:
+            super().__setitem__(key,value)
         return
     
     def as_dict(self):
@@ -55,6 +59,19 @@ class Slurm(dict,MSONable):
         d["@module"] = type(self).__module__
         d["@class"] = type(self).__name__
         return d        
+    
+    def copy(self):
+        return copy.deepcopy(self)
+    
+    def update(self, other=None, **kwargs):
+        if other is not None:
+            if hasattr(other, "items"):
+                for key,value in other.items():
+                    self.__setitem__(key, value)
+            else:
+                for key, value in other:
+                    self.__setitem__(key, value)
+        return
     
     @classmethod
     def from_dict(cls,d):
@@ -105,6 +122,9 @@ class Slurm(dict,MSONable):
      
 
     def get_bash_script_lines(self):
+        """
+        Get list of lines containing #SBATCH arguments for bash script
+        """
         lines = []
         lines.append('#!/bin/sh\n')
         for key,value in self.items():

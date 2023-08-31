@@ -7,7 +7,7 @@ Created on Tue May 30 14:45:20 2023
 """
 
 from pynter.slurm.core import Slurm
-from pynter.slurm.job_script import SbatchScript
+from pynter.slurm.job_settings import JobSettings
 
 def setup_job_script(subparsers):
     
@@ -18,7 +18,7 @@ def setup_job_script(subparsers):
     
 
 def parse_job_script_args(parser):
-    shdef = SbatchScript()
+    shdef = JobSettings()
     parser.add_argument('--filename',help='File name (default: %(default)s)',required=False,default=shdef.filename,type=str,metavar='',dest='filename')
     parser.add_argument('--array-size',help='Size of job array',required=False,default=shdef.array_size,type=int,metavar='',dest='array_size')
     parser.add_argument('--modules',action='append',help="Modules to load (default: %(default)s)" ,required=False,default=shdef.modules,type=str,metavar='',dest='modules')
@@ -30,8 +30,8 @@ def parse_job_script_args(parser):
 
     slurm = Slurm()
     for key in slurm.arguments:
-        if key in slurm.settings.keys():
-            parser.add_argument(f'--{key}',required=False,type=str,default=slurm.settings[key],metavar='',dest=key)
+        if key in slurm.keys():
+            parser.add_argument(f'--{key}',required=False,type=str,default=slurm[key],metavar='',dest=key)
         else:
             parser.add_argument(f'--{key}',required=False,type=str,metavar='',dest=key)
 
@@ -43,7 +43,6 @@ def write_job_script(args):
     if 'func' in kwargs.keys():
         del kwargs['func']
 
-    sh = SbatchScript(**kwargs)
-    sh.write_script()
+    JobSettings(**kwargs).write_bash_file()
     return
     

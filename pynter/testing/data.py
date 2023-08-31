@@ -66,6 +66,7 @@ class DatasetTest(PynterTest):
         assert len(jobs1) == len(jobs2), "Job lists have different lengths"
         for i in range(0,len(jobs1)):
             j1, j2 = jobs1[i], jobs2[i]
+#            print(j1.name,j1.incar,j2.name,j2.incar)
             assert j1.jobclass == j2.jobclass, "Jobs belong to different classes" 
             JobTest(jobclass=j1.jobclass).assert_job_equal(j1, j2,kwargs_input,kwargs_output)
             

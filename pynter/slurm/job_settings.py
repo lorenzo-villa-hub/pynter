@@ -8,6 +8,7 @@ Created on Tue Aug 29 15:16:02 2023
 import re
 import os
 import os.path as op
+import copy
 
 from monty.json import MSONable
 
@@ -44,7 +45,7 @@ class JobSettings(dict,MSONable):
         
         if slurm:
             if type(slurm) is dict:
-                self.slurm = Slurm(**slurm)
+                slurm = Slurm(**slurm)
             elif slurm.__class__.__name__ != 'Slurm':
                 raise ValueError('Slurm settings must be provided either as dictionary or as Slurm object')
 
@@ -74,17 +75,23 @@ class JobSettings(dict,MSONable):
             return super().__getitem__(key)
     
     def __setitem__(self,key,value):
-        if key not in self.keys():
+        args = ['slurm','filename','array_size','modules','path_exe','add_stop_array',
+                'add_automation','add_lines_header','add_lines_body']
+        if key not in args:
             self.slurm.__setitem__(key, value)
         else:
             super().__setitem__(key,value)
+        setattr(self, key, value)
         return
     
     def as_dict(self):
         d = dict(self)
         d["@module"] = type(self).__module__
         d["@class"] = type(self).__name__
-        return d        
+        return d       
+    
+    def copy(self):        
+        return copy.deepcopy(self)
     
     @classmethod
     def from_dict(cls,d):
@@ -99,7 +106,7 @@ class JobSettings(dict,MSONable):
         file = op.join(path,filename)
         with open(file) as f:
             input_string = f.read()
-        job_settings = JobSettings.from_string(input_string)
+        job_settings = JobSettings.from_bash_script(input_string)
         job_settings.filename = filename
         return job_settings
         
@@ -120,6 +127,8 @@ class JobSettings(dict,MSONable):
             line = line[-1]
             line = re.sub("[^2-9]", "", line)
             array_size = int(line)
+        if array_size:
+            del slurm['array']
             
             
         string = 'ml '

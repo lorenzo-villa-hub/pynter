@@ -63,7 +63,7 @@ class PynterTest(unittest.TestCase):
         """
         Tests if two strings are equal, ignoring things like trailing spaces, etc.
         """
-        lines1 = actual.split("\n")
+        lines1 = actual.split("\n") 
         lines2 = desired.split("\n")
         if len(lines1) != len(lines2):
             return False
@@ -94,33 +94,62 @@ class PynterTest(unittest.TestCase):
          'NSW': 0,
          'SIGMA': 0.05,
          'SYSTEM': 'Si',
-         '#### Default PBE: system': 'Si',
+         #'#### Default PBE: system': 'Si',
          'ISYM': 2}
         return incar_settings
+ 
     
     @property
     def job_settings(self):
         job_settings = {
-         'add_automation': 'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
-         'add_lines_body': None,
-         'add_lines_header': None,
-         'add_stop_array': True,
-         'array_size': None,
-         'cores_per_node': 24,
-         'email': 'test@pynter.com',
-         'error_filename': 'err.%j',
+          'slurm': {'account': 'project0000',
+          'constraint': 'avx2',
+          'cpus-per-task': 1,
+          'error': 'err.%j',
+          'exclusive': '',
+          'job-name': 'Si-BS_PBE-el-str_3',
+          'mail-type': 'ALL',
+          'mail-user': 'test@pynter.com',
+          'mem-per-cpu': 2400,
+          'nodes': 1,
+          'ntasks': 384,
+          'ntasks-per-node': 24,
+          'output': 'out.%j',
+          'partition': 'deflt',
+          'time': '00:30:00'},
          'filename': 'job.sh',
-         'memory_per_cpu': 2400,
+         'array_size': None,
          'modules': ['intel/2019.2', 'intel/2019.3', 'intelmpi/2019.3', 'fftw/3.3.8'],
-         'name': 'Si-BS_PBE-el-str_3',
-         'nodes': 1,
-         'output_filename': 'out.%j',
-         'partition': 'deflt',
          'path_exe': '/home/vasp-5-3-3',
-         'processor': 'avx2',
-         'project_id': 'project0000',
-         'timelimit': '00:30:00'}
-        return job_settings
+         'add_stop_array': True,
+         'add_automation': 'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
+         'add_lines_header': None,
+         'add_lines_body': None}
+        return job_settings 
+    # @property
+    # def job_settings(self):
+    #     job_settings = {
+    #      'add_automation': 'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
+    #      'add_lines_body': None,
+    #      'add_lines_header': None,
+    #      'add_stop_array': True,
+    #      'array_size': None,
+    #      'path_exe': '/home/vasp-5-3-3',
+    #      'filename': 'job.sh',
+    #      'modules': ['intel/2019.2', 'intel/2019.3', 'intelmpi/2019.3', 'fftw/3.3.8'],
+    #      'slurm':{
+    #      'mail-user': 'test@pynter.com',
+    #      'error': 'err.%j',
+    #      'memory-per-cpu': 2400,
+    #      'job-name': 'Si-BS_PBE-el-str_3',
+    #      'ntasks': 24,
+    #      'output': 'out.%j',
+    #      'partition': 'deflt',
+    #      'processor': 'avx2',
+    #      'account': 'project0000',
+    #      'time': '00:30:00'}
+    #      }
+    #     return job_settings
 
     @property
     def structure(self):
