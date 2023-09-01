@@ -8,10 +8,12 @@ Created on Wed Feb 19 14:52:51 2020
 import os
 import os.path as op
 import numpy as np
+import copy
 
 from pymatgen.core.periodic_table import Element
 from pymatgen.io.vasp.inputs import VaspInput, Incar, Poscar, Kpoints
 
+from pynter.slurm.job_settings import JobSettings
 from pynter.vasp.default_inputs import DefaultInputs
 from pynter.vasp.jobs import VaspJob, VaspNEBJob
 from pynter.defects.defects import create_vacancies, create_substitutions
@@ -37,8 +39,8 @@ class InputSets:
         potcar : (Pymatgen kpoints object), optional
             Pymatgen kpoints object. The default is None. If None the default settings from the DefaultInputs class are used.
         job_settings : (Dict), optional
-            Dictionary with job settings to create job script, parameters are defined in ScrpitHandler class function. The default is None.\n
-            If job_settings is None, the 'name' key will be added, the value is the 'name' argument if provided, if 'name' arg is \n
+            Dictionary with job settings to create job script, parameters are defined in JobSettings class function. The default is None.\n
+            If job_settings is None, the 'job-name' key will be added, the value is the 'name' argument if provided, if 'name' arg is \n
             None the value will be: 'no_name'.
         name : (str), optional
             Name for the system to set up scheme for. The default is None.
@@ -57,11 +59,16 @@ class InputSets:
             self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structure).get_incar_default()
             self.kpoints = kpoints if kpoints else DefaultInputs(self.structure).get_kpoints_default()
             self.potcar = potcar if potcar else DefaultInputs(self.structure).get_potcar()
-            self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'no_name'})
-            self.name = name if name != None else self.job_settings['name'] 
+            if job_settings:
+                self.job_settings = JobSettings(**job_settings)
+            elif name:
+                self.job_settings = JobSettings(slurm={'job-name':name})
+            else:
+                self.job_settings = JobSettings(slurm={'job-name':'no_name'})
+            self.name = name if name != None else self.job_settings['job-name'] 
             
             if self.name: # this return false if name is '', the previuos line considers only if name is None
-                self.job_settings['name'] = self.name
+                self.job_settings['job-name'] = self.name
                 
         else:
             raise ValueError('You need to provide Structure, either as Poscar object in VaspInput or in "structure" arg')
@@ -110,7 +117,7 @@ class InputSets:
         poscar = Poscar(self.structure)
         potcar = self.potcar
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['name'] = '_'.join([self.job_settings['name'],setname])
+        job_settings['job-name'] = '_'.join([job_settings['job-name'],setname])
         
         jobname = '_'.join([self.name,setname])
         jobpath = op.join(self.path,pathname)
@@ -194,8 +201,7 @@ class InputSets:
         vaspjob = self.pbe_scf(setname,pathname)
         vaspjob.incar['LHFCALC'] = '.TRUE.'
         vaspjob.incar['ISYM'] = 3  
-        vaspjob.job_settings['timelimit'] = '72:00:00'
-        vaspjob.job_settings['partition'] = 'test7d'
+        vaspjob.job_settings['time'] = '72:00:00'
         return vaspjob
 
     def hse_scf_gamma(self,setname='HSE-SCF-Gamma',pathname='HSE-SCF-Gamma'):
@@ -368,7 +374,8 @@ class Schemes(InputSets):
         if not encuts:
             encuts = range(300,800,100)
 
-        for ec in encuts:            
+        for ec in encuts:           
+            print(ec)
             stepname = f'cutoff{ec}'
             vaspjob = self.pbe_scf(setname=stepname,pathname=stepname)            
             vaspjob.incar['ENCUT'] = ec
@@ -1039,13 +1046,16 @@ class NEBSchemes:
         self.incar_settings = incar_settings if incar_settings else DefaultInputs(self.structures[0]).get_incar_default()
         self.kpoints = kpoints if kpoints else DefaultInputs(self.structures[0]).get_kpoints_default()
         self.potcar = potcar if potcar else DefaultInputs(self.structures[0]).get_potcar()
-        self.job_settings = job_settings if job_settings else ({'name':name} if name else {'name':'NEB'})
-        self.name = name if name else None
+        if job_settings:
+            self.job_settings = JobSettings(**job_settings)
+        elif name:
+            self.job_settings = JobSettings(slurm={'job-name':name})
+        else:
+            self.job_settings = JobSettings(slurm={'job-name':'no_name'})
+        self.name = name if name != None else self.job_settings['job-name'] 
         
-        if 'name' not in self.job_settings.keys():
-            self.job_settings['name'] = self.name
-        if 'name' in self.job_settings.keys() and self.name:
-            self.job_settings['name'] = self.name
+        if self.name: # this return false if name is '', the previuos line considers only if name is None
+            self.job_settings['job-name'] = self.name
 
         if add_parent_folder:
             self.path = op.join(self.path,self.name)
@@ -1095,11 +1105,9 @@ class NEBSchemes:
         inputs['KPOINTS'] = kpoints
         inputs['POTCAR'] = potcar
         
-        job_settings['nodes'] = self.images
-        job_settings['path_exe'] = '/home/lv51dypu/vasp.5.4.4_vtstcode/bin/vasp_std'
         if 'add_automation' not in job_settings:
             job_settings['add_automation'] = None        
-        job_settings['name'] = '_'.join([self.name,scheme_name])
+        job_settings['job-name'] = '_'.join([self.name,scheme_name])
 
 
         jobname = '_'.join([self.name,scheme_name])
@@ -1196,10 +1204,9 @@ class NEBSchemes:
         inputs['KPOINTS'] = kpoints
         inputs['POTCAR'] = potcar
         
-        job_settings['nodes'] = self.images
         if 'add_automation' not in job_settings:
             job_settings['add_automation'] = 'automation_vasp_NEB.py'        
-        job_settings['name'] = '_'.join([self.name,scheme_name])
+        job_settings['job-name'] = '_'.join([self.name,scheme_name])
 
 
         jobname = '_'.join([self.name,scheme_name])
@@ -1239,7 +1246,7 @@ class NEBSchemes:
                     job_settings['add_automation'] = '(cd ../ && automation_vasp_NEB.py)'
                 else:
                     job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
-            job_settings['name'] = '_'.join([self.name,scheme_name,image_name])
+            job_settings['job-name'] = '_'.join([self.name,scheme_name,image_name])
             
             jobname = '_'.join([self.name,scheme_name,image_name])
             jobpath = op.join(self.path,stepnames[0],image_name)

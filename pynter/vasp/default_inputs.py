@@ -69,12 +69,10 @@ class DefaultInputs:
                      
         if xc == 'PBE' or xc == 'LDA':
             incar_default_flags.update({
-                    f"#### Default {xc}: system" : system , 
                     "ISYM":2})
             
         if xc == 'PBE+U' or xc == 'LDA+U':
             incar_default_flags.update({
-                    f"#### Default {xc}: system" : system,                 
                     "ISYM":2,
                     "LDAU" : ".TRUE.",
                     "LDAUTYPE": 2,
@@ -85,7 +83,6 @@ class DefaultInputs:
             
         if xc == 'HSE06':
             incar_default_flags.update({
-                    "#### Default HSE06: system" : system, 
                     "LHFCALC" : ".TRUE.",
                     "HFSCREEN": 0.2,
                     "PRECFOCK": "Fast",

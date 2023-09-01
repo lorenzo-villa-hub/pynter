@@ -166,15 +166,21 @@ def get_object_feature(obj,feature):
         Method or attribute of class for which the value is needed.
     """
     if isinstance(feature,list):
-        met = feature[0]
+        method = feature[0]
         try:
-            attr = getattr(obj,met) ()
+            attr = getattr(obj,method) ()
         except:
-            attr = getattr(obj,met)                
+            attr = getattr(obj,method)                
         for k in feature[1:]:
-            v = attr[k] if k in attr.keys() else None
+            try:
+                v = attr[k]
+            except:
+                v = None
             if isinstance(v,dict):
-                attr = v
+                if feature.index(k) + 1 == len(feature):
+                    return v
+                else:
+                    attr = v
             else:
                 return v
             

@@ -4,7 +4,7 @@ import os
 import os.path as op
 import shutil
 
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_settings import JobSettings
 from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import grep_list
 
@@ -22,7 +22,7 @@ class Job:
         inputs : (dict), optional
             Dictionary with input data. The default is None.
         job_settings : (dict), optional
-            Dictionary with job settings. The default is None. Documentation in ScriptHandler class in slurm.job_script module
+            Dictionary with job settings. The default is None. Documentation in JobSettings class in slurm.job_script module
         outputs : (dict), optional
             Dictionary with output data. The default is None.
         job_script_filename : (str), optional
@@ -34,9 +34,9 @@ class Job:
                 
         self.path = path if path else os.getcwd()
         self.inputs = inputs
-        self.job_settings = job_settings.copy() if job_settings else job_settings
+        self.job_settings = JobSettings(**job_settings) if job_settings else JobSettings()
         self.outputs = outputs
-        self.job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
+        self.job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         
         self._localdir = HPCInterface().localdir
         self._workdir = HPCInterface().workdir
@@ -52,16 +52,16 @@ class Job:
         if name:
             self.name = name
         elif self.job_settings:
-            self.name = self.job_settings['name']
+            self.name = self.job_settings['slurm']['job-name']
         elif op.isfile(op.join(self.path,self.job_script_filename)):
-            s = ScriptHandler.from_file(self.path,filename=self.job_script_filename)
-            self.name = s.settings['name']
+            s = JobSettings.from_bash_file(self.path,filename=self.job_script_filename)
+            self.name = s.settings['slurm']['job-name']
         else:
             self.name = 'no_name'
             
         if not self.job_settings:
             self.job_settings = {}
-        self.job_settings['name'] = self.name
+        self.job_settings['slurm']['job-name'] = self.name
 
 
     def __str__(self):
@@ -349,7 +349,7 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
     from pynter.vasp.jobs import VaspJob, VaspNEBJob
     
     path = path if path else os.getcwd()
-    job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
+    job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         
     for root,dirs,files in os.walk(path):      
         if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):

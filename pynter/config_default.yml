@@ -1,7 +1,7 @@
 API_KEY: null
 HPC:
   hostname: null
-  localdir: /nfshome/villa/pynter-data
+  localdir: /home
   workdir: null
 dbconfig:
   vasp:
@@ -12,22 +12,20 @@ dbconfig:
     port: 27017
     user: null
 job_settings:
+  slurm:
+    account: ''
+    error: err.%j
+    mail-user: null
+    mem-per-cpu: 3500
+    ntasks: 96
+    job-name: no_name
+    output: out.%j
+    time: 01:00:00
   add_automation: null
   add_lines_body: null
   add_lines_header: null
-  add_stop_array: true
+  add_stop_array: false
   array_size: null
-  cores_per_node: 1
-  email: null
-  error_filename: err.%j
   filename: job.sh
-  memory_per_cpu: 3500
   modules: null
-  name: no_name
-  nodes: 1
-  output_filename: out.%j
-  partition: null
   path_exe: ''
-  processor: null
-  project_id: ''
-  timelimit: 01:00:00

@@ -1,12 +1,12 @@
 
 import os
 import os.path as op
-from pynter.vasp.jobs import VaspJob, VaspNEBJob
-from pynter.data.jobs import get_job_from_directory
-from pynter.slurm.interface import HPCInterface
 import pandas as pd
 import json
 from monty.json import MontyDecoder
+
+from pynter.data.jobs import get_job_from_directory
+from pynter.slurm.interface import HPCInterface
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 def _check_job_script(job_script_filenames,files):
@@ -334,7 +334,7 @@ class Dataset:
         inputs : (dict), optional
             Dictionary with input data. The default is None.
         job_settings : (dict), optional
-            Dictionary with job settings. The default is None. Documentation in ScriptHandler class in slurm.job_script module
+            Dictionary with job settings. The default is None. Documentation in SbatchScript class in slurm.job_script module
         outputs : (dict), optional
             Dictionary with output data. The default is None.
         job_script_filename : (str), optional

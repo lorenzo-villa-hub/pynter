@@ -24,7 +24,7 @@ from pymatgen.analysis.transition_state import NEBAnalysis
 from pynter.tools.utils import grep
 from pynter.data.jobs import Job
 from pynter.slurm.interface import HPCInterface
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_settings import JobSettings
 from pynter import SETTINGS
 
 
@@ -54,7 +54,7 @@ class VaspJob(Job):
              "@class": self.__class__.__name__,
              "path_relative":self.path_relative,
              "inputs": self.inputs.as_dict(),             
-             "job_settings": self.job_settings,
+             "job_settings": self.job_settings.as_dict(),
              "job_script_filename":self.job_script_filename,
              "name":self.name}
         
@@ -109,7 +109,7 @@ class VaspJob(Job):
         elif 'path' in d.keys():
             path = d['path']
         inputs = VaspInput.from_dict(d['inputs'])
-        job_settings = d['job_settings']
+        job_settings = JobSettings.from_dict(d['job_settings'])
         job_script_filename = d['job_script_filename']
         name = d['name']
         outputs= MontyDecoder().process_decoded(d['outputs'])
@@ -159,9 +159,8 @@ class VaspJob(Job):
                     warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
                     outputs['Vasprun'] = None
         
-        job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
-        s = ScriptHandler.from_file(path,filename=job_script_filename)
-        job_settings =  s.settings
+        job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+        job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
         return VaspJob(path=path,inputs=inputs,job_settings=job_settings,
                        outputs=outputs,job_script_filename=job_script_filename)
@@ -548,10 +547,8 @@ class VaspJob(Job):
     
     def write_input(self):
         """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
-        script_handler = ScriptHandler(**self.job_settings)
-        script_handler.write_script(path=self.path)
-        inputs = self.inputs
-        inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
+        self.job_settings.write_bash_file(path=self.path,filename=self.job_settings.filename)
+        self.inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
         return
 
 
@@ -601,7 +598,7 @@ class VaspNEBJob(Job):
              "@class": self.__class__.__name__,
             # "path": self.path, # old path version in dict 
              "path_relative":self.path_relative,           
-             "job_settings": self.job_settings,
+             "job_settings": self.job_settings.as_dict(),
              "job_script_filename":self.job_script_filename,
              "name":self.name}
         
@@ -654,7 +651,7 @@ class VaspNEBJob(Job):
         inputs["INCAR"] = Incar.from_dict(d['inputs']['INCAR'])
         inputs["KPOINTS"] = Kpoints.from_dict(d['inputs']['KPOINTS'])
         inputs["POTCAR"] = Potcar.from_dict(d['inputs']['POTCAR'])
-        job_settings = d['job_settings']
+        job_settings = JobSettings.from_dict(d['job_settings'])
         job_script_filename = d['job_script_filename']
         name = d['name']
         outputs= MontyDecoder().process_decoded(d['outputs'])
@@ -716,9 +713,8 @@ class VaspNEBJob(Job):
                 warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
                 outputs['NEBAnalysis'] = None
         
-        job_script_filename = job_script_filename if job_script_filename else ScriptHandler().filename
-        s = ScriptHandler.from_file(path,filename=job_script_filename)
-        job_settings =  s.settings
+        job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+        job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
         return VaspNEBJob(path=path,inputs=inputs,job_settings=job_settings,
                        outputs=outputs,job_script_filename=job_script_filename)
@@ -873,7 +869,7 @@ class VaspNEBJob(Job):
         False if file exists but no line is found.
         None if no out.* file exists.
         """
-        return self._is_required_accuracy_reached
+        return self._get_output_related_attribute('is_required_accuracy_reached')
     
     
     @property
@@ -882,7 +878,7 @@ class VaspNEBJob(Job):
         Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
         is equal to the step limit in INCAR file (NSW tag)
         """
-        return self._is_step_limit_reached
+        return self._get_output_related_attribute('is_step_limit_reached')
 
 
     @property
@@ -986,7 +982,9 @@ class VaspNEBJob(Job):
         incar.write_file(op.join(path,'INCAR'))
         kpoints.write_file(op.join(path,'KPOINTS'))
         potcar.write_file(op.join(path,'POTCAR'))
-        ScriptHandler(**job_settings).write_script(path=path)
+        job_settings.write_bash_file(path=path,filename=job_settings.filename)
+        
+        return
 
     
     def write_structures(self):
@@ -1020,6 +1018,15 @@ class VaspNEBJob(Job):
                 is_converged = True
             
         return is_converged     
+
+
+    def _get_output_related_attribute(self,attr):
+        """Checks if attribute has been defined and gives value, if not defined returns None."""
+        attr = '_' + attr
+        if hasattr(self, attr):
+            return getattr(self, attr)
+        else:
+            return None
 
 
     def _get_ionic_relaxation_from_outfile(self):

@@ -8,7 +8,7 @@ Created on Mon Jun 12 17:52:51 2023
 import unittest
 from numpy.testing import assert_allclose
 
-from pymatgen.io.vasp.inputs import Kpoints, Poscar
+from pymatgen.io.vasp.inputs import Kpoints, Poscar, Incar
 
 from pynter.testing.data import JobTest
 from pynter.testing.core import PynterTest
@@ -16,7 +16,7 @@ from pynter.testing.structure import StructureTest
 
 
 
-class VaspInputsTest(unittest.TestCase):
+class VaspInputsTest(PynterTest):
     """
     Provides methods to test pymatgen.io.vasp.inputs objects
     """
@@ -24,10 +24,15 @@ class VaspInputsTest(unittest.TestCase):
         """
         Compare Incar objects. Use system_only when default parameters are not known.
         """
+        for inc in [incar1,incar2]:
+            if type(inc) != Incar:
+                inc = Incar(inc)
+            for k,v in inc.items():
+                inc.__setitem__(k,v)
         if system_only:
             self.assertEqual(incar1['SYSTEM'], incar2['SYSTEM'])
         else:
-            self.assertEqual(incar1,incar2)
+            assert incar1.diff(incar2)['Different'] == {}
 
     def assert_Kpoints_equal(self,kpoints1,kpoints2):
         """

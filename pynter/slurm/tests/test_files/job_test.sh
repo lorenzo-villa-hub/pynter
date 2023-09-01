@@ -1,16 +1,12 @@
 #!/bin/sh
-#SBATCH -A projecttest0000
+#SBATCH --account=projecttest0000
 #SBATCH --job-name=test
 #SBATCH --array=1-2%1
 #SBATCH --mail-user=test@pynter.com
-#SBATCH --mail-type=ALL
-#SBATCH --nodes=4
-#SBATCH --ntasks-per-node=96
-#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=96
 #SBATCH --output=out.%j
 #SBATCH --error=err.%j
 #SBATCH --time=24:00:00
-#SBATCH --exclusive
 #SBATCH --mem-per-cpu=3500
 
 module purge

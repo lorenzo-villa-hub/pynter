@@ -17,7 +17,7 @@ from shutil import which
 from monty.dev import requires
 
 from pynter import SETTINGS, run_local
-from pynter.slurm.job_script import ScriptHandler
+from pynter.slurm.job_settings import JobSettings
 from pynter.data.jobs import get_job_from_directory
 
 def setup_hpc(subparsers):
@@ -115,7 +115,7 @@ def run_command(command,periodic=False):
 
 
 def setup_job(parser):
-    jsf = ScriptHandler().filename
+    jsf = JobSettings().filename
     parser.add_argument('-p','--path',help='Job path (default: %(default)s)',required=False,type=str,
                         default=os.getcwd(),metavar='',dest='path')
     parser.add_argument('-dry','--dry-run',action='store_true',help='Dry run with rsync (default: %(default)s)',default=False,dest='dry_run')
