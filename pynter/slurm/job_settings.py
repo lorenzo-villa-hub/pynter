@@ -19,8 +19,8 @@ from pynter.tools.utils import grep_list
 class JobSettings(dict,MSONable):
     
     # switch to key value format for sbatch args
-    def __init__(self,slurm=None,filename='job.sh',array_size=None,modules=None,path_exe=None,
-                 add_stop_array=False,add_automation=False,add_lines_header=None,
+    def __init__(self,load_slurm_defaults=True,slurm=None,filename='job.sh',array_size=None,modules=None,
+                 path_exe=None,add_stop_array=False,add_automation=False,add_lines_header=None,
                  add_lines_body=None,**kwargs):
         """
         Parameters
@@ -45,12 +45,12 @@ class JobSettings(dict,MSONable):
         
         if slurm:
             if type(slurm) is dict:
-                slurm = Slurm(**slurm)
+                slurm = Slurm(load_defaults=load_slurm_defaults,**slurm)
             elif slurm.__class__.__name__ != 'Slurm':
                 raise ValueError('Slurm settings must be provided either as dictionary or as Slurm object')
 
         elif not slurm and 'slurm' not in kwargs.keys():
-            slurm = Slurm(**kwargs)
+            slurm = Slurm(load_defaults=load_slurm_defaults,**kwargs)
         
         settings['slurm'] = slurm
     
@@ -167,7 +167,7 @@ class JobSettings(dict,MSONable):
             add_automation = None
             
         
-        return JobSettings(slurm=slurm,array_size=array_size,
+        return JobSettings(load_slurm_defaults=False,slurm=slurm,array_size=array_size,
                             modules=modules,path_exe=path_exe,add_stop_array=add_stop_array,
                             add_automation=add_automation)
 

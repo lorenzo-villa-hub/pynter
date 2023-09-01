@@ -18,7 +18,7 @@ from pynter.tools.utils import grep_list
 
 class Slurm(dict,MSONable):
     
-    def __init__(self,**kwargs):
+    def __init__(self,load_defaults=True,**kwargs):
         """
         Object to handle sbatch commands in Slurm. Behaves like a dictionary.
 
@@ -33,8 +33,9 @@ class Slurm(dict,MSONable):
         defaults = SETTINGS['job_settings']['slurm']
         
         settings = {}
-        for key,value in defaults.items():
-            settings[key] = value
+        if load_defaults:
+            for key,value in defaults.items():
+                settings[key] = value
         
         for key,value in kwargs.items():
             if key in self.arguments_legend.keys():

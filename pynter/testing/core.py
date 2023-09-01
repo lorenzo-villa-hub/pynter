@@ -94,7 +94,6 @@ class PynterTest(unittest.TestCase):
          'NSW': 0,
          'SIGMA': 0.05,
          'SYSTEM': 'Si',
-         #'#### Default PBE: system': 'Si',
          'ISYM': 2}
         return incar_settings
  
@@ -103,17 +102,12 @@ class PynterTest(unittest.TestCase):
     def job_settings(self):
         job_settings = {
           'slurm': {'account': 'project0000',
-          'constraint': 'avx2',
-          'cpus-per-task': 1,
           'error': 'err.%j',
-          'exclusive': '',
           'job-name': 'Si-BS_PBE-el-str_3',
-          'mail-type': 'ALL',
           'mail-user': 'test@pynter.com',
-          'mem-per-cpu': 2400,
+          'mem-per-cpu': 3500,
           'nodes': 1,
           'ntasks': 384,
-          'ntasks-per-node': 24,
           'output': 'out.%j',
           'partition': 'deflt',
           'time': '00:30:00'},

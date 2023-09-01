@@ -29,7 +29,6 @@ class TestVaspSchemes(PynterTest):
         
     def test_scheme(self):
         ds_test = Dataset.from_directory(op.join(self.test_files_path,'Si_HSE_rel_gamma'))
-       # ds_test = Dataset.from_json(op.join(self.test_files_path,'ds_Si_HSE_rel_gamma_inputs.json'))
         schemes = Schemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_schemes',job_settings=self.job_settings)
         jobs = schemes.hse_relaxation_gamma_extended()
@@ -38,7 +37,7 @@ class TestVaspSchemes(PynterTest):
         return
         
     def test_advanced_scheme(self):
-        ds_test = Dataset.from_json(op.join(self.test_files_path,'ds_Si_vacancies_pbe_relaxation.json'))
+        ds_test = Dataset.from_directory(op.join(self.test_files_path,'Vac_Si_adv_schemes_inputs'))
         schemes = AdvancedSchemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_adv_schemes',job_settings=self.job_settings)
         jobs = schemes.vacancies_pbe_relaxation({'Si':[-1,0,1]},supercell_size=3)
