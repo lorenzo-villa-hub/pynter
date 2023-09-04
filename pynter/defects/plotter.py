@@ -141,7 +141,7 @@ class ConcentrationPlotter:
         self.xlim = xlim
 
     def plot_concentrations(self,thermodata,output='total',size=(12,8),fontsize=22,
-                            xlim=None,ylim=None,show_unstable=True,**kwargs):
+                            xlim=None,ylim=None,show_unstable=True,colors=None,**kwargs):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -173,6 +173,8 @@ class ConcentrationPlotter:
             Range of y-axis. The default is None.
         show_unstable : (bool), optional
             Show regions where the system is unstable (at least one formation energy is negative).
+        colors : (list)
+            List of colors to use for plotting with matplotlib. If None the defaults are used.
         kwargs : 
             Kwargs to pass to DefectConcentrations.filter_concentrations(**kwargs).
             If provided, only the filtered concentrations will be plotted. If output
@@ -188,9 +190,11 @@ class ConcentrationPlotter:
         c,dc,cc = td.variable_concentrations,td.defect_concentrations,td.carrier_concentrations
         matplotlib.rcParams.update({'font.size': fontsize})
         if output == 'all' or output == 'stable':
-            plt = _plot_conc(c,dc,cc,output,size,**kwargs)
+            plt = _plot_conc(x=c,defect_concentrations=dc,carrier_concentrations=cc,
+                             output=output,size=size,colors=colors,**kwargs)
         elif output == 'total':
-            plt = _plot_conc_total(c,dc,cc,size,**kwargs)
+            plt = _plot_conc_total(x=c,defect_concentrations=dc,carrier_concentrations=cc,
+                                   size=size,colors=colors,**kwargs)
         else:
             raise ValueError('The options for plot output are "all", "stable" or "total".')
             
@@ -298,7 +302,7 @@ class PressurePlotter:
 
     
     def plot_concentrations(self,thermodata,output='total',size=(12,8),fontsize=22,
-                            xlim=None,ylim=None,show_unstable=True,**kwargs):
+                            xlim=None,ylim=None,show_unstable=True,colors=None,**kwargs):
         """
         Plot defect and carrier concentrations in a range of oxygen partial pressure.
 
@@ -328,6 +332,8 @@ class PressurePlotter:
             Range of y-axis. The default is None.
         show_unstable : (bool), optional
             Show regions where the system is unstable (at least one formation energy is negative).
+        colors : (list)
+            List of colors to use for plotting with matplotlib. If None the defaults are used.
         kwargs : 
             Kwargs to pass to DefectConcentrations.filter_concentrations(**kwargs).
             If provided, only the filtered concentrations will be plotted. If output
@@ -343,9 +349,11 @@ class PressurePlotter:
         p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
         matplotlib.rcParams.update({'font.size': fontsize})
         if output == 'all' or output == 'stable':
-            plt = _plot_conc(p,dc,cc,output,size,**kwargs)
+            plt = _plot_conc(x=p,defect_concentrations=dc,carrier_concentrations=cc,
+                             output=output,size=size,colors=colors,**kwargs)
         elif output == 'total':
-            plt = _plot_conc_total(p,dc,cc,size,**kwargs)
+            plt = _plot_conc_total(x=p,defect_concentrations=dc,carrier_concentrations=cc,
+                                   size=size,colors=colors,**kwargs)
         else:
             raise ValueError('The options for plot output are "all", "stable" or "total".')
             
@@ -494,7 +502,7 @@ class PressurePlotter:
     
     
     
-def _plot_conc(x,defect_concentrations,carrier_concentrations,output,size,**kwargs):
+def _plot_conc(x,defect_concentrations,carrier_concentrations,output,size,colors,**kwargs):
     
     plt.figure(figsize=size)
     dc = defect_concentrations if output != 'stable' else [c.stable for c in defect_concentrations] 
@@ -516,13 +524,14 @@ def _plot_conc(x,defect_concentrations,carrier_concentrations,output,size,**kwar
                         label_charge = '+' + str(q) if q > 0 else str(q)
                         index = charges.index(q)
                         plt.text(x[index],conc[index],label_charge,clip_on=True)
-            plt.plot(x,conc,label=label_txt,linewidth=4)
+            color = colors[i] if colors else None
+            plt.plot(x,conc,label=label_txt,linewidth=4,color=color)
     plt.plot(x,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
     plt.plot(x,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
     return plt
 
 
-def _plot_conc_total(x,defect_concentrations,carrier_concentrations,size,**kwargs):
+def _plot_conc_total(x,defect_concentrations,carrier_concentrations,size,colors,**kwargs):
     
     dc = defect_concentrations
     if kwargs:
@@ -533,7 +542,8 @@ def _plot_conc_total(x,defect_concentrations,carrier_concentrations,size,**kwarg
     for name in dc[0].names:
         conc = [c.total[name] for c in dc]
         label_txt = name.symbol
-        plt.plot(x,conc,label=label_txt,linewidth=4)
+        color = colors[dc[0].names.index(name)] if colors else None
+        plt.plot(x,conc,label=label_txt,linewidth=4,color=color)
     plt.plot(x,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
     plt.plot(x,n,label='$n_{e}$',linestyle='--',color='b',linewidth=4)
     return plt
