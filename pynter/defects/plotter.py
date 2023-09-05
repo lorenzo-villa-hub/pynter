@@ -137,7 +137,7 @@ class ThermodynamicsPlotter:
     Class to plot dependencies on the concentrations of a specific defect species (usually a dopant)
     """
     
-    def __init__(self,xlim=(1,1e20)):
+    def __init__(self,xlim=(1e-20,1e08)):
         
         self.xlim = xlim
         
@@ -420,6 +420,7 @@ class ThermodynamicsPlotter:
                                      output='total',size=(12,8),fontsize=22,
                                      xlim=None,ylim=None,show_unstable=True,colors=None,**kwargs):
         
+        matplotlib.rcParams.update({'font.size': 22})
         if output == 'all' or output == 'stable':
             plt = self._plot_conc(x=x,defect_concentrations=defect_concentrations,
                              carrier_concentrations=carrier_concentrations,
