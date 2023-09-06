@@ -12,9 +12,9 @@ with open("README.md") as file:
 
 setup(
     name='pynter-defects',
-    version='1.1.0',
+    version='1.2.0',
     author='Lorenzo Villa',
-    description='Tools for atomistic calculations, provides features for point-defect calculations with VASP',
+    description='Tools for atomistic calculations, provides features for point-defect calculations',
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
