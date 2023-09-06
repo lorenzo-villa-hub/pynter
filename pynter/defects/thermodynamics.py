@@ -27,7 +27,7 @@ class Conductivity:
         ----------
         mobilities : (dict)
             Dictionary with mobility values for the defect species. 
-            Keys must contain "electrons", "holes" and the defect specie name.
+            Keys must contain "electrons", "holes" and the defect species names.
         """
         self.mobilities = mobilities
         
@@ -67,8 +67,7 @@ class Conductivity:
 
 class DefectThermodynamics:
     """
-    Class that handles the analysis of defect equilibrium as a function of the concentrations 
-    of a target defect specie.
+    Class that handles the analysis of defect equilibrium.
     """
     
     def __init__(self,defects_analysis,bulk_dos,fixed_concentrations=None,
@@ -111,12 +110,8 @@ class DefectThermodynamics:
 
         Returns
         -------
-        Thermodata : (thermoData)
-            ThermoData object that contains the thermodynamic data:
-                partial_pressures : (list)
-                    List of partial pressure values.
-                conductivities : (list)
-                    List of conductivity values (in S/m).
+        conductivities: (list)
+            List with conductivity values in S/m.
         """
         conductivities = []
         for i in range(0,len(thermodata.partial_pressures)):
@@ -225,10 +220,13 @@ class DefectThermodynamics:
             ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
                     List of partial pressure values.
+                defect_concentrations : (list)
+                    List of DefectConcentrations objects
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
                 fermi_levels : (list)
-                    List of Fermi level values
-        """
-        
+                    list of Fermi level values
+        """        
         T1 = initial_temperature
         T2 = final_temperature
         res = reservoirs
@@ -313,6 +311,8 @@ class DefectThermodynamics:
                     Defect concentrations in the same format as the output of DefectsAnalysis. 
                 carrier_concentrations : (list)
                     List of tuples with intrinsic carriers concentrations (holes,electrons).
+                fermi_levels : (list)
+                    List of Fermi level values.
         """
         carrier_concentrations = []
         defect_concentrations = []
@@ -385,10 +385,16 @@ class DefectThermodynamics:
         -------
         Thermodata : (thermoData)
             ThermoData object that contains the thermodynamic data:
-                partial_pressures : (list)
-                    List of partial pressure values.
+                variable_defect_specie : (str)
+                    Name of variable defect species.
+                variable_concentrations : (list)
+                    List of concentrations of variable species. 
+                defect_concentrations : (list or dict)
+                    Defect concentrations in the same format as the output of DefectsAnalysis. 
+                carrier_concentrations : (list)
+                    List of tuples with intrinsic carriers concentrations (holes,electrons).
                 fermi_levels : (list)
-                    List of Fermi level values
+                    List of Fermi level values.
         """
         mu = chemical_potentials
         T1 = initial_temperature
