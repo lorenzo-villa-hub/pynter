@@ -114,7 +114,7 @@ class DefectThermodynamics:
             List with conductivity values in S/m.
         """
         conductivities = []
-        for i in range(0,len(thermodata.partial_pressures)):
+        for i in range(0,len(thermodata.carrier_concentrations)):
             carrier_concentrations = thermodata.carrier_concentrations[i]
             dc = thermodata.defect_concentrations[i] 
             defect_concentrations = []

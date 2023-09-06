@@ -196,19 +196,18 @@ class ThermodynamicsPlotter:
         return plt
     
 
-    def plot_pO2_vs_conductivity(self,thermodata,new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
+    def plot_pO2_vs_conductivity(self,partial_pressures,conductivities,new_figure=True,
+                                 label=None,size=(12,8),xlim=None,ylim=None):
         """
         Plot conductivity as a function of the oxygen partial pressure.
 
         Parameters
         ----------
-        thermodata: (ThermoData)
-            ThermoData object that contains the thermodynamic data:
-                partial_pressures : (list)
-                    list with partial pressure values.
-                conductivities : (dict or list)
-                    If is a dict multiples lines will be plotted, with labels as keys and conductivity list
-                    as values. If is a list only one line is plotted with label taken from the "label" argument.
+        partial_pressures : (list)
+            list with partial pressure values.
+        conductivities : (dict or list)
+            If is a dict multiples lines will be plotted, with labels as keys and conductivity list
+            as values. If is a list only one line is plotted with label taken from the "label" argument.
         new_figure : (bool), optional
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
@@ -225,10 +224,9 @@ class ThermodynamicsPlotter:
         plt : 
             Matplotlib object.
         """
-        td = thermodata
-        p,conductivities = td.partial_pressures, td.conductivities
         xlabel = 'Oxygen partial pressure (atm)'
-        plt = self.plot_x_vs_conductivity(x=p,xlabel=xlabel,conductivities=conductivities,
+        plt = self.plot_x_vs_conductivity(x=partial_pressures,xlabel=xlabel,
+                                          conductivities=conductivities,
                                           new_figure=new_figure,label=label,size=size,
                                           xlim=xlim,ylim=ylim)
         return plt    
@@ -333,22 +331,20 @@ class ThermodynamicsPlotter:
         return plt
 
 
-    def plot_variable_species_vs_conductivity(self,thermodata,new_figure=True,label=None,
-                                              size=(12,8),xlim=None,ylim=None):
+    def plot_variable_species_vs_conductivity(self,xlabel,variable_concentrations,conductivities,
+                                              new_figure=True,label=None,size=(12,8),xlim=None,ylim=None):
         """
         Plot conductivity as a function of the oxygen partial pressure.
 
         Parameters
         ----------
-        thermodata: (ThermoData)
-            ThermoData object that contains the thermodynamic data:
-                variable_defect_specie : (str)
-                    Name of variable defect species.
-                variable_concentrations : (list)
-                    List of concentrations of variable species. 
-                conductivities : (dict or list)
-                    If is a dict multiples lines will be plotted, with labels as keys and conductivity list
-                    as values. If is a list only one line is plotted with label taken from the "label" argument.
+        xlabel : (str)
+            Label for concentration axis (cm^-3 is added).
+        variable_concentrations : (list)
+            List of concentrations of variable species. 
+        conductivities : (dict or list)
+            If is a dict multiples lines will be plotted, with labels as keys and conductivity list
+            as values. If is a list only one line is plotted with label taken from the "label" argument.
         new_figure : (bool), optional
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
@@ -365,11 +361,9 @@ class ThermodynamicsPlotter:
         plt : 
             Matplotlib object.
         """
-        td = thermodata
-        c,conductivities = td.variable_concentrations, td.conductivities
-        dname = self._get_variable_defect_specie_label(td.variable_defect_specie)
-        xlabel = '[%s] (cm$^{-3})$' %dname
-        plt = self.plot_x_vs_conductivity(x=c,xlabel=xlabel,conductivities=conductivities,
+        xlabel = '%s (cm$^{-3})$' %xlabel
+        plt = self.plot_x_vs_conductivity(x=variable_concentrations,xlabel=xlabel,
+                                          conductivities=conductivities,
                                           new_figure=new_figure,label=label,size=size,
                                           xlim=xlim,ylim=ylim)
         return plt
@@ -506,8 +500,9 @@ class ThermodynamicsPlotter:
             List with data on x-axis.
         xlabel : (str)
             Label for x-axis.
-        conductivities: (list)
-            List with conductivity values.
+        conductivities : (dict or list)
+            If is a dict multiples lines will be plotted, with labels as keys and conductivity list
+            as values. If is a list only one line is plotted with label taken from the "label" argument.
         new_figure : (bool), optional
             Initialize a new matplotlib figure. The default is True.
         label : (str), optional
@@ -534,7 +529,7 @@ class ThermodynamicsPlotter:
             sigma = conductivities
             plt.plot(x,sigma,linewidth=4,marker='s',label=label)
         plt.xscale('log')
-    #    plt.yscale('log')
+        plt.yscale('log')
         xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
         if ylim:
