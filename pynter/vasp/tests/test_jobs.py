@@ -74,6 +74,8 @@ class TestVaspNEBJob(PynterTest):
         forces = np.array([ 0.      , -0.27551 , -0.22473 ,  0.089532,  0.337205,  0.      ])
         self.assert_all_close( neba.forces , forces)
         
+    def test_vaspnebjob_from_json(self):
+        j = VaspNEBJob.from_directory(op.join(self.test_files_path,'NN-VO-NEB'))
         #if runs import is successfull - comparing dictionary directly is impossible because of pymatgen's inconsistencies
         j_from_json = VaspNEBJob.from_json(json.dumps(j.as_dict()))
         return

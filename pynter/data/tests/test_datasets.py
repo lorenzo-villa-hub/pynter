@@ -5,6 +5,8 @@ Created on Mon May 15 16:25:45 2023
 
 @author: villa
 """
+import os.path as op
+import json
 
 from pynter.data.datasets import Dataset
 
@@ -15,13 +17,21 @@ from pynter.testing.data import DatasetTest
 class TestDataset(PynterTest):
     
     def setUp(self):
-        self.ds = Dataset.from_json(self.get_testfile_path('ds_Si_vacancies_pbe_relaxation.json'))
+        self.ds = Dataset.from_directory(op.join(self.test_files_path,'Vac_Si_adv_schemes_inputs'))
 
-    def test_from_json(self):
+    def test_from_directory(self):
         ds = self.ds
-        assert ds.name == 'Vac_Si'
+        assert ds.name == 'Vac_Si_adv_schemes_inputs'
         assert ds.groups == ['q-1','q0','q1']
         assert ds.jobs_table().__class__.__name__ == 'DataFrame'
+        
+    def test_from_json(self):
+        ds = self.ds
+        ds_from_json = Dataset.from_json(json.dumps(ds.as_dict()))
+        assert ds_from_json.name == 'Vac_Si_adv_schemes_inputs'
+        assert ds_from_json.groups == ['q-1','q0','q1']
+        assert ds_from_json.jobs_table().__class__.__name__ == 'DataFrame'
+        return        
         
     def test_select_jobs(self):
         ds = self.ds

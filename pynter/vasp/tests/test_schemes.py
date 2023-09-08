@@ -22,7 +22,7 @@ class TestVaspSchemes(PynterTest):
     def test_get_vaspjob(self):
         j = InputSets(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_input_sets',job_settings=self.job_settings).get_vaspjob(setname='job')
-        j_test = VaspJob.from_json(op.join(self.test_files_path,'vaspjob_Si_input_sets.json'))
+        j_test = VaspJob.from_directory(op.join(self.test_files_path,'Si-input-sets'))
         
         VaspJobTest().assert_inputs_equal(j,j_test,include_incar=False)
         return
