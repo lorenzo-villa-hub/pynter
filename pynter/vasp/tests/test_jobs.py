@@ -23,13 +23,12 @@ class TestVaspJob(PynterTest):
     def setUp(self):
         import warnings
         warnings.filterwarnings(action='ignore')
+        self.path = op.join(self.test_files_path,'Si-BS')
+        self.job = VaspJob.from_directory(self.path,load_outputs=True)
 
     def test_vaspjob_from_directory(self):
-        path = op.join(self.test_files_path,'Si-BS')
-        j = VaspJob.from_directory(path,load_outputs=True)
-        
+        path, j = self.path, self.job        
         VaspInputsTest().assert_VaspInput_equal(j.inputs,VaspInput.from_directory(path))
-
         VaspOutputsTest().assert_Vasprun_equal(j.outputs['Vasprun'], Vasprun(op.join(path,'vasprun.xml')))
 
         assert j.job_settings['job-name'] == 'Si-BS_PBE-el-str_3'  
@@ -37,20 +36,17 @@ class TestVaspJob(PynterTest):
         self.assert_all_close(j.charge,0)
     
     def test_vaspjob_from_dict(self):
-        path = op.join(self.test_files_path,'Si-BS')
-        j = VaspJob.from_dict(VaspJob.from_directory(path,load_outputs=True).as_dict())
+        j = VaspJob.from_dict(VaspJob.from_directory(self.path,load_outputs=True).as_dict())
         keys = SETTINGS['vasp']['computed_entry_default']
         assert list(j.computed_entry.data.keys()) == keys
         
     def test_vaspjob_with_band_structure(self):
-        path = op.join(self.test_files_path,'Si-BS')
-        j = VaspJob.from_directory(path,load_outputs=True)
+        j = self.job        
         j.get_output_properties(get_band_structure=True)
         assert j.band_structure.__module__ == 'pymatgen.electronic_structure.bandstructure'
         
     def test_vaspjob_to_json_from_json(self):
-        path = op.join(self.test_files_path,'Si-BS')
-        j = VaspJob.from_directory(path,load_outputs=True)
+        j = self.job        
         j.get_output_properties(get_band_structure=True)
         d = j.as_dict(get_band_structure=True) 
         #if runs import is successfull - comparing dictionary directly is impossible because of pymatgen's inconsistencies
@@ -60,9 +56,14 @@ class TestVaspJob(PynterTest):
 
 class TestVaspNEBJob(PynterTest):
     
+    def setUp(self):
+        import warnings
+        warnings.filterwarnings(action='ignore')
+        self.path = op.join(self.test_files_path,'NN-VO-NEB')
+        self.job = VaspNEBJob.from_directory(self.path)        
+    
     def test_vaspnebjob_from_directory(self):
-        j = VaspNEBJob.from_directory(op.join(self.test_files_path,'NN-VO-NEB'))
-        neba = j.neb_analysis
+        neba = self.job.neb_analysis
         r = np.array([0.        , 0.68575757, 1.36377546, 2.0248057 , 2.77804612,
                3.5241437 ])
         self.assert_all_close( neba.r , r)
@@ -75,9 +76,8 @@ class TestVaspNEBJob(PynterTest):
         self.assert_all_close( neba.forces , forces)
         
     def test_vaspnebjob_from_json(self):
-        j = VaspNEBJob.from_directory(op.join(self.test_files_path,'NN-VO-NEB'))
         #if runs import is successfull - comparing dictionary directly is impossible because of pymatgen's inconsistencies
-        j_from_json = VaspNEBJob.from_json(json.dumps(j.as_dict()))
+        j_from_json = VaspNEBJob.from_json(json.dumps(self.job.as_dict()))
         return
         
         

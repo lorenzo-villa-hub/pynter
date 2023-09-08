@@ -6,20 +6,16 @@ Created on Fri Dec 11 14:33:12 2020
 @author: villa
 """
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta
 from monty.json import MSONable
-import json
 import numpy as np
-import importlib
 import warnings
 
 from pymatgen.core.units import kb
-from pymatgen.core.structure import Structure
+
 from pynter.defects.structure import defect_finder
-from monty.json import MontyDecoder, MontyEncoder
 from pynter.defects.elasticity import Stresses
-from pynter.defects.defects import format_legend_with_charge_kv, format_legend_with_charge_number
-#from pynter.defects.defects import DefectName,
+from pynter.vasp.utils import get_charge_from_computed_entry
 
 
 
@@ -148,9 +144,47 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     def symbol_kroger(self):
         return self.defect.symbol_with_charge_kv
     
-    
+
     @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,multiplicity=1,data=None,label=None,tol=1e-03):
+    def from_computed_entries(computed_entry_defect,computed_entry_bulk,corrections,
+                              multiplicity=1,data=None,label=None,tol=1e-03):
+        """
+        Generate DefectEntry object from Pymatgen's ComputedStructureEntry objects.
+
+        Parameters
+        ----------
+        computed_entry_defect : (VaspJob)
+            ComputedStructureEntry of the defect calculation.
+        job_bulk : (VaspJob)
+            ComputedStructureEntry of the bulk calculation.
+        corrections : (dict)
+            Dict of corrections for defect formation energy. All values will be summed and
+            added to the defect formation energy.
+        multiplicity : (int), optional
+            Multiplicity of defect within the supercell. 
+            If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
+        data : (dict), optional
+            Store additional data in dict format.
+        label : (str), optional
+            Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
+
+        Returns
+        -------
+        DefectEntry
+        """ 
+        entry_df, entry_bulk = computed_entry_defect,computed_entry_bulk
+        charge = get_charge_from_computed_entry(entry_df)
+        energy_diff = entry_df.energy - entry_bulk.energy
+        
+        return DefectEntry.from_structures(entry_df.structure, entry_bulk.structure, energy_diff,
+                                           corrections,charge,multiplicity,data,label,tol=tol)
+        
+
+    @staticmethod
+    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,
+                  multiplicity=1,data=None,label=None,tol=1e-03):
         """
         Generate DefectEntry object from VaspJob objects.
 
@@ -189,7 +223,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
 
     @staticmethod
-    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,multiplicity=1,data=None,label=None,tol=1e-03):
+    def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,
+                        multiplicity=1,data=None,label=None,tol=1e-03):
         """
         Generate DefectEntry object from Structure objects.
 
