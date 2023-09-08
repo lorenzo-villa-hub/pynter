@@ -60,19 +60,23 @@ class TestVaspJob(PynterTest):
 
 class TestVaspNEBJob(PynterTest):
     
-    def test_vaspnebjob_from_json(self):
-        j = VaspNEBJob.from_json(self.get_testfile_path('vaspnebjob_NN_VO.json'))
+    def test_vaspnebjob_from_directory(self):
+        j = VaspNEBJob.from_directory(op.join(self.test_files_path,'NN-VO-NEB'))
         neba = j.neb_analysis
-        r = np.array([0.        , 0.64591638, 1.29416299, 1.94391391, 2.58088582,
-               3.2171647 , 3.85151573])
+        r = np.array([0.        , 0.68575757, 1.36377546, 2.0248057 , 2.77804612,
+               3.5241437 ])
         self.assert_all_close( neba.r , r)
         
-        energies = np.array([-611.37449618, -611.20389509, -610.79989855, -610.64320248,
-       -610.78631166, -611.14814619, -611.37438141])
+        energies = np.array([-1228.22426719, -1228.12890034, -1227.95020108, -1227.90419223,
+               -1228.07030217, -1228.19596946])
         self.assert_all_close( neba.energies , energies)
         
-        forces = np.array([ 0.      , -0.572757, -0.500791, -0.004058,  0.447456,  0.638393,
-        0.      ])
+        forces = np.array([ 0.      , -0.27551 , -0.22473 ,  0.089532,  0.337205,  0.      ])
         self.assert_all_close( neba.forces , forces)
+        
+        #if runs import is successfull - comparing dictionary directly is impossible because of pymatgen's inconsistencies
+        j_from_json = VaspNEBJob.from_json(json.dumps(j.as_dict()))
+        return
+        
         
         

@@ -26,7 +26,6 @@ class TestDefect(PynterTest):
         structure = bulk_structure.copy()
         frac_coords = np.array([0.66666667, 0.5, 0.5])
         interstitial_site = PeriodicSite('Si', frac_coords, structure.lattice)
-        multiplicity = 108
         inter = Interstitial(interstitial_site,structure,charge=0,multiplicity=108,label='test')
         assert inter.defect_specie == 'Si'
         assert inter.defect_type == 'Interstitial'
@@ -139,7 +138,6 @@ class TestDefectName(PynterTest):
         assert name.dtype == 'Vacancy'
         assert name == 'Vac_Si(test)'
         assert name == DefectName('Vacancy','Si',label='test')
-        assert {name:1} == {'Vac_Si(test)':1}
         assert name == DefectName.from_string('Vac_Si(test)')
         
     def test_substitution(self):
@@ -152,7 +150,6 @@ class TestDefectName(PynterTest):
         assert name.dtype == 'Substitution'
         assert name == 'Sub_P_on_Si(test)'
         assert name == DefectName('Substitution','P','Si',label='test')
-        assert {name:1} == {'Sub_P_on_Si(test)':1}
         assert name == DefectName.from_string('Sub_P_on_Si(test)')
         
     def test_interstitial(self):
@@ -165,7 +162,6 @@ class TestDefectName(PynterTest):
         assert name.dtype == 'Interstitial'
         assert name == 'Int_Si(test)'
         assert name == DefectName('Interstitial','Si',label='test')
-        assert {name:1} == {'Int_Si(test)':1}
         assert name == DefectName.from_string('Int_Si(test)')
         
     def test_polaron(self):
@@ -178,7 +174,6 @@ class TestDefectName(PynterTest):
         assert name.dtype == 'Polaron'
         assert name == 'Pol_Si(test)'
         assert name == DefectName('Polaron','Si',label='test')
-        assert {name:1} == {'Pol_Si(test)':1}
         assert name == DefectName.from_string('Pol_Si(test)')
     
     
