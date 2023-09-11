@@ -12,7 +12,7 @@ with open("README.md") as file:
 
 setup(
     name='pynter-defects',
-    version='1.2.1',
+    version='1.3.0',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations, provides features for point-defect calculations',
     long_description=long_description,
