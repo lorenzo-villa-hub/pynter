@@ -64,6 +64,38 @@ class Conductivity:
         return sigma
 
 
+    def get_conductivities_from_thermodata(self,thermodata):
+        """
+        Calculate conductivities from defect and carrier concentrations in
+        thermodynamic data. Only the defect species which are present in the
+        mobility dict are considered for the calculation of the conductivity.
+
+        Parameters
+        ----------
+        thermodata: (ThermoData)
+            ThermoData object that contains the thermodynamic data.
+
+        Returns
+        -------
+        conductivities: (list)
+            List with conductivity values in S/m.
+        """
+        conductivities = []
+        for i in range(0,len(thermodata.carrier_concentrations)):
+            carrier_concentrations = thermodata.carrier_concentrations[i]
+            dc = thermodata.defect_concentrations[i] 
+            defect_concentrations = []
+            for d in dc:
+                if d['name'] in self.mobilities.keys():
+                    defect_concentrations.append(d)
+            conductivity = self.get_conductivity(
+                                                carrier_concentrations=carrier_concentrations,
+                                                defect_concentrations=defect_concentrations)
+            conductivities.append(conductivity)
+        
+        return conductivities 
+
+
 
 class DefectThermodynamics:
     """
@@ -91,42 +123,6 @@ class DefectThermodynamics:
         self.fixed_concentrations = fixed_concentrations if fixed_concentrations else None
         self.external_defects = external_defects if external_defects else []
         self.xtol = xtol
-        
-
-    def get_conductivities_from_thermodata(self,thermodata,mobilities):
-        """
-        Calculate conductivities from defect and carrier concentrations in
-        thermodynamic data.
-
-        Parameters
-        ----------
-        thermodata: (ThermoData)
-            ThermoData object that contains the thermodynamic data.
-        mobilities : (dict)
-            Dictionary with mobility values for the defect species. 
-            Keys must contain "electrons", "holes" and the defect specie name.
-            Only the defect species which are present in this dict are 
-            considered for the calculation of the conductivity.
-
-        Returns
-        -------
-        conductivities: (list)
-            List with conductivity values in S/m.
-        """
-        conductivities = []
-        for i in range(0,len(thermodata.carrier_concentrations)):
-            carrier_concentrations = thermodata.carrier_concentrations[i]
-            dc = thermodata.defect_concentrations[i] 
-            defect_concentrations = []
-            for d in dc:
-                if d['name'] in mobilities.keys():
-                    defect_concentrations.append(d)
-            conductivity = Conductivity(mobilities).get_conductivity(
-                                                carrier_concentrations=carrier_concentrations,
-                                                defect_concentrations=defect_concentrations)
-            conductivities.append(conductivity)
-        
-        return conductivities 
 
 
     def get_pO2_thermodata(self,reservoirs,temperature=None,name=None):
