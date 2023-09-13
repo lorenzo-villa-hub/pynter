@@ -1034,7 +1034,7 @@ class NEBSchemes:
         job_settings : (Dict), optional
             Dictionary with job settings to create job script, parameters are defined in ScrpitHandler class function. The default is None.\n
             If job_settings is None, the 'name' key will be added, the value is the 'name' parameter if provided, if 'name' parameter is \n
-            None the value will be: 'no_name'.
+            None the value will be: 'no_name'. If automations are not desired, set job_settings['add_automation'] equal to ''.
         name : (str), optional
             Name for the system to set up scheme for. The default is None.
         add_parent_folder : (bool), optional
@@ -1204,8 +1204,8 @@ class NEBSchemes:
         inputs['KPOINTS'] = kpoints
         inputs['POTCAR'] = potcar
         
-        if 'add_automation' not in job_settings:
-            job_settings['add_automation'] = 'automation_vasp_NEB.py'        
+        if 'add_automation' not in job_settings or job_settings['add_automation'] == None:
+            job_settings['add_automation'] = 'pynter automation vasp-NEB'        
         job_settings['job-name'] = '_'.join([self.name,scheme_name])
 
 
@@ -1241,11 +1241,11 @@ class NEBSchemes:
             vaspinput = VaspInput(incar, kpoints, poscar, potcar)
             
             job_settings = self.job_settings.copy()
-            if 'add_automation' not in job_settings:
+            if 'add_automation' not in job_settings  or job_settings['add_automation'] == None:
                 if index ==  structures.index(structures[-1]):
-                    job_settings['add_automation'] = '(cd ../ && automation_vasp_NEB.py)'
+                    job_settings['add_automation'] = '(cd ../ && pynter automation vasp-NEB)'
                 else:
-                    job_settings['add_automation'] = 'automation_vasp.py --chgcar --wavecar'
+                    job_settings['add_automation'] = 'pynter automation vasp --chgcar --wavecar'
             job_settings['job-name'] = '_'.join([self.name,scheme_name,image_name])
             
             jobname = '_'.join([self.name,scheme_name,image_name])
