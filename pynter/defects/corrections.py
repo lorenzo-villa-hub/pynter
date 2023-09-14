@@ -16,7 +16,8 @@ from pynter.defects.structure import defect_finder
 
 
 def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,path_to_pure_locpot,charge,
-                             dielectric_constant,defect_site_coordinates,energy_cutoff=500,get_plot=False):
+                             dielectric_constant,defect_site_coordinates,energy_cutoff=500,
+                             get_plot=False,**kwargs):
     
     ''' Function to perform charge corrections according to the method proposed py Freysoldt
         If this correction is used, please reference Freysoldt's original paper.
@@ -37,11 +38,8 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
             Freysoldt corrections values as a dictionary 
             '''
     # acquiring data from LOCPOT files    
-    locpot_pure = Locpot.from_file(path_to_pure_locpot)
-    vol_data_pure = VolumetricData(locpot_pure.structure,locpot_pure.data)
-    
-    locpot_defect = Locpot.from_file(path_to_defect_locpot)
-    vol_data_defect = VolumetricData(locpot_defect.structure,locpot_defect.data)
+    vol_data_pure = Locpot.from_file(path_to_pure_locpot)
+    vol_data_defect = Locpot.from_file(path_to_defect_locpot)
     
     parameters = {}
     parameters['axis_grid'] = []
@@ -51,18 +49,18 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
         parameters['axis_grid'].append(vol_data_pure.get_axis_grid(i))
         parameters['bulk_planar_averages'].append(vol_data_pure.get_average_along_axis(i))
         parameters['defect_planar_averages'].append(vol_data_defect.get_average_along_axis(i))
-    parameters['initial_defect_structure'] = locpot_defect.structure
+    parameters['initial_defect_structure'] = vol_data_defect.structure
     parameters['defect_frac_sc_coords'] = defect_site_coordinates
     
-    structure_bulk = locpot_pure.structure
-    defect_site = PeriodicSite(defect_specie, coords=defect_site_coordinates, lattice = locpot_pure.structure.lattice)
+    structure_bulk = vol_data_pure.structure
+    defect_site = PeriodicSite(defect_specie, coords=defect_site_coordinates, lattice = vol_data_pure.structure.lattice)
     
     module = importlib.import_module("pynter.defects.pmg.pmg_defects_core")
     defect_class = getattr(module,defect_type)
     defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=None)
     defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
     
-    freysoldt_class = FreysoldtCorrection(dielectric_constant,energy_cutoff=energy_cutoff)
+    freysoldt_class = FreysoldtCorrection(dielectric_constant,energy_cutoff=energy_cutoff,**kwargs)
     
     freysoldt_corrections = freysoldt_class.get_correction(defect_entry)
   
@@ -73,7 +71,8 @@ def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,p
         return freysoldt_corrections
 
 
-def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,energy_cutoff=500,tol=1e-03,get_plot=False):
+def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,energy_cutoff=500,
+                                       tol=1e-03,get_plot=False,**kwargs):
     """
     Get Freysoldt corrections from VaspJob objects.
 
@@ -110,7 +109,8 @@ def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,e
     charge = job_defect.charge
 
     corr = get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot, path_to_pure_locpot, 
-                                    charge, dielectric_constant, defect_site_coordinates,energy_cutoff,get_plot)
+                                    charge, dielectric_constant, defect_site_coordinates,
+                                    energy_cutoff,get_plot,**kwargs)
     
     return corr
 
