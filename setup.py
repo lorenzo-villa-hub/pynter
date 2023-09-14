@@ -29,6 +29,7 @@ setup(
     package_data={
         "pynter":["*.yml"],
         "pynter.vasp":["*.yml"]
+        "pynter.slurm":["*.txt"]
         },
     extra_requires={'test':'pytest'},
     entry_points={
