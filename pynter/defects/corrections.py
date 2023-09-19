@@ -6,6 +6,8 @@ Created on Tue Apr  4 15:26:50 2023
 @author: villa
 """
 from pymatgen.io.vasp.outputs import Vasprun, Locpot, VolumetricData, Outcar
+from pymatgen.analysis.defects.corrections.freysoldt import get_freysoldt_correction, plot_plnr_avg
+
 from pynter.defects.pmg.pmg_defects_core import Vacancy , DefectEntry, Interstitial, Substitution
 from pynter.defects.pmg.pmg_defects_corrections import FreysoldtCorrection, KumagaiCorrection
 import os.path as op
@@ -15,66 +17,11 @@ from pynter.tools.structure import is_site_in_structure_coords
 from pynter.defects.structure import defect_finder
 
 
-def get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot,path_to_pure_locpot,charge,
-                             dielectric_constant,defect_site_coordinates,energy_cutoff=500,
-                             get_plot=False,**kwargs):
-    
-    ''' Function to perform charge corrections according to the method proposed py Freysoldt
-        If this correction is used, please reference Freysoldt's original paper.
-        doi: 10.1103/PhysRevLett.102.016402
-        
-        Args:
-            defect_type: 'Vacancy', 'Interstitial' or 'Substitution'
-            defect_specie: string with element occupying the defect site
-            path_to_defect_locpot: path to LOCPOT file of defect structure
-            path_to_pure_locpot: path to LOCPOT file of Pure structure
-            charge: Charge of the defected system
-            dielectric_constant: Dielectric constant
-            defect_site_coordinates: numpy array with fractional coordinates of defect site
-            energy_cutoff: Cut-off of plane wave expansion
-            get_plot: return also Matplotlib object with plot
-            
-        Returns:
-            Freysoldt corrections values as a dictionary 
-            '''
-    # acquiring data from LOCPOT files    
-    vol_data_pure = Locpot.from_file(path_to_pure_locpot)
-    vol_data_defect = Locpot.from_file(path_to_defect_locpot)
-    
-    parameters = {}
-    parameters['axis_grid'] = []
-    parameters['bulk_planar_averages'] = []
-    parameters['defect_planar_averages'] = []
-    for i in range(0,3):
-        parameters['axis_grid'].append(vol_data_pure.get_axis_grid(i))
-        parameters['bulk_planar_averages'].append(vol_data_pure.get_average_along_axis(i))
-        parameters['defect_planar_averages'].append(vol_data_defect.get_average_along_axis(i))
-    parameters['initial_defect_structure'] = vol_data_defect.structure
-    parameters['defect_frac_sc_coords'] = defect_site_coordinates
-    
-    structure_bulk = vol_data_pure.structure
-    defect_site = PeriodicSite(defect_specie, coords=defect_site_coordinates, lattice = vol_data_pure.structure.lattice)
-    
-    module = importlib.import_module("pynter.defects.pmg.pmg_defects_core")
-    defect_class = getattr(module,defect_type)
-    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=None)
-    defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
-    
-    freysoldt_class = FreysoldtCorrection(dielectric_constant,energy_cutoff=energy_cutoff,**kwargs)
-    
-    freysoldt_corrections = freysoldt_class.get_correction(defect_entry)
-  
-    if get_plot:
-        plt = freysoldt_class.plot(1)
-        return freysoldt_corrections , plt
-    else:    
-        return freysoldt_corrections
 
-
-def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,energy_cutoff=500,
-                                       tol=1e-03,get_plot=False,**kwargs):
+def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,
+                                       tol=1e-03,get_plot=False,plot_axis_index=0,**kwargs):
     """
-    Get Freysoldt corrections from VaspJob objects.
+    Get Freysoldt correction from VaspJob objects using the new "pymatgen-analysis-defects".
 
     Parameters
     ----------
@@ -83,9 +30,55 @@ def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,e
     job_bulk : (VaspJob)
         Bulk calculation.
     dielectric_constant : (float)
-        Dielectric constant
-    energy_cutoff : (int)
-        Cut-off of plane wave expansion in eV
+        Dielectric constant.
+    tol : (float)
+        Tolerance for defect_finder function. The default is 1e-03.
+    get_plot : (bool), optional
+        Get Matplotlib object with plot. The default is False.
+    plot_axis_index : (int), optional
+        Axis for planar average plot. The default is 0.
+    **kwargs : (dict)
+        Kwargs to pass to pymatgen's get_freysoldt_correction.
+
+    Returns
+    -------
+    correction, ax
+        CorrectionResult object, matplotlib axis object
+    """
+    q = job_defect.charge
+    defect_locpot = Locpot.from_file(op.join(job_defect.path,'LOCPOT'))
+    bulk_locpot = Locpot.from_file(op.join(job_bulk.path,'LOCPOT'))
+    defect = defect_finder(job_defect.initial_structure,job_bulk.final_structure,tol=tol)
+    defect_frac_coords = defect.site.frac_coords
+    lattice = defect_locpot.structure.lattice
+    correction = get_freysoldt_correction(q=q,dielectric=dielectric_constant,defect_locpot=defect_locpot,
+                                    bulk_locpot=bulk_locpot,defect_frac_coords=defect_frac_coords,
+                                    lattice=lattice,**kwargs)
+    if get_plot:
+        ax = plot_plnr_avg(correction.metadata['plot_data'][plot_axis_index]).get_figure()
+        return correction, ax
+    else:
+        return correction 
+
+
+def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampling_radius=None,
+                                     gamma=None,tol=1e-03,get_plot=False):
+    """
+    Get Kumagai corrections from VaspJob objects.
+
+    Parameters
+    ----------
+    job_defect : (VaspJob)
+        Defect calculation.
+    job_bulk : (VaspJob)
+        Bulk calculation.
+    dielectric_tensor : (array or float)
+        Dielectric tensor, if is a float a diagonal matrix is constructed.
+    sampling_radius (float): radius (in Angstrom) which sites must be outside
+        of to be included in the correction. Publication by Kumagai advises to
+        use Wigner-Seitz radius of defect supercell, so this is default value.
+    gamma (float): convergence parameter for gamma function.
+                    Code will automatically determine this if set to None.
     tol : (float)
         Tolerance for defect_finder function. The default is 1e-03.
     get_plot : (bool), optional
@@ -97,20 +90,21 @@ def get_freysoldt_correction_from_jobs(job_defect,job_bulk,dielectric_constant,e
         Dictionary with corrections, if get_plot is True a tuple with dict and plt object is returned.
 
     """
+    
     structure_defect = job_defect.initial_structure
     structure_bulk = job_bulk.final_structure
-    path_to_defect_locpot = op.join(job_defect.path,'LOCPOT')
-    path_to_pure_locpot = op.join(job_bulk.path,'LOCPOT')
+    path_to_defect_outcar = op.join(job_defect.path)
+    path_to_bulk_outcar = op.join(job_bulk.path)
 
     df_found = defect_finder(structure_defect, structure_bulk, tol=tol)
     defect_site, defect_type = df_found.site, df_found.defect_type
     defect_specie = defect_site.specie.symbol
-    defect_site_coordinates = defect_site.frac_coords
+    
     charge = job_defect.charge
-
-    corr = get_freysoldt_correction(defect_type, defect_specie, path_to_defect_locpot, path_to_pure_locpot, 
-                                    charge, dielectric_constant, defect_site_coordinates,
-                                    energy_cutoff,get_plot,**kwargs)
+    
+    corr = get_kumagai_correction(structure_defect, structure_bulk, path_to_defect_outcar, path_to_bulk_outcar,
+                                  dielectric_tensor, charge, defect_type, defect_specie, defect_site, sampling_radius,
+                                  gamma, tol, get_plot)
     
     return corr
 
@@ -200,10 +194,74 @@ def get_kumagai_correction(structure_defect,structure_bulk,path_to_defect_outcar
         return kumagai_corrections
     
     
-def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampling_radius=None,
-                                     gamma=None,tol=1e-03,get_plot=False):
+
+
+
+
+
+
+
+
+def _get_freysoldt_correction_old(defect_type, defect_specie, path_to_defect_locpot,path_to_pure_locpot,charge,
+                             dielectric_constant,defect_site_coordinates,energy_cutoff=500,
+                             get_plot=False,**kwargs):
+    
+    ''' Function to perform charge corrections according to the method proposed py Freysoldt
+        If this correction is used, please reference Freysoldt's original paper.
+        doi: 10.1103/PhysRevLett.102.016402
+        
+        Args:
+            defect_type: 'Vacancy', 'Interstitial' or 'Substitution'
+            defect_specie: string with element occupying the defect site
+            path_to_defect_locpot: path to LOCPOT file of defect structure
+            path_to_pure_locpot: path to LOCPOT file of Pure structure
+            charge: Charge of the defected system
+            dielectric_constant: Dielectric constant
+            defect_site_coordinates: numpy array with fractional coordinates of defect site
+            energy_cutoff: Cut-off of plane wave expansion
+            get_plot: return also Matplotlib object with plot
+            
+        Returns:
+            Freysoldt corrections values as a dictionary 
+            '''
+    # acquiring data from LOCPOT files    
+    vol_data_pure = Locpot.from_file(path_to_pure_locpot)
+    vol_data_defect = Locpot.from_file(path_to_defect_locpot)
+    
+    parameters = {}
+    parameters['axis_grid'] = []
+    parameters['bulk_planar_averages'] = []
+    parameters['defect_planar_averages'] = []
+    for i in range(0,3):
+        parameters['axis_grid'].append(vol_data_pure.get_axis_grid(i))
+        parameters['bulk_planar_averages'].append(vol_data_pure.get_average_along_axis(i))
+        parameters['defect_planar_averages'].append(vol_data_defect.get_average_along_axis(i))
+    parameters['initial_defect_structure'] = vol_data_defect.structure
+    parameters['defect_frac_sc_coords'] = defect_site_coordinates
+    
+    structure_bulk = vol_data_pure.structure
+    defect_site = PeriodicSite(defect_specie, coords=defect_site_coordinates, lattice = vol_data_pure.structure.lattice)
+    
+    module = importlib.import_module("pynter.defects.pmg.pmg_defects_core")
+    defect_class = getattr(module,defect_type)
+    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=None)
+    defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
+    
+    freysoldt_class = FreysoldtCorrection(dielectric_constant,energy_cutoff=energy_cutoff,**kwargs)
+    
+    freysoldt_corrections = freysoldt_class.get_correction(defect_entry)
+  
+    if get_plot:
+        plt = freysoldt_class.plot(1)
+        return freysoldt_corrections , plt
+    else:    
+        return freysoldt_corrections
+
+
+def _get_freysoldt_correction_from_jobs_old(job_defect,job_bulk,dielectric_constant,energy_cutoff=500,
+                                       tol=1e-03,get_plot=False,**kwargs):
     """
-    Get Kumagai corrections from VaspJob objects.
+    Get Freysoldt corrections from VaspJob objects.
 
     Parameters
     ----------
@@ -211,13 +269,10 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampl
         Defect calculation.
     job_bulk : (VaspJob)
         Bulk calculation.
-    dielectric_tensor : (array or float)
-        Dielectric tensor, if is a float a diagonal matrix is constructed.
-    sampling_radius (float): radius (in Angstrom) which sites must be outside
-        of to be included in the correction. Publication by Kumagai advises to
-        use Wigner-Seitz radius of defect supercell, so this is default value.
-    gamma (float): convergence parameter for gamma function.
-                    Code will automatically determine this if set to None.
+    dielectric_constant : (float)
+        Dielectric constant
+    energy_cutoff : (int)
+        Cut-off of plane wave expansion in eV
     tol : (float)
         Tolerance for defect_finder function. The default is 1e-03.
     get_plot : (bool), optional
@@ -229,20 +284,19 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampl
         Dictionary with corrections, if get_plot is True a tuple with dict and plt object is returned.
 
     """
-    
     structure_defect = job_defect.initial_structure
     structure_bulk = job_bulk.final_structure
-    path_to_defect_outcar = op.join(job_defect.path)
-    path_to_bulk_outcar = op.join(job_bulk.path)
+    path_to_defect_locpot = op.join(job_defect.path,'LOCPOT')
+    path_to_pure_locpot = op.join(job_bulk.path,'LOCPOT')
 
     df_found = defect_finder(structure_defect, structure_bulk, tol=tol)
     defect_site, defect_type = df_found.site, df_found.defect_type
     defect_specie = defect_site.specie.symbol
-    
+    defect_site_coordinates = defect_site.frac_coords
     charge = job_defect.charge
-    
-    corr = get_kumagai_correction(structure_defect, structure_bulk, path_to_defect_outcar, path_to_bulk_outcar,
-                                  dielectric_tensor, charge, defect_type, defect_specie, defect_site, sampling_radius,
-                                  gamma, tol, get_plot)
+
+    corr = _get_freysoldt_correction_old(defect_type, defect_specie, path_to_defect_locpot, path_to_pure_locpot, 
+                                    charge, dielectric_constant, defect_site_coordinates,
+                                    energy_cutoff,get_plot,**kwargs)
     
     return corr
