@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 
 from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen.analysis.transition_state import NEBAnalysis
 
 from pynter.tools.utils import save_object_as_json
 
@@ -23,6 +24,26 @@ def setup_analysis(subparsers):
     parser_vasprun = subparsers_analysis.add_parser('vasprun',help='Analyse vasprun.xml file with pymatgen')
     setup_analyse_vasprun(parser_vasprun)
     
+    parser_neb = subparsers_analysis.add_parser('NEB',help='Analyse NEB VASP calculation with pymatgen')
+    setup_analyse_neb(parser_neb)
+    
+
+def setup_analyse_neb(parser_sub):    
+    parser_sub.add_argument('-p','--path',help='Path to VASP calculation',required=False,type=str,default=None,metavar='',dest='path')
+    parser_sub.add_argument('--plot',help='Plot NEB diffusion path',required=False,default=False,action='store_true',dest='plot') 
+    parser_sub.set_defaults(func=analyse_neb)    
+    return
+
+
+def analyse_neb(args):
+    path = args.path if args.path else os.getcwd()
+    neb = NEBAnalysis.from_dir(path)
+    print('Energies:\n',neb.energies)
+    print('Forces:\n',neb.forces)
+    if args.plot:
+        neb.get_plot().show()
+    return
+
     
 def setup_analyse_vasprun(parser_sub):    
     parser_sub.add_argument('-p','--path',help='Path to VASP calculation',required=False,type=str,default=None,metavar='',dest='path')
