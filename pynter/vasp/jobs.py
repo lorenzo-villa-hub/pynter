@@ -970,7 +970,7 @@ class VaspNEBJob(Job):
         """
         path = op.abspath(self.path)
         
-        self.job_settings['nodes'] = self.images               
+        #self.job_settings['nodes'] = self.images               
         incar = self.inputs['INCAR']
         kpoints = self.inputs['KPOINTS']
         potcar = self.inputs['POTCAR']
