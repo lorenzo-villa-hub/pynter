@@ -30,7 +30,6 @@ def setup_analysis(subparsers):
 
 def setup_analyse_neb(parser_sub):    
     parser_sub.add_argument('-p','--path',help='Path to VASP calculation',required=False,type=str,default=None,metavar='',dest='path')
-    parser_sub.add_argument('--plot',help='Plot NEB diffusion path',required=False,default=False,action='store_true',dest='plot') 
     parser_sub.set_defaults(func=analyse_neb)    
     return
 
@@ -40,8 +39,6 @@ def analyse_neb(args):
     neb = NEBAnalysis.from_dir(path)
     print('Energies:\n',neb.energies)
     print('Forces:\n',neb.forces)
-    if args.plot:
-        neb.get_plot().show()
     return
 
     
