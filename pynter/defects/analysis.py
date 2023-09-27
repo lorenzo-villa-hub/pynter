@@ -1,15 +1,17 @@
 
 import numpy as np
 from scipy.optimize import bisect
-from pymatgen.electronic_structure.dos import FermiDos
 import matplotlib
 import matplotlib.pyplot as plt
-from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
-from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 import os.path as op
 import json
+
+from pymatgen.electronic_structure.dos import FermiDos
+
+from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
+from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 
 class DefectsAnalysis:
@@ -472,7 +474,23 @@ class DefectsAnalysis:
             df.index.name = 'name'
         return df
     
-                
+
+    def merge_entries(self,*args):
+        """
+        Create a new DefectsAnalysis object merging the defect entries of other objects.
+        The VBM and band gap of all objects need to match for consistency.
+        """
+        new_entries = self.entries
+        for da in args:
+            current_index = args.index(da)
+            if current_index != 0:
+                previous_da = args[current_index-1]
+                if da.vbm != previous_da.vbm and da.band_gap != previous_da.band_gap:
+                    raise ValueError('Cannot merge entries, band gap and VBM are different')
+            new_entries = new_entries + da.entries
+        return DefectsAnalysis(new_entries, self.vbm, self.band_gap)
+        
+              
     def plot(self,chemical_potentials,entries=None,xlim=None,ylim=None,title=None,
              fermi_level=None,plotsize=1,fontsize=1.2,show_legend=True,
              format_legend=True,get_subplot=False,subplot_settings=None):
