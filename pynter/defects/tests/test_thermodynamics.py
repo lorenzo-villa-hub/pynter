@@ -51,6 +51,21 @@ class TestConductivity(PynterTest):
         sigma = self.conductivity.get_conductivity(carrier_concentrations, defect_concentrations)
         self.assert_all_close( sigma , sigma_test )
         
+                
+    def test_get_conductivities_from_thermodata(self):
+        test_dt = TestDefectThermodynamics()
+        test_dt.setUp()
+        thermo = test_dt.dt.get_pO2_thermodata(test_dt.pres,temperature=1300,name='NN-test')
+        conductivities = self.conductivity.get_conductivities_from_thermodata(thermo)
+        conductivities_test = [
+         21.975733745739,
+         0.3064336399157439,
+         0.004360094243796292,
+         0.018329168707032613,
+         0.7672079995432416
+         ]
+        self.assert_all_close(conductivities , conductivities_test )
+        
         
         
 class TestDefectThermodynamics(PynterTest):
@@ -92,22 +107,6 @@ class TestDefectThermodynamics(PynterTest):
          ]
         VNb = [df.total['Vac_Nb'] for df in thermo.defect_concentrations]
         self.assert_all_close(VNb,VNb_test,rtol=1e-03)        
-        
-        
-    def test_get_conductivities(self):
-        tc = TestConductivity()
-        tc.setUp()
-        mobilities = tc.conductivity.mobilities
-        thermo = self.dt.get_pO2_thermodata(self.pres,temperature=1300,name='NN-test')
-        conductivities = self.dt.get_conductivities_from_thermodata(thermo, mobilities)
-        conductivities_test = [
-         21.975733745739,
-         0.3064336399157439,
-         0.004360094243796292,
-         0.018329168707032613,
-         0.7672079995432416
-         ]
-        self.assert_all_close(conductivities , conductivities_test )
         
         
     def test_get_pO2_quenched_thermodata(self):
