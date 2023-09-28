@@ -75,6 +75,7 @@ class TestDefectThermodynamics(PynterTest):
         self.pres = PressureReservoirs.from_json(self.get_testfile_path('pressure_reservoirs_NN.json'))
         self.dos = get_object_from_json(CompleteDos, self.get_testfile_path('Si_DOS.json')) 
         self.dt = DefectThermodynamics(defects_analysis=self.da, bulk_dos=self.dos)
+        self.chempots = self.pres[list(self.pres.keys())[2]]      #[1.000000e-05]
         
     def test_get_pO2_thermodata(self):
         thermo = self.dt.get_pO2_thermodata(self.pres,temperature=1300)
@@ -139,5 +140,80 @@ class TestDefectThermodynamics(PynterTest):
          0.8850756008148193
          ]
         self.assert_all_close( thermoq.fermi_levels , fermi_levels )
+        
+    
+    def test_get_variable_species_thermodata(self):
+        thermo = self.dt.get_variable_species_thermodata('Vac_Na',(13,21),self.chempots,1300,npoints=5)        
+        VNa_test = [
+            10000000000000.0, 
+            1000000000000000.0, 
+            1e+17, 
+            1e+19, 
+            1e+21
+            ]
+        VNa = [df.total['Vac_Na'] for df in thermo.defect_concentrations]        
+        self.assert_all_close(VNa,VNa_test,rtol=1e-03)        
+        
+        VO_test = [
+            5.977628928325146e+17,
+            5.981187498023386e+17,
+            6.317906905626292e+17,
+            5.228711960034528e+18,
+            5.003436942439469e+20
+             ]
+        VO = [df.total['Vac_O'] for df in thermo.defect_concentrations]
+        self.assert_all_close(VO,VO_test,rtol=1e-03)     
+        
+        VNb_test = [
+             3.1483493195871652,
+             3.1435682519040524,
+             2.7333902049365864,
+             0.013006096442796095,
+             1.504243598445857e-07
+             ]
+        VNb = [df.total['Vac_Nb'] for df in thermo.defect_concentrations]
+        self.assert_all_close(VNb,VNb_test,rtol=1e-03)   
+        
+    
+    def test_get_variable_species_quenched_thermodata(self):
+        thermoq = self.dt.get_variable_species_quenched_thermodata(
+                        'Vac_Na',(13,21),self.chempots,1300,300,npoints=5)        
+        fermi_levels = [
+             2.3411206035614014,
+             2.341069501113892,
+             2.3358400173187257,
+             1.871761657333374,
+             1.7620447025299069
+             ]
+        self.assert_all_close( thermoq.fermi_levels , fermi_levels )
+        
+        thermoq = self.dt.get_variable_species_quenched_thermodata(
+                        'Vac_Na',(13,21),self.chempots,1300,300,
+                        quenched_species=['Vac_O'],npoints=5)        
+        fermi_levels = [
+             2.3411206035614014,
+             2.341069501113892,
+             2.3358400173187257,
+             1.871761657333374,
+             1.7620447025299069
+             ]
+        self.assert_all_close( thermoq.fermi_levels , fermi_levels )
+        
+        thermoq = self.dt.get_variable_species_quenched_thermodata(
+                        'Vac_O',(13,21),self.chempots,1300,300,
+                        quenched_species=['Vac_Na'],npoints=5)        
+        fermi_levels = [
+             0.09985242652893063,
+             0.09988649482727048,
+             0.1024075489044189,
+             1.7947843372344967,
+             1.8981475543975828
+             ]
+        self.assert_all_close( thermoq.fermi_levels , fermi_levels )
+        
+        
+        
+        
+        
         
         
