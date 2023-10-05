@@ -269,7 +269,7 @@ class ThermodynamicsPlotter:
         plt = self.plot_x_vs_fermi_level(x=partial_pressures,xlabel=xlabel,
                                           fermi_levels=fermi_levels,band_gap=band_gap,
                                           new_figure=new_figure,label=label,size=size,
-                                          xlim=xlim,ylim=ylim,colors=None)
+                                          xlim=xlim,ylim=ylim,colors=colors)
         return plt
 
 
@@ -407,7 +407,7 @@ class ThermodynamicsPlotter:
         plt = self.plot_x_vs_fermi_level(x=variable_concentrations,xlabel=xlabel,
                                           fermi_levels=fermi_levels,band_gap=band_gap,
                                           new_figure=new_figure,label=label,size=size,
-                                          xlim=xlim,ylim=ylim,colors=None)
+                                          xlim=xlim,ylim=ylim,colors=colors)
         return plt
 
 
