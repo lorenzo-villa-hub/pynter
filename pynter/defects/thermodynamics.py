@@ -26,7 +26,7 @@ class Conductivity:
         Parameters
         ----------
         mobilities : (dict)
-            Dictionary with mobility values for the defect species. 
+            Dictionary with mobility values for the defect species in [cm^2/(V*s)].
             Keys must contain "electrons", "holes" and the defect species names.
         """
         self.mobilities = mobilities
@@ -58,8 +58,8 @@ class Conductivity:
         for d in dc:
             dname = d['name']
             if dname in mob.keys():
-                sigma_ionic += mob[dname] * d['conc'] * abs(d['charge']) * e *1e06 #concentrations need to be in 1/m**3
-        sigma = sigma_el + sigma_ionic
+                sigma_ionic += mob[dname] * d['conc'] * abs(d['charge']) * e
+        sigma = sigma_el + sigma_ionic * 1e02 # conversion from S/cm to S/m
         
         return sigma
 
