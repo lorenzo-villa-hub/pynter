@@ -43,7 +43,7 @@ class TestDefectEntry(PynterTest):
                  [0.0, 39.57723773, 0.0],
                  [0.0, -0.0, 39.57723775]]}
         label = 'mult54'
-        entry = DefectEntry(defect,bulk_structure,energy_diff,corrections,data,label)
+        entry = DefectEntry(defect,energy_diff,corrections,data,label)
         return entry 
     
     

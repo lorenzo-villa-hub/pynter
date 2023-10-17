@@ -7,7 +7,7 @@ Created on Fri Dec 11 14:33:12 2020
 """
 
 from abc import ABCMeta
-from monty.json import MSONable
+from monty.json import MSONable, MontyDecoder
 import numpy as np
 import warnings
 
@@ -21,13 +21,12 @@ from pynter.vasp.utils import get_charge_from_computed_entry
 
 class DefectEntry(MSONable,metaclass=ABCMeta):
     
-    def __init__(self,defect,bulk_structure,energy_diff,corrections,data=None,label=None):
+    def __init__(self,defect,energy_diff,corrections,data=None,label=None):
         """
         Contains the data for a defect calculation.
         
         Args:
             defect: Defect object (Vacancy, Interstitial, Substitution, Polaron or DefectComplex)
-            bulk_structure: Pymatgen Structure without any defects
             energy_diff (float): difference btw energy of defect structure and energy of pure structure
             corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
                                 added to the defect formation energy.     
@@ -37,7 +36,6 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                 Additional label to add to defect specie. Does not influence non equilibrium calculations.
         """
         self._defect = defect
-        self._bulk_structure = bulk_structure
         self._energy_diff = energy_diff
         self._corrections = corrections if corrections else {}
         self._data = data if data else {}
@@ -56,7 +54,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             "Corrections: %.4f" %sum([v for v in self.corrections.values()]),
             "Charge: %i" %self.charge,
             "Multiplicity: %i" %self.multiplicity,
-            "Data: %s" %self.data.keys(),
+            "Data: %s" %list(self.data.keys()),
             "Name: %s" %self.name,
             "\n"
             ]
@@ -64,7 +62,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
     @property
     def bulk_structure(self):
-        return self._bulk_structure    
+        return self.defect.bulk_structure   
 
     @property
     def charge(self):
@@ -144,6 +142,25 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     def symbol_kroger(self):
         return self.defect.symbol_with_charge_kv
     
+
+    @classmethod
+    def from_dict(cls,d):
+        """
+        Reconstitute a DefectEntry object from a dict representation created using
+        as_dict().
+
+        Args:
+            d (dict): dict representation of DefectEntry.
+
+        Returns:
+            DefectEntry object
+        """
+        defect = MontyDecoder().process_decoded(d['defect'])
+        energy_diff = d['energy_diff']
+        corrections = d['corrections']
+        data = d['data']
+        label = d['label']
+        return cls(defect=defect,energy_diff=energy_diff,corrections=corrections,data=data,label=label)
 
     @staticmethod
     def from_computed_entries(computed_entry_defect,computed_entry_bulk,corrections,
@@ -267,7 +284,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                 warnings.warn(f'get_multiplicity not implemented for {defect.defect_type}, setting multiplicity to 1')
                 defect.set_multiplicity(1)
         
-        return DefectEntry(defect, bulk_structure, energy_diff, corrections,data,label)
+        return DefectEntry(defect, energy_diff, corrections,data,label)
 
 
     def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
