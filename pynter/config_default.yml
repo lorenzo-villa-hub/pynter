@@ -28,4 +28,5 @@ job_settings:
   array_size: null
   filename: job.sh
   modules: null
+  export: null
   path_exe: ''

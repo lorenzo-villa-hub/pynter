@@ -32,6 +32,8 @@ class TestJobSettings(PynterTest):
             "#SBATCH --array=1-2%1\n"
             "\n"
             "module purge\n"
+            "export APPLES \n"
+            "export ORANGES \n"
             "ml intel/2020.4 \n"
             "ml intelmpi/2020.4 \n"
             "ml fftw/3.3.10 \n"
@@ -69,6 +71,7 @@ class TestJobSettings(PynterTest):
         
         self.js = JobSettings(filename='job_test.sh',array_size=2,
                                 modules=['intel/2020.4', 'intelmpi/2020.4', 'fftw/3.3.10'],
+                                export=['APPLES','ORANGES'],
                                 path_exe='/home/test/code',add_stop_array=True,add_automation='automation.py',
                                 add_lines_header=['test_HEADER', 'test_HEADER2'],
                                 add_lines_body=['test_BODY', 'test_BODY2'],

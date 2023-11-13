@@ -20,7 +20,7 @@ class JobSettings(dict,MSONable):
     
     # switch to key value format for sbatch args
     def __init__(self,load_slurm_defaults=True,slurm=None,filename=None,array_size=None,modules=None,
-                 path_exe=None,add_stop_array=False,add_automation=False,add_lines_header=None,
+                 export=None,path_exe=None,add_stop_array=False,add_automation=False,add_lines_header=None,
                  add_lines_body=None,**kwargs):
         """
         Parameters
@@ -57,6 +57,7 @@ class JobSettings(dict,MSONable):
         settings['filename'] = filename if filename is not None else default_settings['filename']
         settings['array_size'] = array_size if array_size is not None else default_settings['array_size']
         settings['modules'] = modules if modules is not None else default_settings['modules']
+        settings['export'] = export if export is not None else default_settings['export']
         settings['path_exe'] = path_exe if path_exe is not None else default_settings['path_exe']
         settings['add_stop_array'] = add_stop_array if add_stop_array else default_settings['add_stop_array']
         settings['add_automation'] = add_automation if add_automation else default_settings['add_automation']
@@ -75,7 +76,7 @@ class JobSettings(dict,MSONable):
             return super().__getitem__(key)
     
     def __setitem__(self,key,value):
-        args = ['slurm','filename','array_size','modules','path_exe','add_stop_array',
+        args = ['slurm','filename','array_size','modules','export','path_exe','add_stop_array',
                 'add_automation','add_lines_header','add_lines_body']
         if key not in args:
             self.slurm.__setitem__(key, value)
@@ -129,7 +130,18 @@ class JobSettings(dict,MSONable):
             array_size = int(line)
         if array_size:
             del slurm['array']
-            
+
+        export = None
+        string = 'export '
+        target_lines = grep_list(string,lines)
+        if target_lines:
+            export = []
+            for line in target_lines:
+                if list(line[-1])[0] != '#':
+                    export_line = line.replace(string,'')
+                    export_line = export_line.split(' ')[0] #remove space at the end
+                    export.append(export_line) 
+
         modules = None
         string = 'ml '
         target_lines = grep_list(string,lines)
@@ -178,7 +190,7 @@ class JobSettings(dict,MSONable):
             
         
         return JobSettings(load_slurm_defaults=False,slurm=slurm,array_size=array_size,
-                            modules=modules,path_exe=path_exe,add_stop_array=add_stop_array,
+                            modules=modules,export=export,path_exe=path_exe,add_stop_array=add_stop_array,
                             add_automation=add_automation)
 
 
@@ -237,6 +249,9 @@ class JobSettings(dict,MSONable):
             f.append('#SBATCH --array=1-%i%%1\n' %self.array_size)
         f.append('\n')
         f.append('module purge\n')
+        if self.export:
+            for exp in self.export:
+                f.append(' '.join(['export', exp , '\n']))
         if self.modules:
             for m in self.modules:
                 f.append(' '.join(['ml', m , '\n']))
