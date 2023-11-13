@@ -19,7 +19,7 @@ from pynter.tools.utils import grep_list
 class JobSettings(dict,MSONable):
     
     # switch to key value format for sbatch args
-    def __init__(self,load_slurm_defaults=True,slurm=None,filename='job.sh',array_size=None,modules=None,
+    def __init__(self,load_slurm_defaults=True,slurm=None,filename=None,array_size=None,modules=None,
                  path_exe=None,add_stop_array=False,add_automation=False,add_lines_header=None,
                  add_lines_body=None,**kwargs):
         """
@@ -130,7 +130,7 @@ class JobSettings(dict,MSONable):
         if array_size:
             del slurm['array']
             
-            
+        modules = None
         string = 'ml '
         target_lines = grep_list(string,lines)
         if target_lines:
@@ -140,6 +140,16 @@ class JobSettings(dict,MSONable):
                     mod_line = line.replace(string,'')
                     mod_line = mod_line.split(' ')[0] #remove space at the end
                     modules.append(mod_line) 
+        else:
+            string = 'module load '
+            target_lines = grep_list(string,lines)
+            if target_lines:
+                modules = []
+                for line in target_lines:
+                    if list(line[-1])[0] != '#':
+                        mod_line = line.replace(string,'')
+                        mod_line = mod_line.split(' ')[0] #remove space at the end
+                        modules.append(mod_line)        
 
         string = 'srun '
         line = grep_list(string,lines)
@@ -251,7 +261,8 @@ class JobSettings(dict,MSONable):
         if path:
             if not os.path.exists(path):
                 os.makedirs(path)
-        complete_path = os.path.join(path,self.filename) if path else self.filename      
+        filename = filename if filename else self.filename
+        complete_path = os.path.join(path,self.filename) if path else filename      
         with open(complete_path,'w') as f:
             f.write(self.get_bash_script())        
         return
