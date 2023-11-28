@@ -43,8 +43,6 @@ class Slurm(dict,MSONable):
             settings[key] = value
         
         settings = dict(sorted(settings.items(), key=lambda item: item[0]))
-        # for k,v in settings.items():
-        #     self[k] = v # u
         self.update(settings)
         
     
