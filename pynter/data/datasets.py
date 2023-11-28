@@ -7,6 +7,7 @@ from monty.json import MontyDecoder
 
 from pynter.data.jobs import get_job_from_directory
 from pynter.slurm.interface import HPCInterface
+from pynter.slurm.job_settings import JobSettings
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 def _check_job_script(job_script_filenames,files):
@@ -33,7 +34,7 @@ def _check_job_script(job_script_filenames,files):
     return check,job_script_filename
 
 
-def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,jobs_kwargs=None):
+def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder containing jobs are selected based on the presence of the file job_script_filename
@@ -59,7 +60,8 @@ def find_jobs(path,job_script_filenames='job.sh',sort='name',load_outputs=True,j
         List of Job objects.
 
     """
-    jobs = []    
+    jobs = []
+    job_script_filenames = job_script_filenames if job_script_filenames else JobSettings().filename 
     for root , dirs, files in os.walk(path):
         if files != []:
             check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)
