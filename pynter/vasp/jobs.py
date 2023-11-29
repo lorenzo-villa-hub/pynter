@@ -483,7 +483,9 @@ class VaspJob(Job):
         data : (list), optional
             List of attributes of Vasprun to parse in ComputedStructureEntry.
             the attributes parsed by default are 'final_energy','structures','eigenvalue_band_properties',
-            'parameters','actual_kpoints','ionic_steps'. The default is None.
+            'parameters','actual_kpoints','ionic_steps'.
+        extra_data : (list), optional
+            List of attributes of Vasprun to add to the default parsed in ComputedStructureEntry.
         """                
         self._is_converged = self._get_convergence()
         
@@ -491,9 +493,9 @@ class VaspJob(Job):
 
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:
-            data = self._default_data_computed_entry 
-            if kwargs['data']:
-                for attr in kwargs['data']:
+            data = kwargs['data'] if kwargs['data'] else self._default_data_computed_entry
+            if kwargs['extra_data']:
+                for attr in kwargs['extra_data']:
                     data.append(attr)
             self.outputs['ComputedStructureEntry'] = self.vasprun.get_computed_entry(data=data)
         
@@ -584,6 +586,7 @@ class VaspJob(Job):
 
     def _parse_kwargs(self,**kwargs):
         kwargs['data'] = kwargs['data'] if 'data' in kwargs.keys() else None
+        kwargs['extra_data'] = kwargs['extra_data'] if 'extra_data' in kwargs.keys() else None
         kwargs['get_band_structure'] = kwargs['get_band_structure'] if 'get_band_structure' in kwargs.keys() else False 
         return kwargs
 
