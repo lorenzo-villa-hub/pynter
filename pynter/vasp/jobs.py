@@ -33,6 +33,14 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
 
 
+def _read_vasprun(path,**kwargs):
+    try:
+        return Vasprun(op.join(path,'vasprun.xml'),**kwargs)
+    except:
+        warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
+        return None
+
+
 class VaspJob(Job):
  
     
@@ -153,11 +161,7 @@ class VaspJob(Job):
         outputs = {}
         if load_outputs:
             if op.isfile(op.join(path,'vasprun.xml')):
-                try:
-                    outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
-                except:
-                    warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
-                    outputs['Vasprun'] = None
+                outputs['Vasprun'] = _read_vasprun(path,**kwargs)
         
         job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
@@ -457,14 +461,10 @@ class VaspJob(Job):
         """
         if sync:
             self.sync_from_hpc()
-        path = self.path
         outputs = {}
-        if op.isfile(op.join(path,'vasprun.xml')):
-            try:
-                outputs['Vasprun'] = Vasprun(op.join(path,'vasprun.xml'),**kwargs)
-            except:
-                warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
-                outputs['Vasprun'] = None
+        if op.isfile(op.join(self.path,'vasprun.xml')):
+            outputs['Vasprun'] = _read_vasprun(self.path,**kwargs)
+
         self.outputs = outputs
         if get_output_properties:
             self.get_output_properties()
