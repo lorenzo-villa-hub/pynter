@@ -20,8 +20,8 @@ setup(
     packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
     install_requires=[
         'ase',
-        'pymatgen==2023.3.23',
-        'pymatgen-analysis-defects==2023.3.25',
+        'pymatgen>=2023.3.23',
+        'pymatgen-analysis-defects>=2023.3.25',
         'pymatgen-db',
         'PyYAML',
         'schedule'        
