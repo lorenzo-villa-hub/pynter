@@ -58,11 +58,15 @@ def run_config(exclude=None,info=False):
         
         print('\nDefault settings for job script setup: ')
         project_id = input('Project ID: ')
+        project_id = project_id if project_id else None
         email = input('email address (Default None): ')
+        email = email if email else None
         path_exe = input('Path of default executable: ')
+        path_exe = path_exe if path_exe else None
         job_script_filename = input('Job script filename (default job.sh): ')
         
         API_KEY = input('\nMaterials Project API_KEY (default None):')
+        API_KEY = API_KEY if API_KEY else None
         
         print('\nDatabase configuration:')
         host = input('Host (default: 127.0.0.1 ): ')
