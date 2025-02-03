@@ -258,7 +258,7 @@ class VaspJob(Job):
         if 'complete_dos' in self.computed_entry.data.keys():
             return self.computed_entry.data['complete_dos']
         else:
-            return ValueError('CompleteDos not present in ComputedStructureEntry data')
+            raise ValueError('CompleteDos not present in ComputedStructureEntry data')
             
 
     @property
