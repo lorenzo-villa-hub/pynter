@@ -77,8 +77,9 @@ class OxygenPressure:
     
     
     def get_pressure_reservoirs_from_pd(self,phase_diagram,target_comp,temperature=None,
-                                        extrinsic_chempots_range=None,pressure_range=(-20,10),npoints=50,
-                                        get_pressures_as_strings=False):
+                                        extrinsic_chempots_range=None,pressure_range=(-20,10),
+                                        interpolation_function=None,
+                                        npoints=50,get_pressures_as_strings=False):
         """
         Generate Reservoirs object with a set of different chemical potentials starting from a range of oxygen partial pressure.
         The code distinguishes between 2-component and 3-component phase diagrams.
@@ -105,6 +106,11 @@ class OxygenPressure:
             The default is None.
         pressure_range : (tuple), optional
             Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+        interpolation_function : (function), optional
+            Function to determine the chemical potential for the other elements (the ones that are not oxygen).
+            interpolation_function(element,boundary_reservoir):
+                The function inputs are the target element and the boundary_reservoirs ({'<label>':{element:value}})
+            If None the mean is used. The default is None.    
         npoints : (int), optional
             Number of data points to interpolate the partial pressure with. The default is 50.
         get_pressures_as_strings : (bool), optional
@@ -138,9 +144,12 @@ class OxygenPressure:
                     
             elif len(pd.elements) == 3: # 3-component PD case
                 pdh = PDHandler(pd)
-                res = pdh.get_phase_boundaries_chempots(target_comp, fixed_chempot)
-                for el in list(res.values())[0]:
-                    chempots_dict[el] = np.mean(np.array([mu[el] for mu in res.values()]))
+                boundary_res = pdh.get_phase_boundaries_chempots(target_comp, fixed_chempot)
+                for el in list(boundary_res.values())[0]:
+                    if interpolation_function:
+                        chempots_dict[el] = interpolation_function(el,boundary_res)
+                    else:
+                        chempots_dict[el] = np.mean(np.array([mu[el] for mu in boundary_res.values()]))
                     
             elif len(pd.elements) > 3: 
                 raise NotImplementedError('Not implemented for PD with more than 3 components')
