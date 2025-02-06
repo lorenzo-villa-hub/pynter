@@ -1,6 +1,7 @@
 
 import os
 import os.path as op
+import warnings
 import pandas as pd
 import json
 from monty.json import MontyDecoder
@@ -256,6 +257,12 @@ class Dataset:
         The first subdirectories of the parent dataset dir will be the groups. All of the following
         subpaths will be nodes
         """
+        if len(self.jobs) == 1:
+            job = self.jobs
+            job[0].group = None
+            job[0].nodes = None
+            job[0].node_points = None
+            warnings.warn('You are creating a Dataset with only one Job')
         path = op.abspath(self.path)
         groups = self.groups
         for group in groups:
