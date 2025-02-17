@@ -1072,47 +1072,21 @@ class NEBSchemes:
         Climbing image NEB job with PBE. The force convergence is set to 0.05 eV/A, relaxation is done with damped 
         dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to nionic_steps.
         """
-        scheme_name = scheme_name if scheme_name != None else 'CINEB'
-        
-        inputs = {}
-        incar_settings = self.incar_settings.copy()
-        job_settings = self.job_settings.copy()
+        if not scheme_name:
+            scheme_name = stepnames[0]
 
-        incar_settings.update({
+        nebjob = self.neb_generic_pbe(scheme_name=scheme_name,stepnames=stepnames)
+        nebjob.incar.update({
             'ISYM': 0,
             'EDIFF': 1e-05,
             'EDIFFG': -0.05,
             'ISIF': 2,
             'NSW' : nionic_steps,
-            'IMAGES' : self.images,
-            'SPRING' : -5,
             'IOPT' : 0,
             'IBRION' : 3,
             'POTIM' : 0.05,
-            'ICHAIN' : 0,
-            'LCLIMB' : '.TRUE.',
-            'LTANGENTOLD' : '.FALSE.',
-            'LDNEB' : '.FALSE.',
-            'LNEBCELL' : '.FALSE.'
+            'LCLIMB':'.TRUE.'
             })
-
-        incar = Incar(incar_settings)
-        kpoints = self.kpoints
-        potcar = self.potcar
-        
-        inputs['structures'] = self.structures
-        inputs['INCAR'] = incar
-        inputs['KPOINTS'] = kpoints
-        inputs['POTCAR'] = potcar
-        
-        if 'add_automation' not in job_settings:
-            job_settings['add_automation'] = None        
-        job_settings['job-name'] = '_'.join([self.name,scheme_name])
-
-
-        jobname = '_'.join([self.name,scheme_name])
-        jobpath = op.join(self.path,stepnames[0])
-        nebjob = VaspNEBJob(path=jobpath,inputs=inputs,job_settings=job_settings,name=jobname)
 
         return nebjob
 
@@ -1165,34 +1139,26 @@ class NEBSchemes:
 
         return jobs
 
-          
-    def neb_pbe(self,nionic_steps=50,scheme_name=None,stepnames=['NEB']):
+
+    def neb_generic_pbe(self,scheme_name=None,stepnames=['NEB-generic']):
         """
-        Standard NEB job with PBE. The force convergence is set to 0.1 eV/A, relaxation in done with damped 
-        dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 200.
+        Returns a VaspNEBJon with just necessary changes to INCAR. No particular calculation scheme is set.
         """
-        scheme_name = scheme_name if scheme_name != None else 'NEB'
-        
+        if not scheme_name:
+            scheme_name = stepnames[0]
         inputs = {}
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
 
         incar_settings.update({
-            'ISYM': 0,
-            'EDIFF': 1e-04,
-            'EDIFFG': -0.1,
-            'ISIF': 2,
-            'NSW' : nionic_steps,
             'IMAGES' : self.images,
             'SPRING' : -5,
-            'IOPT' : 0,
-            'IBRION' : 3,
-            'POTIM' : 0.05,
-            'ICHAIN' : 0,
-            'LCLIMB' : '.FALSE.',
-            'LTANGENTOLD' : '.FALSE.',
-            'LDNEB' : '.FALSE.',
-            'LNEBCELL' : '.FALSE.'
+            'IOPT' : 0, #default
+            'ICHAIN' : 0, #default 
+            'LCLIMB' : '.FALSE.', 
+            'LTANGENTOLD' : '.FALSE.', #default
+            'LDNEB' : '.FALSE.', #default
+            'LNEBCELL' : '.FALSE.' #default
             })
 
         incar = Incar(incar_settings)
@@ -1202,16 +1168,34 @@ class NEBSchemes:
         inputs['structures'] = self.structures
         inputs['INCAR'] = incar
         inputs['KPOINTS'] = kpoints
-        inputs['POTCAR'] = potcar
-        
-        if 'add_automation' not in job_settings or job_settings['add_automation'] == None:
-            job_settings['add_automation'] = 'pynter automation vasp-NEB'        
+        inputs['POTCAR'] = potcar        
         job_settings['job-name'] = '_'.join([self.name,scheme_name])
-
 
         jobname = '_'.join([self.name,scheme_name])
         jobpath = op.join(self.path,stepnames[0])
         nebjob = VaspNEBJob(path=jobpath,inputs=inputs,job_settings=job_settings,name=jobname)
+
+        return nebjob       
+    
+
+    def neb_pbe(self,nionic_steps=50,scheme_name=None,stepnames=['NEB']):
+        """
+        Standard NEB job with PBE. The force convergence is set to 0.1 eV/A, relaxation in done with damped 
+        dynamics (IBRION=3), symmetry is turned off (ISYM=0). The maximum number of ionic steps is set to 200.
+        """
+        if not scheme_name:
+            scheme_name = stepnames[0]
+
+        nebjob = self.neb_generic_pbe(scheme_name=scheme_name,stepnames=stepnames)
+        nebjob.incar.update({
+            'ISYM': 0,
+            'EDIFF': 1e-04,
+            'EDIFFG': -0.1,
+            'ISIF': 2,
+            'NSW' : nionic_steps,
+            'IBRION' : 3,
+            'POTIM' : 0.05,
+            })
 
         return nebjob
 
