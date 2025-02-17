@@ -221,7 +221,7 @@ def sort_sites_to_ref_coords(structure,structure_ref,extra_sites=[],tol=1e-03,ge
         return new_structure
 
 
-def view_structure_with_ase(structures):
+def view_structures_with_ase(structures):
     """
     Visualize a Structure object or a list of Structure objects with the ASE. 
     First the Structure objects are converted into an ase Atom object, then "view" is used to visualize them.
