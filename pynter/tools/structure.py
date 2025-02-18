@@ -68,26 +68,24 @@ def get_distance_vector(site1,site2,jimage=None):
     return _get_distance_vector_and_image(site1.lattice, site1.frac_coords, site2.frac_coords,jimage=jimage)[0]
 
 
-def get_displacement_vectors(structure1,structure2):
+def get_displacement_vectors(structures):
     """
-    Get vectors in cartesian coords of site displacements of structure2 w.r.t. structure 1
+    Get vectors in cartesian coords of site displacements w.r.t. the first structure.
 
     Parameters
     ----------
-    structure1 : 
-        Pymatgen Structure object.
-    structure2 : 
-        Pymatgen Structure object.
+    structures : 
+        list of Pymatgen Structure objects.
 
     Returns
     -------
     (numpy ndarray)
         Displacement vectors in cartesian coordinates.
     """
-    traj = Trajectory.from_structures([structure1,structure2],constant_lattice=True) #order of structures determines ref in traj
+    traj = Trajectory.from_structures(structures,constant_lattice=True) #order of structures determines ref in traj
     traj.to_displacements()
     disp = traj.frac_coords[1]
-    return structure1.lattice.get_cartesian_coords(disp)
+    return structures[0].lattice.get_cartesian_coords(disp)
 
 
 def is_site_in_structure(site,structure,tol=1e-03):
