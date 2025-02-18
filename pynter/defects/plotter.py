@@ -636,7 +636,7 @@ class ThermodynamicsPlotter:
                     for q in charges:
                         if q != previous_charge:
                             previous_charge = q
-                            label_charge = '+' + str(q) if q > 0 else str(q)
+                            label_charge = '+' + str(int(q)) if q > 0 else str(int(q))
                             index = charges.index(q)
                             plt.text(x[index],conc[index],label_charge,clip_on=True)
                 color = colors[i] if colors else None
