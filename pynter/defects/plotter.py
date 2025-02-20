@@ -582,11 +582,11 @@ class ThermodynamicsPlotter:
         if isinstance(fermi_levels,dict):
             for name,mue in fermi_levels.items():
                 clr = colors[list(fermi_levels.keys()).index(name)] if colors else None
-                plt.plot(x,mue,linewidth=4,marker='s',label=name,color=clr)
+                plt.plot(x,mue,linewidth=4,label=name,color=clr)
         else:
             mue = fermi_levels
             clr = colors[0] if colors else None
-            plt.plot(x,mue,linewidth=4,marker='s',label=label,color=clr)
+            plt.plot(x,mue,linewidth=4,label=label,color=clr)
         plt.xscale('log')
         xlim = xlim if xlim else self.xlim
         plt.xlim(xlim)
