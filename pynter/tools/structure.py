@@ -10,11 +10,13 @@ import numpy as np
 import os.path as op
 import os
 import collections
-from pymatgen.io.ase import AseAtomsAdaptor
+import random
 from ase.visualize import view
+from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.util.coord import pbc_shortest_vectors
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
+from pymatgen.core.structure import Structure
 from pymatgen.core.trajectory import Trajectory
 
 def _get_distance_vector_and_image(lattice,frac_coords1,frac_coords2,jimage=None):
@@ -50,6 +52,38 @@ def _get_distance_vector_and_image(lattice,frac_coords1,frac_coords2,jimage=None
     jimage = np.array(jimage)
     mapped_vec = lattice.get_cartesian_coords(jimage + frac_coords2 - frac_coords1)  # type: ignore
     return mapped_vec, jimage  # type: ignore
+
+
+def deform_lattice(structure,stdev=0.03):
+    """
+    Deform lattice vectors in structure. Also changes the angles of lattice vectors (off diagonal components).
+    The function "apply_strain" from the Structure class only changes the base vectors' size but not the angles.
+
+    Parameters
+    ----------
+    structure : 
+        Structure object.
+    stdev : float
+        Standard deviation.
+
+    Returns
+    -------
+    (Structure)
+        Structure with deformed lattice.
+    """
+    def get_random_strain(stdev):
+        D = np.eye(3) #strain matrix
+        for i in range(3):
+            D[i, i] += np.random.uniform(-stdev, stdev)
+            for j in range(i + 1, 3):
+                D[i, j] += np.random.uniform(-stdev, stdev) / 4
+                D[j, i] = D[i, j]
+        return D
+    strain_matrix = get_random_strain(stdev=stdev)
+    atoms = structure.to_ase_atoms()
+    new_cell = atoms.get_cell().dot(strain_matrix)
+    atoms.set_cell(new_cell,scale_atoms=True)
+    return Structure.from_ase_atoms(atoms)
 
 
 def get_distance_vector(site1,site2,jimage=None):
@@ -158,6 +192,24 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
         return True, index
     else:
         return False,None
+
+
+def rattle_atoms(structure,stdev=0.05,seed=None):
+    """
+    Change randomly atomic positions. Uses the ASE.
+    Similar to the method "perturb" from the Structure class
+    Parameters
+    ----------
+    structure :
+        Structure object
+    stdev : float
+        Standard deviation
+    seed : int
+        Seed for random number generation passed to the Atoms.rattle method.
+    """
+    atoms = structure.to_ase_atoms()
+    atoms.rattle(stdev=stdev,seed=seed)
+    return Structure.from_ase_atoms(atoms)
 
 
 def remove_oxidation_state_from_site(site):
