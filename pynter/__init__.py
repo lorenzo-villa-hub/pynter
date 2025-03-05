@@ -4,6 +4,7 @@ import os
 import subprocess
 import warnings
 
+
 def get_config_from_default_file():
     """
     Get initial settings from config_default.yml
@@ -130,3 +131,8 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
         if stderr:
             print(stderr)
     return stdout, stderr
+    
+    
+from .data.datasets import Dataset
+
+
