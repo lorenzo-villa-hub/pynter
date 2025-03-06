@@ -272,6 +272,8 @@ class Substitution(Defect):
         """
         defect_index = self.defect_site_index
         temp_comp = self.bulk_structure.composition.as_dict()
+        if str(self.site.specie) not in temp_comp.keys():
+            temp_comp[str(self.site.specie)] = 0
         temp_comp[str(self.site.specie)] += 1
         temp_comp[str(self.bulk_structure[defect_index].specie)] -= 1
         return Composition(temp_comp)

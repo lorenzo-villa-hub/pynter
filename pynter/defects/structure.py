@@ -187,7 +187,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
             species = Element.from_row_and_group(el.row, el.group+1)
-            df.insert(i=i,species=species,coords=dsite.frac_coords)
+            df.insert(idx=i,species=species,coords=dsite.frac_coords)
         elif dtype == 'Interstitial' and sort_to_bulk:
             extra_sites.append(dsite)
 

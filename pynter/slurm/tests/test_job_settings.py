@@ -26,6 +26,7 @@ class TestJobSettings(PynterTest):
             "#SBATCH --job-name=test\n"
             "#SBATCH --mail-user=test@pynter.com\n"
             "#SBATCH --mem-per-cpu=3500\n"
+            "#SBATCH --nodes=1\n"
             "#SBATCH --ntasks=96\n"
             "#SBATCH --output=out.%j\n"
             "#SBATCH --time=24:00:00\n"
