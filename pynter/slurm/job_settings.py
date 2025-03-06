@@ -18,11 +18,14 @@ from pynter.tools.utils import grep_list
 
 class JobSettings(dict,MSONable):
     
-    # switch to key value format for sbatch args
+    
     def __init__(self,load_slurm_defaults=True,slurm=None,filename=None,array_size=None,modules=None,
                  export=None,path_exe=None,add_stop_array=False,add_automation=False,add_lines_header=None,
                  add_lines_body=None,**kwargs):
         """
+        Class to handle settings for slurm job submission through a bash script. 
+        Subscriptable like a dictionary.
+        
         Parameters
         ----------
         slurm : (Slurm) Slurm object. Handles all argments related to #SBATCH. 
@@ -84,6 +87,7 @@ class JobSettings(dict,MSONable):
             super().__setitem__(key,value)
         setattr(self, key, value)
         return
+           
     
     def as_dict(self):
         d = dict(self)
@@ -108,7 +112,7 @@ class JobSettings(dict,MSONable):
         with open(file) as f:
             input_string = f.read()
         job_settings = JobSettings.from_bash_script(input_string)
-        job_settings.filename = filename
+        job_settings['filename'] = filename
         return job_settings
         
     

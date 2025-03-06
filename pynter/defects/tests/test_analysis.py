@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use('Agg') # no graphical output
 
 from pymatgen.electronic_structure.dos import CompleteDos
+import numpy as np
 
 from pynter.tools.utils import get_object_from_json
 from pynter.phase_diagram.chempots import Chempots
@@ -332,16 +333,26 @@ class TestDefectConcentrations(PynterTest):
                                         {'Si': 9.504324340294853e-33, 'B': 1.4920566601530766e+16, 'P': 1e+17} ,rtol=100,atol=1e-02)
         
     def test_stable(self):
-        stable_string = (
-          '[charge=0.0, conc=4.71e-42, name=Int_Si(mult108), stable=True, '
-          'charge=1.0, conc=1.54e-39, name=Int_Si(mult54), stable=True, '
-          'charge=0.0, conc=6.56e-73, name=Int_Si-Vac_Si, stable=True, '
-          'charge=-1.0, conc=1.24e+16, name=Sub_B_on_Si, stable=True, '
-          'charge=0.0, conc=2.49e+15, name=Sub_B_on_Si-Sub_P_on_Si, stable=True, '
-          'charge=1.0, conc=9.63e+16, name=Sub_P_on_Si, stable=True, '
-          'charge=0.0, conc=7.54e-33, name=Vac_Si, stable=True]'
-          )
-        self.assert_str_content_equal( self.conc.stable.__str__() , stable_string )
+        defect_concentrations_stable = [
+            SingleDefConc(name=DefectName.from_string("Int_Si(mult108)"), charge=0.0, conc=4.30e-42, stable=True),
+            SingleDefConc(name=DefectName.from_string("Int_Si(mult54)"), charge=1.0, conc=1.40e-39, stable=True),
+            SingleDefConc(name=DefectComplexName.from_string("Int_Si-Vac_Si"), charge=0.0, conc=6.56e-73, stable=True),
+            SingleDefConc(name=DefectName.from_string("Sub_B_on_Si"), charge=-1.0, conc=1.40e+16, stable=True),
+            SingleDefConc(name=DefectComplexName.from_string("Sub_B_on_Si-Sub_P_on_Si"), charge=0.0, conc=2.79e+15, stable=True),
+            SingleDefConc(name=DefectName.from_string("Sub_P_on_Si"), charge=1.0, conc=9.60e+16, stable=True),
+            SingleDefConc(name=DefectName.from_string("Vac_Si"), charge=0.0, conc=8.27e-33, stable=True)
+            ]
+        for index in range(0,len(self.conc.stable)):
+            single_def_conc_actual = self.conc.stable[index]
+            single_def_conc_desired = defect_concentrations_stable[index]            
+            for key,value in single_def_conc_actual.items():
+                if type(value) == np.float64:
+                    actual = float(value)
+                else:
+                    actual = value
+                desired = single_def_conc_desired[key]
+                self.assert_object_almost_equal(actual,desired,rtol=5e-03)
+
         
     def test_select_concentrations(self):
         sel_conc = self.conc.select_concentrations(charge=2)

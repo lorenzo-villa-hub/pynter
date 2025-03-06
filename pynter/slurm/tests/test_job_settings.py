@@ -87,10 +87,10 @@ class TestJobSettings(PynterTest):
         JobSettingsTest().assert_job_settings_equal(self.js,js_from_file)
         
     def test_write_script(self):
-        self.js.filename = 'temp.sh'
-        self.js.write_bash_file(self.test_files_path)
+        self.js['filename'] = 'temp.sh'
+        self.js.write_bash_file(self.test_files_path,filename='temp.sh')
         JobSettingsTest().assert_job_settings_equal(
-            self.js,JobSettings.from_bash_file(self.test_files_path,'temp.sh'))
+            JobSettings.from_bash_file(self.test_files_path,'temp.sh'),self.js)
         os.remove(self.get_testfile_path('temp.sh'))
             
             

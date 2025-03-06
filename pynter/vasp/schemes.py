@@ -201,7 +201,6 @@ class InputSets:
         vaspjob = self.pbe_scf(setname,pathname)
         vaspjob.incar['LHFCALC'] = '.TRUE.'
         vaspjob.incar['ISYM'] = 3  
-        vaspjob.job_settings['time'] = '72:00:00'
         return vaspjob
 
     def hse_scf_gamma(self,setname='HSE-SCF-Gamma',pathname='HSE-SCF-Gamma'):
