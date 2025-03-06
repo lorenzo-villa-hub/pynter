@@ -118,7 +118,7 @@ def get_displacement_vectors(structures):
     """
     traj = Trajectory.from_structures(structures,constant_lattice=True) #order of structures determines ref in traj
     traj.to_displacements()
-    disp = traj.frac_coords[1]
+    disp = traj.coords[1]
     return structures[0].lattice.get_cartesian_coords(disp)
 
 
@@ -279,9 +279,9 @@ def view_structures_with_ase(structures):
     if type(structures) == list:
         atoms=[]
         for s in structures:
-            atoms.append(AseAtomsAdaptor.get_atoms(s))
+            atoms.append(s.to_ase_atoms())
     else:
-        atoms = AseAtomsAdaptor.get_atoms(structures)
+        atoms = structures.to_ase_atoms()
     view(atoms)
     return
 
@@ -301,9 +301,9 @@ def write_extxyz_file(file,structure,structure_ref=None,displacements=False):
     displacements : (bool)
         Include displacement vectors. The default is False.
     """
-    atoms = AseAtomsAdaptor.get_atoms(structure)
+    atoms = structure.to_ase_atoms()
     if displacements:
-        disp = get_displacement_vectors(structure_ref, structure)
+        disp = get_displacement_vectors([structure_ref, structure])
         atoms.arrays.update({'disp':disp})
     if not op.exists(op.dirname(file)):
         os.makedirs(op.dirname(file))

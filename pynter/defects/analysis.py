@@ -935,6 +935,24 @@ class SingleDefConc(MSONable):
     
     def __getitem__(self,key):
         return getattr(self,key)
+    
+    def keys(self):
+        """
+        Returns dictionary-like keys of the object's attributes.
+        """
+        return ('name', 'charge', 'conc', 'stable')
+
+    def values(self):
+        """
+        Returns dictionary-like values of the object's attributes.
+        """
+        return (self.name, self.charge, self.conc, self.stable)
+
+    def items(self):
+        """
+        Returns dictionary-like key-value pairs of the object's attributes.
+        """
+        return zip(self.keys(), self.values())
         
         
 class DefectConcentrations:

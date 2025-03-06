@@ -24,18 +24,18 @@ class TestDefaultInputs(PynterTest):
     def test_get_kpoints_default(self):    
         di = DefaultInputs(structure=self.structure)
         kpoints = di.get_kpoints_default(kppa=1000)
-        assert kpoints.kpts == [[8, 8, 8]]
+        assert kpoints.kpts == [(8, 8, 8)]
         assert kpoints.kpts_shift == (0, 0, 0)
         
     def test_get_kpoints_bs_default(self):
         di = DefaultInputs(structure=self.structure)
         kpoints = di.get_kpoints_bs_default(divisions=10,hybrid_mode=False,kppa=1000)
-        kpoints = Kpoints.from_string(str(kpoints)) # avoid pymatgen inconsistencies
+        kpoints = Kpoints.from_str(str(kpoints)) # avoid pymatgen inconsistencies
         kpoints_file = Kpoints.from_file(op.join(self.test_files_path,'KPOINTS_bs_Si'))
         VaspInputsTest().assert_Kpoints_equal(kpoints, kpoints_file)
         
         kpoints = di.get_kpoints_bs_default(divisions=10,hybrid_mode=True,kppa=1000)
-        kpoints = Kpoints.from_string(str(kpoints)) # avoid pymatgen inconsistencies
+        kpoints = Kpoints.from_str(str(kpoints)) # avoid pymatgen inconsistencies
         kpoints_file = Kpoints.from_file(op.join(self.test_files_path,'KPOINTS_bs_hybrid_Si'))
         VaspInputsTest().assert_Kpoints_equal(kpoints, kpoints_file)
     

@@ -49,7 +49,7 @@ class PynterTest(unittest.TestCase):
                 self.assert_object_almost_equal(elem1, elem2, rtol=rtol, atol=atol, err_msg=err_msg, verbose=verbose)
                 
         elif isinstance(actual, str):
-              self.assert_str_content_equal(actual, desired, err_msg=err_msg, verbose=verbose)
+            self.assert_str_content_equal(actual, desired, err_msg=err_msg, verbose=verbose)
         
         elif isinstance(actual, (bool,type(None))):
             assert actual == desired
@@ -71,7 +71,8 @@ class PynterTest(unittest.TestCase):
         for l1, l2 in zip(lines1, lines2):
             if l1.strip() != l2.strip():
                 failed.append(f"{l1} != {l2}")
-        return len(failed) == 0
+        if len(failed) != 0:
+            raise AssertionError(f"Strings do not match:\n  ACTUAL:{actual}\n  DESIRED:{desired}")
     
     
     @property
@@ -115,7 +116,7 @@ class PynterTest(unittest.TestCase):
          'array_size': None,
          'modules': ['intel/2019.2', 'intel/2019.3', 'intelmpi/2019.3', 'fftw/3.3.8'],
          'path_exe': '/home/vasp-5-3-3',
-         'add_stop_array': True,
+         'add_stop_array': False,
          'add_automation': 'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
          'add_lines_header': None,
          'add_lines_body': None}

@@ -29,10 +29,14 @@ class TestVaspSchemes(PynterTest):
         
     def test_scheme(self):
         ds_test = Dataset.from_directory(op.join(self.test_files_path,'Si_HSE_rel_gamma'))
+        job_settings = self.job_settings
+        job_settings['slurm']['time'] = '24:00:00'
         schemes = Schemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
-                      name='Si_schemes',job_settings=self.job_settings)
-        jobs = schemes.hse_relaxation_gamma_extended()
+                      name='Si_schemes',job_settings=job_settings)
+        jobs = schemes.hse_relaxation_gamma_extended()       
         ds = Dataset(jobs)
+        ds[3].job_settings['add_stop_array'] = True # stop array in job.sh file
+        ds[7].job_settings['add_stop_array'] = True 
         DatasetTest().assert_jobs_equal(ds.jobs, ds_test.jobs)
         return
         

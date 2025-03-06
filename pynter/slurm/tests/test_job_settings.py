@@ -26,6 +26,7 @@ class TestJobSettings(PynterTest):
             "#SBATCH --job-name=test\n"
             "#SBATCH --mail-user=test@pynter.com\n"
             "#SBATCH --mem-per-cpu=3500\n"
+            "#SBATCH --nodes=1\n"
             "#SBATCH --ntasks=96\n"
             "#SBATCH --output=out.%j\n"
             "#SBATCH --time=24:00:00\n"
@@ -86,10 +87,10 @@ class TestJobSettings(PynterTest):
         JobSettingsTest().assert_job_settings_equal(self.js,js_from_file)
         
     def test_write_script(self):
-        self.js.filename = 'temp.sh'
-        self.js.write_bash_file(self.test_files_path)
+        self.js['filename'] = 'temp.sh'
+        self.js.write_bash_file(self.test_files_path,filename='temp.sh')
         JobSettingsTest().assert_job_settings_equal(
-            self.js,JobSettings.from_bash_file(self.test_files_path,'temp.sh'))
+            JobSettings.from_bash_file(self.test_files_path,'temp.sh'),self.js)
         os.remove(self.get_testfile_path('temp.sh'))
             
             
