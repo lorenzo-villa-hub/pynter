@@ -54,8 +54,11 @@ def setup_analyse_vasprun(parser_sub):
 
 def analyse_vasprun(args):
     path = args.path if args.path else os.getcwd()
-    vasprun = Vasprun(os.path.join(path,'vasprun.xml')) 
-    
+    try:
+        vasprun = Vasprun(os.path.join(path,'vasprun.xml'))
+    except:
+        vasprun = None
+        warnings.warn('Vasprun could not be read, the calculation probably failed or is not finished\n',UserWarning)   
     if args.bandgap:
         analyse_bandgap(vasprun)
     if args.convergence:
@@ -81,14 +84,12 @@ def analyse_bandgap(vasprun):
     return
 
 def analyse_convergence(vasprun):
-    conv_el = False
-    conv_ionic = False
-    
-    try:
+    if vasprun is None:
+        conv_el = False
+        conv_ionic = False
+    else:
     	conv_el = vasprun.converged_electronic
     	conv_ionic = vasprun.converged_ionic
-    except:
-    	warnings.warn('Vasprun could not be read, the calculation probably failed or is not finished\n',UserWarning)
     print(f'Electronic convergence: {conv_el}')
     print(f'Ionic convergence: {conv_ionic}')
     return
