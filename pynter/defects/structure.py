@@ -11,7 +11,7 @@ from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.periodic_table import Element
 import os.path as op
 import os
-from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
+from pynter.tools.structure import is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
 from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectComplex
 from pymatgen.core.trajectory import Trajectory
 
@@ -199,49 +199,51 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
         new_structure = df.copy()
     return new_structure        
 
-        
-def defect_finder(structure_defect,structure_bulk,tol=1e-03):
+
+def defect_finder(structure_defect, structure_bulk, tol=1e-3):
     """
-    Function to find defect comparing defect and bulk structure (Pymatgen objects). 
+    Optimized function to find defects by comparing defect and bulk structures.
 
     Parameters
     ----------
-    structure_defect : (Pymatgen Structure object)
+    structure_defect : Pymatgen Structure
         Defect structure.
-    structure_bulk : (Pymatgen Structure object)
+    structure_bulk : Pymatgen Structure
         Bulk structure.
-    tol: (float)
-        Tolerance for fractional coordinates comparison.
+    tol : float, optional
+        Tolerance for fractional coordinates comparison (default is 1e-3).
 
     Returns
     -------
-    Defect object
+    Defect object (single or complex)
     """
-    df = structure_defect
-    bk = structure_bulk
     defects = []
-    
-    for s in df:
-        is_site,index = is_site_in_structure_coords(s,bk,tol=tol)
-        if is_site:
-            if is_site_in_structure(s,bk,tol=tol)[0] == False:
-                defect = Substitution(s, bk,site_in_bulk=bk[index])
-                defects.append(defect)
+    # Identify missing (vacancies) and additional (interstitials) sites
+    matched_indices = set()
+    for site in structure_defect:
+        check, index = is_site_in_structure_coords(site,structure_bulk,tol=tol)
+        
+        if check:
+            matched_indices.add(index)  # Site exists in bulk, check for substitution
+            if site.species != structure_bulk[index].species:
+                defects.append(
+                    Substitution(site,structure_bulk,site_in_bulk=structure_bulk[index])
+                    )
         else:
-            defect = Interstitial(s, bk)
-            defects.append(defect)
-            
-    for s in bk:
-        if is_site_in_structure_coords(s,df,tol=tol)[0] == False:
-            defect = Vacancy(s, bk)
-            defects.append(defect)
-    
+            defects.append(Interstitial(site, structure_bulk))
+
+    for j, site in enumerate(structure_bulk):
+        if j not in matched_indices:
+            defects.append(Vacancy(site, structure_bulk))
+
     if len(defects) > 1:
+        if len(defects) > 3:
+            warnings.warn("More than 3 defects found, if not desired try to adjust the tolerance parameter ")
         return DefectComplex(defects, structure_bulk)
     elif len(defects) == 1:
         return defects[0]
     else:
-        warnings.warn('No defect has been found. Try to adjust the tolerance parameter.',UserWarning)
+        warnings.warn("No defect has been found. Try to adjust the tolerance parameter.", UserWarning)
         return defects
 
 

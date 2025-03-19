@@ -10,9 +10,8 @@ import numpy as np
 import os.path as op
 import os
 import collections
-import random
+from scipy.spatial import KDTree
 from ase.visualize import view
-from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.util.coord import pbc_shortest_vectors
 from pymatgen.core.periodic_table import Element
 from pymatgen.core.composition import Composition
@@ -154,12 +153,9 @@ def is_site_in_structure(site,structure,tol=1e-03):
     return is_site_in_structure,index
 
 
-def is_site_in_structure_coords(site,structure,tol=1e-03):
+def is_site_in_structure_coords(site, structure, tol=1e-3):
     """
-    Check if Site coordinates are prensent in the Structure. Calculates distance between target site and 
-    each site in reference structure, takes the minimum value and returns True if is within a tolerance.
-    The periodicity is accounted for (considering the lattice associated to the PeriodicSite).
-    The tolerance is normalized with respect to lattice vector size. 
+    Check if a site's coordinates are present in a structure, using periodic boundary conditions.
 
     Parameters
     ----------
@@ -168,30 +164,31 @@ def is_site_in_structure_coords(site,structure,tol=1e-03):
     structure : (Structure)
         Pymatgen Structure object.
     tol : (float), optional
-        Tolerance for site comparison. The distance between sites in target and reference stucture is used, 
-        periodicity is accounted for. The tolerance is normalized with respect to lattice vector size. 
-        The default is 1e-03.
+        Tolerance for site comparison, normalized with respect to lattice size. 
+        Default is 1e-03.
 
     Returns
     -------
     is_site_in_structure_coords : (bool)
-    index : (int)
-        Index of site in structure in case site is_site_in_structure_coords returns True
-        If False index will be None.
+        Whether the site exists in the structure within tolerance.
+    index : (int or None)
+        Index of matching site in structure if found, otherwise None.
     """
+    # Normalize tolerance with lattice vector size
     l = site.lattice
-    tol = np.sqrt(l.a**2 + l.b**2 + l.c**2) * tol #input is normalized with respect to lattice vector
-    distances=[]
-    for s in structure:
-        distances.append(s.distance(site))
-    
-    distance_min = min(distances)
-    if distance_min < tol:
-        i_min = distances.index(distance_min)
-        index = structure.index(structure[i_min])
+    tol = np.sqrt(l.a**2 + l.b**2 + l.c**2) * tol
+
+    # Convert structure sites to fractional coordinates
+    frac_coords_structure = np.array([s.frac_coords for s in structure])
+    kdtree_structure = KDTree(frac_coords_structure, boxsize=1.0)  # Take periodicity into account
+
+    # Query the KDTree for nearest neighbor
+    dist, index = kdtree_structure.query(site.frac_coords, distance_upper_bound=tol)
+
+    if dist < tol:
         return True, index
     else:
-        return False,None
+        return False, None
 
 
 def rattle_atoms(structure,stdev=0.05,seed=None):
