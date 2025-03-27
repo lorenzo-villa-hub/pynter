@@ -133,6 +133,6 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
     return stdout, stderr
     
     
-from .data.datasets import Dataset
+from .jobs.datasets import Dataset
 
 

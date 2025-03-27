@@ -6,9 +6,9 @@ import pandas as pd
 import json
 from monty.json import MontyDecoder
 
-from pynter.data.jobs import get_job_from_directory
-from pynter.slurm.interface import HPCInterface
-from pynter.slurm.job_settings import JobSettings
+from pynter.jobs.core import get_job_from_directory
+from pynter.hpc.interface import HPCInterface
+from pynter.hpc.slurm import JobSettings
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 def _check_job_script(job_script_filenames,files):

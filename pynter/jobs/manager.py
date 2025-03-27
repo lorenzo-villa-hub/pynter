@@ -1,30 +1,20 @@
 
-
-from pynter import run_local, SETTINGS
+import os.path as op
+from pynter import run_local
     
 
 class JobManager:
     
     
-    def __init__(self,config=None):
+    def __init__(self):
         """
-        Class to interface commands with HPC
-
-        Parameters
-        ----------
-        config : (dict), optional
-            Configuration dictionary. If None is loaded from .pynter/config.yml.
+        Class to run OS commands for jobs.
         """
-        if not config:
-            config = SETTINGS['HPC']
-        
-        for key,value in config.items():
-            setattr(self, key, value)      
-
+ 
 
     def cancel_jobs(self,*args,printout=True,dry_run=False,**kwargs):
         """
-        Cancel jobs on HPC using scancel
+        Cancel jobs using scancel
 
         Parameters
         ----------
@@ -41,18 +31,18 @@ class JobManager:
         for arg in args:
             cmd += arg + ' '
                 
-        stdout,stderr = self.command(cmd,printout,dry_run,**kwargs)
+        stdout,stderr = run_local(cmd,printout,dry_run,**kwargs)
         return stdout,stderr
  
     
     def mkdir(self,path,printout=True,dry_run=False,**kwargs):
         """
-        Make new directory in HPC if doesn't exist
+        Make new directory if doesn't exist.
 
         Parameters
         ----------
         path : (str)
-            Path of directory.
+            Path (relative or absolute.
         printout : (bool), optional
             Write output on screen. The default is True.
         dry_run : (bool), optional
@@ -67,6 +57,7 @@ class JobManager:
         stderr : (str)
             Error.
         """
+        path = op.abspath(path)
         cmd = 'mkdir -p %s' %path
         stdout,stderr = run_local(cmd,printout,dry_run,**kwargs)
         return stdout, stderr
@@ -74,7 +65,7 @@ class JobManager:
         
     def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True,dry_run=False,**kwargs):
         """
-        Check queue status on HPC
+        Check queue status.
 
         Parameters
         ----------
@@ -101,12 +92,12 @@ class JobManager:
     
     def sbatch(self,path,job_script_filename='job.sh',printout=True,dry_run=False,**kwargs):
         """
-        Execute "sbatch" command on HPC to run job.
+        Execute "sbatch" command to run job.
 
         Parameters
         ----------
         path : (str), optional
-            Path where the job script is stored.
+            Path where the job script is stored (relative or absolute).
         job_script_filename : (str), optional
             Filename of the job script. The default is 'job.sh'.
         dry_run : (bool), optional
@@ -120,7 +111,8 @@ class JobManager:
             Output.
         stderr : (str)
             Error.
-        """    
+        """   
+        path = op.abspath(path)
         command = f'cd {path} ; sbatch {job_script_filename}'
         stdout,stderr = run_local(command,printout,dry_run,**kwargs) # I've used the run local because there was a probelm with the multiple command given with ;
         return stdout,stderr               # to check again if possible

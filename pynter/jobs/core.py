@@ -5,8 +5,8 @@ import os.path as op
 import shutil
 import warnings
 
-from pynter.slurm.job_settings import JobSettings
-from pynter.slurm.interface import HPCInterface
+from pynter.hpc.slurm import JobSettings
+from pynter.hpc.interface import HPCInterface
 from pynter.tools.utils import grep_list
 
 
