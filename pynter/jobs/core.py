@@ -3,6 +3,7 @@ from abc import abstractmethod
 import os
 import os.path as op
 import shutil
+import warnings
 
 from pynter.slurm.job_settings import JobSettings
 from pynter.slurm.interface import HPCInterface
@@ -32,17 +33,24 @@ class Job:
 
         """
                 
-        self.path = path if path else os.getcwd()
+        self.path = op.abspath(path) if path else os.getcwd()
         self.inputs = inputs
         self.job_settings = JobSettings(**job_settings) if job_settings else JobSettings()
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         
         self._localdir = HPCInterface().localdir
-        self._workdir = HPCInterface().workdir
-        self.path_relative = op.abspath(self.path).replace(self._localdir,'')
+        self._remotedir = HPCInterface().workdir
         
-        self.path_in_hpc = self._workdir + self.path_relative
+        if op.commonpath([self._remotedir,self.path]):
+            self.is_cwd_remote = True
+        elif op.commonpath([self._localdir,self.path]):
+            self.is_cwd_remote = False
+        else:
+            warnings.warn('Job path is not within local or remote directory')
+        
+        self.path_relative = op.abspath(self.path).replace(self._localdir,'')
+        self.path_in_hpc = self._remotedir + self.path_relative
         
         
         if outputs:
