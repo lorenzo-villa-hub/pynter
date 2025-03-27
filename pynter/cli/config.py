@@ -29,7 +29,7 @@ def create_config(args):
   
 def run_config(exclude=None,info=False):
     
-    filename_config = 'config.yml'
+    filename_config = 'config_v2.yml'
     filename_vasp = 'vasp.yml'
     filepath = os.path.join(os.getenv("HOME"),'.pynter')
     
@@ -53,8 +53,8 @@ def run_config(exclude=None,info=False):
         hostname = input('Hostname: ')
         localdir = input('Local calculation directory: ')
         localdir = os.path.abspath(localdir) if localdir else None
-        workdir = input('Remote calculation directory: ')
-        workdir = os.path.normpath(workdir) if workdir else None
+        remotedir = input('Remote calculation directory: ')
+        remotedir = os.path.normpath(remotedir) if remotedir else None
         
         print('\nDefault settings for job script setup: ')
         project_id = input('Project ID: ')
@@ -85,7 +85,7 @@ def run_config(exclude=None,info=False):
         config.update({'HPC': 
                           {'hostname': hostname,
                           'localdir': localdir,
-                          'workdir': workdir}})
+                          'remotedir': remotedir}})
         config.update({'API_KEY':API_KEY})
         
         config['job_settings']['filename'] = job_script_filename

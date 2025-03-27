@@ -31,7 +31,7 @@ SETTINGS['vasp'] = get_vasp_defaults_from_default_file()
 
 def get_cfgfile():
     homedir = os.getenv("HOME")
-    cfgfile = os.path.join(homedir,'.pynter','config.yml')
+    cfgfile = os.path.join(homedir,'.pynter','config_v2.yml')
     return cfgfile
 
 cfgfile = get_cfgfile()
@@ -135,4 +135,5 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
     
 from .jobs.datasets import Dataset
 
-
+LOCAL_DIR = SETTINGS['HPC']['localdir']
+REMOTE_DIR = SETTINGS['HPC']['remotedir']

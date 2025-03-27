@@ -3,12 +3,81 @@ import os.path as op
 from pynter import run_local
     
 
+
+def get_cancel_jobs_command(*args):
+    """
+    Get command to cancel jobs using scancel
+
+    Parameters
+    ----------
+    *args : (list)
+        Job-IDs.
+    
+    Returns
+    -------
+    cmd : (str)
+        Command.
+    """
+    cmd = 'scancel '
+    for arg in args:
+        cmd += arg + ' '
+    return cmd            
+
+
+def get_mkdir_command(path):
+    """
+    Get command to make a new directory if doesn't exist.
+
+    Parameters
+    ----------
+    path : (str)
+
+    Returns
+    -------
+    cmd : (str)
+        Command.
+    """
+    path = op.abspath(path)
+    cmd = 'mkdir -p %s' %path
+    return cmd
+
+
+def get_qstat_command():
+    """
+    Get command to check job queue status
+    """
+    cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"'
+    return cmd
+
+
+def get_sbatch_command(self,path,job_script_filename='job.sh'):
+    """
+    Execute "sbatch" command to run job.
+
+    Parameters
+    ----------
+    path : (str), optional
+        Path where the job script is stored (relative or absolute).
+    job_script_filename : (str), optional
+        Filename of the job script. The default is 'job.sh'.
+
+    Returns
+    -------
+    cmd (str)
+        Command.
+    """   
+    path = op.abspath(path)
+    cmd = f'cd {path} ; sbatch {job_script_filename}'
+    return cmd
+            
+
+
 class JobManager:
     
     
-    def __init__(self):
+    def __init__(self,job):
         """
-        Class to run OS commands for jobs.
+        Class to run and manage job both remotely and/or locally.
         """
  
 

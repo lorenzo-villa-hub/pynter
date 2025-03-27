@@ -5,6 +5,7 @@ import os.path as op
 import shutil
 import warnings
 
+from pynter import SETTINGS
 from pynter.hpc.slurm import JobSettings
 from pynter.hpc.interface import HPCInterface
 from pynter.tools.utils import grep_list
@@ -39,8 +40,8 @@ class Job:
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         
-        self._localdir = HPCInterface().localdir
-        self._remotedir = HPCInterface().workdir
+        self._localdir = SETTINGS['HPC']['localdir']
+        self._remotedir = SETTINGS['HPC']['remotedir']
         
         if op.commonpath([self._remotedir,self.path]):
             self.is_cwd_remote = True
