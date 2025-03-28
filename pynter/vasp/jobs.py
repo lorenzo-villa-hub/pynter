@@ -22,10 +22,10 @@ from pymatgen.core.structure import Structure
 from pymatgen.analysis.transition_state import NEBAnalysis
 
 from pynter.tools.utils import grep
-from pynter.data.jobs import Job
-from pynter.slurm.interface import HPCInterface
-from pynter.slurm.job_settings import JobSettings
-from pynter import SETTINGS
+from pynter.jobs.core import Job
+#from pynter.slurm.interface import HPCInterface
+from pynter.hpc.slurm import JobSettings
+from pynter import SETTINGS, LOCAL_DIR
 
 
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
@@ -113,7 +113,7 @@ class VaspJob(Job):
         """
         #ensure compatibility with old path format
         if 'path_relative' in d.keys() and d['path_relative']:
-            path = HPCInterface().localdir + d['path_relative']
+            path = LOCAL_DIR + d['path_relative']
         elif 'path' in d.keys():
             path = d['path']
         inputs = VaspInput.from_dict(d['inputs'])
@@ -646,7 +646,7 @@ class VaspNEBJob(Job):
 
         #ensure compatibility with old path format
         if 'path_relative' in d.keys() and d['path_relative']:
-            path = HPCInterface().localdir + d['path_relative']
+            path = LOCAL_DIR + d['path_relative']
         elif 'path' in d.keys():
             path = d['path']
         inputs = {}

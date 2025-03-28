@@ -96,7 +96,11 @@ if vasp_defaults:
 
 
 
-def run_local(cmd,printout=True,dry_run=False,**kwargs):
+def run_command(
+                cmd,
+                printout=True,
+                dry_run=False,
+                **kwargs):
     """
     Run a command locally with subprocess package.
 

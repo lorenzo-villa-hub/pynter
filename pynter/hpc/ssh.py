@@ -5,9 +5,9 @@ from shutil import which
 
 from monty.dev import requires
 import paramiko
-from pynter import run_local, SETTINGS
 from collections import defaultdict
 
+from pynter import SETTINGS, run_command
 
 def get_ssh_config(host,port=22,path=None):
     """
@@ -56,12 +56,11 @@ def get_ssh_config(host,port=22,path=None):
 
 
 
-
 class SSHProtocol:
     
     _instances = defaultdict(dict) #define attribute at class level, avoid having to define nested dict
     
-    def __new__(cls, host, username=None, password=None, key_filename=None, port=22, timeout=10):
+    def __new__(cls, host, username=None, password=None, key_filename=None, port=22, timeout=10, reinitialize=False):
         """
         Creates or retrieves an SSHProtocol instance based on host and username.
         Ensures that when the same connection is not opened multiple times.
@@ -69,7 +68,7 @@ class SSHProtocol:
         """
         if not username:
             host, port, username, key_filename = get_ssh_config(host)
-        if username not in cls._instances[host]: 
+        if username not in cls._instances[host] or reinitialize: 
             instance = super().__new__(cls)
             instance.host = host
             instance.username = username
@@ -81,7 +80,14 @@ class SSHProtocol:
         return cls._instances[host][username]
     
     
-    def __init__(self, host, username=None, password=None, key_filename=None, port=22, timeout=10):
+    def __init__(self, 
+                 host, 
+                 username=None, 
+                 password=None, 
+                 key_filename=None, 
+                 port=22, 
+                 timeout=10, 
+                 reinitialize=False):
         """
         Initializes an SSH connection, using settings from ~/.ssh/config if available.
         
@@ -100,12 +106,18 @@ class SSHProtocol:
             SSH port (overrides config if provided)
         timeout: (int)
             Timeout for connection (default: 10 seconds)
+        reinitialize: (bool)
+            Force to create a new connection instead of using existing ones.
         """
-        if not hasattr(self, 'initialized'):
+        if not hasattr(self, 'initialized') or reinitialize:
             self.client = None
             self.initialized = True
             self.connect()
-
+        else:
+            if not self.client:
+                print(f"Re-trying connection to {self.host}")
+                self.connect()
+                
 
     def __enter__(self):
         """Enter the context: return the instance itself."""
@@ -122,17 +134,13 @@ class SSHProtocol:
     
     def __print__(self):
         return self.__repr__()
-            
 
-    def load_ssh_config(self):
-        """
-        Loads settings from ~/.ssh/config for the given host.
-        """
-        host, port, username, key_filename = get_ssh_config(self.host,self.port)
-        self.host = host
-        self.port = port
-        self.username = username
-        self.key_filename = key_filename
+
+    def close(self):
+        """Closes the SSH connection."""
+        if self.client:
+            self.client.close()
+            self.client = None
 
 
     def connect(self):
@@ -159,9 +167,31 @@ class SSHProtocol:
             self.client = None
 
 
-    def run_command(self, command, timeout=10, printout=True):
-        """Executes a command over SSH with a timeout."""
-        if self.client:
+    def load_ssh_config(self):
+        """
+        Loads settings from ~/.ssh/config for the given host.
+        """
+        host, port, username, key_filename = get_ssh_config(self.host,self.port)
+        self.host = host
+        self.port = port
+        self.username = username
+        self.key_filename = key_filename
+
+
+    def run_command(self,
+                    command, 
+                    timeout=10, 
+                    printout=True, 
+                    dry_run=False):
+        """
+        Executes a command over SSH with a timeout.
+        """
+        message = "%s@%s:" %(self.username,self.host),command
+        if dry_run:
+            if printout:
+                print(message)
+            return command, ''
+        elif self.client:
             try:
                 transport = self.client.get_transport()
                 if transport and transport.is_active():
@@ -173,7 +203,7 @@ class SSHProtocol:
                     stderr = session.makefile_stderr('r', -1).read().decode().strip()
                     
                     if printout:
-                        print("%s@%s:" %(self.username,self.host),command)
+                        print(message)
                         if stdout:
                             print(stdout)
                         if stderr:
@@ -187,11 +217,6 @@ class SSHProtocol:
             return None, "SSH client is not connected"
 
 
-    def close(self):
-        """Closes the SSH connection."""
-        if self.client:
-            self.client.close()
-            self.client = None
             
 
 
@@ -224,7 +249,7 @@ def rsync_from_hpc(
     dry_run : (bool)
         Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
     kwargs : (dict)
-        Kwargs for the run_local function.
+        Kwargs for the local run_command function.
 
     Returns
     -------
@@ -241,7 +266,7 @@ def rsync_from_hpc(
     localdir = op.join(localdir,'')
     
     localcmd = 'mkdir -p %s' %localdir
-    run_local(localcmd)
+    run_command(localcmd)
     
     cmd = "rsync -r -uavzh " #keep the spaces
     if dry_run:
@@ -251,7 +276,7 @@ def rsync_from_hpc(
             cmd += f'--exclude={s} ' 
     cmd += f"-e ssh {hostname}:{remotedir} {localdir} "
 
-    stdout,stderr = run_local(cmd,printout=printout,dry_run=False,**kwargs)
+    stdout,stderr = run_command(cmd,printout=printout,dry_run=False)
     return stdout,stderr
 
 
@@ -284,7 +309,7 @@ def rsync_to_hpc(
     dry_run : (bool)
         Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
     kwargs : (dict)
-        Kwargs for the run_local function.
+        Kwargs for the local run_command function.
 
     Returns
     -------
@@ -300,7 +325,8 @@ def rsync_to_hpc(
     localdir = op.join(localdir,'')  #ensure backslash at the end
     remotedir = op.join(remotedir,'')
     
-    self.mkdir(remotedir,printout=False)
+    ssh = SSHProtocol(hostname)
+    ssh.run_command('mkdir -p %s' %remotedir)
     
     cmd = "rsync -r -uavzh " #keep the spaces
     if dry_run:
@@ -310,7 +336,7 @@ def rsync_to_hpc(
             cmd += f'--exclude={s} '
     cmd += f"-e ssh  {localdir} {hostname}:{remotedir} "
     
-    stdout,stderr = run_local(cmd,printout=printout,dry_run=False,**kwargs)
+    stdout,stderr = run_command(cmd,printout=printout,dry_run=False,**kwargs)
 
     return stdout,stderr
 

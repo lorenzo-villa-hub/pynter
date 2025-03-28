@@ -7,8 +7,10 @@ import warnings
 
 from pynter import SETTINGS
 from pynter.hpc.slurm import JobSettings
+from pynter.hpc.ssh import rsync_from_hpc, rsync_to_hpc
 from pynter.hpc.interface import HPCInterface
-from pynter.tools.utils import grep_list
+
+from pynter.jobs.manager import JobManager
 
 
 class Job:
@@ -44,9 +46,9 @@ class Job:
         self._remotedir = SETTINGS['HPC']['remotedir']
         
         if op.commonpath([self._remotedir,self.path]):
-            self.is_cwd_remote = True
+            self.is_path_on_hpc = True
         elif op.commonpath([self._localdir,self.path]):
-            self.is_cwd_remote = False
+            self.is_path_on_hpc = False
         else:
             warnings.warn('Job path is not within local or remote directory')
         
@@ -93,13 +95,19 @@ class Job:
     def jobclass(self):
         return self.__class__.__name__
 
+    @property
+    def job_id(self):
+        if not self._job_id:
+            job_id = JobManager(self).get_job_id_from_queue()
+            self._job_id = job_id
+        return self._job_id
+        
         
     def cancel_job(self):
-        """Cancel job on HPC"""
-        hpc = HPCInterface()
-        job_id = self.job_id()
-        hpc.cancel_jobs(job_id)
-        
+        """
+        Cancel job on HPC
+        """      
+        JobManager(self).scancel()    
         return 
 
 
@@ -157,23 +165,6 @@ class Job:
         pass
 
 
-    def job_id(self):
-        """Get job ID from the queue on HPC"""        
-        hpc = HPCInterface()
-        stdout,stderr = hpc.qstat(printout=False)
-        queue = stdout.splitlines()
-        job_lines = grep_list(self.name,queue)
-        if job_lines == []:
-            raise ValueError (f'Job named "{self.name}" is not currently running or pending')
-        elif len(job_lines) > 1:
-            raise ValueError (f'More than one job named "{self.name}" has been found in queue:\n{stdout}')
-        else:
-            job_line = job_lines[0].split()
-            job_id = job_line[0]
-        
-        return job_id
-
-
     def job_queue(self):
         """
         Print job queue from HPC on screen
@@ -185,9 +176,7 @@ class Job:
         stderr : (str)
             Error.
         """
-        hpc = HPCInterface()
-        stdout,stderr = hpc.qstat()
-        
+        stdout,stderr = JobManager(self).qstat()        
         return stdout,stderr
         
 
@@ -211,11 +200,9 @@ class Job:
         """
         if write_input:
             self.write_input()
-        hpc = HPCInterface()
-        if sync:
+        if sync and not self.is_path_on_hpc:
             self.sync_to_hpc()
-        stdout,stderr = hpc.sbatch(path=self.path_in_hpc,job_script_filename=self.job_script_filename)
-        
+        stdout, stderr = JobManager(self).sbatch()       
         return stdout,stderr
     
 
@@ -240,10 +227,10 @@ class Job:
             Error.
 
         """
-        hpc = HPCInterface()
-        abs_path = op.abspath(self.path)
-        localdir = abs_path 
-        stdout,stderr = hpc.rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir,exclude=exclude,dry_run=dry_run)
+        if self.is_path_on_hpc:
+            raise ValueError('Cannot sync from remote machine, only from local')
+        localdir = op.abspath(self.path)
+        stdout,stderr = rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
@@ -271,42 +258,14 @@ class Job:
             Error.
 
         """
-        hpc = HPCInterface()
-        abs_path = op.abspath(self.path)
-        localdir = abs_path 
-        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
+        if self.is_path_on_hpc:
+            raise ValueError('Cannot sync from remote machine, only from local')
+        localdir = op.abspath(self.path)
+        stdout,stderr = rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
             return
-
-
-    def get_status_from_queue(self,stdout):     
-        """
-        Get Job status from stdout of qstat command in HPC.
-
-        Returns
-        -------
-        status : (str)
-            Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
-        """
-        queue = stdout.splitlines()
-        job_lines = grep_list(self.name,queue)
-        if job_lines == []:
-            status = 'NOT IN QUEUE'
-        elif len(job_lines) > 1:
-            raise ValueError (f'More than one job named "{self.name}" has been found in queue:\n{stdout}')
-        else:
-            job_line = job_lines[0].split()
-            status = job_line[4]
-            if status == 'PD':
-                status = 'PENDING'
-            if status == 'R':
-                status = 'RUNNING'
-            if status == 'CG':
-                status = 'COMPLETED'
-            
-        return status
 
 
     def status(self):
@@ -318,9 +277,7 @@ class Job:
         status : (str)
             Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
         """
-        hpc = HPCInterface()
-        stdout,stderr = hpc.qstat(printout=False)
-        status = self.get_status_from_queue(stdout)            
+        status = JobManager(self).get_status_from_queue()            
         return status
  
            
@@ -332,7 +289,7 @@ class Job:
 
 def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,jobs_kwargs=None):   
     """
-    Get Job object froma directory. The job type is selected based on the content of the folder.
+    Get Job object from a directory. The job type is selected based on the content of the folder.
     - If ("INCAR","KPOINTS","POSCAR","POTCAR") files are present, VaspJob is initialized.
     - If ("INCAR","KPOINTS","POTCAR") files are present and "POSCAR" is not present, VaspNEBJob is initialized.
 

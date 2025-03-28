@@ -1,28 +1,10 @@
 
 import os.path as op
-from pynter import run_local
-    
-
-
-def get_cancel_jobs_command(*args):
-    """
-    Get command to cancel jobs using scancel
-
-    Parameters
-    ----------
-    *args : (list)
-        Job-IDs.
-    
-    Returns
-    -------
-    cmd : (str)
-        Command.
-    """
-    cmd = 'scancel '
-    for arg in args:
-        cmd += arg + ' '
-    return cmd            
-
+from pynter import run_command
+from pynter.hpc.ssh import SSHProtocol
+from pynter import SETTINGS
+from pynter.tools.utils import grep_list
+         
 
 def get_mkdir_command(path):
     """
@@ -42,15 +24,8 @@ def get_mkdir_command(path):
     return cmd
 
 
-def get_qstat_command():
-    """
-    Get command to check job queue status
-    """
-    cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"'
-    return cmd
 
-
-def get_sbatch_command(self,path,job_script_filename='job.sh'):
+def get_sbatch_command(path,job_script_filename='job.sh'):
     """
     Execute "sbatch" command to run job.
 
@@ -71,6 +46,26 @@ def get_sbatch_command(self,path,job_script_filename='job.sh'):
     return cmd
             
 
+def get_scancel_command(*args):
+    """
+    Get command to cancel jobs using scancel
+
+    Parameters
+    ----------
+    *args : (list)
+        Job-IDs.
+    
+    Returns
+    -------
+    cmd : (str)
+        Command.
+    """
+    cmd = 'scancel '
+    for arg in args:
+        cmd += arg + ' '
+    return cmd   
+
+
 
 class JobManager:
     
@@ -79,32 +74,71 @@ class JobManager:
         """
         Class to run and manage job both remotely and/or locally.
         """
- 
+        self.hostname = SETTINGS['HPC']['hostname']
+        self.job = job
 
-    def cancel_jobs(self,*args,printout=True,dry_run=False,**kwargs):
-        """
-        Cancel jobs using scancel
 
-        Parameters
-        ----------
-        *args : (str)
-            Job-id.
-        printout : (bool), optional
-            Write output on screen. The default is True.
-        dry_run : (bool), optional
-            Only return the command to be run and empty error string. The default is False.
-        kwargs : (dict), optional
-            Kwargs for the run_local function.
+    def _run_job_command(self,cmd,printout=True,dry_run=False,**kwargs):
         """
-        cmd = 'scancel '
-        for arg in args:
-            cmd += arg + ' '
-                
-        stdout,stderr = run_local(cmd,printout,dry_run,**kwargs)
-        return stdout,stderr
- 
+        Execute command ralated to Job. If the current location is on HPC cluster
+        the command is run on the local OS, otherwise is run on the remote HPC with ssh.
+        """
+        if self.job.is_path_on_hpc:
+            stdout,stderr = run_command(cmd,printout=printout,dry_run=dry_run)   
+        else:
+            ssh = SSHProtocol(self.hostname)
+            stdout, stderr = ssh.run_command(cmd,printout=printout,dry_run=dry_run)
+        return stdout, stderr
+
+
+    def get_job_id_from_queue(self):
+        """
+        Get job ID from the queue on HPC
+        """        
+        stdout,stderr = self.qstat()
+        queue = stdout.splitlines()
+        job_lines = grep_list(self.job.name,queue)
+        if job_lines == []:
+            raise ValueError (f'Job named "{self.name}" is not currently running or pending')
+        elif len(job_lines) > 1:
+            raise ValueError (f'More than one job named "{self.name}" has been found in queue:\n{stdout}')
+        else:
+            job_line = job_lines[0].split()
+            job_id = job_line[0]
+        
+        return job_id
+
+
+    def get_status_from_queue(self):     
+        """
+        Get Job status from stdout of qstat command in HPC.
     
-    def mkdir(self,path,printout=True,dry_run=False,**kwargs):
+        Returns
+        -------
+        status : (str)
+            Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
+        """
+        stdout, stderr = self.qstat(printout=False)
+        queue = stdout.splitlines()
+        job_lines = grep_list(self.job.name,queue)
+        if job_lines == []:
+            status = 'NOT IN QUEUE'
+        elif len(job_lines) > 1:
+            raise ValueError (f'More than one job named "{self.name}" has been found in queue:\n{stdout}')
+        else:
+            job_line = job_lines[0].split()
+            status = job_line[4]
+            if status == 'PD':
+                status = 'PENDING'
+            if status == 'R':
+                status = 'RUNNING'
+            if status == 'CG':
+                status = 'COMPLETED'
+            
+        return status
+    
+
+    def mkdir(self,printout=True,dry_run=False):
         """
         Make new directory if doesn't exist.
 
@@ -116,8 +150,6 @@ class JobManager:
             Write output on screen. The default is True.
         dry_run : (bool), optional
             Only return the command to be run and empty error string. The default is False.
-        kwargs : (dict), optional
-            Kwargs for the run_local function.
 
         Returns
         -------
@@ -126,13 +158,12 @@ class JobManager:
         stderr : (str)
             Error.
         """
-        path = op.abspath(path)
-        cmd = 'mkdir -p %s' %path
-        stdout,stderr = run_local(cmd,printout,dry_run,**kwargs)
+        cmd = get_mkdir_command(self.job.path)
+        stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)
         return stdout, stderr
         
         
-    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True,dry_run=False,**kwargs):
+    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True,dry_run=False):
         """
         Check queue status.
 
@@ -144,8 +175,6 @@ class JobManager:
             Write output on screen. The default is True.
         dry_run : (bool), optional
             Only return the command to be run and empty error string. The default is False.
-        kwargs : (dict), optional
-            Kwargs for the run_local function.
 
         Returns
         -------
@@ -154,12 +183,11 @@ class JobManager:
         stderr : (str)
             Error.
         """        
-        stdout,stderr = run_local(cmd,printout,dry_run,**kwargs)
+        stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)
         return stdout, stderr
-    
-      
-    
-    def sbatch(self,path,job_script_filename='job.sh',printout=True,dry_run=False,**kwargs):
+
+
+    def sbatch(self,printout=True,dry_run=False):
         """
         Execute "sbatch" command to run job.
 
@@ -171,8 +199,6 @@ class JobManager:
             Filename of the job script. The default is 'job.sh'.
         dry_run : (bool), optional
             Only return the command to be run and empty error string. The default is False.
-        kwargs : (dict), optional
-            Kwargs for the run_local function.
 
         Returns
         -------
@@ -181,11 +207,26 @@ class JobManager:
         stderr : (str)
             Error.
         """   
-        path = op.abspath(path)
-        command = f'cd {path} ; sbatch {job_script_filename}'
-        stdout,stderr = run_local(command,printout,dry_run,**kwargs) # I've used the run local because there was a probelm with the multiple command given with ;
-        return stdout,stderr               # to check again if possible
+        cmd = get_sbatch_command(path=self.job.path,job_script_filename=self.job.job_script_filename)
+        stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)     # I've used the run local because there was a probelm with the multiple command given with ;
+        return stdout,stderr                                            # to check again if possible
         
         
-        
+    def scancel(self,printout=True,dry_run=False):
+        """
+        Cancel jobs using scancel
+
+        Parameters
+        ----------
+        *args : (str)
+            Job-id.
+        printout : (bool), optional
+            Write output on screen. The default is True.
+        dry_run : (bool), optional
+            Only return the command to be run and empty error string. The default is False.
+        """
+        job_id = self.job.job_id
+        cmd = get_scancel_command(job_id)
+        stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)
+        return stdout,stderr        
         
