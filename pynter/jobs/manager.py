@@ -23,7 +23,17 @@ def get_mkdir_command(path):
     cmd = 'mkdir -p %s' %path
     return cmd
 
+def get_qstat_command():
+    """
+    Get command to view job queue.
 
+    Returns
+    -------
+    cmd : (str)
+        Command.
+    """
+    cmd = 'squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"'
+    return cmd
 
 def get_sbatch_command(path,job_script_filename='job.sh'):
     """
@@ -45,7 +55,6 @@ def get_sbatch_command(path,job_script_filename='job.sh'):
     cmd = f'cd {path} ; sbatch {job_script_filename}'
     return cmd
             
-
 def get_scancel_command(*args):
     """
     Get command to cancel jobs using scancel
@@ -80,7 +89,7 @@ class JobManager:
 
     def _run_job_command(self,cmd,printout=True,dry_run=False,**kwargs):
         """
-        Execute command ralated to Job. If the current location is on HPC cluster
+        Execute command related to Job. If the current location is on HPC cluster
         the command is run on the local OS, otherwise is run on the remote HPC with ssh.
         """
         if self.job.is_path_on_hpc:
@@ -91,11 +100,11 @@ class JobManager:
         return stdout, stderr
 
 
-    def get_job_id_from_queue(self):
+    def get_job_id_from_queue(self,stdout):
         """
-        Get job ID from the queue on HPC
+        Get job ID from the queue on HPC. qstat is not explicitly called here to be able to handle
+        looping without running qstat every time.
         """        
-        stdout,stderr = self.qstat()
         queue = stdout.splitlines()
         job_lines = grep_list(self.job.name,queue)
         if job_lines == []:
@@ -109,16 +118,17 @@ class JobManager:
         return job_id
 
 
-    def get_status_from_queue(self):     
+    def get_status_from_queue(self,stdout):     
         """
-        Get Job status from stdout of qstat command in HPC.
+        Get Job status from stdout of qstat command in HPC. 
+        qstat is not explicitly called here to be able to handle
+        looping without running qstat every time.
     
         Returns
         -------
         status : (str)
             Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
         """
-        stdout, stderr = self.qstat(printout=False)
         queue = stdout.splitlines()
         job_lines = grep_list(self.job.name,queue)
         if job_lines == []:
@@ -163,7 +173,7 @@ class JobManager:
         return stdout, stderr
         
         
-    def qstat(self,cmd='squeue -o "%.10i %.9P %.40j %.8u %.2t %.10M %.5D %R"',printout=True,dry_run=False):
+    def qstat(self,printout=True,dry_run=False):
         """
         Check queue status.
 
@@ -183,6 +193,7 @@ class JobManager:
         stderr : (str)
             Error.
         """        
+        cmd = get_qstat_command()
         stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)
         return stdout, stderr
 
@@ -230,3 +241,5 @@ class JobManager:
         stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)
         return stdout,stderr        
         
+    
+    

@@ -49,8 +49,9 @@ class Job:
         elif op.commonpath([self._localdir,self.path]) == self._localdir:
             self.is_path_on_hpc = False
         else:
+            self.is_path_on_hpc = False
             warnings.warn('Job path is not within local or remote directory', UserWarning)
-        
+            
         self.path_relative = op.abspath(self.path).replace(self._localdir,'')
         self.path_in_hpc = self._remotedir + self.path_relative
         
@@ -97,7 +98,9 @@ class Job:
     @property
     def job_id(self):
         if not self._job_id:
-            job_id = JobManager(self).get_job_id_from_queue()
+            job_manager = JobManager(self)
+            stdout,stderr = job_manager.qstat()
+            job_id = job_manager.get_job_id_from_queue(stdout)
             self._job_id = job_id
         return self._job_id
         
@@ -276,7 +279,9 @@ class Job:
         status : (str)
             Job status. Possible status are 'PENDING','RUNNING','NOT IN QUEUE'.
         """
-        status = JobManager(self).get_status_from_queue()            
+        job_manager = JobManager(self)
+        stdout,stderr = job_manager.qstat()
+        status = job_manager.get_status_from_queue()            
         return status
  
            

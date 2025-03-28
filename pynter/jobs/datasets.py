@@ -6,10 +6,13 @@ import pandas as pd
 import json
 from monty.json import MontyDecoder
 
+from pynter import run_command
 from pynter.jobs.core import get_job_from_directory
-from pynter.hpc.interface import HPCInterface
+from pynter.jobs.manager import get_qstat_command, JobManager
+from pynter.hpc.ssh import SSHProtocol, rsync_from_hpc, rsync_to_hpc
 from pynter.hpc.slurm import JobSettings
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
+from pynter import SETTINGS
 
 def _check_job_script(job_script_filenames,files):
     """
@@ -108,10 +111,17 @@ class Dataset:
             if sort:
                 self.sort_jobs(reset=True,features=sort)
 
-        self._localdir = HPCInterface().localdir
-        self._workdir = HPCInterface().workdir
-        self.path_relative = self.path.replace(self._localdir,'')
+        self._localdir = SETTINGS['HPC']['localdir'] 
+        self._remotedir = SETTINGS['HPC']['remotedir'] 
         
+        if op.commonpath([self._remotedir,self.path]) == self._remotedir:
+            self.is_path_on_hpc = True
+        elif op.commonpath([self._localdir,self.path]) == self._localdir:
+            self.is_path_on_hpc = False
+        else:
+            warnings.warn('Dataset path is not within local or remote directory', UserWarning)
+        
+        self.path_relative = self.path.replace(self._localdir,'')
         self.path_in_hpc = self._workdir + self.path_relative
 
 
@@ -170,7 +180,7 @@ class Dataset:
     def from_dict(cls,d):
         #ensure compatibility with old path format
         if 'path_relative' in d.keys() and d['path_relative']:
-            path = HPCInterface().localdir + d['path_relative']
+            path = SETTINGS['HPC']['localdir']  + d['path_relative']
         elif 'path' in d.keys():
             path = d['path']
         name = d['name']
@@ -473,7 +483,7 @@ class Dataset:
         table = []
         index = []
         if status:
-            stdout,stderr = HPCInterface().qstat(printout=False)
+            stdout,stderr = self.queue(stdouts=True,printout=False)
         for j in jobs:
             index.append(j.name)
             d = {}
@@ -482,7 +492,7 @@ class Dataset:
             d['nodes'] = j.nodes
             d['is_converged'] = j.is_converged
             if status:
-                d['status'] = j.get_status_from_queue(stdout)
+                d['status'] = JobManager(j).get_status_from_queue(stdout)
             for feature in display:
                 if isinstance(feature,list):
                     key = feature[0]
@@ -517,7 +527,7 @@ class Dataset:
         return
 
 
-    def queue(self,stdouts=False):
+    def queue(self,stdouts=False,printout=True):
         """
         Display queue from HPC. If stdouts is True returns out and err strings.
         
@@ -528,8 +538,13 @@ class Dataset:
         stderr : (str)
             Error.
         """
-        hpc = HPCInterface()
-        stdout,stderr = hpc.qstat()
+        cmd = get_qstat_command()
+        if self.is_path_on_hpc:
+            stdout,stderr = run_command(cmd,printout=printout)   
+        else:
+            ssh = SSHProtocol(SETTINGS['HPC']['hostname'])
+            stdout, stderr = ssh.run_command(cmd,printout=printout)
+
         if stdouts:
             return stdout,stderr
         else:
@@ -684,10 +699,10 @@ class Dataset:
         stderr : (str)
             Error.
         """
-        hpc = HPCInterface()
-        abs_path = op.abspath(self.path)
-        localdir = abs_path 
-        stdout,stderr = hpc.rsync_from_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
+        if self.is_path_on_hpc:
+            raise ValueError('Cannot sync from remote machine, only from local')
+        localdir = op.abspath(self.path)
+        stdout,stderr = rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
@@ -714,10 +729,10 @@ class Dataset:
         stderr : (str)
             Error.
         """
-        hpc = HPCInterface()
-        abs_path = op.abspath(self.path)
-        localdir = abs_path 
-        stdout,stderr = hpc.rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
+        if self.is_path_on_hpc:
+            raise ValueError('Cannot sync from remote machine, only from local')
+        localdir = op.abspath(self.path)
+        stdout,stderr = rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
