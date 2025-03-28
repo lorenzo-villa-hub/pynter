@@ -8,7 +8,6 @@ import warnings
 from pynter import SETTINGS
 from pynter.hpc.slurm import JobSettings
 from pynter.hpc.ssh import rsync_from_hpc, rsync_to_hpc
-from pynter.hpc.interface import HPCInterface
 
 from pynter.jobs.manager import JobManager
 
@@ -45,12 +44,12 @@ class Job:
         self._localdir = SETTINGS['HPC']['localdir']
         self._remotedir = SETTINGS['HPC']['remotedir']
         
-        if op.commonpath([self._remotedir,self.path]):
+        if op.commonpath([self._remotedir,self.path]) == self._remotedir:
             self.is_path_on_hpc = True
-        elif op.commonpath([self._localdir,self.path]):
+        elif op.commonpath([self._localdir,self.path]) == self._localdir:
             self.is_path_on_hpc = False
         else:
-            warnings.warn('Job path is not within local or remote directory')
+            warnings.warn('Job path is not within local or remote directory', UserWarning)
         
         self.path_relative = op.abspath(self.path).replace(self._localdir,'')
         self.path_in_hpc = self._remotedir + self.path_relative
