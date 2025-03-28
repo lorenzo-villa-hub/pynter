@@ -6,10 +6,82 @@ from shutil import which
 from monty.dev import requires
 import paramiko
 from pynter import run_local, SETTINGS
+from collections import defaultdict
+
+
+def get_ssh_config(host,port=22,path=None):
+    """
+    Gets settings from config file for the given host.
+    
+    Parameters
+    ----------
+    host: (str) 
+        The SSH host (can be an alias from ~/.ssh/config)
+    port: (int)
+        SSH port (default is 22).
+    path: (str)
+        Path of configuration file, if not provided uses the default ~/.ssh/config  
+            
+    Returns
+    -------
+    host: (str) 
+        The SSH host.
+    port: (int)
+        SSH port.
+    username: (str)
+        SSH username (overrides config if provided)
+    password: (str)
+        SSH password.
+    key_filename: (str)
+        Path to private key file (overrides config if provided)
+    """
+    if path:
+        path = os.path.abspath(path)
+    ssh_config_path = path or os.path.expanduser("~/.ssh/config")
+
+    if os.path.exists(ssh_config_path):
+        ssh_config = paramiko.config.SSHConfig()
+        with open(ssh_config_path) as f:
+            ssh_config.parse(f)
+
+        # Get the host-specific settings (if defined)
+        host_config = ssh_config.lookup(host)
+
+        host = host_config.get("hostname", host)
+        port = int(host_config.get("port", port))
+        username = host_config.get("user")
+        key_filename = host_config.get("identityfile", [None])[0]
+
+        return host, port, username, key_filename
+
+
+
 
 class SSHProtocol:
     
-    def __init__(self, host, username=None, password=None, key_filename=None, port=None, timeout=10):
+    _instances = defaultdict(dict) #define attribute at class level, avoid having to define nested dict
+    
+    def __new__(cls, host, username=None, password=None, key_filename=None, port=22, timeout=10):
+        """
+        Creates or retrieves an SSHProtocol instance based on host and username.
+        Ensures that when the same connection is not opened multiple times.
+        If username is not provided, loads settings from  ~/.ssh/config.
+        """
+        if not username:
+            host, port, username, key_filename = get_ssh_config(host)
+        if username not in cls._instances[host]: 
+            instance = super().__new__(cls)
+            instance.host = host
+            instance.username = username
+            instance.password = password
+            instance.key_filename = key_filename
+            instance.port = port
+            instance.timeout = timeout
+            cls._instances[host][username] = instance
+        return cls._instances[host][username]
+    
+    
+    def __init__(self, host, username=None, password=None, key_filename=None, port=22, timeout=10):
         """
         Initializes an SSH connection, using settings from ~/.ssh/config if available.
         
@@ -29,19 +101,10 @@ class SSHProtocol:
         timeout: (int)
             Timeout for connection (default: 10 seconds)
         """
-        self.host = host
-        self.username = username
-        self.password = password
-        self.key_filename = key_filename
-        self.port = port
-        self.timeout = timeout
-        self.client = None
-
-        # Load SSH config if available
-        self.load_ssh_config()
-
-        # Connect using the loaded settings
-        self.connect()
+        if not hasattr(self, 'initialized'):
+            self.client = None
+            self.initialized = True
+            self.connect()
 
 
     def __enter__(self):
@@ -53,22 +116,23 @@ class SSHProtocol:
         self.close()
 
 
+    def __repr__(self):
+        lines = [f"{key}: {getattr(self,key)}" for key in ['host','port','username']]
+        return '\n'.join(lines)
+    
+    def __print__(self):
+        return self.__repr__()
+            
+
     def load_ssh_config(self):
-        """Loads settings from ~/.ssh/config for the given host."""
-        ssh_config_path = os.path.expanduser("~/.ssh/config")
-
-        if os.path.exists(ssh_config_path):
-            ssh_config = paramiko.config.SSHConfig()
-            with open(ssh_config_path) as f:
-                ssh_config.parse(f)
-
-            # Get the host-specific settings (if defined)
-            host_config = ssh_config.lookup(self.host)
-
-            self.host = host_config.get("hostname", self.host)
-            self.port = int(host_config.get("port", self.port or 22))
-            self.username = self.username or host_config.get("user")
-            self.key_filename = self.key_filename or host_config.get("identityfile", [None])[0]
+        """
+        Loads settings from ~/.ssh/config for the given host.
+        """
+        host, port, username, key_filename = get_ssh_config(self.host,self.port)
+        self.host = host
+        self.port = port
+        self.username = username
+        self.key_filename = key_filename
 
 
     def connect(self):
