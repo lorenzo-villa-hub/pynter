@@ -51,7 +51,8 @@ def run_automation_vasp(args):
                                 sort='path')
     path = os.getcwd()
     job_current = ds.select_jobs(path=path)
-    if job_current.is_converged:
+    is_converged_electronic, is_converged_ionic = automation.check_convergence(job_current)
+    if is_converged_electronic and is_converged_ionic:
         current_index = ds.jobs.index(job_current)
         job_next = ds.jobs[current_index + 1]
         files = []
@@ -66,6 +67,8 @@ def run_automation_vasp(args):
                                     job2=job_next,
                                     files=files,
                                     check_kpoints=args.check_kpoints)
+        
+        job_next.run_job(sync=False,write_input=False)
         automation.write_status(path=path)
         
     

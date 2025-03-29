@@ -69,36 +69,16 @@ class VaspAutomation:
     
     
     def check_convergence(self,job):
+        """
+        Check electronic and ionic convergence and update status
+        """
         conv_el, conv_ionic = job.is_converged_electronic, job.is_converged_ionic
-        self.status.append('Job exit. Analysing "vasprun.xml"... ')
+        self.status.append('Analysing "vasprun.xml"... ')
         self.status.append(f'\nElectronic convergence: {conv_el}')
         self.status.append(f'Ionic convergence: {conv_ionic}\n') 
         if conv_el == False and conv_ionic == False:
             self.status.append('Calculation probably did not converge, control manually')
         return conv_el,conv_ionic
-       
-   
-    def copy_files_from_job1_to_job2(self,
-                      job1,
-                      job2,
-                      filenames=None,
-                      check_kpoints=False):
-
-        for file in filenames:
-            if file=='CONTCAR':
-                message = copy_contcar_to_poscar(job1, job2)
-                self.status.append(message)
-                
-            elif file in ['CHGCAR','WAVECAR']:
-                kpoints_equal, message = are_kpoints_equal(job1, job2)
-                self.status.append(message)
-                if kpoints_equal or check_kpoints is False:
-                    message = copy_file_from_jobs(file, job1, job2)
-                    self.status.append(message)
-            
-            else:
-                message = copy_file_from_jobs(file, job1, job2)
-                self.status.append(message) 
                         
     
     def check_step_limits_reached(self,job):
@@ -119,9 +99,31 @@ class VaspAutomation:
             self.status.append('Maximum limit of electronic steps has been reached')
         if self.limit_ionic_steps_reached():
             limit_ionic_steps_reached = True
-            self.status.append('Maximum limit of ionic steps has been reached')
+            self.status.append('Maximum limit of ionic steps has been reached')         
+        return limit_el_steps_reached, limit_ionic_steps_reached        
+ 
+    
+    def copy_files_from_job1_to_job2(self,
+                      job1,
+                      job2,
+                      filenames=None,
+                      check_kpoints=False):
+
+        for file in filenames:
+            if file=='CONTCAR':
+                message = copy_contcar_to_poscar(job1, job2)
+                self.status.append(message)
+                
+            elif file in ['CHGCAR','WAVECAR']:
+                kpoints_equal, message = are_kpoints_equal(job1, job2)
+                self.status.append(message)
+                if kpoints_equal or check_kpoints is False:
+                    message = copy_file_from_jobs(file, job1, job2)
+                    self.status.append(message)
             
-        return limit_el_steps_reached, limit_ionic_steps_reached   
+            else:
+                message = copy_file_from_jobs(file, job1, job2)
+                self.status.append(message)   
     
         
     def write_status(self,path,filename=None):
