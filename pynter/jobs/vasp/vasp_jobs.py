@@ -361,6 +361,28 @@ class VaspJob(Job):
         else:
             return None
             
+    @property
+    def is_converged_electronic(self):
+        """
+        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        if hasattr(self,'_is_converged_electronic'):
+            return self._is_converged_electronic
+        else:
+            return None
+
+    @property
+    def is_converged_ionic(self):
+        """
+        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        if hasattr(self,'_is_converged_ionic'):
+            return self._is_converged_ionic
+        else:
+            return None
+
 
     @property
     def is_hybrid(self):
@@ -487,7 +509,7 @@ class VaspJob(Job):
         extra_data : (list), optional
             List of attributes of Vasprun to add to the default parsed in ComputedStructureEntry.
         """                
-        self._is_converged = self._get_convergence()
+        self._is_converged,self._is_converged_electronic,self._is_converged_ionic = self._get_convergence()
         
         self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
 
@@ -567,9 +589,11 @@ class VaspJob(Job):
     def _get_convergence(self):
         """
         Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
-        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        "False" if reading failed, and "None" if is not present in the outputs dictionary, 
+        for global, electronic and ionic convergence.
+        
         """
-        is_converged = None
+        is_converged, conv_el, conv_ionic = None, None, None
         if self.outputs:
             if 'Vasprun' in self.outputs.keys():
                 is_converged = False
@@ -581,7 +605,7 @@ class VaspJob(Job):
                         conv_ionic = vasprun.converged_ionic
                     if conv_el and conv_ionic:
                         is_converged = True                    
-        return is_converged
+        return is_converged, conv_el, conv_ionic
 
 
     def _parse_kwargs(self,**kwargs):

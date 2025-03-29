@@ -316,7 +316,7 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
     jobs : (list)
         List of Job objects.
     """    
-    from pynter.vasp.jobs import VaspJob, VaspNEBJob
+    from pynter.jobs.vasp.vasp_jobs import VaspJob, VaspNEBJob
     
     path = path if path else os.getcwd()
     job_script_filename = job_script_filename if job_script_filename else JobSettings().filename

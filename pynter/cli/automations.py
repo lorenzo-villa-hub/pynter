@@ -5,9 +5,13 @@ Created on Tue May 30 15:30:49 2023
 
 @author: villa
 """
+import os
 
 from pynter.automations.core import Automation
 from pynter.automations.vasp import Schemes, NEBSchemes
+
+from pynter.jobs.datasets import Dataset
+from pynter.jobs.vasp.vasp_automations import VaspAutomation
 
 def parse_common_args(parser):
     auto = Automation()
@@ -40,13 +44,30 @@ def setup_automation(subparsers):
 
 
 def run_automation_vasp(args):
-    s = Schemes(path=None,status=[], **args.__dict__)
-    conv_el, conv_ionic = s.check_convergence()    
-    if conv_el and conv_ionic:
-        s.next_step_relaxation_schemes()
-    elif s.error_check:
-        s.resubmit_if_step_limits_reached()
-    s.write_status()    
+    automation = VaspAutomation()
+    ds = Dataset.from_directory(
+                                path='../',
+                                job_script_filename=args.job_script_filename,
+                                sort='path')
+    path = os.getcwd()
+    job_current = ds.select_jobs(path=path)
+    if job_current.is_converged:
+        current_index = ds.jobs.index(job_current)
+        job_next = ds.jobs[current_index + 1]
+        files = []
+        if args.contcar:
+            files.append('CONTCAR')
+        if args.chgcar:
+            files.append('CHGCAR')
+        if args.wavecar:
+            files.append('WAVECAR')
+        automation.copy_files_from_job1_to_job2(
+                                    job1=job_current,
+                                    job2=job_next,
+                                    files=files,
+                                    check_kpoints=args.check_kpoints)
+        automation.write_status(path=path)
+        
     
     
 def run_automation_vasp_neb(args):

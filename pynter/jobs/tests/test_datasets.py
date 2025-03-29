@@ -8,10 +8,10 @@ Created on Mon May 15 16:25:45 2023
 import os.path as op
 import json
 
-from pynter.data.datasets import Dataset
+from pynter.jobs.datasets import Dataset
 
 from pynter.testing.core import PynterTest
-from pynter.testing.data import DatasetTest
+from pynter.testing.jobs import DatasetTest
 
 
 class TestDataset(PynterTest):

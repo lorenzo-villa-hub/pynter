@@ -2,7 +2,7 @@ API_KEY: null
 HPC:
   hostname: null
   localdir: /home
-  workdir: null
+  remotedir: null
 dbconfig:
   vasp:
     collection: vasp

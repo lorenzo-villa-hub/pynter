@@ -109,7 +109,7 @@ class Dataset:
         if jobs:
             self._group_jobs()
             if sort:
-                self.sort_jobs(reset=True,features=sort)
+                self.sort_jobs(inplace=True,features=sort)
 
         self._localdir = SETTINGS['HPC']['localdir'] 
         self._remotedir = SETTINGS['HPC']['remotedir'] 
@@ -122,7 +122,7 @@ class Dataset:
             warnings.warn('Dataset path is not within local or remote directory', UserWarning)
         
         self.path_relative = self.path.replace(self._localdir,'')
-        self.path_in_hpc = self._workdir + self.path_relative
+        self.path_in_hpc = self._remotedir + self.path_relative
 
 
     def __str__(self):     
@@ -641,10 +641,10 @@ class Dataset:
                               functions=functions,**kwargs)
 
 
-    def sort_jobs(self,jobs_to_sort=None,features=['name'],reset=True,reverse=False):
+    def sort_jobs(self,jobs_to_sort=None,features=['name'],inplace=True,reverse=False):
         """
         Sort jobs according to the target feature. If list of jobs is not given
-        and reset is True the attribute self.jobs is rewritten with the sorted list.
+        and inplace is True the attribute self.jobs is rewritten with the sorted list.
 
         Parameters
         ----------
@@ -653,7 +653,8 @@ class Dataset:
         features : (str or list), optional
             Features to use to sort the list (see get_object_feature).
             Both a single variable or a list can be provided. The default is 'name'.
-        reset : (bool), optional
+            Can also be a function that takes the Job object as an argument.
+        inplace : (bool), optional
             Reset the self.jobs attribute if jobs_to_sort is None. The default is True.
         reverse : (bool), optional
             Reverse the order in the list. The default is False.
@@ -669,7 +670,7 @@ class Dataset:
         sorted_jobs = sort_objects(jobs, features, reverse)
 
         if not jobs_to_sort:
-            if reset:
+            if inplace:
                 self.jobs = sorted_jobs
                 self.sort = features
                 return

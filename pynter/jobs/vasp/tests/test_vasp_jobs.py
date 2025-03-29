@@ -12,7 +12,7 @@ import numpy as np
 from pymatgen.io.vasp.inputs import VaspInput
 from pymatgen.io.vasp.outputs import Vasprun
 
-from pynter.vasp.jobs import VaspJob, VaspNEBJob
+from pynter.jobs.vasp.vasp_jobs import VaspJob, VaspNEBJob
 from pynter import SETTINGS
 from pynter.testing.core import PynterTest
 from pynter.testing.vasp import VaspInputsTest, VaspOutputsTest
