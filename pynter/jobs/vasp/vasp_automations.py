@@ -5,11 +5,9 @@ Created on Sat Mar 29 17:58:14 2025
 
 @author: lorenzo
 """
-import os
 import os.path as op
 from shutil import copyfile
 
-from pynter.jobs.datasets import Dataset
 
 def are_kpoints_equal(job1,job2):
     """
@@ -34,6 +32,9 @@ def copy_file_from_jobs(filename,job1,job2):
     return f'{op.relpath(source)} copied to {op.relpath(destination)}'
     
 def copy_contcar_to_poscar(job1,job2):
+    """
+    Copy CONTCAR of Job1 to POSCAR of Job2
+    """
     path1 = op.abspath(job1.path)
     path2 = op.abspath(job2.path)
     source = op.join(path1,'CONTCAR')
@@ -42,6 +43,9 @@ def copy_contcar_to_poscar(job1,job2):
     return f'{op.relpath(source)} copied to {op.relpath(destination)}'
     
 def is_limit_electronic_steps_reached(job):
+    """
+    Check if electronic step limit has been reached
+    """
     if job.is_converged_electronic is not None:
         ionic_steps = job.vasprun.ionic_steps
         n_electronic_steps = len(ionic_steps[-1]['electronic_steps'])
@@ -51,6 +55,9 @@ def is_limit_electronic_steps_reached(job):
         return False
 
 def is_limit_ionic_steps_reached(job):
+    """
+    Check if ionic step limit has been reached
+    """
     if job.is_converged_ionic is not None:
         n_ionic_steps = len(job.vasprun.ionic_steps)
         nsw = job.vasprun.parameters['NSW']
@@ -62,8 +69,15 @@ def is_limit_ionic_steps_reached(job):
     
 class VaspAutomation:
     
-    def __init__(self,
-                 status_filename='exit_status.txt'):
+    def __init__(self,status_filename='exit_status.txt'):
+        """
+        Class to handle automation workflows for VASP
+
+        Parameters
+        ----------
+        status_filename: (str)
+            Filename to write automation output. The default is 'exit_status.txt'.
+        """
         self.status = []
         self.status_filename = status_filename
     
@@ -104,11 +118,25 @@ class VaspAutomation:
  
     
     def copy_files_from_job1_to_job2(self,
-                      job1,
-                      job2,
-                      filenames=None,
-                      check_kpoints=False):
+                                     job1,
+                                     job2,
+                                     filenames,
+                                     check_kpoints=False):
+        """
+        Copy VASP files from directory of Job1 to directory of Job2
 
+        Parameters
+        ----------
+        job1 : (VaspJob)
+            VaspJob object.
+        job2 : (VaspJob)
+            VaspJob object.
+        filenames : (list)
+            List of VASP file names to copy. If "CONTCAR" is present, it will be copied 
+            as "POSCAR" for Job2.
+        check_kpoints : TYPE, optional
+            DESCRIPTION. The default is False.
+        """
         for file in filenames:
             if file=='CONTCAR':
                 message = copy_contcar_to_poscar(job1, job2)
