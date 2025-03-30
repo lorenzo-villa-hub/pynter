@@ -134,8 +134,8 @@ class VaspAutomation:
         filenames : (list)
             List of VASP file names to copy. If "CONTCAR" is present, it will be copied 
             as "POSCAR" for Job2.
-        check_kpoints : TYPE, optional
-            DESCRIPTION. The default is False.
+        check_kpoints : (bool)
+            Only copy CHGCAR and WAVECAR if the KPOINTS file are the same btw the two jobs.
         """
         for file in filenames:
             if file=='CONTCAR':
@@ -173,3 +173,38 @@ class VaspAutomation:
                 print('Automation report written in "%s" file in directory "%s"' %(filename,path))
         else:
             print('Writing status file is disabled, if needed please set "status_filename" kwarg or "--status" optional argument on command line')
+            
+            
+            
+class VaspNEBAutomation(VaspAutomation):
+    
+    def copy_images_files_from_job1_to_job2(self,job1,job2,filenames=['CHGCAR','CONTCAR','WAVECAR']):
+        """
+        Copy VASP files from directory of Job1 to directory of Job2
+
+        Parameters
+        ----------
+        job1 : (VaspJob)
+            VaspJob object.
+        job2 : (VaspJob)
+            VaspJob object.
+        filenames : (list)
+            List of VASP file names to copy. If "CONTCAR" is present, it will be copied 
+            as "POSCAR" for Job2.
+        """
+        path2 = job2.path
+        for image_path in job1.image_dirs:
+            image_name = op.path.basename(image_path)
+            for file in filenames:
+                if file == 'CONTCAR':
+                    source = op.join(image_path,'CONTCAR')
+                    dest = op.join(path2,image_name,'POSCAR')    
+                    copyfile(source,dest)
+                else:
+                    source = op.join(image_path,file)
+                    dest = op.join(path2,image_name,file)
+                    copyfile(source,dest)                
+                self.status.append(f'{op.relpath(source)} copied in {op.relpath(dest)}')
+        
+        
+        
