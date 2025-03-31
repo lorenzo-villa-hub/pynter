@@ -6,8 +6,8 @@ Created on Tue May 30 14:45:20 2023
 @author: villa
 """
 
-from pynter.slurm.core import Slurm
-from pynter.slurm.job_settings import JobSettings
+from pynter.hpc.slurm import Slurm, JobSettings
+
 
 def setup_job_script(subparsers):
     

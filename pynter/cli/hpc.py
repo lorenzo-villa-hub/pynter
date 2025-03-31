@@ -16,9 +16,9 @@ from shutil import which
 
 from monty.dev import requires
 
-from pynter import SETTINGS, run_local
-from pynter.slurm.job_settings import JobSettings
-from pynter.data.jobs import get_job_from_directory
+from pynter import SETTINGS, run_command
+from pynter.hpc.slurm import JobSettings
+from pynter.jobs.core import get_job_from_directory
 
 def setup_hpc(subparsers):
     
@@ -36,7 +36,7 @@ def setup_hpc(subparsers):
 
 def setup_sync(parser):
     hostname = SETTINGS['HPC']['hostname']
-    workdir = SETTINGS['HPC']['workdir']
+    remotedir = SETTINGS['HPC']['remotedir']
     localdir = SETTINGS['HPC']['localdir']
     
     parser.add_argument('-dry','--dry-run',action='store_true',help='Dry run with rsync (default: %(default)s)',default=False,dest='dry_run')
@@ -44,7 +44,7 @@ def setup_sync(parser):
                         default=['core.*','WAVECAR'],metavar='',type=str,dest='exclude')
     parser.add_argument('-host','--hostname',help='ssh alias of the HPC (default: %(default)s)',default=hostname,metavar='',type=str,dest='hostname')
     parser.add_argument('-ldir','--localdir',help='Local directory (default: %(default)s)',default=localdir,metavar='',type=str,dest='localdir')
-    parser.add_argument('-wdir','--workdir',help='Remote directory (default: %(default)s)',default=workdir,metavar='',type=str,dest='workdir')
+    parser.add_argument('-wdir','--remotedir',help='Remote directory (default: %(default)s)',default=remotedir,metavar='',type=str,dest='remotedir')
     parser.add_argument('-per','--periodic',action='store_true',help='Sync every hour with HPC (default: %(default)s)',default=False,dest='periodic')
     parser.set_defaults(func=run_sync)
     return
@@ -55,12 +55,12 @@ def setup_sync(parser):
       "rsync needs to be installed, you can install it with 'sudo apt-get install rsync'.")
 def run_sync(args):
     command = get_command(args)
-    run_command(command,periodic=args.periodic)
+    execute_command(command,periodic=args.periodic)
     return
 
     
 def get_command(args):
-    workdir = op.join(args.workdir,'')  #ensure backslash at the end
+    remotedir = op.join(args.remotedir,'')  #ensure backslash at the end
     localdir = op.join(args.localdir,'')
     hostname = args.hostname
     
@@ -70,11 +70,11 @@ def get_command(args):
     if args.exclude:
         for s in args.exclude:
             cmd += f'--exclude={s} ' 
-    cmd += f"-e ssh {hostname}:{workdir} {localdir} "   
+    cmd += f"-e ssh {hostname}:{remotedir} {localdir} "   
     return cmd
     
     
-def run_command(command,periodic=False):
+def execute_command(command,periodic=False):
     if periodic:
         homedir = os.getenv("HOME")
         wdir = os.path.join(homedir,'.pynter','.sync_hpc')
@@ -109,7 +109,7 @@ def run_command(command,periodic=False):
         
     else:
         print('Starting rsync...')
-        run_local(command,printout=True)
+        run_command(command,printout=True)
         return
         
 

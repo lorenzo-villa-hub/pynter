@@ -14,8 +14,8 @@ from pymatgen.io.vasp.inputs import Kpoints, Poscar, Potcar, VaspInput, Incar
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from pymatgen.symmetry.bandstructure import HighSymmKpath
 
-from pynter.slurm.job_settings import JobSettings
-from pynter.vasp.jobs import VaspJob, VaspNEBJob
+from pynter.hpc.slurm import JobSettings
+from pynter.jobs.vasp.vasp_jobs import VaspJob, VaspNEBJob
 from pynter.defects.defects import create_vacancies, create_substitutions
 
 

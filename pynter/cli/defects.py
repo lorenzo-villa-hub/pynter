@@ -16,9 +16,9 @@ from pprint import pprint
 #from pymatgen.electronic_structure.dos import FermiDos # complete dos from_dict bug
 from pynter.vasp.pmg.pmg_electronic_structure_dos import CompleteDos
 
-from pynter.data.datasets import Dataset
-from pynter.vasp.jobs import VaspJob
-from pynter.slurm.job_settings import JobSettings
+from pynter.jobs.datasets import Dataset
+from pynter.jobs.vasp.vasp_jobs import VaspJob
+from pynter.hpc.slurm import JobSettings
 from pynter.defects.entries import DefectEntry
 from pynter.defects.analysis import DefectsAnalysis
 from pynter.defects.corrections import get_kumagai_correction_from_jobs

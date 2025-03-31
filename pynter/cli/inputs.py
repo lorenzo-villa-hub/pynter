@@ -9,8 +9,8 @@ import os
 
 from pymatgen.io.vasp.inputs import Incar,Kpoints,Poscar,Potcar
 
-from pynter.data.datasets import Dataset
-from pynter.slurm.job_settings import JobSettings
+from pynter.jobs.datasets import Dataset
+from pynter.hpc.slurm import JobSettings
 from pynter.vasp.schemes import AdvancedSchemes
 
 
