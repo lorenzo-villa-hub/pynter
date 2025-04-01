@@ -23,7 +23,6 @@ from pymatgen.analysis.transition_state import NEBAnalysis
 
 from pynter.tools.utils import grep
 from pynter.jobs.core import Job
-#from pynter.slurm.interface import HPCInterface
 from pynter.hpc.slurm import JobSettings
 from pynter import SETTINGS, LOCAL_DIR
 

@@ -25,14 +25,13 @@ class Job:
         inputs : (dict), optional
             Dictionary with input data. The default is None.
         job_settings : (dict), optional
-            Dictionary with job settings. The default is None. Documentation in JobSettings class in slurm.job_script module
+            Dictionary with job settings. The default is None. Documentation in JobSettings class in hpc.slurm module
         outputs : (dict), optional
             Dictionary with output data. The default is None.
         job_script_filename : (str), optional
             Filename of job script. The default is taken from the key 'filename' in the job_settings in the config file.
         name : (str)
             Name of the job. If none the name is searched in the job script.
-
         """
                 
         self.path = op.abspath(path) if path else os.getcwd()
@@ -296,6 +295,13 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
     Get Job object from a directory. The job type is selected based on the content of the folder.
     - If ("INCAR","KPOINTS","POSCAR","POTCAR") files are present, VaspJob is initialized.
     - If ("INCAR","KPOINTS","POTCAR") files are present and "POSCAR" is not present, VaspNEBJob is initialized.
+    - If ("input.in") files are present, LammpsJob is initialized. In case input, data and log files are named
+      differently than "input.in", "structure.data" and "log.lammps", set it in jobs_kwargs as:
+          jobs_kwargs = {'LammpsJob':{
+                                      'input_filename':<input filename>,
+                                      'data_filename':<data filename>,
+                                      'log_filename':<log filename>
+                                      }
 
     Parameters
     ----------
@@ -317,11 +323,13 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
         List of Job objects.
     """    
     from pynter.jobs.vasp.vasp_jobs import VaspJob, VaspNEBJob
+    from pynter.jobs.lammps.lammps_jobs import LammpsJob, input_default_filename
     
     path = path if path else os.getcwd()
     job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         
-    for root,dirs,files in os.walk(path):      
+    for root,dirs,files in os.walk(path):   
+        # VASP
         if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
             path = op.abspath(root)
             if jobs_kwargs:
@@ -330,7 +338,20 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
                 kwargs = {}
             j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
             return j
+
+        # VASP + NEB
         elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
             path = op.abspath(root)
             j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
             return j
+
+        # LAMMPS
+        else:
+            if jobs_kwargs:
+                kwargs = jobs_kwargs['LammpsJob'] if 'LammpsJob' in jobs_kwargs.keys() else {}
+            else:
+                kwargs = {}
+            lammps_input_filename = kwargs['input_filename'] if 'input_filename' in kwargs.keys() else input_default_filename
+            if lammps_input_filename in files:
+                j = LammpsJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
+                return j
