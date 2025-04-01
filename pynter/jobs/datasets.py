@@ -74,7 +74,11 @@ def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,jobs_
                                            load_outputs=load_outputs,jobs_kwargs=jobs_kwargs)
                 jobs.append(j)
     if sort:
-        jobs = Dataset().sort_jobs(jobs_to_sort=jobs,features=sort)
+        if not isinstance(sort, list):
+            features = [sort]
+        else:
+            features = features
+        jobs = sort_objects(jobs, features=features)
                 
     return jobs
 
@@ -120,6 +124,7 @@ class Dataset:
             self.is_path_on_hpc = False
         else:
             warnings.warn('Dataset path is not within local or remote directory', UserWarning)
+            self.is_path_on_hpc = None
         
         self.path_relative = self.path.replace(self._localdir,'')
         self.path_in_hpc = self._remotedir + self.path_relative
@@ -641,7 +646,7 @@ class Dataset:
                               functions=functions,**kwargs)
 
 
-    def sort_jobs(self,jobs_to_sort=None,features=['name'],inplace=True,reverse=False):
+    def sort_jobs(self,jobs_to_sort=None,features=['name'],inplace=False,reverse=False):
         """
         Sort jobs according to the target feature. If list of jobs is not given
         and inplace is True the attribute self.jobs is rewritten with the sorted list.
@@ -655,7 +660,7 @@ class Dataset:
             Both a single variable or a list can be provided. The default is 'name'.
             Can also be a function that takes the Job object as an argument.
         inplace : (bool), optional
-            Reset the self.jobs attribute if jobs_to_sort is None. The default is True.
+            Reset the self.jobs attribute if jobs_to_sort is None. The default is False.
         reverse : (bool), optional
             Reverse the order in the list. The default is False.
 

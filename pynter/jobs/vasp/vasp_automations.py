@@ -19,8 +19,13 @@ def are_kpoints_equal(job1,job2):
     kpoints2 = job2.kpoints.as_dict()
     relative_path1 = op.relpath(path1)
     relative_path2 = op.relpath(path2)
-    message = f'KPOINTS in {relative_path1} and {relative_path2} are the same'
-    return kpoints1 == kpoints2, message
+    if kpoints1 == kpoints2:
+        message = f'KPOINTS in {relative_path1} and {relative_path2} are the same'
+        are_kpts_equal = True
+    else:
+        message = f'KPOINTS in {relative_path1} and {relative_path2} are different'
+        are_kpts_equal = False
+    return are_kpts_equal, message
 
 def copy_file_from_jobs(filename,job1,job2):
     """
@@ -137,17 +142,20 @@ class VaspAutomation:
         check_kpoints : (bool)
             Only copy CHGCAR and WAVECAR if the KPOINTS file are the same btw the two jobs.
         """
+        if check_kpoints:
+            kpoints_equal, kpoints_message = are_kpoints_equal(job1, job2)
+            self.status.append(kpoints_message)
         for file in filenames:
             if file=='CONTCAR':
                 message = copy_contcar_to_poscar(job1, job2)
                 self.status.append(message)
                 
-            elif file in ['CHGCAR','WAVECAR']:
-                kpoints_equal, message = are_kpoints_equal(job1, job2)
-                self.status.append(message)
+            elif file in ['CHGCAR','WAVECAR']:    
                 if kpoints_equal or check_kpoints is False:
                     message = copy_file_from_jobs(file, job1, job2)
                     self.status.append(message)
+                else:
+                    self.status.append(f'Copying of {file} ignored because KPOINTS do not match ')
             
             else:
                 message = copy_file_from_jobs(file, job1, job2)

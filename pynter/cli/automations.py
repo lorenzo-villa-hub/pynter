@@ -64,7 +64,7 @@ def run_automation_vasp(args):
         automation.copy_files_from_job1_to_job2(
                                     job1=job_current,
                                     job2=job_next,
-                                    files=files,
+                                    filenames=files,
                                     check_kpoints=args.check_kpoints)
         
         job_next.run_job(sync=False,write_input=False)
