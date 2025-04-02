@@ -18,9 +18,9 @@ from pynter import SETTINGS
 from pynter.tools.utils import grep_list
 
 
-def read_possible_slurm_arguments():
+def read_possible_sbatch_arguments():
     """
-    Read possible slurm arguments from txt file and map (when present) their short versions 
+    Read possible sbatch arguments from txt file and map (when present) their short versions 
     (-<letter>) with their long versions (--<word>).
 
     Returns
@@ -31,7 +31,7 @@ def read_possible_slurm_arguments():
         Dictionary containing argument mapping.
     """
     path = os.path.abspath(__file__).strip(os.path.basename(__file__))
-    filename = 'slurm_arguments.txt'
+    filename = 'sbatch_arguments.txt'
     with open(os.path.join(path,filename),'r') as file:
         lines = file.readlines()
   
@@ -49,11 +49,11 @@ def read_possible_slurm_arguments():
     return arguments, arguments_legend
 
 
-class Slurm(dict,MSONable):
+class Sbatch(dict,MSONable):
     
     def __init__(self,load_defaults=True,**kwargs):
         """
-        Object to handle sbatch commands in Slurm. Behaves like a dictionary.
+        Object to handle sbatch commands in sbatch. Behaves like a dictionary.
 
         Parameters
         ----------
@@ -61,9 +61,9 @@ class Slurm(dict,MSONable):
             All possible sbatch arguments.
         """
         super().__init__()
-        self._arguments, self._arguments_legend = read_possible_slurm_arguments()
+        self._arguments, self._arguments_legend = read_possible_sbatch_arguments()
         
-        defaults = SETTINGS['job_settings']['slurm']
+        defaults = SETTINGS['job_settings']['sbatch']
         
         settings = {}
         if load_defaults:
@@ -81,7 +81,7 @@ class Slurm(dict,MSONable):
     
     def __setitem__(self,key,value):
         if key not in self.arguments:
-            warnings.warn(f'"{key}" is not listed as possible slurm argument')
+            warnings.warn(f'"{key}" is not listed as possible sbatch argument')
         else:
             super().__setitem__(key,value)
         return
@@ -127,7 +127,7 @@ class Slurm(dict,MSONable):
     
     
     @staticmethod
-    def from_bash_script(input_string):
+    def from_bash_script(input_string,load_defaults=False):
         """
         Initialize object from a bash script
         """
@@ -150,7 +150,7 @@ class Slurm(dict,MSONable):
                 value = int(value)
             kwargs.update({key:value})
             
-        return Slurm(**kwargs)
+        return Sbatch(**kwargs,load_defaults=load_defaults)
      
 
     def get_bash_script_lines(self):
@@ -170,16 +170,16 @@ class Slurm(dict,MSONable):
 class JobSettings(dict,MSONable):
     
     
-    def __init__(self,load_slurm_defaults=True,slurm=None,filename=None,array_size=None,modules=None,
+    def __init__(self,load_sbatch_defaults=True,sbatch=None,filename=None,array_size=None,modules=None,
                  export=None,path_exe=None,add_stop_array=False,add_automation=False,add_lines_header=None,
                  add_lines_body=None,**kwargs):
         """
-        Class to handle settings for slurm job submission through a bash script. 
+        Class to handle settings for sbatch job submission through a bash script. 
         Subscriptable like a dictionary.
         
         Parameters
         ----------
-        slurm : (Slurm) Slurm object. Handles all argments related to #SBATCH. 
+        sbatch : (Sbatch) Sbatch object. Handles all argments related to #SBATCH. 
             If None the defualt values are used, which will be updated with the
             user-defined **kwargs.
         array_size: (int) Number of jobs for array \n
@@ -190,23 +190,23 @@ class JobSettings(dict,MSONable):
         add_automation : (str) , Automation script to add to the file.                
         add_lines_header : (List) , Lines to add in the header part of the file.
         add_lines_body : (List) , Lines to add in the body part of the file.
-        **kwargs : dict. Additional kwargs which will be automatically assigned to Slurm.
+        **kwargs : dict. Additional kwargs which will be automatically assigned to sbatch.
         """
         super().__init__()
         
         settings = {}
         default_settings = SETTINGS['job_settings']
         
-        if slurm:
-            if type(slurm) is dict:
-                slurm = Slurm(load_defaults=load_slurm_defaults,**slurm)
-            elif slurm.__class__.__name__ != 'Slurm':
-                raise ValueError('Slurm settings must be provided either as dictionary or as Slurm object')
+        if sbatch:
+            if type(sbatch) is dict:
+                sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch)
+            elif sbatch.__class__.__name__ != 'Sbatch':
+                raise ValueError('sbatch settings must be provided either as dictionary or as Sbatch object')
 
-        elif not slurm and 'slurm' not in kwargs.keys():
-            slurm = Slurm(load_defaults=load_slurm_defaults,**kwargs)
+        elif not sbatch and 'sbatch' not in kwargs.keys():
+            sbatch = sbatch(load_defaults=load_sbatch_defaults,**kwargs)
         
-        settings['slurm'] = slurm
+        settings['sbatch'] = sbatch
     
         settings['filename'] = filename if filename is not None else default_settings['filename']
         settings['array_size'] = array_size if array_size is not None else default_settings['array_size']
@@ -225,15 +225,15 @@ class JobSettings(dict,MSONable):
     
     def __getitem__(self,key):
         if key not in self.keys():
-            return self.slurm[key]
+            return self.sbatch[key]
         else:
             return super().__getitem__(key)
     
     def __setitem__(self,key,value):
-        args = ['slurm','filename','array_size','modules','export','path_exe','add_stop_array',
+        args = ['sbatch','filename','array_size','modules','export','path_exe','add_stop_array',
                 'add_automation','add_lines_header','add_lines_body']
         if key not in args:
-            self.slurm.__setitem__(key, value)
+            self.sbatch.__setitem__(key, value)
         else:
             super().__setitem__(key,value)
         setattr(self, key, value)
@@ -274,7 +274,7 @@ class JobSettings(dict,MSONable):
         """
         lines = input_string.split('\n')
         
-        slurm = Slurm.from_bash_script(input_string)
+        sbatch = Sbatch.from_bash_script(input_string)
         
         string = '#SBATCH --array=1-'
         line = grep_list(string,lines)
@@ -284,7 +284,7 @@ class JobSettings(dict,MSONable):
             line = re.sub("[^2-9]", "", line)
             array_size = int(line)
         if array_size:
-            del slurm['array']
+            del sbatch['array']
 
         export = None
         string = 'export '
@@ -344,7 +344,7 @@ class JobSettings(dict,MSONable):
             add_automation = None
             
         
-        return JobSettings(load_slurm_defaults=False,slurm=slurm,array_size=array_size,
+        return JobSettings(load_sbatch_defaults=False,sbatch=sbatch,array_size=array_size,
                             modules=modules,export=export,path_exe=path_exe,add_stop_array=add_stop_array,
                             add_automation=add_automation)
 
@@ -382,7 +382,7 @@ class JobSettings(dict,MSONable):
                 if self.add_automation:
                     f.append('    %s\n' %self.add_automation) # KEEP THE TAB!
                     automation_written = True
-                f.append('    scancel ${SLURM_ARRAY_JOB_ID}_*\n') #KEEP THE TAB!
+                f.append('    scancel ${sbatch_ARRAY_JOB_ID}_*\n') #KEEP THE TAB!
                 f.append('fi\n')
         if self.add_automation and automation_written is False:
             f.append('\n')
@@ -399,7 +399,7 @@ class JobSettings(dict,MSONable):
         """
         Header lines part of the job script (part with #SBATCH commands and module loads) 
         """
-        f = self.slurm.get_bash_script_lines()
+        f = self.sbatch.get_bash_script_lines()
         if self.array_size:
             f.append('#SBATCH --array=1-%i%%1\n' %self.array_size)
         f.append('\n')
