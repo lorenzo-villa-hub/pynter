@@ -63,7 +63,7 @@ class Sbatch(dict,MSONable):
         super().__init__()
         self._arguments, self._arguments_legend = read_possible_sbatch_arguments()
         
-        defaults = SETTINGS['job_settings']['sbatch']
+        defaults = SETTINGS['sbatch']
         
         settings = {}
         if load_defaults:
@@ -162,12 +162,130 @@ class Sbatch(dict,MSONable):
         for key,value in self.items():
             if value is not None:
                 printed_value = f'={value}' if value else '' 
-                lines.append(f'#SBATCH --{key}{printed_value}\n')
+                lines.append(f'#SBATCH --{key}{printed_value}')
         return lines
                 
 
 
 class JobSettings(dict,MSONable):
+    
+    def __init__(self,load_sbatch_defaults=True,sbatch=None,filename=None,script_lines=[],**kwargs):
+        
+        super().__init__()
+        
+        if sbatch:
+            if type(sbatch) is dict:
+                sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch)
+            elif sbatch.__class__.__name__ != 'Sbatch':
+                raise ValueError('sbatch settings must be provided either as dictionary or as Sbatch object')
+        elif not sbatch and 'sbatch' not in kwargs.keys():
+            sbatch = Sbatch(load_defaults=load_sbatch_defaults,**kwargs)
+        
+        settings = {} 
+        settings['sbatch'] = sbatch
+        settings['filename'] = filename or SETTINGS['job_script_filename']
+        settings['script_lines'] = script_lines
+        self.update(settings)
+        
+        for key,value in self.items():
+            setattr(self, key, value)
+
+    def __repr__(self):
+        return self.get_bash_script()
+    
+    def __print__(self):
+        return self.__repr__()
+
+
+    def __getitem__(self,key):
+        if key not in self.keys():
+            return self.sbatch[key]
+        else:
+            return super().__getitem__(key)
+    
+    def __setitem__(self,key,value):
+        args = ['filename','script_lines'] # temporary
+        if key not in args:
+            self.sbatch.__setitem__(key, value)
+        else:
+            super().__setitem__(key,value)
+        setattr(self, key, value)
+        return
+           
+    def as_dict(self):
+        d = dict(self)
+        d["@module"] = type(self).__module__
+        d["@class"] = type(self).__name__
+        return d       
+    
+    def copy(self):        
+        return copy.deepcopy(self)
+    
+    @classmethod
+    def from_dict(cls,d):
+        return cls(**{k: v for k, v in d.items() if k not in ["@module", "@class"]})
+
+
+    @staticmethod
+    def from_bash_file(path,filename='job.sh'):
+        """
+        Create JobSettings object from file. Cannot read added lines in header and body
+        """
+        file = op.join(path,filename)
+        with open(file) as f:
+            input_string = f.read()
+        job_settings = JobSettings.from_bash_script(input_string)
+        job_settings['filename'] = filename
+        return job_settings
+
+    @staticmethod
+    def from_bash_script(input_string):
+        """
+        Initialize object from a bash script
+        """
+        sbatch = Sbatch.from_bash_script(input_string)
+        lines = input_string.split('\n')
+        script_lines = []
+        for line in lines:
+            if all(target_string not in line for target_string in ['#SBATCH','#!']):
+                   if line:
+                       script_lines.append(line)
+         
+        return JobSettings(load_sbatch_defaults=False,sbatch=sbatch,script_lines=script_lines)
+
+
+    def get_bash_script(self):
+        lines = self.sbatch.get_bash_script_lines()
+        lines += self.script_lines 
+        return '\n'.join(lines)
+
+    
+    def write_bash_file(self,path=None,filename=None):
+        """
+        Write job script file.
+        
+        Parameters
+        ----------
+        path : (str), optional
+            Path to write job script to. The default is None. If None work dir is used.
+        filename : (str), optional
+            Filename. If None self.filename is used. The default is None.
+        """
+        if path:
+            if not os.path.exists(path):
+                os.makedirs(path)
+        filename = filename if filename else self.filename
+        complete_path = os.path.join(path,self.filename) if path else filename      
+        with open(complete_path,'w') as f:
+            f.write(self.get_bash_script())        
+        return
+
+
+
+
+
+
+class _JobSettings(dict,MSONable):
     
     
     def __init__(self,load_sbatch_defaults=True,sbatch=None,filename=None,array_size=None,modules=None,
@@ -204,7 +322,7 @@ class JobSettings(dict,MSONable):
                 raise ValueError('sbatch settings must be provided either as dictionary or as Sbatch object')
 
         elif not sbatch and 'sbatch' not in kwargs.keys():
-            sbatch = sbatch(load_defaults=load_sbatch_defaults,**kwargs)
+            sbatch = Sbatch(load_defaults=load_sbatch_defaults,**kwargs)
         
         settings['sbatch'] = sbatch
     
