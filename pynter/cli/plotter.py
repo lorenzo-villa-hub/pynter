@@ -8,6 +8,7 @@ Created on Fri May 26 14:04:04 2023
 
 import os
 import json
+import matplotlib.pyplot as plt
 
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.electronic_structure.plotter import DosPlotter, BSDOSPlotter, BSPlotter 
@@ -168,7 +169,7 @@ def plot_neb(args):
     if args.print_energies:
         print('Energies:\n',neb_analysis.energies)
         print('Forces:\n',neb_analysis.forces)
-    plt = neb_analysis.get_plot()
+    neb_analysis.get_plot()
     plt.title(args.title)
     if args.savefig:
         plt.savefig('NEB.pdf')
