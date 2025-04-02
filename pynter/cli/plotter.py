@@ -169,7 +169,7 @@ def plot_neb(args):
         print('Energies:\n',neb_analysis.energies)
         print('Forces:\n',neb_analysis.forces)
     plt = neb_analysis.get_plot()
-    plt.title(args.title)
+    #plt.title(args.title)
     if args.savefig:
         plt.savefig('NEB.pdf')
     else:

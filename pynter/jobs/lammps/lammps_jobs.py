@@ -144,8 +144,8 @@ class LammpsJob(Job):
         elif 'path' in d.keys():
             path = d['path']
         inputs = {}
-        if 'input' in d['inputs'].keys():
-            inputs['input'] = LammpsInputFile.from_dict(d['inputs']['input'])
+        if 'inp' in d['inputs'].keys():
+            inputs['inp'] = LammpsInputFile.from_dict(d['inputs']['inp'])
         if 'data' in d['inputs'].keys():
             inputs['data'] = LammpsData.from_dict(d['inputs']['data'])
         job_settings = JobSettings.from_dict(d['job_settings'])
@@ -190,7 +190,7 @@ class LammpsJob(Job):
         """
         path = path if path else os.getcwd()
         inputs = {}
-        inputs['input'] = LammpsInputFile.from_file(op.join(path,input_filename))
+        inputs['inp'] = LammpsInputFile.from_file(op.join(path,input_filename))
         if os.path.isfile(op.join(path,data_filename)):
             inputs['data'] = LammpsData.from_file(op.join(path,data_filename),atom_style=atom_style)
         outputs = {}
@@ -232,8 +232,8 @@ class LammpsJob(Job):
 
 
     @property
-    def inp(self):
-        return self.inputs['input']
+    def inp(self): # avoid input name in python
+        return self.inputs['inp']
     
     @property
     def data(self):
