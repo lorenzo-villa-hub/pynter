@@ -170,11 +170,27 @@ class Sbatch(dict,MSONable):
 class JobSettings(dict,MSONable):
     
     def __init__(self,load_sbatch_defaults=True,sbatch={},filename=None,script_lines=[]):
+        """
+        Handles settings for creation of bash scripts for Job submissions (sbatch). 
+        Behaves like a dictionary. The sbatch keys names are consistent with the 
+        arguments of the sbatch command on the slurm system. Additional text in the
+        script is included as a list of lines. 
+
+        Parameters
+        ----------
+        load_sbatch_defaults : (bool)
+            Load default sbatch arguments from configuration file.
+        sbatch : (dict or Sbatch)
+            Dictionary with sbatch commands.
+        filename : (str)
+            Default name for bash file. If None the default is taken from configuration file.
+        script_lines : (list)
+            Additional lines for the bash script.
+        """
         
         super().__init__()
-        self.load_sbatch_defaults = load_sbatch_defaults
-        self.filename = filename
-        self.script_lines = script_lines
+        self._filename = filename
+        self._script_lines = script_lines
         
         if sbatch:
             if type(sbatch) is dict:
@@ -189,8 +205,8 @@ class JobSettings(dict,MSONable):
         self.sbatch = sbatch
         settings = {} 
         settings['sbatch'] = sbatch
-        settings['filename'] = filename or SETTINGS['job_script_filename']
-        settings['script_lines'] = script_lines
+        settings['filename'] = self._filename or SETTINGS['job_script_filename']
+        settings['script_lines'] = self._script_lines
         self.update(settings)
                
 
@@ -212,10 +228,11 @@ class JobSettings(dict,MSONable):
         if key not in args:
             self.sbatch.__setitem__(key, value)
         else:
+            setattr(self,'_'+key,value)
             super().__setitem__(key,value)
-        setattr(self, key, value)
         return
            
+    
     def as_dict(self):
         d = dict(self)
         d["@module"] = type(self).__module__
@@ -260,8 +277,17 @@ class JobSettings(dict,MSONable):
 
     def get_bash_script(self):
         lines = self.sbatch.get_bash_script_lines()
-        lines += self.script_lines 
+        lines += self._script_lines 
         return '\n'.join(lines)
+    
+    
+    def replace_line(self,old_string,new_string):
+        for index, line in enumerate(self._script_lines):
+            if old_string in line:
+                new_line = line.replace(old_string, new_string)
+                self._script_lines[index] = new_line
+                
+        return
 
     
     def write_bash_file(self,path=None,filename=None):
@@ -278,8 +304,8 @@ class JobSettings(dict,MSONable):
         if path:
             if not os.path.exists(path):
                 os.makedirs(path)
-        filename = filename if filename else self.filename
-        complete_path = os.path.join(path,self.filename) if path else filename      
+        filename = filename if filename else self._filename
+        complete_path = os.path.join(path,self._filename) if path else filename      
         with open(complete_path,'w') as f:
             f.write(self.get_bash_script())        
         return
