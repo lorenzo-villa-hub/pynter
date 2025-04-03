@@ -169,20 +169,22 @@ class Sbatch(dict,MSONable):
 
 class JobSettings(dict,MSONable):
     
-    def __init__(self,load_sbatch_defaults=True,sbatch_args={},filename=None,script_lines=[]):
+    def __init__(self,load_sbatch_defaults=True,sbatch={},filename=None,script_lines=[]):
         
         super().__init__()
         self.load_sbatch_defaults = load_sbatch_defaults
         self.filename = filename
         self.script_lines = script_lines
         
-        if sbatch_args:
-            if type(sbatch_args) is dict:
-                sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch_args)
-            elif sbatch_args.__class__.__name__ != 'Sbatch':
-                raise ValueError('sbatch settings must be provided either as dictionary or as Sbatch object')
-        elif not sbatch_args:
-            sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch_args)
+        if sbatch:
+            if type(sbatch) is dict:
+                sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch)
+            elif sbatch.__class__.__name__ == 'Sbatch':
+                sbatch = sbatch
+            else:
+                raise ValueError('sbatch settings must be provided either as dictionary or as Sbatch object')                
+        elif not sbatch:
+            sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch)
         
         self.sbatch = sbatch
         settings = {} 

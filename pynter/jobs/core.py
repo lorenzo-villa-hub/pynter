@@ -71,7 +71,7 @@ class Job:
             
         if not self.job_settings:
             self.job_settings = {}
-        self.job_settings['slurm']['job-name'] = self.name
+        self.job_settings['sbatch']['job-name'] = self.name
 
 
     def __str__(self):
