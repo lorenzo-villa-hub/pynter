@@ -311,11 +311,22 @@ class LammpsJob(Job):
             self.get_output_properties()
         return
 
+        
+        
 
     def get_output_properties(self): #initial idea, to implement further based on specific needs
         self._is_converged = self._get_convergence()
         return 
         
+    
+    def write_input(self):
+        self.job_settings.write_bash_file(path=self.path,filename=self.job_settings.filename)
+        self.inp.write_file(
+                            filename=op.join(self.path,self.input_filename),
+                            ignore_comments=False,
+                            keep_stages=True)
+        self.data.write_file(filename=op.join(self.path,self.data_filename))
+    
         
 
     def _get_convergence(self):

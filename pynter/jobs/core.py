@@ -36,9 +36,9 @@ class Job:
                 
         self.path = op.abspath(path) if path else os.getcwd()
         self.inputs = inputs
-        self.job_settings = JobSettings(**job_settings) if job_settings else JobSettings()
+        self.job_settings = JobSettings(**job_settings) if job_settings else JobSettings() 
         self.outputs = outputs
-        self.job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+        self.job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         
         self._localdir = SETTINGS['HPC']['localdir']
         self._remotedir = SETTINGS['HPC']['remotedir']
@@ -62,10 +62,10 @@ class Job:
         if name:
             self.name = name
         elif self.job_settings:
-            self.name = self.job_settings['slurm']['job-name']
+            self.name = self.job_settings['sbatch']['job-name']
         elif op.isfile(op.join(self.path,self.job_script_filename)):
             s = JobSettings.from_bash_file(self.path,filename=self.job_script_filename)
-            self.name = s.settings['slurm']['job-name']
+            self.name = s.settings['sbatch']['job-name']
         else:
             self.name = 'no_name'
             
