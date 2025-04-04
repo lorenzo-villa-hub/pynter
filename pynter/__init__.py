@@ -126,8 +126,7 @@ def run_command(
         return cmd, ''
     if printout:
         print("Run command: %s" %cmd)
-    command = cmd.split()
-    proc = subprocess.run(command, capture_output=True, shell=False, text=True,**kwargs)
+    proc = subprocess.run(cmd, capture_output=True, shell=True, text=True,**kwargs)
     stdout = proc.stdout
     stderr = proc.stderr
     if printout:
