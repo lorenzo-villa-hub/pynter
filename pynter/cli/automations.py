@@ -68,7 +68,8 @@ def run_automation_vasp(args):
                                     check_kpoints=args.check_kpoints)
         
         job_next.run_job(sync=False,write_input=False)
-        automation.write_status(path=path)
+    automation.write_status(path=path)
+
         
     
     
