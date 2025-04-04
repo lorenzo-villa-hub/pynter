@@ -119,6 +119,8 @@ def setup_job(parser):
     parser.add_argument('-p','--path',help='Job path (default: %(default)s)',required=False,type=str,
                         default=os.getcwd(),metavar='',dest='path')
     parser.add_argument('-dry','--dry-run',action='store_true',help='Dry run with rsync (default: %(default)s)',default=False,dest='dry_run')
+    parser.add_argument('-exc','--exclude',action='append',help='Files to exclude from sync (default: %(default)s)',
+                        default=['core.*','WAVECAR'],metavar='',type=str,dest='exclude')
     parser.add_argument('-st','--sync-to-hpc',help='Sync to hpc',required=False,default=False,action='store_true',dest='sync_to_hpc')
     parser.add_argument('-sf','--sync-from-hpc',help='Sync from hpc',required=False,default=False,action='store_true',dest='sync_from_hpc')
     parser.add_argument('-f','--filename',help='Name of bash job script (default: %(default)s)',required=False,default=jsf,type=str,metavar='',dest='filename')
@@ -132,9 +134,9 @@ def run_job(args):
     if args.sync_from_hpc and args.sync_to_hpc:
         raise ValueError("Cannot sync to and from HPC simultaneously")
     elif args.sync_from_hpc:
-        j.sync_from_hpc(dry_run=args.dry_run)
+        j.sync_from_hpc(dry_run=args.dry_run,exclude=args.exclude)
     elif args.sync_to_hpc:
-        j.sync_to_hpc(dry_run=args.dry_run)
+        j.sync_to_hpc(dry_run=args.dry_run,exclude=args.exclude)
         
     if args.run:
         j.run_job(write_input=False,sync=False)

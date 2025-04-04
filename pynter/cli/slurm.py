@@ -6,7 +6,7 @@ Created on Tue May 30 14:45:20 2023
 @author: villa
 """
 
-from pynter.hpc.slurm import Slurm, JobSettings
+from pynter.hpc.slurm import Sbatch, JobSettings
 
 
 def setup_job_script(subparsers):
@@ -20,18 +20,12 @@ def setup_job_script(subparsers):
 def parse_job_script_args(parser):
     shdef = JobSettings()
     parser.add_argument('--filename',help='File name (default: %(default)s)',required=False,default=shdef.filename,type=str,metavar='',dest='filename')
-    parser.add_argument('--array-size',help='Size of job array',required=False,default=shdef.array_size,type=int,metavar='',dest='array_size')
-    parser.add_argument('--modules',action='append',help="Modules to load (default: %(default)s)" ,required=False,default=shdef.modules,type=str,metavar='',dest='modules')
-    parser.add_argument('--exe',help='Path to executable (default: %(default)s)',required=False,default=shdef.path_exe,type=str,metavar='',dest='path_exe')
-    parser.add_argument('--stop-array',action='store_true',help='Add lines to stop array jobs when converged (default: %(default)s)',required=False,default=False,dest='add_stop_array')
-    parser.add_argument('--automation',help='Script with automation to add',required=False,default=shdef.add_automation,type=str,metavar='',dest='add_automation')
-    parser.add_argument('--header',action='append',help='Add line to header part of script',required=False,default=shdef.add_lines_header,type=str,metavar='',dest='add_lines_header')
-    parser.add_argument('--body',action='append',help='Add line to body part of script',required=False,default=shdef.add_lines_body,type=str,metavar='',dest='add_lines_body')
+    parser.add_argument('--lines',action='append',help='Add line to script',required=False,default=shdef.script_lines,type=str,metavar='',dest='script_lines')
 
-    slurm = Slurm()
-    for key in slurm.arguments:
-        if key in slurm.keys():
-            parser.add_argument(f'--{key}',required=False,type=str,default=slurm[key],metavar='',dest=key)
+    sbatch = Sbatch()
+    for key in sbatch.arguments:
+        if key in sbatch.keys():
+            parser.add_argument(f'--{key}',required=False,type=str,default=sbatch[key],metavar='',dest=key)
         else:
             parser.add_argument(f'--{key}',required=False,type=str,metavar='',dest=key)
 
