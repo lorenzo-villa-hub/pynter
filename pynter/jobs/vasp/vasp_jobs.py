@@ -595,7 +595,7 @@ class VaspJob(Job):
         is_converged, conv_el, conv_ionic = None, None, None
         if self.outputs:
             if 'Vasprun' in self.outputs.keys():
-                is_converged = False
+                is_converged, conv_el, conv_ionic = False, False, False
                 if self.vasprun:
                     vasprun = self.vasprun
                     conv_el, conv_ionic = False, False
