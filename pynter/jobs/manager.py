@@ -204,10 +204,8 @@ class JobManager:
 
         Parameters
         ----------
-        path : (str), optional
-            Path where the job script is stored (relative or absolute).
-        job_script_filename : (str), optional
-            Filename of the job script. The default is 'job.sh'.
+        printout : (bool), optional
+            Write output on screen. The default is True.
         dry_run : (bool), optional
             Only return the command to be run and empty error string. The default is False.
 
@@ -218,7 +216,11 @@ class JobManager:
         stderr : (str)
             Error.
         """   
-        cmd = get_sbatch_command(path=self.job.path,job_script_filename=self.job.job_script_filename)
+        if self.job.is_path_on_hpc:
+            path = self.job.path
+        else:
+            path = self.job.path_in_hpc
+        cmd = get_sbatch_command(path=path,job_script_filename=self.job.job_script_filename)
         stdout, stderr = self._run_job_command(cmd,printout=printout,dry_run=dry_run)     # I've used the run local because there was a probelm with the multiple command given with ;
         return stdout,stderr                                            # to check again if possible
         
