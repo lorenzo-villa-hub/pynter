@@ -308,9 +308,9 @@ class InputSets:
             if job_settings:
                 self.job_settings = JobSettings(**job_settings)
             elif name:
-                self.job_settings = JobSettings(slurm={'job-name':name})
+                self.job_settings = JobSettings(sbatch={'job-name':name})
             else:
-                self.job_settings = JobSettings(slurm={'job-name':'no_name'})
+                self.job_settings = JobSettings(sbatch={'job-name':'no_name'})
             self.name = name if name != None else self.job_settings['job-name'] 
             
             if self.name: # this return false if name is '', the previuos line considers only if name is None
