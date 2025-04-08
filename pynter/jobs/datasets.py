@@ -9,10 +9,10 @@ from monty.json import MontyDecoder
 from pynter import run_command
 from pynter.jobs.core import get_job_from_directory
 from pynter.jobs.manager import get_qstat_command, JobManager
-from pynter.hpc.ssh import SSHProtocol, rsync_from_hpc, rsync_to_hpc
+from pynter.hpc.ssh import SSHProtocol, rsync_from_hpc, rsync_to_hpc, get_path_relative_to_hpc
 from pynter.hpc.slurm import JobSettings
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
-from pynter import SETTINGS
+from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
 
 def _check_job_script(job_script_filenames,files):
     """
@@ -115,20 +115,13 @@ class Dataset:
             if sort:
                 self.sort_jobs(inplace=True,features=sort)
 
-        self._localdir = SETTINGS['HPC']['localdir'] 
-        self._remotedir = SETTINGS['HPC']['remotedir'] 
+        self._localdir = LOCAL_DIR
+        self._remotedir = REMOTE_DIR
         
-        if op.commonpath([self._remotedir,self.path]) == self._remotedir:
-            self.is_path_on_hpc = True
-        elif op.commonpath([self._localdir,self.path]) == self._localdir:
-            self.is_path_on_hpc = False
-        else:
-            warnings.warn('Dataset path is not within local or remote directory', UserWarning)
-            self.is_path_on_hpc = None
-        
-        self.path_relative = self.path.replace(self._localdir,'')
-        self.path_in_hpc = self._remotedir + self.path_relative
-
+        self.path_in_hpc, self.path_relative, self.is_path_on_hpc = get_path_relative_to_hpc(
+                                                        path=self.path,
+                                                        localdir=self._localdir,
+                                                        remotedir=self._remotedir)
 
     def __str__(self):     
         return self.jobs_table().__str__()
@@ -146,7 +139,6 @@ class Dataset:
     def as_dict(self,**kwargs):
         d = {"@module": self.__class__.__module__,
              "@class": self.__class__.__name__,
-             #"path":self.path, old path version in dict
              "path_relative":self.path_relative,
              "name":self.name,
              "jobs":[j.as_dict(**kwargs) for j in self.jobs],
@@ -183,11 +175,7 @@ class Dataset:
     
     @classmethod
     def from_dict(cls,d):
-        #ensure compatibility with old path format
-        if 'path_relative' in d.keys() and d['path_relative']:
-            path = SETTINGS['HPC']['localdir']  + d['path_relative']
-        elif 'path' in d.keys():
-            path = d['path']
+        path = op.join(LOCAL_DIR, d['path_relative'])
         name = d['name']
         jobs = []
         for j in d['jobs']:

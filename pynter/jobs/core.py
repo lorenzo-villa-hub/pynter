@@ -5,9 +5,9 @@ import os.path as op
 import shutil
 import warnings
 
-from pynter import SETTINGS
+from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
 from pynter.hpc.slurm import JobSettings
-from pynter.hpc.ssh import rsync_from_hpc, rsync_to_hpc
+from pynter.hpc.ssh import rsync_from_hpc, rsync_to_hpc, get_path_relative_to_hpc
 
 from pynter.jobs.manager import JobManager
 
@@ -40,21 +40,14 @@ class Job:
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         
-        self._localdir = SETTINGS['HPC']['localdir']
-        self._remotedir = SETTINGS['HPC']['remotedir']
+        self._localdir = LOCAL_DIR
+        self._remotedir = REMOTE_DIR
         
-        if op.commonpath([self._remotedir,self.path]) == self._remotedir:
-            self.is_path_on_hpc = True
-        elif op.commonpath([self._localdir,self.path]) == self._localdir:
-            self.is_path_on_hpc = False
-        else:
-            self.is_path_on_hpc = False
-            warnings.warn('Job path is not within local or remote directory', UserWarning)
-            
-        self.path_relative = op.abspath(self.path).replace(self._localdir,'')
-        self.path_in_hpc = self._remotedir + self.path_relative
-        
-        
+        self.path_in_hpc, self.path_relative, self.is_path_on_hpc = get_path_relative_to_hpc(
+                                                        path=self.path,
+                                                        localdir=self._localdir,
+                                                        remotedir=self._remotedir)
+
         if outputs:
             self.get_output_properties()
         

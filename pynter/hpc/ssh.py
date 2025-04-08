@@ -2,12 +2,14 @@
 import os
 import os.path as op
 from shutil import which
+import warnings
 
 from monty.dev import requires
 import paramiko
 from collections import defaultdict
 
 from pynter import SETTINGS, run_command
+from pynter import LOCAL_DIR, REMOTE_DIR
 
 def get_ssh_config(host,port=22,path=None):
     """
@@ -258,25 +260,12 @@ def rsync_from_hpc(
     stderr : (str)
         Error.
     """        
-    hostname = hostname if hostname else SETTINGS['HPC']['hostname']
-    remotedir = remotedir if remotedir else SETTINGS['HPC']['remotedir']
-    localdir = localdir if localdir else SETTINGS['HPC']['localdir']
-    localdir = op.abspath(localdir)
-    remotedir = op.join(remotedir,'')  #ensure backslash at the end
-    localdir = op.join(localdir,'')
-    
-    localcmd = 'mkdir -p %s' %localdir
-    run_command(localcmd)
-    
-    cmd = "rsync -r -uavzh " #keep the spaces
-    if dry_run:
-        cmd += "--dry-run "
-    if exclude:
-        for s in exclude:
-            cmd += f'--exclude={s} ' 
-    cmd += f"-e ssh {hostname}:{remotedir} {localdir} "
-
-    stdout,stderr = run_command(cmd,printout=printout,dry_run=False)
+    cmd = get_rsync_from_hpc_command(hostname=hostname,
+                                    remotedir=remotedir,
+                                    localdir=localdir,
+                                    exclude=exclude,
+                                    dry_run=dry_run)   
+    stdout,stderr = run_command(cmd,printout=printout,dry_run=False,**kwargs)
     return stdout,stderr
 
 
@@ -318,15 +307,132 @@ def rsync_to_hpc(
     stderr : (str)
         Error.
     """        
+    cmd = get_rsync_to_hpc_command(hostname=hostname,
+                                    localdir=localdir,
+                                    remotedir=remotedir,
+                                    exclude=exclude,
+                                    dry_run=dry_run,
+                                    makedir_on_hpc=True)    
+    stdout,stderr = run_command(cmd,printout=printout,dry_run=False,**kwargs) #dry_run here is for the internal command, not rsync
+
+    return stdout,stderr
+
+
+
+def get_path_relative_to_hpc(path,localdir=None,remotedir=None):
+    """
+    Get path in HPC and relative to the local work directory based on settings in config.yml file.
+
+    Parameters
+    ----------
+    path : (str)
+        Path.
+    localdir : (str)
+        Path of work directory on local machine. If None the default from config file is used.
+    remotedir : (str)
+        Path of work directory on remote machine. If None the default from config file is used.
+
+    Returns
+    -------
+    path_in_hpc : (str)
+        Path in HPC.
+    path_relative : (str)
+        Path relative to work directory.
+    is_path_on_hpc : (bool)
+        Wether the given path's root is the HPC remote directory.
+    """
+    path = op.abspath(path)
+    localdir = op.abspath(localdir) if localdir else LOCAL_DIR
+    remotedir = op.abspath(remotedir) if remotedir else REMOTE_DIR
+    if op.commonpath([remotedir,path]) == remotedir:
+        is_path_on_hpc = True
+    elif op.commonpath([localdir,path]) == localdir:
+        is_path_on_hpc = False
+    else:
+        is_path_on_hpc = False
+        warnings.warn('Path is not within local or remote work directory', UserWarning)
+        
+    path_relative = op.abspath(path).replace(localdir,'')
+    path_in_hpc = remotedir + path_relative
+    return path_in_hpc, path_relative, is_path_on_hpc
+
+
+def get_rsync_from_hpc_command(
+                                hostname=None,
+                                remotedir=None,
+                                localdir=None,
+                                exclude=None,
+                                dry_run=False
+                                ):
+    """
+    Parameters
+    ----------
+    hostname : (str)
+        Name of the host.
+    remotedir : (str)
+        Remote directory. The default is None. If None the one in config.yml file is used.
+    localdir : (str)
+        Local directory. The default is None. If None the one in config.yml file is used.
+    exclude : (list)
+        List of files to exclude in rsync. The default is None.
+    dry_run : (bool)
+        Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+    """
     hostname = hostname if hostname else SETTINGS['HPC']['hostname']
-    remotedir = remotedir if remotedir else SETTINGS['HPC']['remotedir']
-    localdir = localdir if localdir else SETTINGS['HPC']['localdir']
+    localdir = localdir or os.getcwd()
+    remotedir = remotedir or get_path_relative_to_hpc(path=localdir)[0]
+    localdir = op.abspath(localdir)
+    remotedir = op.join(remotedir,'')  #ensure backslash at the end
+    localdir = op.join(localdir,'')
+    
+    localcmd = 'mkdir -p %s' %localdir
+    #run_command(localcmd)
+    cmd = localcmd + ' ; '
+    
+    cmd += "rsync -r -uavzh " #keep the spaces
+    if dry_run:
+        cmd += "--dry-run "
+    if exclude:
+        for s in exclude:
+            cmd += f'--exclude={s} ' 
+    cmd += f"-e ssh {hostname}:{remotedir} {localdir} "
+    return cmd
+
+
+def get_rsync_to_hpc_command(
+                                hostname=None,
+                                localdir=None,
+                                remotedir=None,
+                                exclude=None,
+                                dry_run=False,
+                                makedir_on_hpc=True
+                                ):
+    """
+    Parameters
+    ----------
+    hostname : (str)
+        Name of the host.
+    localdir : (str)
+        Local directory. The default is None. If None the one in config.yml file is used.
+    remotedir : (str)
+        Remote directory. The default is None. If None the one in config.yml file is used.
+    exclude : (list)
+        List of files to exclude in rsync. The default is None.
+    dry_run : (bool)
+        Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+    makedir_on_hpc : (bool)
+        Make directory on HPC if it doesn't exist.
+    """
+    hostname = hostname or SETTINGS['HPC']['hostname']
+    localdir = localdir or os.getcwd()
+    remotedir = remotedir or get_path_relative_to_hpc(path=localdir)[0]
     localdir = op.abspath(localdir)
     localdir = op.join(localdir,'')  #ensure backslash at the end
     remotedir = op.join(remotedir,'')
     
-    ssh = SSHProtocol(hostname)
-    ssh.run_command('mkdir -p %s' %remotedir)
+    if makedir_on_hpc:
+        ssh = SSHProtocol(hostname)
+        ssh.run_command('mkdir -p %s' %remotedir)
     
     cmd = "rsync -r -uavzh " #keep the spaces
     if dry_run:
@@ -335,8 +441,6 @@ def rsync_to_hpc(
         for s in exclude:
             cmd += f'--exclude={s} '
     cmd += f"-e ssh  {localdir} {hostname}:{remotedir} "
-    
-    stdout,stderr = run_command(cmd,printout=printout,dry_run=False,**kwargs)
+    return cmd
 
-    return stdout,stderr
 

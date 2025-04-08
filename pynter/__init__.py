@@ -135,8 +135,11 @@ def run_command(
             print(stderr)
     return stdout, stderr
     
-    
-from .jobs.datasets import Dataset
 
 LOCAL_DIR = SETTINGS['HPC']['localdir']
 REMOTE_DIR = SETTINGS['HPC']['remotedir']
+    
+from .jobs.datasets import Dataset
+
+
+
