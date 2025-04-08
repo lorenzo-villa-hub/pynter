@@ -5,6 +5,8 @@ computed_entry_default:
 - parameters
 - actual_kpoints
 - ionic_steps
+job_settings_default:
+  vasp_exe: ''
 default_potcar_symbols:
   Ac: Ac
   Ag: Ag

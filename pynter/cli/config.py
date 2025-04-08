@@ -59,10 +59,9 @@ def run_config(exclude=None,info=False):
         print('\nDefault settings for job script setup: ')
         project_id = input('Project ID: ')
         project_id = project_id if project_id else None
-        email = input('email address (Default None): ')
-        email = email if email else None
-        path_exe = input('Path of default executable: ')
-        path_exe = path_exe if path_exe else None
+        
+        path_vasp_exe = input('Path of default VASP executable: ')
+        path_vasp_exe = path_vasp_exe if path_vasp_exe else None
         job_script_filename = input('Job script filename (default job.sh): ')
         
         API_KEY = input('\nMaterials Project API_KEY (default None):')
@@ -88,10 +87,8 @@ def run_config(exclude=None,info=False):
                           'remotedir': remotedir}})
         config.update({'API_KEY':API_KEY})
         
-        config['job_settings']['filename'] = job_script_filename
-        config['job_settings']['path_exe'] = path_exe
-        config['job_settings']['slurm']['account'] = project_id
-        config['job_settings']['slurm']['mail-user'] = email
+        config['job_script_filename'] = job_script_filename
+        config['sbatch']['account'] = project_id
         
         config.update({'dbconfig': 
                           {'vasp': 
@@ -113,6 +110,7 @@ def run_config(exclude=None,info=False):
     
         filename = filename_vasp
         vasp_default = get_vasp_defaults_from_default_file()
+        vasp_default['job_settings_default']['vasp_exe'] = path_vasp_exe
         
         with open(os.path.join(filepath,filename),'w+') as f:
             yaml.dump(vasp_default,f) 

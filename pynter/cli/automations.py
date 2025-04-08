@@ -14,7 +14,7 @@ from pynter.jobs.datasets import Dataset
 def parse_common_args(parser):
     auto = VaspAutomation()
     
-    parser.add_argument('-j','--job-script',help='Job script filename (default: %(default)s)',required=False,default=SETTINGS['job_settings']['filename'],type=str,metavar='',dest='job_script_filename')
+    parser.add_argument('-j','--job-script',help='Job script filename (default: %(default)s)',required=False,default=SETTINGS['job_script_filename'],type=str,metavar='',dest='job_script_filename')
     parser.add_argument('-s','--status',help='Write exit status to file (default: %(default)s)',required=False,default=auto.status_filename,type=str,metavar='',dest='status_filename')
     parser.add_argument('-e','--error-check',action='store_true',help='Perform error checking (default: %(default)s)',required=False,default=False,dest='error_check')
     return parser

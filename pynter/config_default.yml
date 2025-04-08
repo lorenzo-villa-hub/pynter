@@ -11,22 +11,12 @@ dbconfig:
     password: null
     port: 27017
     user: null
-job_settings:
-  slurm:
-    account: ''
-    error: err.%j
-    mail-user: null
-    mem-per-cpu: 3500
-    ntasks: 96
-    job-name: no_name
-    output: out.%j
-    time: 01:00:00
-  add_automation: null
-  add_lines_body: null
-  add_lines_header: null
-  add_stop_array: false
-  array_size: null
-  filename: job.sh
-  modules: null
-  export: null
-  path_exe: ''
+sbatch:
+  account: ''
+  error: err.%j
+  job-name: no_name
+  mem-per-cpu: 2400M
+  ntasks: 64
+  output: out.%j
+  time: "01:00:00"
+job_script_filename: job.sh
