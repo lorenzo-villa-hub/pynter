@@ -8,7 +8,7 @@ Created on Tue May 30 15:30:49 2023
 import os
 
 from pynter import SETTINGS
-from pynter.jobs.vasp.vasp_automations import VaspAutomation, VaspNEBAutomation
+from pynter.jobs.vasp.vasp_automations import VaspAutomation
 from pynter.jobs.datasets import Dataset
 
 def parse_common_args(parser):
@@ -39,7 +39,7 @@ def setup_automation(subparsers):
     parser_vasp_neb.add_argument('-W','--wavecar',action='store_true',help='Copy WAVECAR to next step',required=False,default=False,dest='wavecar')
     parser_vasp_neb.add_argument('-C','--chgcar',action='store_true',help='Copy CHGCAR to next step',required=False,default=False,dest='chgcar')
     parser_vasp_neb.add_argument('-K','--check-kpoints',action='store_true',help='Copy WAVECAR and POSCAR only if KPOINTS of next step are the same',required=False,default=False,dest='check_kpoints')
-    #parser_vasp_neb.set_defaults(func=run_automation_vasp_neb)
+    parser_vasp_neb.set_defaults(func=run_automation_vasp_neb)
 
 
 def run_automation_vasp(args):
@@ -70,16 +70,6 @@ def run_automation_vasp(args):
         job_next.run_job(sync=False,write_input=False)
     automation.write_status(path=path)
 
-        
-    
-    
-# def run_automation_vasp_neb(args):
-#     s = NEBSchemes(path=None,status=[], **args.__dict__)    
-#     if s.is_preconvergence():
-#         if s.check_preconvergence_images():
-#             s.copy_images_next_step_and_submit()
-#     else:
-#         if s.is_NEB_job_finished():
-#             s.copy_images_next_step_and_submit()
-#     s.write_status()    
-    
+
+def run_automation_vasp_neb(args):
+    raise NotImplementedError('VASP NEB automation still to be implemented')

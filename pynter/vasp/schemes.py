@@ -263,6 +263,20 @@ class DefaultInputs:
         return potcar
             
 
+class DefaultJobSettings:
+    
+    def __init__(self):
+        default_settings = SETTINGS['vasp']['job_settings_default']
+        self.vasp_exe = default_settings['vasp_exe']
+        
+
+    def get_srun_line(self,vasp_exe=None):
+        vasp_exe = vasp_exe or self.vasp_exe
+        vasp_exe = op.abspath(vasp_exe)
+        return 'srun %s' %vasp_exe
+    
+    
+    
 
 
 class InputSets:

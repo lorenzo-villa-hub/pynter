@@ -7,17 +7,15 @@ Created on Mon Jun  5 16:33:14 2023
 """
 
 import os
-import os.path as op
 import time
 from datetime import datetime
-import subprocess
 import schedule
 from shutil import which
 
 from monty.dev import requires
 
-from pynter import SETTINGS, run_command, LOCAL_DIR, REMOTE_DIR
-from pynter.hpc.ssh import rsync_from_hpc, rsync_to_hpc, get_rsync_to_hpc_command, get_rsync_from_hpc_command
+from pynter import SETTINGS, run_command
+from pynter.hpc.ssh import get_rsync_to_hpc_command, get_rsync_from_hpc_command
 from pynter.hpc.slurm import JobSettings
 from pynter.jobs.core import get_job_from_directory
 
@@ -90,21 +88,6 @@ def get_command(args):
     return cmd
 
     
-def _get_command(args):
-    remotedir = op.join(args.remotedir,'')  #ensure backslash at the end
-    localdir = op.join(args.localdir,'')
-    hostname = args.hostname
-    
-    cmd = "rsync -r -uavzh " #keep the spaces
-    if args.dry_run:
-        cmd += "--dry-run "
-    if args.exclude:
-        for s in args.exclude:
-            cmd += f'--exclude={s} ' 
-    cmd += f"-e ssh {hostname}:{remotedir} {localdir} "   
-    return cmd
-    
-    
 def execute_command(command,periodic=False):
     if periodic:
         homedir = os.getenv("HOME")
@@ -114,23 +97,21 @@ def execute_command(command,periodic=False):
         os.chdir(wdir)
         command = command.split()
         
-        def job(command):        		
-        	proc = subprocess.run(command, capture_output=True, shell=False, text=True)
-        	stdout = proc.stdout
-        	stderr = proc.stderr 
-        	dtn = datetime.now()
-        	date = dtn.date().isoformat()
-        	hour = dtn.ctime().split()[3]
-        	path = os.path.join(wdir,date)
-        	if not os.path.exists(path):
-        		os.mkdir(path)
-        	
-        	outfile = os.path.join(path,'sync_'+ hour +'.out')
-        	errfile = os.path.join(path,'sync_'+ hour +'.err')
-        
-        	with open(outfile,'w') as outf, open(errfile,'w') as errf:
-        		outf.write(stdout)
-        		errf.write(stderr)
+        def job(command):        
+            stdout, stderr = run_command(command,printout=True)
+            dtn = datetime.now()
+            date = dtn.date().isoformat()
+            hour = dtn.ctime().split()[3]
+            path = os.path.join(wdir,date)
+            if not os.path.exists(path):
+            		os.mkdir(path)
+            	
+            outfile = os.path.join(path,'sync_'+ hour +'.out')
+            errfile = os.path.join(path,'sync_'+ hour +'.err')
+            
+            with open(outfile,'w') as outf, open(errfile,'w') as errf:
+                outf.write(stdout)
+                errf.write(stderr)
         
         schedule.every(360).minutes.do(job,command)
         

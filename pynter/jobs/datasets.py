@@ -238,9 +238,38 @@ class Dataset:
         return  Dataset(path=path,jobs=jobs,sort=sort)
     
     
+    def copy(self):
+        jobs = [job.copy() for job in self.jobs]
+        return Dataset(jobs=jobs,path=self.path,name=self.name,sort=self.sort)
+    
     @property
     def groups(self):
-        """Directory names of the first subdirectories in the dataset path."""
+        """
+        Directory names of the first subdirectories in the dataset path.
+        """
+        if not hasattr(self, '_groups'):
+            self._groups = self._get_groups()
+        return self._groups
+    
+    @property
+    def nodes_levels(self):
+        """
+        Nested lists of common nodes between jobs. The indexes coincide with the index 
+        of the individual node points. 
+        For example:
+            job1.nodes = '/A/b/1'
+            job2.nodes = '/A/c/2'
+            job3.nodes = '/B/c/3'
+        self.nodes_levels = [['A','B']
+                             ['b','c']
+                             ['1','2','3']]
+        """
+        if not hasattr(self, '_nodes_levels'):
+            self._nodes_levels = self.get_nodes_levels()
+        return self._nodes_levels
+            
+
+    def _get_groups(self):
         groups = []
         commonpath = op.commonpath([op.abspath(j.path) for j in self.jobs])
         grps = []
@@ -276,7 +305,7 @@ class Dataset:
                     nodes = jpath.replace(op.commonpath([group_path,jpath]),'')
                     job.group = group
                     job.nodes = nodes
-                    job.node_points = nodes.split('/')[1:]
+                    job.node_points = nodes.split('/')[1:] #nodes as a list
         return
 
 
@@ -425,6 +454,7 @@ class Dataset:
             self.__init__(jobs,self.path,self.name,self.sort)
             return
         else:
+            jobs = [job.copy() for job in jobs]
             return Dataset(jobs,self.path,self.name,self.sort)
         
     
@@ -451,6 +481,29 @@ class Dataset:
         for j in self.jobs:
             j.get_output_properties(**kwargs)
         return
+
+
+    def get_nodes_levels(self,jobs=None):
+        """
+        Nested lists of common nodes between jobs. The indexes coincide with the index 
+        of the individual node points. If jobs is None the whole list of jobs is used.
+        For example:
+            job1.nodes = '/A/b/1'
+            job2.nodes = '/A/c/2'
+            job3.nodes = '/B/c/3'
+        self.nodes_levels = [['A','B']
+                             ['b','c']
+                             ['1','2','3']]
+        """
+        nodes_levels = []
+        jobs = jobs or self.jobs
+        for job in jobs:
+            for index, node in enumerate(job.node_points):
+                if len(nodes_levels) <= index:
+                    nodes_levels.append([])
+                if node not in nodes_levels[index]:
+                    nodes_levels[index].append(node)
+        return nodes_levels
 
     
     def jobs_table(self,jobs=[],status=False,display=[]):
@@ -552,6 +605,8 @@ class Dataset:
         """
         path = path if path else op.abspath(self.path)
         self.path = path
+        self._groups = self._get_groups()
+        self._nodes_levels = self.get_nodes_levels()
         gjobs = {}
         groups = self.groups
         for group in groups:

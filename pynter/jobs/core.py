@@ -3,7 +3,6 @@ from abc import abstractmethod
 import os
 import os.path as op
 import shutil
-import warnings
 
 from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
 from pynter.hpc.slurm import JobSettings
@@ -40,7 +39,7 @@ class Job:
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         
-        self._localdir = LOCAL_DIR
+        self._localdir = LOCAL_DIR 
         self._remotedir = REMOTE_DIR
         
         self.path_in_hpc, self.path_relative, self.is_path_on_hpc = get_path_relative_to_hpc(
