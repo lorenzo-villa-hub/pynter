@@ -70,9 +70,10 @@ def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,jobs_
         if files != []:
             check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)
             if check_job_script:
-                j = get_job_from_directory(path=root,job_script_filename=job_script_filename,
+                job = get_job_from_directory(path=root,job_script_filename=job_script_filename,
                                            load_outputs=load_outputs,jobs_kwargs=jobs_kwargs)
-                jobs.append(j)
+                if job:
+                    jobs.append(job)
     if sort:
         if not isinstance(sort, list):
             features = [sort]
@@ -232,7 +233,7 @@ class Dataset:
             from directory for each job class.
         """
         path = path if path else os.getcwd()
-        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort='name',
+        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort=sort,
                          load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) 
         
         return  Dataset(path=path,jobs=jobs,sort=sort)

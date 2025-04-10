@@ -263,18 +263,50 @@ class DefaultInputs:
 
 class DefaultJobSettings:
     
-    def __init__(self):
-        default_settings = SETTINGS['vasp']['job_settings_default']
-        self.vasp_exe = default_settings['vasp_exe']
+    def __init__(self,
+                 vasp_exe=None,
+                 vasp_sbatch=None,
+                 modules=None,
+                 lines_before_srun=None,
+                 lines_after_srun=None):
         
+        default_settings = SETTINGS['vasp']['job_settings_default']
+        self.vasp_exe = vasp_exe or default_settings['vasp_exe']
+        self.vasp_sbatch = vasp_sbatch or default_settings['vasp_sbatch']
+        self.modules = modules or default_settings['modules']
+        self.lines_before_srun = lines_before_srun or default_settings['lines_before_srun']
+        self.lines_after_srun = lines_after_srun or default_settings['lines_after_srun']
+    
+    @property
+    def vasp_script_lines(self):
+        if self.modules:
+            lines = self.get_modules_lines()
+        else:
+            lines = []
+        if self.lines_before_srun:
+            lines += self.lines_before_srun
+        if self.vasp_exe:
+            lines += [self.get_srun_line()]
+        if self.lines_after_srun:
+            lines += self.lines_after_srun
+        return lines
+        
+    def get_modules_lines(self):
+        if self.modules:
+            return [f'module load {module}' for module in self.modules] 
 
-    def get_srun_line(self,vasp_exe=None):
-        vasp_exe = vasp_exe or self.vasp_exe
-        vasp_exe = op.abspath(vasp_exe)
+    def get_srun_line(self):
+        vasp_exe = op.abspath(self.vasp_exe)
         return 'srun %s' %vasp_exe
-    
-    
-    
+
+    def get_updated_job_settings(self,job_settings):
+        job_settings = job_settings.copy()
+        for k,v in self.vasp_sbatch.items():
+            job_settings[k] = v
+        lines = self.vasp_script_lines
+        job_settings.script_lines += lines
+        return job_settings
+        
 
 
 class InputSets:

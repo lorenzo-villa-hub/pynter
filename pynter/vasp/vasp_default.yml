@@ -7,7 +7,10 @@ computed_entry_default:
 - ionic_steps
 job_settings_default:
   vasp_exe: ''
-  sbatch:
+  modules: null
+  lines_before_srun: null
+  lines_after_srun: null
+  vasp_sbatch:
     time: '24:00:00'
     ntasks: 64
 default_potcar_symbols:
