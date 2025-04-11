@@ -1,7 +1,6 @@
 #!/bin/sh
 #SBATCH --account=projecttest0000
 #SBATCH --job-name=test
-#SBATCH --array=1-2%1
 #SBATCH --mail-user=test@pynter.com
 #SBATCH --ntasks=96
 #SBATCH --output=out.%j
@@ -10,6 +9,8 @@
 #SBATCH --mem-per-cpu=3500
 
 module purge
+export APPLES
+export ORANGES
 ml intel/2020.4 
 ml intelmpi/2020.4 
 ml fftw/3.3.10 
