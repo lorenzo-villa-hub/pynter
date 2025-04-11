@@ -10,13 +10,16 @@ import os.path as op
 
 from pymatgen.io.vasp.inputs import Kpoints
 
-from pynter.vasp.jobs import VaspJob
-from pynter.vasp.schemes import DefaultInputs, InputSets, Schemes, AdvancedSchemes
-from pynter.data.datasets import Dataset
+from pynter.jobs.vasp.vasp_jobs import VaspJob
+from pynter.jobs.datasets import Dataset
+
+from pynter.vasp.schemes.core import DefaultInputs, InputSets
+from pynter.vasp.schemes.relaxation import RelaxationSchemes
+from pynter.vasp.schemes.defects import DefectSchemes
+
 
 from pynter.testing.core import PynterTest
-from pynter.testing.data import DatasetTest
-from pynter.testing.vasp import VaspJobTest
+from pynter.testing.jobs import DatasetTest, VaspJobTest
 from pynter.testing.vasp import VaspInputsTest
 
 
@@ -46,12 +49,12 @@ class TestDefaultInputs(PynterTest):
         kpoints_file = Kpoints.from_file(op.join(self.test_files_path,'KPOINTS_bs_hybrid_Si'))
         VaspInputsTest().assert_Kpoints_equal(kpoints, kpoints_file)
     
-    
     def test_get_potcar(self):
         di = DefaultInputs(structure=self.structure)
         potcar = di.get_potcar(potcar_functional='PBE')
         assert len(potcar) == 1
         assert potcar[0].symbol == "Si"
+
 
 class TestVaspSchemes(PynterTest):
 
@@ -67,7 +70,7 @@ class TestVaspSchemes(PynterTest):
         ds_test = Dataset.from_directory(op.join(self.test_files_path,'Si_HSE_rel_gamma'))
         job_settings = self.job_settings
         job_settings['slurm']['time'] = '24:00:00'
-        schemes = Schemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
+        schemes = RelaxationSchemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_schemes',job_settings=job_settings)
         jobs = schemes.hse_relaxation_gamma_extended()       
         ds = Dataset(jobs)
@@ -78,7 +81,7 @@ class TestVaspSchemes(PynterTest):
         
     def test_advanced_scheme(self):
         ds_test = Dataset.from_directory(op.join(self.test_files_path,'Vac_Si_adv_schemes_inputs'))
-        schemes = AdvancedSchemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
+        schemes = DefectSchemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_adv_schemes',job_settings=self.job_settings)
         jobs = schemes.vacancies_pbe_relaxation({'Si':[-1,0,1]},supercell_size=3)
         ds = Dataset(jobs)
