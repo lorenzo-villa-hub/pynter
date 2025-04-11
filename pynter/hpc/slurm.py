@@ -189,8 +189,6 @@ class JobSettings(dict,MSONable):
         """
         
         super().__init__()
-        self._filename = filename or SETTINGS['job_script_filename']
-        self._script_lines = script_lines
         
         if sbatch:
             if type(sbatch) is dict:
@@ -202,14 +200,12 @@ class JobSettings(dict,MSONable):
         elif not sbatch:
             sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch)
         
-        self.sbatch = sbatch
-        self._args = ['filename','script_lines']
         settings = {} 
         settings['sbatch'] = sbatch
-        settings['filename'] = self._filename 
-        settings['script_lines'] = self._script_lines
+        settings['filename'] = filename or SETTINGS['job_script_filename']
+        settings['script_lines'] = script_lines
         self.update(settings)
-               
+        
 
     def __repr__(self):
         return self.get_bash_script()
@@ -220,38 +216,26 @@ class JobSettings(dict,MSONable):
 
     def __getitem__(self,key):
         if key not in self.keys():
-            return self.sbatch[key]
+            return self['sbatch'][key]
         else:
             return super().__getitem__(key)
     
     def __setitem__(self,key,value):
-        if key not in self._args:
-            self.sbatch.__setitem__(key, value)
+        if key not in ['filename','script_lines']:
+            self['sbatch'].__setitem__(key, value)
         elif key != 'sbatch':
-            key = '_' + key  #hidden attributes
-            setattr(self,key,value)
             super().__setitem__(key,value)
         return
 
-    
     def __deepcopy__(self, memo):
         new_obj = type(self)(load_sbatch_defaults=False,
-                              sbatch=copy.deepcopy(self.sbatch, memo), 
-                              filename=self._filename,
-                              script_lines=self._script_lines[:])
+                              sbatch=copy.deepcopy(self['sbatch'], memo), 
+                              filename=self['filename'],
+                              script_lines=self['script_lines'][:])
         return new_obj
-
-    
+        
     def copy(self):        
         return copy.deepcopy(self,{})
-
-    @property 
-    def filename(self):
-        return self._filename
-    
-    @property
-    def script_lines(self):
-        return self._script_lines
 
     
     def as_dict(self):
@@ -260,7 +244,6 @@ class JobSettings(dict,MSONable):
         d["@class"] = type(self).__name__
         return d       
     
-
     @classmethod
     def from_dict(cls,d):
         return cls(**{k: v for k, v in d.items() if k not in ["@module", "@class"]})
@@ -295,17 +278,17 @@ class JobSettings(dict,MSONable):
 
 
     def get_bash_script(self):
-        lines = self.sbatch.get_bash_script_lines()
+        lines = self['sbatch'].get_bash_script_lines()
         lines.append('')
-        lines += self.script_lines 
+        lines += self['script_lines'] 
         return '\n'.join(lines)
     
     
     def replace_line(self,old_string,new_string):
-        for index, line in enumerate(self.script_lines):
+        for index, line in enumerate(self['script_lines']):
             if old_string in line:
                 new_line = line.replace(old_string, new_string)
-                self._script_lines[index] = new_line
+                self['script_lines'][index] = new_line
                 
         return
 
@@ -319,13 +302,13 @@ class JobSettings(dict,MSONable):
         path : (str), optional
             Path to write job script to. The default is None. If None work dir is used.
         filename : (str), optional
-            Filename. If None self.filename is used. The default is None.
+            Filename. If None self['filename'] is used. The default is None.
         """
         if path:
             if not os.path.exists(path):
                 os.makedirs(path)
-        filename = filename if filename else self.filename
-        complete_path = os.path.join(path,self.filename) if path else filename      
+        filename = filename if filename else self['filename']
+        complete_path = os.path.join(path,self['filename']) if path else filename      
         with open(complete_path,'w') as f:
             f.write(self.get_bash_script())        
         return

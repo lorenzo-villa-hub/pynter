@@ -162,7 +162,7 @@ class VaspJob(Job):
             if op.isfile(op.join(path,'vasprun.xml')):
                 outputs['Vasprun'] = _read_vasprun(path,**kwargs)
         
-        job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+        job_script_filename = job_script_filename if job_script_filename else JobSettings()['filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
         return VaspJob(path=path,inputs=inputs,job_settings=job_settings,

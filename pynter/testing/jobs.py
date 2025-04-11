@@ -40,7 +40,7 @@ class JobTest(PynterTest):
         self.assert_inputs_equal(job1,job2,**kwargs_input)
         if job1.outputs or job2.outputs:
             self.assert_outputs_equal(job1,job2,**kwargs_output)
-        self.assert_settings_equal(job1,job2)
+        #self.assert_settings_equal(job1,job2)  # don't test for equal settings since they are system dependent
             
             
 class DatasetTest(PynterTest):

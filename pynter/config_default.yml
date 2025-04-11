@@ -13,10 +13,10 @@ dbconfig:
     user: null
 sbatch:
   account: ''
-  error: err.%j
+  error: err.txt
   job-name: no_name
   mem-per-cpu: 2400M
   ntasks: 64
-  output: out.%j
+  output: out.txt
   time: "01:00:00"
 job_script_filename: job.sh

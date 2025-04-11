@@ -102,24 +102,19 @@ class PynterTest(unittest.TestCase):
     @property
     def job_settings(self):
         job_settings = {
-          'slurm': {'account': 'project0000',
-          'error': 'err.%j',
-          'job-name': 'Si-BS_PBE-el-str_3',
-          'mail-user': 'test@pynter.com',
-          'mem-per-cpu': 3500,
-          'nodes': 1,
-          'ntasks': 384,
-          'output': 'out.%j',
-          'partition': 'deflt',
-          'time': '00:30:00'},
-         'filename': 'job.sh',
-         'array_size': None,
-         'modules': ['intel/2019.2', 'intel/2019.3', 'intelmpi/2019.3', 'fftw/3.3.8'],
-         'path_exe': '/home/vasp-5-3-3',
-         'add_stop_array': False,
-         'add_automation': 'automation_vasp.py --contcar --chgcar --wavecar --check-kpoints --error-check',
-         'add_lines_header': None,
-         'add_lines_body': None}
+          'sbatch': {
+              'account': 'project0000',
+              'error': 'err.%j',
+              'job-name': 'Si-BS_PBE-el-str_3',
+              'mail-user': 'test@pynter.com',
+              'mem-per-cpu': 3500,
+              'nodes': 1,
+              'ntasks': 384,
+              'output': 'out.%j',
+              'partition': 'deflt',
+              'time': '00:30:00'
+               },
+         'filename': 'job.sh'}
         return job_settings 
 
 

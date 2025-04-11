@@ -60,7 +60,7 @@ class TestVaspSchemes(PynterTest):
 
     def test_get_vaspjob(self):
         j = InputSets(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
-                      name='Si_input_sets',job_settings=self.job_settings).get_vaspjob(setname='job')
+                      name='Si_input_sets',job_settings=self.job_settings).get_vaspjob(add_to_job_name='job')
         j_test = VaspJob.from_directory(op.join(self.test_files_path,'Si-input-sets'))
         
         VaspJobTest().assert_inputs_equal(j,j_test,include_incar=False)
@@ -69,17 +69,15 @@ class TestVaspSchemes(PynterTest):
     def test_scheme(self):
         ds_test = Dataset.from_directory(op.join(self.test_files_path,'Si_HSE_rel_gamma'))
         job_settings = self.job_settings
-        job_settings['slurm']['time'] = '24:00:00'
+        job_settings['sbatch']['time'] = '24:00:00'
         schemes = RelaxationSchemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_schemes',job_settings=job_settings)
         jobs = schemes.hse_relaxation_gamma_extended()       
         ds = Dataset(jobs)
-        ds[3].job_settings['add_stop_array'] = True # stop array in job.sh file
-        ds[7].job_settings['add_stop_array'] = True 
         DatasetTest().assert_jobs_equal(ds.jobs, ds_test.jobs)
         return
         
-    def test_advanced_scheme(self):
+    def test_defect_scheme(self):
         ds_test = Dataset.from_directory(op.join(self.test_files_path,'Vac_Si_adv_schemes_inputs'))
         schemes = DefectSchemes(self.test_files_path,structure=self.structure,incar_settings=self.incar_settings,
                       name='Si_adv_schemes',job_settings=self.job_settings)
