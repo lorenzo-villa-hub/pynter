@@ -203,6 +203,7 @@ class JobSettings(dict,MSONable):
             sbatch = Sbatch(load_defaults=load_sbatch_defaults,**sbatch)
         
         self.sbatch = sbatch
+        self._args = ['filename','script_lines']
         settings = {} 
         settings['sbatch'] = sbatch
         settings['filename'] = self._filename 
@@ -224,14 +225,25 @@ class JobSettings(dict,MSONable):
             return super().__getitem__(key)
     
     def __setitem__(self,key,value):
-        args = ['filename','script_lines'] # temporary
-        if key not in args:
+        if key not in self._args:
             self.sbatch.__setitem__(key, value)
         elif key != 'sbatch':
-            key = '_' + key #hidden attributes
+            key = '_' + key  #hidden attributes
             setattr(self,key,value)
             super().__setitem__(key,value)
         return
+
+    
+    def __deepcopy__(self, memo):
+        new_obj = type(self)(load_sbatch_defaults=False,
+                              sbatch=copy.deepcopy(self.sbatch, memo), 
+                              filename=self._filename,
+                              script_lines=self._script_lines[:])
+        return new_obj
+
+    
+    def copy(self):        
+        return copy.deepcopy(self,{})
 
     @property 
     def filename(self):
@@ -248,9 +260,7 @@ class JobSettings(dict,MSONable):
         d["@class"] = type(self).__name__
         return d       
     
-    def copy(self):        
-        return copy.deepcopy(self)
-    
+
     @classmethod
     def from_dict(cls,d):
         return cls(**{k: v for k, v in d.items() if k not in ["@module", "@class"]})

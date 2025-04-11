@@ -269,6 +269,23 @@ class DefaultJobSettings:
                  modules=None,
                  lines_before_srun=None,
                  lines_after_srun=None):
+        """
+        Class to handle VASP specific part of sbatch submission script.
+        Args that are not provided are taken from vasp.yml file in ~/.pynter.
+
+        Parameters
+        ----------
+        vasp_exe : (str)
+            Path to vasp executable. 
+        vasp_sbatch : (dict)
+            Sbatch dictionary tailored for vasp.
+        modules : (list)
+            Name of modules to load with "module load".
+        lines_before_srun : (list)
+            Script lines to be placed before the "srun" command.
+        lines_after_srun : (list)
+            Script lines to be placed before the "srun" command.
+        """
         
         default_settings = SETTINGS['vasp']['job_settings_default']
         self.vasp_exe = vasp_exe or default_settings['vasp_exe']
@@ -300,11 +317,14 @@ class DefaultJobSettings:
         return 'srun %s' %vasp_exe
 
     def get_updated_job_settings(self,job_settings):
+        """
+        Get a copy of a JobSettings object updated with VASP specific settings
+        """
         job_settings = job_settings.copy()
         for k,v in self.vasp_sbatch.items():
             job_settings[k] = v
         lines = self.vasp_script_lines
-        job_settings.script_lines += lines
+        job_settings['script_lines'] += lines
         return job_settings
         
 
@@ -359,7 +379,9 @@ class InputSets:
             
             if self.name: # this return false if name is '', the previuos line considers only if name is None
                 self.job_settings['job-name'] = self.name
-                
+            
+            self.job_settings = DefaultJobSettings().get_updated_job_settings(self.job_settings)    
+            
         else:
             raise ValueError('You need to provide Structure, either as Poscar object in VaspInput or in "structure" arg')
 
@@ -384,20 +406,20 @@ class InputSets:
         return self.__str__()
 
 
-    def get_vaspjob(self,setname='',pathname=''):
+    def get_vaspjob(self,add_to_job_name=None,add_to_job_path=None):
         """
         Generate VaspJob object from the input settings of the class.
 
         Parameters
         ----------
-        setname : (str), optional
-            String to be added to 'name' key in job_settings dictionary and to name attribute of VaspJob. The default is ''.
-        pathname : (str), optional
-            String to be added to self.path. The complete path will be input in 'path' arg of VaspJob. The default is ''.
+        add_to_job_name : (str), optional
+            String to be added to 'name' key in job_settings dictionary and to name attribute of VaspJob.
+        add_to_job_path : (str), optional
+            String to be added to self.path. The complete path will be input in 'path' arg of VaspJob.
 
         Returns
         -------
-        vaspjob : (VaspJob object)
+        VaspJob object
         """        
         incar_settings = self.incar_settings.copy()
         job_settings = self.job_settings.copy()
@@ -407,17 +429,25 @@ class InputSets:
         poscar = Poscar(self.structure)
         potcar = self.potcar
         vaspinput = VaspInput(incar,kpoints,poscar,potcar)
-        job_settings['job-name'] = '_'.join([job_settings['job-name'],setname])
         
-        jobname = '_'.join([self.name,setname])
-        jobpath = op.join(self.path,pathname)
+        if add_to_job_name:
+            job_settings['job-name'] = '_'.join([job_settings['job-name'],add_to_job_name])        
+            jobname = '_'.join([self.name,add_to_job_name])
+        else:
+            jobname = self.name
+            
+        if add_to_job_path:
+            jobpath = op.join(self.path,add_to_job_path)
+        else:
+            jobpath = self.path
+            
         job_script_filename = job_settings['filename'] if 'filename' in job_settings.keys() else None
         vaspjob = VaspJob(path=jobpath,inputs=vaspinput,job_settings=job_settings,job_script_filename=job_script_filename,name=jobname)
         
         return vaspjob  
 
 
-    def hse_bs(self,kpoints_bs=None,setname='HSE-BS',pathname='HSE-BS',**kwargs):
+    def hse_bs(self,kpoints_bs=None,add_to_job_name='HSE-BS',add_to_job_path='HSE-BS',**kwargs):
         """
         Set up band structure calculation with HSE
         
@@ -429,7 +459,7 @@ class InputSets:
         kwargs : (dict), optional
             Kwargs for get_kpoints_bs_default in DefaultInputs
         """
-        vaspjob = self.hse_scf(setname,pathname)
+        vaspjob = self.hse_scf(add_to_job_name,add_to_job_path)
         if kpoints_bs:
             kpoints = kpoints_bs
         else:
@@ -437,7 +467,7 @@ class InputSets:
         vaspjob.inputs['KPOINTS'] = kpoints
         return vaspjob
 
-    def hse_dos(self,kmesh=3,setname='HSE-DOS',pathname='HSE-DOS'):
+    def hse_dos(self,kmesh=3,add_to_job_name='HSE-DOS',add_to_job_path='HSE-DOS'):
         """
         Set up DOS calculation with HSE
 
@@ -446,7 +476,7 @@ class InputSets:
         kmesh : (Int), optional
             Multiplier for coefficients of the k-mesh for the DOS with respect to first step SCF calculation. The default is 3.
         """
-        vaspjob = self.hse_scf(setname,pathname)
+        vaspjob = self.hse_scf(add_to_job_name,add_to_job_path)
         vaspjob.incar['NEDOS'] = 2000
         vaspjob.incar['ISMEAR'] = -5        
         # multiply by 3 coeff of k-mesh
@@ -458,64 +488,64 @@ class InputSets:
         vaspjob.inputs['KPOINTS'] = kpoints
         return vaspjob        
 
-    def hse_ionic_rel(self,setname='HSE-rel',pathname='HSE-rel'):
+    def hse_ionic_rel(self,add_to_job_name='HSE-rel',add_to_job_path='HSE-rel'):
         """
         Set up ionic relaxation with HSE
         """
-        vaspjob = self.pbe_ionic_rel(setname,pathname)
+        vaspjob = self.pbe_ionic_rel(add_to_job_name,add_to_job_path)
         vaspjob.incar['LHFCALC'] = '.TRUE.'
         vaspjob.incar['ISYM'] = 3
         vaspjob.job_settings['array_size'] = 7
         return vaspjob
 
-    def hse_ionic_vol_rel(self,setname='HSE-rel',pathname='HSE-rel'):
+    def hse_ionic_vol_rel(self,add_to_job_name='HSE-rel',add_to_job_path='HSE-rel'):
         """
         Relaxation of atomic positions and cell volume with HSE
         """
-        vaspjob = self.hse_ionic_rel(setname,pathname)
+        vaspjob = self.hse_ionic_rel(add_to_job_name,add_to_job_path)
         vaspjob.incar['ISIF'] = 3        
         return vaspjob
 
-    def hse_ionic_rel_gamma(self,setname='HSE-rel-Gamma',pathname='HSE-rel-gamma'):
+    def hse_ionic_rel_gamma(self,add_to_job_name='HSE-rel-Gamma',add_to_job_path='HSE-rel-gamma'):
         """
         Set up HSE ionic relaxation only in gamma point 
         """
-        vaspjob = self.hse_ionic_rel(setname,pathname)
+        vaspjob = self.hse_ionic_rel(add_to_job_name,add_to_job_path)
         vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))         
         return vaspjob 
 
-    def hse_scf(self,setname='HSE-SCF',pathname='HSE-SCF'):
+    def hse_scf(self,add_to_job_name='HSE-SCF',add_to_job_path='HSE-SCF'):
         """
         Set up SCF calculation with HSE
         """
-        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob = self.pbe_scf(add_to_job_name,add_to_job_path)
         vaspjob.incar['LHFCALC'] = '.TRUE.'
         vaspjob.incar['ISYM'] = 3  
         return vaspjob
 
-    def hse_scf_gamma(self,setname='HSE-SCF-Gamma',pathname='HSE-SCF-Gamma'):
+    def hse_scf_gamma(self,add_to_job_name='HSE-SCF-Gamma',add_to_job_path='HSE-SCF-Gamma'):
         """
         Set up HSE-SCF calculation only in gamma point 
         """
-        vaspjob = self.hse_scf(setname,pathname)
+        vaspjob = self.hse_scf(add_to_job_name,add_to_job_path)
         vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))        
         return vaspjob 
 
-    def hse_standard(self,setname='HSE',pathname='HSE'):
+    def hse_standard(self,add_to_job_name='HSE',add_to_job_path='HSE'):
         """
         Set for standard HSE caculation
         """
-        vaspjob = self.get_vaspjob(setname,pathname)
+        vaspjob = self.get_vaspjob(add_to_job_name,add_to_job_path)
         vaspjob.incar['LHFCALC'] = '.TRUE.'
         vaspjob.incar['ISYM'] = 3 
         return vaspjob
 
 
-    def hubbard(self,ldauu_dict,setname,pathname):
+    def hubbard(self,ldauu_dict,add_to_job_name,add_to_job_path):
         """
         Set for standard PBE+U calculation. The dict {Element:U_value} is used to construct the INCAR
         """
-        vaspjob = self.get_vaspjob(setname,pathname)
+        vaspjob = self.get_vaspjob(add_to_job_name,add_to_job_path)
         vaspjob.incar['LDAU'] = '.TRUE.'
         vaspjob.incar['LDAUTYPE'] = 2
         vaspjob.incar['LDAUPRINT'] = 2
@@ -523,7 +553,7 @@ class InputSets:
         return vaspjob
 
 
-    def pbe_bs(self,kpoints_bs=None,setname='PBE-BS',pathname='PBE-BS',**kwargs):
+    def pbe_bs(self,kpoints_bs=None,add_to_job_name='PBE-BS',add_to_job_path='PBE-BS',**kwargs):
         """
         Set up band structure calculation with PBE
         
@@ -535,7 +565,7 @@ class InputSets:
         kwargs : (dict), optional
             Kwargs for get_kpoints_bs_default in DefaultInputs
         """
-        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob = self.pbe_scf(add_to_job_name,add_to_job_path)
         vaspjob.incar['ICHARG'] = 11
         vaspjob.incar['LORBIT'] = 11
         vaspjob.incar['ISMEAR'] = 0
@@ -547,7 +577,7 @@ class InputSets:
         vaspjob.inputs['KPOINTS'] = kpoints
         return vaspjob
 
-    def pbe_dos(self,kmesh=3,setname='PBE-DOS',pathname='PBE-DOS'):
+    def pbe_dos(self,kmesh=3,add_to_job_name='PBE-DOS',add_to_job_path='PBE-DOS'):
         """
         Set up DOS calculation with PBE
 
@@ -556,7 +586,7 @@ class InputSets:
         kmesh : (Int), optional
             Multiplier for coefficients of the k-mesh for the DOS with respect to first step SCF calculation. The default is 3.
         """
-        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob = self.pbe_scf(add_to_job_name,add_to_job_path)
         vaspjob.incar['NEDOS'] = 2000
         vaspjob.incar['ISMEAR'] = -5        
         # multiply by 3 coeff of k-mesh
@@ -568,45 +598,45 @@ class InputSets:
         vaspjob.inputs['KPOINTS'] = kpoints
         return vaspjob
  
-    def pbe_ionic_rel(self,setname='PBE-rel',pathname='PBE-rel'):
+    def pbe_ionic_rel(self,add_to_job_name='PBE-rel',add_to_job_path='PBE-rel'):
         """
         Relaxation of atomic positions with PBE
         """
-        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob = self.pbe_scf(add_to_job_name,add_to_job_path)
         vaspjob.incar['NSW'] = 100
         vaspjob.incar['EDIFF'] = 1e-05
         vaspjob.incar['ISIF'] = 2        
         return vaspjob 
 
-    def pbe_ionic_rel_gamma(self,setname='PBE-rel-Gamma',pathname='PBE-rel-gamma'):
+    def pbe_ionic_rel_gamma(self,add_to_job_name='PBE-rel-Gamma',add_to_job_path='PBE-rel-gamma'):
         """
         Set up PBE ionic relaxation only in gamma point 
         """
-        vaspjob = self.pbe_ionic_rel(setname,pathname)
+        vaspjob = self.pbe_ionic_rel(add_to_job_name,add_to_job_path)
         vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))        
         return vaspjob 
 
-    def pbe_ionic_vol_rel(self,setname='PBE-rel-vol',pathname='PBE-rel-vol'):
+    def pbe_ionic_vol_rel(self,add_to_job_name='PBE-rel-vol',add_to_job_path='PBE-rel-vol'):
         """
         Relaxation of atomic positions and cell volume with PBE
         """
-        vaspjob = self.pbe_ionic_rel(setname,pathname)
+        vaspjob = self.pbe_ionic_rel(add_to_job_name,add_to_job_path)
         vaspjob.incar['ISIF'] = 3        
         return vaspjob 
                 
-    def pbe_scf(self,setname='PBE-SCF',pathname='PBE-SCF'):
+    def pbe_scf(self,add_to_job_name='PBE-SCF',add_to_job_path='PBE-SCF'):
         """
         Set up standard input for electronic minimization with PBE
         """        
-        vaspjob = self.get_vaspjob(setname,pathname)
+        vaspjob = self.get_vaspjob(add_to_job_name,add_to_job_path)
         vaspjob.incar['NSW'] = 0
         vaspjob.incar['EDIFF'] = 1e-06        
         return vaspjob      
 
-    def pbe_scf_gamma(self,setname='PBE-SCF-Gamma',pathname='PBE-SCF-Gamma'):
+    def pbe_scf_gamma(self,add_to_job_name='PBE-SCF-Gamma',add_to_job_path='PBE-SCF-Gamma'):
         """
         Set up PBE-SCF calculation only in gamma point 
         """
-        vaspjob = self.pbe_scf(setname,pathname)
+        vaspjob = self.pbe_scf(add_to_job_name,add_to_job_path)
         vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=(1,1,1))         
         return vaspjob 

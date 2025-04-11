@@ -31,23 +31,23 @@ class RelaxationSchemes(InputSets):
         jobs = []
         
         sn = 1 #set step number 1
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 2
-        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 3 
-        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 4
-        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         return jobs
@@ -72,37 +72,37 @@ class RelaxationSchemes(InputSets):
         jobs = []
         
         sn = 1 #set step number 1
-        vaspjob = self.pbe_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 2 
-        vaspjob = self.pbe_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 3 
-        vaspjob = self.hse_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 4 
-        vaspjob = self.hse_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         sn = 5 
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 6 
-        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 7
-        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         return jobs
@@ -128,43 +128,43 @@ class RelaxationSchemes(InputSets):
         jobs = []
         
         sn = 1 #set step number 1
-        vaspjob = self.pbe_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 2
-        vaspjob = self.pbe_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 3
-        vaspjob = self.hse_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 4
-        vaspjob = self.hse_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         sn = 5 
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 6 
-        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 7 
-        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 8 
-        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         return jobs
@@ -183,11 +183,11 @@ class RelaxationSchemes(InputSets):
         jobs = []
         
         sn = 1 
-        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 2
-        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         return jobs
@@ -209,27 +209,27 @@ class RelaxationSchemes(InputSets):
         jobs = []
         
         sn = 1 
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 2
-        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         vaspjob.incar['LHFCALC'] = '.FALSE.'
         vaspjob.incar['ISYM'] = 2
         jobs.append(vaspjob)
         
         sn = 3 
-        vaspjob = self.hse_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 4 
-        vaspjob = self.hse_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         sn = 5
-        vaspjob = self.hse_ionic_vol_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.hse_ionic_vol_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         return jobs
     
@@ -267,7 +267,7 @@ class RelaxationSchemes(InputSets):
                         
             ldauu_dict[Element(specie)] = u
             stepname = f'U{u}'
-            vaspjob = self.hubbard(ldauu_dict,setname=stepname,pathname=stepname)
+            vaspjob = self.hubbard(ldauu_dict,add_to_job_name=stepname,add_to_job_path=stepname)
             jobs.append(vaspjob)
             
         return jobs
@@ -288,11 +288,11 @@ class RelaxationSchemes(InputSets):
         jobs = []
               
         sn = 1
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 2 
-        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         return jobs
@@ -316,19 +316,19 @@ class RelaxationSchemes(InputSets):
         jobs = []
 
         sn = 1
-        vaspjob = self.pbe_scf_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 2 
-        vaspjob = self.pbe_ionic_rel_gamma(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel_gamma(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
               
         sn = 3
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 4 
-        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         return jobs
@@ -349,15 +349,15 @@ class RelaxationSchemes(InputSets):
         stepnames = ['1-PBE-SCF','2-PBE-OPT','3-PBE-VOPT']
         jobs = []
         sn = 1
-        vaspjob = self.pbe_scf(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_scf(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         sn = 2 
-        vaspjob = self.pbe_ionic_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
  
         sn = 3 
-        vaspjob = self.pbe_ionic_vol_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_vol_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)       
         
         return jobs

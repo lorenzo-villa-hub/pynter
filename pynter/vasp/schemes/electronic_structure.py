@@ -40,7 +40,7 @@ class ElectronicStructureSchemes(InputSets):
         val = {}
         for p in self.potcar:
             val[p.element] = p.nelectrons
-        vaspjob = self.get_vaspjob(setname='eps-el',pathname=scheme_name)    
+        vaspjob = self.get_vaspjob(add_to_job_name='eps-el',add_to_job_path=scheme_name)    
         vaspjob.incar['NEDOS'] = 2000
         vaspjob.incar['LOPTICS'] = '.TRUE.'              
         nelect = sum([ val[el]*self.structure.composition.as_dict()[el] for el in self.structure.composition.as_dict()]) #number of electrons
@@ -55,7 +55,7 @@ class ElectronicStructureSchemes(InputSets):
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LCALCEPS' method in VASP, combined with 'IBRION=6'. Useful for Hybrid calculations where 'LEPSILON' method does not work.
         """
-        vaspjob = self.get_vaspjob(setname='eps-ion-lcal',pathname=scheme_name)
+        vaspjob = self.get_vaspjob(add_to_job_name='eps-ion-lcal',add_to_job_path=scheme_name)
         vaspjob.incar['NEDOS'] = 2000
         vaspjob.incar['LCALCEPS'] = '.TRUE.'              
         vaspjob.incar['IBRION'] = 6
@@ -69,7 +69,7 @@ class ElectronicStructureSchemes(InputSets):
         Set calculation for ionic contribution to the dielectric constant.
         Uses 'LEPSILON' method in VASP, combined with 'IBRION=8'. This method does not work with HSE functionals.
         """
-        vaspjob = self.get_vaspjob(setname='eps-ion-leps',pathname=scheme_name)
+        vaspjob = self.get_vaspjob(add_to_job_name='eps-ion-leps',add_to_job_path=scheme_name)
         vaspjob.incar['NEDOS'] = 2000
         vaspjob.incar['LEPSILON'] = '.TRUE.'              
         vaspjob.incar['IBRION'] = 8
@@ -100,15 +100,15 @@ class ElectronicStructureSchemes(InputSets):
         jobs = []
         
         sn = 1 
-        vaspjob = self.pbe_ionic_vol_rel(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_ionic_vol_rel(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)  
         
         sn = 2 
-        vaspjob = self.pbe_dos(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_dos(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
 
         sn = 3
-        vaspjob = self.pbe_bs(setname=scheme_name+'_%i'%sn ,pathname=stepnames[sn-1])
+        vaspjob = self.pbe_bs(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
         jobs.append(vaspjob)
         
         return jobs

@@ -34,7 +34,7 @@ class VariationsSchemes(InputSets):
             if isinstance(q,float) and not q.is_integer():
                 q = np.around(q,decimals=1)
             stepname = f'q{q}'
-            vaspjob = self.get_vaspjob(setname=stepname,pathname=stepname)
+            vaspjob = self.get_vaspjob(add_to_job_name=stepname,add_to_job_path=stepname)
             vaspjob.incar['NELECT'] = nelect - q 
             if locpot:
                 vaspjob.incar['LVTOT'] = '.TRUE.' #most likely needed for corrections in defect calculations
@@ -64,7 +64,7 @@ class VariationsSchemes(InputSets):
         for ec in encuts:           
             print(ec)
             stepname = f'cutoff{ec}'
-            vaspjob = self.pbe_scf(setname=stepname,pathname=stepname)            
+            vaspjob = self.pbe_scf(add_to_job_name=stepname,add_to_job_path=stepname)            
             vaspjob.incar['ENCUT'] = ec
             jobs.append(vaspjob)
             
@@ -93,7 +93,7 @@ class VariationsSchemes(InputSets):
 
         for kmesh in kpoints_meshes:
             stepname = 'k%ix%ix%i' %(kmesh[0],kmesh[1],kmesh[2])
-            vaspjob = self.get_vaspjob(setname=stepname,pathname=stepname)
+            vaspjob = self.get_vaspjob(add_to_job_name=stepname,add_to_job_path=stepname)
             vaspjob.incar.pop('KPAR', None)
             vaspjob.incar['NSW'] = 0
             vaspjob.inputs['KPOINTS'] = Kpoints().gamma_automatic(kpts=kmesh)
@@ -125,7 +125,7 @@ class VariationsSchemes(InputSets):
         for q in np.arange(0,1.2,0.2):
             q = np.around(q,decimals=1)
             stepname = f'q{q}'
-            vaspjob = self.get_vaspjob(setname=stepname,pathname=stepname)
+            vaspjob = self.get_vaspjob(add_to_job_name=stepname,add_to_job_path=stepname)
             vaspjob.incar['NELECT'] = nelect + q
             jobs.append(vaspjob)
             
