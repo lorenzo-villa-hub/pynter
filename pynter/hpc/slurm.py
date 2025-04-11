@@ -189,8 +189,8 @@ class JobSettings(dict,MSONable):
         """
         
         super().__init__()
-        self.filename = filename or SETTINGS['job_script_filename']
-        self.script_lines = script_lines
+        self._filename = filename or SETTINGS['job_script_filename']
+        self._script_lines = script_lines
         
         if sbatch:
             if type(sbatch) is dict:
@@ -205,8 +205,8 @@ class JobSettings(dict,MSONable):
         self.sbatch = sbatch
         settings = {} 
         settings['sbatch'] = sbatch
-        settings['filename'] = self.filename 
-        settings['script_lines'] = self.script_lines
+        settings['filename'] = self._filename 
+        settings['script_lines'] = self._script_lines
         self.update(settings)
                
 
@@ -227,11 +227,20 @@ class JobSettings(dict,MSONable):
         args = ['filename','script_lines'] # temporary
         if key not in args:
             self.sbatch.__setitem__(key, value)
-        else:
+        elif key != 'sbatch':
+            key = '_' + key #hidden attributes
             setattr(self,key,value)
             super().__setitem__(key,value)
         return
-           
+
+    @property 
+    def filename(self):
+        return self._filename
+    
+    @property
+    def script_lines(self):
+        return self._script_lines
+
     
     def as_dict(self):
         d = dict(self)
@@ -286,7 +295,7 @@ class JobSettings(dict,MSONable):
         for index, line in enumerate(self.script_lines):
             if old_string in line:
                 new_line = line.replace(old_string, new_string)
-                self.script_lines[index] = new_line
+                self._script_lines[index] = new_line
                 
         return
 
