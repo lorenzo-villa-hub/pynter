@@ -13,6 +13,7 @@ import warnings
 import numpy as np
 import json
 from glob import glob
+import re
 
 from monty.json import MontyDecoder, MontyEncoder
 
@@ -24,12 +25,15 @@ from pymatgen.analysis.transition_state import NEBAnalysis
 from pynter.tools.utils import grep
 from pynter.jobs.core import Job
 from pynter.hpc.slurm import JobSettings
+from pynter.vasp.utils import get_convergence_from_outcar
 from pynter import SETTINGS, LOCAL_DIR
 
 
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
+
+
 
 
 def _read_vasprun(path,**kwargs):
@@ -264,29 +268,28 @@ class VaspJob(Job):
     def energy_gap(self):
         """Energy gap read from vasprun.xml with Pymatgen"""
         band_gap = None
-        if self.computed_entry:
+        if self.computed_entry and 'eigenvalue_band_properties' in self.computed_entry.data.keys():
             band_gap = self.computed_entry.data['eigenvalue_band_properties'][0]
-            
         return band_gap
  
     @property
     def cbm(self):
         """"Conduction band minimum"""
-        return self.computed_entry.data['eigenvalue_band_properties'][1]  
+        if self.computed_entry and 'eigenvalue_band_properties' in self.computed_entry.data.keys():
+            return self.computed_entry.data['eigenvalue_band_properties'][1]  
 
     @property
     def vbm(self):
         """"valence band maximum"""
-        return self.computed_entry.data['eigenvalue_band_properties'][2]    
+        if self.computed_entry and 'eigenvalue_band_properties' in self.computed_entry.data.keys():
+            return self.computed_entry.data['eigenvalue_band_properties'][2]    
 
     @property
     def final_energy(self):
         """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
-        final_energy = None
-        if self.computed_entry:
-            final_energy = self.computed_entry.data['final_energy']
-            
-        return final_energy
+        if self.computed_entry and 'final_energy' in self.computed_entry.data.keys():
+            final_energy = self.computed_entry.data['final_energy']            
+            return final_energy
     
     @property
     def final_energy_per_atom(self):
@@ -300,8 +303,7 @@ class VaspJob(Job):
         final_structure = None
         if self.computed_entry:
             if self.computed_entry.data['structures']:
-                final_structure = self.computed_entry.data['structures'][-1]
-            
+                final_structure = self.computed_entry.data['structures'][-1]            
         return final_structure 
     
             
@@ -334,8 +336,7 @@ class VaspJob(Job):
             for i in range(0,len(ldauu)):
                 U_dict[elements[i]] = int(ldauu[i])
         else:
-            print('No LDAUU tag present in INCAR in Job "%s"' %self.name)
-            
+            print('No LDAUU tag present in INCAR in Job "%s"' %self.name)            
         return U_dict
         
     @property
@@ -435,7 +436,7 @@ class VaspJob(Job):
 
     def delete_output_files(self,safety=True):
         """
-        Delete files that aren't input files (INCAR,KPOINTS,POSCAR,POTCAR)
+        Delete files that aren't input files (INCAR,KPOINTS,POSCAR,POTCAR,job script)
         """
         if safety:
             inp = input('Are you sure you want to delete outputs of Job %s ?: (y/n)' %self.name)
@@ -466,7 +467,7 @@ class VaspJob(Job):
         return
     
     
-    def get_outputs(self,sync=False,get_output_properties=True,**kwargs):
+    def get_outputs(self,sync=False,parse_vasprun=True,get_output_properties=True,**kwargs):
         """
         Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
         read with Pymatgen
@@ -483,8 +484,11 @@ class VaspJob(Job):
         if sync:
             self.sync_from_hpc()
         outputs = {}
-        if op.isfile(op.join(self.path,'vasprun.xml')):
-            outputs['Vasprun'] = _read_vasprun(self.path,**kwargs)
+        if parse_vasprun:
+            if 'parse_dos' not in kwargs.keys():
+                kwargs['parse_dos'] = False  # do NOT parse DOS by default
+            if op.isfile(op.join(self.path,'vasprun.xml')):
+                outputs['Vasprun'] = _read_vasprun(self.path,**kwargs)
 
         self.outputs = outputs
         if get_output_properties:
@@ -507,10 +511,10 @@ class VaspJob(Job):
             'parameters','actual_kpoints','ionic_steps'.
         extra_data : (list), optional
             List of attributes of Vasprun to add to the default parsed in ComputedStructureEntry.
-        """                
-        self._is_converged,self._is_converged_electronic,self._is_converged_ionic = self._get_convergence()
-        
-        self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
+        """
+        if 'Vasprun' in self.outputs.keys():          
+            self._is_converged,self._is_converged_electronic,self._is_converged_ionic = self._get_convergence()            
+            self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
 
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:
