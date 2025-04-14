@@ -34,15 +34,21 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
 
 
+#def _get_vasp_outputs()
 
 
 def _read_vasprun(path,**kwargs):
-    try:
-        return Vasprun(op.join(path,'vasprun.xml'),**kwargs)
-    except:
-        warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
-        return None
-
+    if 'parse_dos' not in kwargs.keys():
+        kwargs['parse_dos'] = False  # do NOT parse DOS by default
+    if op.exists(op.join(path,'vasprun.xml')):
+        try:
+            return Vasprun(op.join(path,'vasprun.xml'),**kwargs)
+        except:
+            warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
+            return None
+    else:
+        warnings.warn('"vasprun.xml" file is not present in Job directory')
+        
 
 class VaspJob(Job):
  
@@ -138,7 +144,7 @@ class VaspJob(Job):
         
     
     @staticmethod
-    def from_directory(path=None,job_script_filename=None,load_outputs=True,**kwargs):
+    def from_directory(path=None,job_script_filename=None,load_outputs=True,parse_vasprun=True,**kwargs):
         """
         Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
         Output files are read usign Pymatgen Vasprun class.
@@ -163,9 +169,11 @@ class VaspJob(Job):
         inputs = VaspInput.from_directory(path)
         outputs = {}
         if load_outputs:
-            if op.isfile(op.join(path,'vasprun.xml')):
+            if parse_vasprun:
                 outputs['Vasprun'] = _read_vasprun(path,**kwargs)
-        
+            else:
+                outputs['convergence'] = {}                
+                
         job_script_filename = job_script_filename if job_script_filename else JobSettings()['filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
@@ -356,10 +364,7 @@ class VaspJob(Job):
         Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        if hasattr(self,'_is_converged'):
-            return self._is_converged
-        else:
-            return None
+        return self.is_converged_electronic and self.is_converged_ionic
             
     @property
     def is_converged_electronic(self):
@@ -367,8 +372,8 @@ class VaspJob(Job):
         Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        if hasattr(self,'_is_converged_electronic'):
-            return self._is_converged_electronic
+        if 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['electronic']
         else:
             return None
 
@@ -378,8 +383,8 @@ class VaspJob(Job):
         Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        if hasattr(self,'_is_converged_ionic'):
-            return self._is_converged_ionic
+        if 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['ionic']
         else:
             return None
 
@@ -485,10 +490,7 @@ class VaspJob(Job):
             self.sync_from_hpc()
         outputs = {}
         if parse_vasprun:
-            if 'parse_dos' not in kwargs.keys():
-                kwargs['parse_dos'] = False  # do NOT parse DOS by default
-            if op.isfile(op.join(self.path,'vasprun.xml')):
-                outputs['Vasprun'] = _read_vasprun(self.path,**kwargs)
+            outputs['Vasprun'] = _read_vasprun(self.path,**kwargs)
 
         self.outputs = outputs
         if get_output_properties:
@@ -511,11 +513,15 @@ class VaspJob(Job):
             'parameters','actual_kpoints','ionic_steps'.
         extra_data : (list), optional
             List of attributes of Vasprun to add to the default parsed in ComputedStructureEntry.
-        """
-        if 'Vasprun' in self.outputs.keys():          
-            self._is_converged,self._is_converged_electronic,self._is_converged_ionic = self._get_convergence()            
-            self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
-
+        """  
+        is_converged_electronic, is_converged_ionic = self._get_convergence()
+        self.outputs.update(
+            {'convergence':{
+            'electronic':is_converged_electronic,
+            'ionic':is_converged_ionic}}
+            )            
+        
+        self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
         kwargs = self._parse_kwargs(**kwargs)  
         if self.vasprun:
             data = kwargs['data'] if kwargs['data'] else self._default_data_computed_entry
@@ -593,22 +599,24 @@ class VaspJob(Job):
         """
         Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary, 
-        for global, electronic and ionic convergence.
+        for electronic and ionic convergence.
         
         """
-        is_converged, conv_el, conv_ionic = None, None, None
+        conv_el, conv_ionic = None, None
         if self.outputs:
+            # get convergence from vasprun
             if 'Vasprun' in self.outputs.keys():
-                is_converged, conv_el, conv_ionic = False, False, False
+                conv_el, conv_ionic = False, False
                 if self.vasprun:
                     vasprun = self.vasprun
                     conv_el, conv_ionic = False, False
                     if vasprun:
                         conv_el = vasprun.converged_electronic
                         conv_ionic = vasprun.converged_ionic
-                    if conv_el and conv_ionic:
-                        is_converged = True                    
-        return is_converged, conv_el, conv_ionic
+            # get convergence from OUTCAR
+            else:
+                conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(self.path,'OUTCAR'))
+        return conv_el, conv_ionic
 
 
     def _parse_kwargs(self,**kwargs):

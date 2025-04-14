@@ -49,8 +49,7 @@ class Job:
 
         if outputs:
             self.get_output_properties()
-        
-        
+         
         if name:
             self.name = name
         elif self.job_settings:
