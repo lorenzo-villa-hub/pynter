@@ -80,18 +80,18 @@ def get_convergence_from_outcar(file='OUTCAR'):
         
         ibrion = int(parameters['IBRION'])
         nelm = int(parameters['NELM'])
-        
-        if n_electronic_steps < nelm:
-            is_converged_electronic = True
-        if ibrion in [0,1,2,3]:
-            if is_job_finished:
+        if is_job_finished:            
+            if n_electronic_steps < nelm:
+                is_converged_electronic = True
+            if ibrion in [0,1,2,3]:
                 return  is_converged_electronic, is_converged_ionic
-        elif ibrion == -1 :
-            if is_job_finished:
+            elif ibrion == -1 :
                 return is_converged_electronic, True
+            else:
+                warnings.warn('Fast convergence check from OUTCAR not yet implemented for IBRION > 3')
+                return is_converged_electronic, None
         else:
-            warnings.warn('Fast convergence check from OUTCAR not yet implemented for IBRION > 3')
-            return is_converged_electronic, None
+            return is_converged_electronic, is_converged_ionic
 
     except FileNotFoundError:
         warnings.warn(f'{file} not found')

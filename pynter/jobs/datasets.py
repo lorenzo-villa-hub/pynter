@@ -1,4 +1,5 @@
 
+import sys
 import os
 import os.path as op
 import warnings
@@ -38,7 +39,7 @@ def _check_job_script(job_script_filenames,files):
     return check,job_script_filename
 
 
-def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,jobs_kwargs=None):
+def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,verbose=False,jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder containing jobs are selected based on the presence of the file job_script_filename
@@ -54,6 +55,8 @@ def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,jobs_
         Sort list of jobs by features. If False or None jobs are not sorted. The default is 'name'.
     load_outputs : (bool)
         Load job outputs. The default is True.
+    verbose : (bool)
+        Print importing log on screen.
     jobs_kwargs : (dict), optional
         Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
         from directory for each job class.
@@ -70,9 +73,18 @@ def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,jobs_
         if files != []:
             check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)
             if check_job_script:
-                job = get_job_from_directory(path=root,job_script_filename=job_script_filename,
+                try:
+                    job = get_job_from_directory(path=root,job_script_filename=job_script_filename,
                                            load_outputs=load_outputs,jobs_kwargs=jobs_kwargs)
+                except KeyboardInterrupt:
+                    print("Keyboard interrupt detected. Exiting gracefully.")
+                    sys.exit(0)
+                except Exception as e:
+                    warnings.warn(f'Importing Job from {root} failed: {e}')
+                    job = None
                 if job:
+                    if verbose:
+                        print(f'{job.jobclass} imported from {job.path}')
                     jobs.append(job)
     if sort:
         if not isinstance(sort, list):
@@ -212,7 +224,7 @@ class Dataset:
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filenames='job.sh',sort='name',load_outputs=True,jobs_kwargs=None): 
+    def from_directory(path=None,job_script_filenames='job.sh',sort='name',load_outputs=True,verbose=False,jobs_kwargs=None): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -221,20 +233,26 @@ class Dataset:
         ----------
         path : (str)
             Parent directory of the dataset. If None the current wdir is used.
-       job_script_filenames : (str or list), optional
+       job_script_filenames : (str or list)
             Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
-            file names are present. The default is 'job.sh'.
-        sort : (str or list), optional
+            file names are present.
+        sort : (str or list)
             Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
         load_outputs : (bool)
-            Load job outputs. The default is True.
-        jobs_kwargs : (dict), optional
+            Load job outputs.
+        verbose : (bool)
+            Print importing log on screen.
+        jobs_kwargs : (dict)
             Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
             from directory for each job class.
         """
         path = path if path else os.getcwd()
-        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort=sort,
-                         load_outputs=load_outputs,jobs_kwargs=jobs_kwargs) 
+        jobs = find_jobs(path,
+                         job_script_filenames=job_script_filenames,
+                         sort=sort,
+                         load_outputs=load_outputs,
+                         verbose=verbose,
+                         jobs_kwargs=jobs_kwargs) 
         
         return  Dataset(path=path,jobs=jobs,sort=sort)
     
@@ -333,7 +351,8 @@ class Dataset:
         return
 
     
-    def add_jobs_from_directory(self,path,job_script_filenames='job.sh',sort='name',load_outputs=True,regroup=True):
+    def add_jobs_from_directory(self,path,job_script_filenames='job.sh',sort='name',
+                                load_outputs=True,regroup=True,verbose=False,jobs_kwargs=None):
         """
         Add jobs to the Dataset searching all folders and subfolders contained in given path. 
         Jobs are selected based on where the job bash script is present. 
@@ -350,9 +369,19 @@ class Dataset:
             Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
         regroup : (bool), optional
             Regroup jobs after adding new jobs list, self.path is set to the commonpath. The default is True.
+        verbose : (bool)
+            Print importing log on screen.
+        jobs_kwargs : (dict)
+            Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
+            from directory for each job class.
         """        
         path = op.abspath(path)
-        jobs = find_jobs(path,job_script_filenames=job_script_filenames,sort=sort,load_outputs=load_outputs)
+        jobs = find_jobs(path,
+                         job_script_filenames=job_script_filenames,
+                         sort=sort,
+                         load_outputs=load_outputs,
+                         verbose=verbose,
+                         jobs_kwargs=jobs_kwargs)
         self.add_jobs(jobs,False)
         if regroup:
             commonpath = op.commonpath([path,self.path])
