@@ -79,7 +79,7 @@ class VaspJob(Job):
         if d["outputs"] and "Vasprun" in d["outputs"].keys():
             del d["outputs"]["Vasprun"] # Vasprun has no from_dict
         
-        d["is_converged"] = self.is_converged
+        #d["is_converged"] = self.is_converged
         # BandStructureSymmLine has problems with JSON encoding
         d["band_structure"] = json.loads(json.dumps(self.band_structure,cls=MontyEncoder)) if kwargs['get_band_structure'] else None
         return d
@@ -134,7 +134,6 @@ class VaspJob(Job):
         vaspjob = VaspJob(path,inputs,job_settings,outputs,job_script_filename,name)
         
         vaspjob._band_structure = MontyDecoder().process_decoded(d['band_structure']) if d['band_structure'] else None
-        vaspjob._is_converged = d['is_converged']
         if outputs and 'ComputedStructureEntry' in outputs.keys():
             for k,v in vaspjob.computed_entry.data.items():
                 if k not in vaspjob._default_data_computed_entry:
@@ -240,7 +239,10 @@ class VaspJob(Job):
 
     @property
     def band_structure(self):
-        return self._band_structure
+        if hasattr(self, '_band_structure'):
+            return self._band_structure
+        else:
+            return None
 
     
     @property
@@ -597,9 +599,10 @@ class VaspJob(Job):
 
     def _get_convergence(self):
         """
-        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        Check electronic and ionic convergence. Returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary, 
-        for electronic and ionic convergence.
+        for electronic and ionic convergence. 
+        Reads Vasprun attributes if Vasprun object is present in outputs, otherwise reads from OUTCAR.  
         
         """
         conv_el, conv_ionic = None, None
@@ -614,7 +617,7 @@ class VaspJob(Job):
                         conv_el = vasprun.converged_electronic
                         conv_ionic = vasprun.converged_ionic
             # get convergence from OUTCAR
-            else:
+            elif os.path.exists(op.join(self.path,'OUTCAR')):
                 conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(self.path,'OUTCAR'))
         return conv_el, conv_ionic
 
