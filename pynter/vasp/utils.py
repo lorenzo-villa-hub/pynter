@@ -60,7 +60,7 @@ def get_convergence_from_outcar(file='OUTCAR'):
                 return  is_converged_electronic, is_converged_ionic
         elif ibrion == -1 :
             if is_job_finished:
-                return is_converged_electronic
+                return is_converged_electronic, True
         else:
             warnings.warn('Fast convergence check from OUTCAR not yet implemented for IBRION > 3')
 
