@@ -61,7 +61,6 @@ def get_convergence_from_outcar(file='OUTCAR'):
     is_converged_electronic (bool)
     is_converged_ionic (bool)
     """
-    
     try:
         with open(file, "r") as f:
             lines = f.readlines()      
