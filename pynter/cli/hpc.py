@@ -127,7 +127,7 @@ def execute_command(command,periodic=False):
 
 
 def setup_job(parser):
-    jsf = JobSettings().filename
+    jsf = SETTINGS['job_script_filename']
     parser.add_argument('-p','--path',help='Job path (default: %(default)s)',required=False,type=str,
                         default=os.getcwd(),metavar='',dest='path')
     parser.add_argument('-dry','--dry-run',action='store_true',help='Dry run with rsync (default: %(default)s)',default=False,dest='dry_run')

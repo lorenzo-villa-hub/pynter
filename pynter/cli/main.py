@@ -15,7 +15,6 @@ from pynter.cli.analysis import setup_analysis
 from pynter.cli.config import setup_config, run_config
 from pynter.cli.defects import setup_defects
 from pynter.cli.hpc import setup_hpc
-from pynter.cli.inputs import setup_inputs
 from pynter.cli.materials_project import setup_mp_database
 from pynter.cli.plotter import setup_plotter
 from pynter.cli.slurm import setup_job_script
@@ -47,7 +46,6 @@ def main():
     setup_config(subparsers)
     setup_defects(subparsers)
     setup_hpc(subparsers)
-    setup_inputs(subparsers)
     setup_job_script(subparsers)
     setup_mp_database(subparsers)
     setup_phase_diagram(subparsers)

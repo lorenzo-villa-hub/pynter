@@ -16,6 +16,7 @@ from pprint import pprint
 #from pymatgen.electronic_structure.dos import FermiDos # complete dos from_dict bug
 from pynter.vasp.pmg.pmg_electronic_structure_dos import CompleteDos
 
+from pynter import SETTINGS
 from pynter.jobs.datasets import Dataset
 from pynter.jobs.vasp.vasp_jobs import VaspJob
 from pynter.hpc.slurm import JobSettings
@@ -24,7 +25,7 @@ from pynter.defects.analysis import DefectsAnalysis
 from pynter.defects.corrections import get_kumagai_correction_from_jobs
 from pynter.phase_diagram.chempots import Chempots, Reservoirs
 from pynter.tools.utils import save_object_as_json, get_object_from_json
-from pynter.cli import inputs
+#from pynter.cli import inputs
 from pynter.cli.utils import get_dict_from_line_string, round_floats
 
 
@@ -34,8 +35,8 @@ def setup_defects(subparsers):
     parser_defects = subparsers.add_parser('defects',help='Import and analyse defect calculations. Use with extreme care.')
     subparsers_defects = parser_defects.add_subparsers()
 
-    parser_inputs = subparsers_defects.add_parser('inputs',help='Create inputs for VASP DFT calculations')
-    setup_inputs(parser_inputs)
+    # parser_inputs = subparsers_defects.add_parser('inputs',help='Create inputs for VASP DFT calculations')
+    # setup_inputs(parser_inputs)
     
     parser_import = subparsers_defects.add_parser('import',help='Create defect entries from VASP DFT calculations')
     setup_import(parser_import)
@@ -99,7 +100,7 @@ def create_vasp_inputs(args):
 
 
 def setup_import(parser):
-    job_script_filename = JobSettings().filename
+    job_script_filename = SETTINGS['job_script_filename']
     parser.add_argument('-pb','--path-bulk',help='Path to bulk calculation',required=True,type=str,metavar='',dest='path_bulk')
     parser.add_argument('-p','--path',help='Path to defect calculations, can contain wildcards (default: %(default)s)',required=False,type=str,default=os.getcwd(),metavar='',dest='path')
     

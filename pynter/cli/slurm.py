@@ -19,8 +19,8 @@ def setup_job_script(subparsers):
 
 def parse_job_script_args(parser):
     shdef = JobSettings()
-    parser.add_argument('--filename',help='File name (default: %(default)s)',required=False,default=shdef.filename,type=str,metavar='',dest='filename')
-    parser.add_argument('--lines',action='append',help='Add line to script',required=False,default=shdef.script_lines,type=str,metavar='',dest='script_lines')
+    parser.add_argument('--filename',help='File name (default: %(default)s)',required=False,default=shdef['filename'],type=str,metavar='',dest='filename')
+    parser.add_argument('--lines',action='append',help='Add line to script',required=False,default=shdef['script_lines'],type=str,metavar='',dest='script_lines')
 
     sbatch = Sbatch()
     for key in sbatch.arguments:
