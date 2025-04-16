@@ -17,6 +17,8 @@ import re
 
 from monty.json import MontyDecoder, MontyEncoder
 
+import ase.io
+
 from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
 from pymatgen.io.vasp.outputs import Vasprun, Oszicar
 from pymatgen.core.structure import Structure
@@ -34,8 +36,6 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
 
 
-#def _get_vasp_outputs()
-
 
 def _read_vasprun(path,**kwargs):
     if 'parse_dos' not in kwargs.keys():
@@ -48,7 +48,23 @@ def _read_vasprun(path,**kwargs):
             return None
     else:
         warnings.warn('"vasprun.xml" file is not present in Job directory')
+
+
+def get_vasp_outputs(path,get_vasprun=True,get_ase_atoms=False,**kwargs):
+    outputs = {}
+    if get_vasprun:
+        outputs['Vasprun'] = _read_vasprun(path,**kwargs)
+    elif os.path.exists(op.join(path,'OUTCAR')):
+        conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(path,'OUTCAR'))
+        outputs['convergence'] = {'electronic':conv_el, 'ionic':conv_ionic}  
         
+    if get_ase_atoms:
+        outputs['Atoms'] = ase.io.read(op.join(path,'vasprun.xml'),index=-1) #read only last structure
+        
+    return outputs
+
+
+
 
 class VaspJob(Job):
  
@@ -78,9 +94,7 @@ class VaspJob(Job):
         d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
         if d["outputs"] and "Vasprun" in d["outputs"].keys():
             del d["outputs"]["Vasprun"] # Vasprun has no from_dict
-        
-        #d["is_converged"] = self.is_converged
-        # BandStructureSymmLine has problems with JSON encoding
+
         d["band_structure"] = json.loads(json.dumps(self.band_structure,cls=MontyEncoder)) if kwargs['get_band_structure'] else None
         return d
 
@@ -143,7 +157,12 @@ class VaspJob(Job):
         
     
     @staticmethod
-    def from_directory(path=None,job_script_filename=None,load_outputs=True,parse_vasprun=True,**kwargs):
+    def from_directory(path=None,
+                       job_script_filename=None,
+                       load_outputs=True,
+                       get_vasprun=True,
+                       get_ase_atoms=False,
+                       **kwargs):
         """
         Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
         Output files are read usign Pymatgen Vasprun class.
@@ -168,10 +187,10 @@ class VaspJob(Job):
         inputs = VaspInput.from_directory(path)
         outputs = {}
         if load_outputs:
-            if parse_vasprun:
-                outputs['Vasprun'] = _read_vasprun(path,**kwargs)
-            else:
-                outputs['convergence'] = {}                
+            outputs = get_vasp_outputs(path,
+                                       get_vasprun=get_vasprun,
+                                       get_ase_atoms=get_ase_atoms,
+                                       **kwargs)             
                 
         job_script_filename = job_script_filename if job_script_filename else JobSettings()['filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
@@ -270,8 +289,10 @@ class VaspJob(Job):
     def complete_dos(self):
         if 'complete_dos' in self.computed_entry.data.keys():
             return self.computed_entry.data['complete_dos']
+        elif self.vasprun:
+            return self.vasprun.complete_dos
         else:
-            raise ValueError('CompleteDos not present in ComputedStructureEntry data')
+            raise ValueError('CompleteDos not present in ComputedStructureEntry data or Vasprun')
             
 
     @property
@@ -363,7 +384,7 @@ class VaspJob(Job):
     @property
     def is_converged(self):
         """
-        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        Returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
         return self.is_converged_electronic and self.is_converged_ionic
@@ -371,7 +392,7 @@ class VaspJob(Job):
     @property
     def is_converged_electronic(self):
         """
-        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        Returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
         if 'convergence' in self.outputs.keys():
@@ -382,7 +403,7 @@ class VaspJob(Job):
     @property
     def is_converged_ionic(self):
         """
-        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        Returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
         if 'convergence' in self.outputs.keys():
@@ -474,7 +495,11 @@ class VaspJob(Job):
         return
     
     
-    def get_outputs(self,sync=False,parse_vasprun=True,get_output_properties=True,**kwargs):
+    def get_outputs(self,sync=False,
+                    get_vasprun=True,
+                    get_ase_atoms=False,
+                    get_output_properties=True,
+                    **kwargs):
         """
         Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
         read with Pymatgen
@@ -490,9 +515,10 @@ class VaspJob(Job):
         """
         if sync:
             self.sync_from_hpc()
-        outputs = {}
-        if parse_vasprun:
-            outputs['Vasprun'] = _read_vasprun(self.path,**kwargs)
+        outputs = get_vasp_outputs(self.path,
+                                       get_vasprun=get_vasprun,
+                                       get_ase_atoms=get_ase_atoms,
+                                       **kwargs)   
 
         self.outputs = outputs
         if get_output_properties:
@@ -515,13 +541,14 @@ class VaspJob(Job):
             'parameters','actual_kpoints','ionic_steps'.
         extra_data : (list), optional
             List of attributes of Vasprun to add to the default parsed in ComputedStructureEntry.
-        """  
-        is_converged_electronic, is_converged_ionic = self._get_convergence()
-        self.outputs.update(
-            {'convergence':{
-            'electronic':is_converged_electronic,
-            'ionic':is_converged_ionic}}
-            )            
+        """
+        if 'convergence' not in self.outputs.keys():
+            is_converged_electronic, is_converged_ionic = self._get_convergence()
+            self.outputs.update(
+                {'convergence':{
+                'electronic':is_converged_electronic,
+                'ionic':is_converged_ionic}}
+                )            
         
         self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
         kwargs = self._parse_kwargs(**kwargs)  
@@ -754,7 +781,7 @@ class VaspNEBJob(Job):
                 warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
                 outputs['NEBAnalysis'] = None
         
-        job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+        job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
         return VaspNEBJob(path=path,inputs=inputs,job_settings=job_settings,

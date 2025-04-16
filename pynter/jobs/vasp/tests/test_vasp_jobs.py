@@ -24,9 +24,9 @@ class TestVaspJob(PynterTest):
         import warnings
         warnings.filterwarnings(action='ignore')
         self.path = op.join(self.test_files_path,'Si-BS')
-        self.job = VaspJob.from_directory(self.path,load_outputs=True)
+        self.job = VaspJob.from_directory(self.path,load_outputs=True,parse_dos=True)
 
-    def test_vaspjob_from_directory(self):
+    def test_vaspjob_from_directory(self): 
         path, j = self.path, self.job        
         VaspInputsTest().assert_VaspInput_equal(j.inputs,VaspInput.from_directory(path))
         VaspOutputsTest().assert_Vasprun_equal(j.outputs['Vasprun'], Vasprun(op.join(path,'vasprun.xml')))
