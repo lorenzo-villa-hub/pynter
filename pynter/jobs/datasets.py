@@ -585,24 +585,6 @@ class Dataset:
         return df
             
 
-    def insert_jobs_in_database(self,safety=True,check_convergence=True,**kwargs):
-        """
-        Insert all jobs into relative database based on their class.
-
-        Parameters
-        ----------
-        safety : (bool), optional
-            Ask confirmation to insert every job in database. The default is True.
-        check_convergence: (bool), optional
-            Insert jobs in DB only if is_converged is True. The default is True.
-        **kwargs :
-            Args to pass to specific Job Drone.
-        """
-        for j in self.jobs:
-            j.insert_in_database(safety=safety,check_convergence=check_convergence,**kwargs)
-        return
-
-
     def queue(self,stdouts=False,printout=True):
         """
         Display queue from HPC. If stdouts is True returns out and err strings.

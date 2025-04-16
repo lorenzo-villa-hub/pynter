@@ -569,49 +569,13 @@ class VaspJob(Job):
         
         return
 
-
-    def insert_in_database(self,get_doc_only=False,safety=True,check_convergence=True,**kwargs):
-        """
-        Get VaspJob doc and insert in pynter default database with matgendb's VaspToDbTaskDrone.
-
-        Parameters
-        ----------
-        get_doc_only: (bool), optional
-            Get only doc with get_task_doc but does not perform the insertion into db. Default is False.
-        safety : (bool), optional
-            Ask confirmation to insert job. The default is True.
-        check_convergence: (bool), optional
-            Insert job in DB only if is_converged is True. The default is True.
-        **kwargs :
-            Args to pass to VaspToDbTaskDrone
-            
-        Returns
-        -------
-        drone: 
-            VaspJobDrone object that contains all attributes of VaspToDbTaskDrone.
-        """
-        from pynter.data.database.creator import VaspJobDrone
-        
-        drone = VaspJobDrone(self,**kwargs)
-        if get_doc_only:
-            return drone.get_task_doc_from_files()
-        if safety:
-            inp = input('Are you sure you want to insert VaspJob %s in database "%s", collection "%s"? (y/n) : ' 
-                        %(self.name,drone.database,drone.collection))        
-            if inp in ('y','Y'):
-                assimilate = True
-            else:
-                assimilate = False
-        if assimilate:
-            drone.assimilate_job(check_convergence=check_convergence)
-        return 
-
     
     def write_input(self):
         """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
         self.job_settings.write_bash_file(path=self.path,filename=self.job_settings.filename)
         self.inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
         return
+       
 
 
     def _get_band_structure(self,**kwargs):
