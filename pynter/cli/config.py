@@ -67,18 +67,8 @@ def run_config(exclude=None,info=False):
         API_KEY = input('\nMaterials Project API_KEY (default None):')
         API_KEY = API_KEY if API_KEY else None
         
-        print('\nDatabase configuration:')
-        host = input('Host (default: 127.0.0.1 ): ')
-        port = input('Port (default: 27017): ')
-        database = input('Database (default: pynter): ')
-        collection = input('Collection (default vasp): ')
-        
-        
+ 
         job_script_filename = job_script_filename if job_script_filename else 'job.sh'
-        host = host if host else '127.0.0.1'
-        port = port if port else 27017
-        database = database if database else 'pynter'
-        collection = collection if collection else 'vasp'
         
         config = get_config_from_default_file()
         config.update({'HPC': 
@@ -89,15 +79,6 @@ def run_config(exclude=None,info=False):
         
         config['job_script_filename'] = job_script_filename
         config['sbatch']['account'] = project_id
-        
-        config.update({'dbconfig': 
-                          {'vasp': 
-                                {'collection': collection,
-                                'database': database,
-                                'host': host,
-                                'password': None,
-                                'port': port,
-                                'user': None}}})
                 
         with open(os.path.join(filepath,filename),'w+') as f:
             yaml.dump(config,f) 

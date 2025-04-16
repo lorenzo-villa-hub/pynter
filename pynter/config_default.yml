@@ -3,14 +3,6 @@ HPC:
   hostname: null
   localdir: /home
   remotedir: null
-dbconfig:
-  vasp:
-    collection: vasp
-    database: pynter
-    host: 127.0.0.1
-    password: null
-    port: 27017
-    user: null
 sbatch:
   account: ''
   error: err.txt

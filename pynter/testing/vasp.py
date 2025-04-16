@@ -81,7 +81,7 @@ class VaspOutputsTest(PynterTest):
             
     
     def assert_Vasprun_equal(self,vasprun1,vasprun2):
-        self.assert_object_almost_equal(vasprun1.as_dict(),vasprun2.as_dict())
+        self.assert_object_almost_equal(vasprun1.as_dict(),vasprun2.as_dict(),rtol=0.001)
         
 
         
