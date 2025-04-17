@@ -79,11 +79,11 @@ def get_scancel_command(*args):
 class JobManager:
     
     
-    def __init__(self,job):
+    def __init__(self,job,hostname=None):
         """
         Class to run and manage job both remotely and/or locally.
         """
-        self.hostname = SETTINGS['HPC']['hostname']
+        self.hostname = hostname or job._hostname
         self.job = job
 
 

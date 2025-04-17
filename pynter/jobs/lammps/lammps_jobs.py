@@ -77,6 +77,9 @@ class LammpsJob(Job):
         self._data_filename = data_filename
         self._log_filename = log_filename
         
+        if 'data' in self.inputs.keys():
+            self._initial_structure = self.inputs['data'].structure
+            
     
     def as_dict(self):        
         """
@@ -262,7 +265,13 @@ class LammpsJob(Job):
     
     @property
     def initial_structure(self):
-        return self.data.structure        
+        if hasattr(self, '_initial_structure'):
+            return self._initial_structure
+        elif 'data' in self.inputs.keys():
+            self._initial_structure = self.inputs['data'].structure
+            return self._initial_structure
+        else:
+            return None      
     
     
     @property

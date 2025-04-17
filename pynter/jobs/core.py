@@ -13,7 +13,13 @@ from pynter.jobs.manager import JobManager
 
 class Job:
     
-    def __init__(self,path=None,inputs=None,job_settings=None,outputs=None,job_script_filename=None,name=None):
+    def __init__(self,
+                 path=None,
+                 inputs=None,
+                 job_settings=None,
+                 outputs=None,
+                 job_script_filename=None,
+                 name=None):
         """
         Class to control and organize inputs and outputs of a generic job.
 
