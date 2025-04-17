@@ -19,7 +19,10 @@ class Job:
                  job_settings=None,
                  outputs=None,
                  job_script_filename=None,
-                 name=None):
+                 name=None,
+                 hostname=None,
+                 localdir=None,
+                 remotedir=None):
         """
         Class to control and organize inputs and outputs of a generic job.
 
@@ -45,13 +48,14 @@ class Job:
         self.outputs = outputs
         self.job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         
-        self._localdir = LOCAL_DIR 
-        self._remotedir = REMOTE_DIR
+        self.hostname = hostname or SETTINGS['HPC']['hostname']
+        self.localdir = localdir or LOCAL_DIR 
+        self.remotedir = remotedir or REMOTE_DIR
         
         self.path_in_hpc, self.path_relative, self.is_path_on_hpc = get_path_relative_to_hpc(
                                                         path=self.path,
-                                                        localdir=self._localdir,
-                                                        remotedir=self._remotedir)
+                                                        localdir=self.localdir,
+                                                        remotedir=self.remotedir)
 
         if outputs:
             self.get_output_properties()
@@ -228,7 +232,11 @@ class Job:
         if self.is_path_on_hpc:
             raise ValueError('Cannot sync from remote machine, only from local')
         localdir = op.abspath(self.path)
-        stdout,stderr = rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir,exclude=exclude,dry_run=dry_run)
+        stdout,stderr = rsync_from_hpc(hostname=self.hostname,
+                                       remotedir=self.path_in_hpc,
+                                       localdir=localdir,
+                                       exclude=exclude,
+                                       dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
@@ -259,7 +267,11 @@ class Job:
         if self.is_path_on_hpc:
             raise ValueError('Cannot sync from remote machine, only from local')
         localdir = op.abspath(self.path)
-        stdout,stderr = rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
+        stdout,stderr = rsync_to_hpc(hostname=self.hostname,
+                                     localdir=localdir,
+                                     remotedir=self.path_in_hpc,
+                                     exclude=exclude,
+                                     dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
@@ -287,7 +299,15 @@ class Job:
         
 
 
-def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,jobs_kwargs=None):   
+def get_job_from_directory(
+                            path=None,
+                            job_script_filename=None,
+                            load_outputs=True,
+                            jobs_kwargs=None,
+                            hostname=None,
+                            localdir=None,
+                            remotedir=None,
+                            ):   
     """
     Get Job object from a directory. The job type is selected based on the content of the folder.
     - If ("INCAR","KPOINTS","POSCAR","POTCAR") files are present, VaspJob is initialized.
@@ -323,7 +343,7 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
     from pynter.jobs.lammps.lammps_jobs import LammpsJob, input_default_filename
     
     path = path if path else os.getcwd()
-    job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+    job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         
     for root,dirs,files in os.walk(path):   
         # VASP
@@ -333,13 +353,26 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
                 kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
             else:
                 kwargs = {}
-            j = VaspJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
+            j = VaspJob.from_directory(
+                        path=path,
+                        job_script_filename=job_script_filename,
+                        load_outputs=load_outputs,
+                        hostname=hostname,
+                        localdir=localdir,
+                        remotedir=remotedir
+                        **kwargs)
             return j
 
         # VASP + NEB
         elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
             path = op.abspath(root)
-            j = VaspNEBJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs)
+            j = VaspNEBJob.from_directory(
+                                        path=path,
+                                        job_script_filename=job_script_filename,
+                                        load_outputs=load_outputs,
+                                        hostname=hostname,
+                                        localdir=localdir,
+                                        remotedir=remotedir)
             return j
 
         # LAMMPS
@@ -350,5 +383,12 @@ def get_job_from_directory(path=None,job_script_filename=None,load_outputs=True,
                 kwargs = {}
             lammps_input_filename = kwargs['input_filename'] if 'input_filename' in kwargs.keys() else input_default_filename
             if lammps_input_filename in files:
-                j = LammpsJob.from_directory(path,job_script_filename=job_script_filename,load_outputs=load_outputs,**kwargs)
+                j = LammpsJob.from_directory(
+                                            path=path,
+                                            job_script_filename=job_script_filename,
+                                            load_outputs=load_outputs,
+                                            hostname=hostname,
+                                            localdir=localdir,
+                                            remotedir=remotedir
+                                            **kwargs)
                 return j

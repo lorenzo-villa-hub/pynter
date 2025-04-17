@@ -15,6 +15,9 @@ from pynter.hpc.slurm import JobSettings
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
 
+
+sort_default_attr = 'path'
+
 def _check_job_script(job_script_filenames,files):
     """
     Check if job script names are in a list of files. Can be either a str or list of str
@@ -39,7 +42,15 @@ def _check_job_script(job_script_filenames,files):
     return check,job_script_filename
 
 
-def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,verbose=False,jobs_kwargs=None):
+def find_jobs(path,
+              job_script_filenames=None,
+              sort=sort_default_attr,
+              load_outputs=True,
+              verbose=False,
+              hostname=None,
+              localdir=None,
+              remotedir=None,
+              jobs_kwargs=None):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder containing jobs are selected based on the presence of the file job_script_filename
@@ -74,8 +85,13 @@ def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,verbo
             check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)
             if check_job_script:
                 try:
-                    job = get_job_from_directory(path=root,job_script_filename=job_script_filename,
-                                           load_outputs=load_outputs,jobs_kwargs=jobs_kwargs)
+                    job = get_job_from_directory(path=root,
+                                                 job_script_filename=job_script_filename,
+                                                 load_outputs=load_outputs,
+                                                 hostname=hostname,
+                                                 localdir=localdir,
+                                                 remotedir=remotedir,
+                                                 jobs_kwargs=jobs_kwargs)
                 except KeyboardInterrupt:
                     print("Keyboard interrupt detected. Exiting gracefully.")
                     sys.exit(0)
@@ -99,7 +115,14 @@ def find_jobs(path,job_script_filenames=None,sort='name',load_outputs=True,verbo
 
 class Dataset:
     
-    def __init__(self,jobs=None,path=None,name=None,sort='name'): 
+    def __init__(self,
+                 jobs=None,
+                 path=None,
+                 name=None,
+                 sort='path',
+                 hostname=None,
+                 localdir=None,
+                 remotedir=None): 
         """
         Class to store sets of calculations
 
@@ -113,7 +136,7 @@ class Dataset:
         name : (str), optional
             Name to assign to dataset. The default is None. If None the folder name is used.
         sort : (str or list), optional
-            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
+            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'path'.
         """
         if jobs:
             path = op.commonpath([j.path for j in jobs])
@@ -128,13 +151,14 @@ class Dataset:
             if sort:
                 self.sort_jobs(inplace=True,features=sort)
 
-        self._localdir = LOCAL_DIR
-        self._remotedir = REMOTE_DIR
+        self.hostname = hostname or SETTINGS['HPC']['hostname']
+        self.localdir = localdir or LOCAL_DIR
+        self.remotedir = localdir or REMOTE_DIR
         
         self.path_in_hpc, self.path_relative, self.is_path_on_hpc = get_path_relative_to_hpc(
                                                         path=self.path,
-                                                        localdir=self._localdir,
-                                                        remotedir=self._remotedir)
+                                                        localdir=self.localdir,
+                                                        remotedir=self.remotedir)
 
     def __str__(self):     
         return self.jobs_table().__str__()
@@ -155,7 +179,10 @@ class Dataset:
              "path_relative":self.path_relative,
              "name":self.name,
              "jobs":[j.as_dict(**kwargs) for j in self.jobs],
-             "sort":self.sort}
+             "sort":self.sort,
+             "hostname":self.hostname,
+             "localdir":self.localdir,
+             "remotedir":self.remotedir}
         return d
     
 
@@ -194,8 +221,16 @@ class Dataset:
         for j in d['jobs']:
             jobs.append(MontyDecoder().process_decoded(j))
         sort = d['sort']
-        
-        return cls(jobs,path,name,sort)
+        hostname = d['hostname'] if 'hostname' in d.keys() else None
+        localdir = d['localdir'] if 'localdir' in d.keys() else None
+        remotedir = d['remotedir'] if 'remotedir' in d.keys() else None
+        return cls(jobs=jobs,
+                   path=path,
+                   name=name,
+                   sort=sort,
+                   hostname=hostname,
+                   localdir=localdir,
+                   remotedir=remotedir)
     
     
     @staticmethod
@@ -224,7 +259,15 @@ class Dataset:
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filenames='job.sh',sort='name',load_outputs=True,verbose=False,jobs_kwargs=None): 
+    def from_directory(path=None,
+                       job_script_filenames='job.sh',
+                       sort='path',
+                       load_outputs=True,
+                       verbose=False,
+                       hostname=None,
+                       localdir=None,
+                       remotedir=None,
+                       jobs_kwargs=None): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -237,7 +280,7 @@ class Dataset:
             Filename of job bash script. The default is 'job.sh'. Can also be a list of strings if multiple 
             file names are present.
         sort : (str or list)
-            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'name'.
+            Sort list of jobs by feature. If False or None jobs are not sorted. The default is 'path'.
         load_outputs : (bool)
             Load job outputs.
         verbose : (bool)
@@ -390,7 +433,7 @@ class Dataset:
  
 
     def create_job(self,cls,group='',nodes='',inputs=None,job_settings=None,
-                   outputs=None,job_script_filename='job.sh',name=None):
+                   outputs=None,job_script_filename='job.sh',name=None,**kwargs):
         """
         Create Job object and add it to the dataset
 
@@ -416,7 +459,7 @@ class Dataset:
         
         path = op.join(self.path,group,nodes)        
         job = cls(path=path,inputs=inputs,job_settings=job_settings,outputs=outputs,
-                       job_script_filename=job_script_filename,name=name)
+                       job_script_filename=job_script_filename,name=name,**kwargs)
         job.group = group
         job.nodes = nodes
         if self.jobs:
@@ -763,7 +806,11 @@ class Dataset:
         if self.is_path_on_hpc:
             raise ValueError('Cannot sync from remote machine, only from local')
         localdir = op.abspath(self.path)
-        stdout,stderr = rsync_from_hpc(remotedir=self.path_in_hpc,localdir=localdir,exclude=exclude,dry_run=dry_run)
+        stdout,stderr = rsync_from_hpc(hostname=self.hostname,
+                                       remotedir=self.path_in_hpc,
+                                       localdir=localdir,
+                                       exclude=exclude,
+                                       dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:
@@ -793,7 +840,11 @@ class Dataset:
         if self.is_path_on_hpc:
             raise ValueError('Cannot sync from remote machine, only from local')
         localdir = op.abspath(self.path)
-        stdout,stderr = rsync_to_hpc(localdir=localdir,remotedir=self.path_in_hpc,exclude=exclude,dry_run=dry_run)
+        stdout,stderr = rsync_to_hpc(hostname=self.hostname,
+                                     localdir=localdir,
+                                     remotedir=self.path_in_hpc,
+                                     exclude=exclude,
+                                     dry_run=dry_run)
         if stdouts:
             return stdout,stderr
         else:

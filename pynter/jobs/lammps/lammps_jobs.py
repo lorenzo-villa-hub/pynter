@@ -52,7 +52,10 @@ class LammpsJob(Job):
                  name=None,
                  input_filename=input_default_filename,
                  data_filename=data_default_filename,
-                 log_filename=log_default_filename):
+                 log_filename=log_default_filename,
+                 hostname=None,
+                 localdir=None,
+                 remotedir=None):
         """
         Class to control and organize inputs and outputs of a LAMMPS job.
 
@@ -99,10 +102,12 @@ class LammpsJob(Job):
              "inputs": jsanitize(self.inputs),             
              "job_settings": self.job_settings.as_dict(),
              "job_script_filename":self.job_script_filename,
-             "name":self.name}
+             "name":self.name,
+             "hostname":self.hostname,
+             "localdir":self.localdir,
+             "remotedir":self.remotedir}
         
         d["outputs"] = jsanitize(self.outputs)       
-        d["is_converged"] = self.is_converged
         return d
 
 
@@ -154,10 +159,20 @@ class LammpsJob(Job):
         job_settings = JobSettings.from_dict(d['job_settings'])
         job_script_filename = d['job_script_filename']
         name = d['name']
+        hostname = d['hostname'] if 'hostname' in d.keys() else None
+        localdir = d['localdir'] if 'localdir' in d.keys() else None
+        remotedir = d['remotedir'] if 'remotedir' in d.keys() else None
         outputs= MontyDecoder().process_decoded(d['outputs'])
         
-        lammpsjob = LammpsJob(path,inputs,job_settings,outputs,job_script_filename,name)
-        lammpsjob._is_converged = d['is_converged']
+        lammpsjob = LammpsJob(path=path,
+                          inputs=inputs,
+                          job_settings=job_settings,
+                          outputs=outputs,
+                          job_script_filename=job_script_filename,
+                          name=name,
+                          hostname=hostname,
+                          localdir=localdir,
+                          remotedir=remotedir)
         
         return lammpsjob
         
@@ -170,7 +185,11 @@ class LammpsJob(Job):
                         data_filename=data_default_filename,
                         log_filename=log_default_filename,
                         atom_style='atomic',
-                        load_outputs=True,**kwargs):
+                        load_outputs=True,
+                        hostname=None,
+                        localdir=None,
+                        remotedir=None,
+                        **kwargs):
         """
         Builds lammpsjob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
         Output files are read usign Pymatgen Vasprun class.
@@ -185,7 +204,7 @@ class LammpsJob(Job):
         load_outputs : (bool)
             Load job outputs. The default is True.
         kwargs : (dict)
-            Arguments to pass to Vasprun parser.
+            Arguments to pass to parse_log_lammps.
         Returns
         -------
         lammpsjob object.
@@ -204,10 +223,18 @@ class LammpsJob(Job):
         job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
-        return LammpsJob(path=path,inputs=inputs,job_settings=job_settings,
-                       outputs=outputs,job_script_filename=job_script_filename,
-                       input_filename=input_filename,data_filename=data_filename,
-                       log_filename=log_filename)
+        return LammpsJob(path=path,
+                         inputs=inputs,
+                         job_settings=job_settings,
+                         outputs=outputs,
+                         job_script_filename=job_script_filename,
+                         input_filename=input_filename,
+                         data_filename=data_filename,
+                         log_filename=log_filename,
+                         hostname=hostname,
+                         localdir=localdir,
+                         remotedir=remotedir
+                         )
 
 
     @staticmethod
@@ -286,11 +313,19 @@ class LammpsJob(Job):
     
     @property
     def is_converged(self):
-        if hasattr(self,'_is_converged'):
-            return self._is_converged
-        else:
-            return None
-        
+        if self.outputs:
+            if 'convergence' in self.outputs.keys():
+                return self.outputs['convergence']
+    
+    def get_inputs(self,sync=False,atom_style='atomic'):
+        if sync:
+            self.sync_from_hpc()
+        inputs = {}
+        inputs['inp'] = LammpsInputFile.from_file(op.join(self.path,self.input_filename))
+        if os.path.isfile(op.join(self.path,self.data_filename)):
+            inputs['data'] = LammpsData.from_file(op.join(self.path,self.data_filename),atom_style=atom_style)
+        return inputs
+    
                 
     def get_outputs(self,sync=False,log_filename=log_default_filename,get_output_properties=True,**kwargs):
         """
@@ -324,7 +359,7 @@ class LammpsJob(Job):
         
 
     def get_output_properties(self): #initial idea, to implement further based on specific needs
-        self._is_converged = self._get_convergence()
+        self.outputs['convergence'] = self._get_convergence()
         return 
         
     

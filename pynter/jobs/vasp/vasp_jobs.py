@@ -89,7 +89,10 @@ class VaspJob(Job):
              "inputs": self.inputs.as_dict(),             
              "job_settings": self.job_settings.as_dict(),
              "job_script_filename":self.job_script_filename,
-             "name":self.name}
+             "name":self.name,
+             "hostname":self.hostname,
+             "localdir":self.localdir,
+             "remotedir":self.remotedir}
         
         d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
         if d["outputs"] and "Vasprun" in d["outputs"].keys():
@@ -143,9 +146,20 @@ class VaspJob(Job):
         job_settings = JobSettings.from_dict(d['job_settings'])
         job_script_filename = d['job_script_filename']
         name = d['name']
+        hostname = d['hostname'] if 'hostname' in d.keys() else None
+        localdir = d['localdir'] if 'localdir' in d.keys() else None
+        remotedir = d['remotedir'] if 'remotedir' in d.keys() else None
         outputs= MontyDecoder().process_decoded(d['outputs'])
         
-        vaspjob = VaspJob(path,inputs,job_settings,outputs,job_script_filename,name)
+        vaspjob = VaspJob(path=path,
+                          inputs=inputs,
+                          job_settings=job_settings,
+                          outputs=outputs,
+                          job_script_filename=job_script_filename,
+                          name=name,
+                          hostname=hostname,
+                          localdir=localdir,
+                          remotedir=remotedir)
         
         vaspjob._band_structure = MontyDecoder().process_decoded(d['band_structure']) if d['band_structure'] else None
         if outputs and 'ComputedStructureEntry' in outputs.keys():
@@ -162,6 +176,9 @@ class VaspJob(Job):
                        load_outputs=True,
                        get_vasprun=True,
                        get_ase_atoms=False,
+                       hostname=None,
+                       localdir=None,
+                       remotedir=None,
                        **kwargs):
         """
         Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
@@ -195,8 +212,14 @@ class VaspJob(Job):
         job_script_filename = job_script_filename if job_script_filename else JobSettings()['filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
-        return VaspJob(path=path,inputs=inputs,job_settings=job_settings,
-                       outputs=outputs,job_script_filename=job_script_filename)
+        return VaspJob(path=path,
+                       inputs=inputs,
+                       job_settings=job_settings,
+                       outputs=outputs,
+                       job_script_filename=job_script_filename,
+                       hostname=hostname,
+                       localdir=localdir,
+                       remotedir=remotedir)
 
 
     @staticmethod
@@ -632,7 +655,10 @@ class VaspNEBJob(Job):
              "path_relative":self.path_relative,           
              "job_settings": self.job_settings.as_dict(),
              "job_script_filename":self.job_script_filename,
-             "name":self.name}
+             "name":self.name,
+             "hostname":self.hostname,
+             "localdir":self.localdir,
+             "remotedir":self.remotedir}
         
         inputs_as_dict = {}
         inputs_as_dict['structures'] = [s.as_dict() for s in self.structures]
@@ -641,8 +667,6 @@ class VaspNEBJob(Job):
         inputs_as_dict['POTCAR'] = self.potcar.as_dict()
         
         d["inputs"] = inputs_as_dict
-        d["is_step_limit_reached"] = self.is_step_limit_reached
-        d["is_converged"] = self.is_converged
         d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
         
         return d
@@ -686,18 +710,31 @@ class VaspNEBJob(Job):
         job_settings = JobSettings.from_dict(d['job_settings'])
         job_script_filename = d['job_script_filename']
         name = d['name']
+        hostname = d['hostname'] if 'hostname' in d.keys() else None
+        localdir = d['localdir'] if 'localdir' in d.keys() else None
+        remotedir = d['remotedir'] if 'remotedir' in d.keys() else None
         outputs= MontyDecoder().process_decoded(d['outputs'])
         
-        vaspNEBjob = VaspNEBJob(path,inputs,job_settings,outputs,job_script_filename,name)
-        
-        vaspNEBjob._is_step_limit_reached = d['is_step_limit_reached']
-        vaspNEBjob._is_converged = d['is_converged']
-        
+        vaspNEBjob =  VaspNEBJob(path=path,
+                       inputs=inputs,
+                       job_settings=job_settings,
+                       outputs=outputs,
+                       job_script_filename=job_script_filename,
+                       name=name,
+                       hostname=hostname,
+                       localdir=localdir,
+                       remotedir=remotedir)
+                
         return vaspNEBjob
     
     
     @staticmethod
-    def from_directory(path=None,job_script_filename=None,load_outputs=True):
+    def from_directory(path=None,
+                       job_script_filename=None,
+                       load_outputs=True,
+                       hostname=None,
+                       localdir=None,
+                       remotedir=None):
         """
         Builds VaspNEBjob object from data stored in a directory. Inputs dict is constructed
         by reading with Pymatgen INCAR, KPOINTS and POTCAR and creating a series of Structure 
@@ -748,8 +785,14 @@ class VaspNEBJob(Job):
         job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
-        return VaspNEBJob(path=path,inputs=inputs,job_settings=job_settings,
-                       outputs=outputs,job_script_filename=job_script_filename)
+        return VaspNEBJob(path=path,
+                          inputs=inputs,
+                          job_settings=job_settings,
+                          outputs=outputs,
+                          job_script_filename=job_script_filename,
+                          hostname=hostname,
+                          localdir=localdir,
+                          remotedir=remotedir)
 
 
     @staticmethod
@@ -883,14 +926,16 @@ class VaspNEBJob(Job):
     @property
     def is_converged(self):
         """
-        Reads Pymatgen Vasprun object and returns "True" if the calculation is converged,
+        Returns "True" if the calculation is converged,
         or the ionic step limit has been reached reading from the OSZICAR file.
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        if hasattr(self,'_is_converged'):
-            return self._is_converged
-        else:
-            return None
+        is_converged = self.is_required_accuracy_reached
+        if not is_converged:
+            if self.is_step_limit_reached:
+                is_converged = True
+        return is_converged
+
 
 
     @property
@@ -901,7 +946,8 @@ class VaspNEBJob(Job):
         False if file exists but no line is found.
         None if no out.* file exists.
         """
-        return self._get_output_related_attribute('is_required_accuracy_reached')
+        if 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['required_accuracy_reached']
     
     
     @property
@@ -910,7 +956,8 @@ class VaspNEBJob(Job):
         Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
         is equal to the step limit in INCAR file (NSW tag)
         """
-        return self._get_output_related_attribute('is_step_limit_reached')
+        if 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['step_limit_reached']
 
 
     @property
@@ -988,10 +1035,10 @@ class VaspNEBJob(Job):
         """
         Parse outputs properties from VaspNEBJob.outputs.
         """
-        
-        self._is_required_accuracy_reached = self._get_ionic_relaxation_from_outfile()
-        self._is_step_limit_reached = self._get_step_limit_reached()                
-        self._is_converged = self._get_convergence()
+        if 'convergence' not in self.outputs.keys():
+            self.outputs['convergence'] = {}
+        self.outputs['convergence']['required_accuracy_reached'] = self._get_ionic_relaxation_from_outfile()
+        self.outputs['convergence']['step_limit_reached'] = self._get_step_limit_reached() 
 
         return
 
@@ -1032,24 +1079,6 @@ class VaspNEBJob(Job):
                 os.makedirs(image_path)
             Poscar(s).write_file(op.join(image_path,'POSCAR'))
         return
-
-    
-    def _get_convergence(self):
-        """
-        Returns True if:
-            - "reached required accuracy - stopping structural energy minimisation" is found in the most recent out file.
-                OR
-            - Ionic step limit has been reached, which means the step # in OSZICAR file matches the "NSW" tag in INCAR.
-        Returns False if files named out.* exist but the no "reached required accuracy" has been found AND step limit 
-            has not been reached.
-        Returns None if no out.* files have been found.
-        """
-        is_converged = self._get_ionic_relaxation_from_outfile()
-        if not is_converged:
-            if self.is_step_limit_reached:
-                is_converged = True
-            
-        return is_converged     
 
 
     def _get_output_related_attribute(self,attr):

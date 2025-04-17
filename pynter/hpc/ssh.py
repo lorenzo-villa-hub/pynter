@@ -321,7 +321,7 @@ def rsync_to_hpc(
 
 def get_path_relative_to_hpc(path,localdir=None,remotedir=None):
     """
-    Get path in HPC and relative to the local work directory based on settings in config.yml file.
+    Get path in HPC and relative to the local work directory.
 
     Parameters
     ----------
