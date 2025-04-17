@@ -61,6 +61,12 @@ class TestVaspNEBJob(PynterTest):
         warnings.filterwarnings(action='ignore')
         self.path = op.join(self.test_files_path,'NN-VO-NEB')
         self.job = VaspNEBJob.from_directory(self.path)        
+
+    def test_vaspnebjob_convergence(self):
+        job = self.job
+        assert 'convergence' in job.outputs.keys()
+        assert job.is_required_accuracy_reached == None
+        assert job.is_step_limit_reached == None
     
     def test_vaspnebjob_from_directory(self):
         neba = self.job.neb_analysis

@@ -79,7 +79,7 @@ def find_jobs(path,
 
     """
     jobs = []
-    job_script_filenames = job_script_filenames if job_script_filenames else JobSettings().filename 
+    job_script_filenames = job_script_filenames if job_script_filenames else SETTINGS['job_script_filename'] 
     for root , dirs, files in os.walk(path):
         if files != []:
             check_job_script, job_script_filename = _check_job_script(job_script_filenames,files)

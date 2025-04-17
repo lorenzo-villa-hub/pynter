@@ -32,7 +32,13 @@ class TestDataset(PynterTest):
         assert ds_from_json.groups == ['q-1','q0','q1']
         assert ds_from_json.jobs_table().__class__.__name__ == 'DataFrame'
         return        
-        
+
+    def test_is_converged(self):
+        ds = self.ds
+        for job in ds:
+            assert job.outputs == {}
+            assert job.is_converged == None         
+
     def test_select_jobs(self):
         ds = self.ds
         DatasetTest().assert_jobs_equal(ds.select_jobs(groups=['q1']),[ds[4],ds[5]])
@@ -46,9 +52,9 @@ class TestDataset(PynterTest):
         
     def test_sort_jobs(self):
         ds = self.ds
-        DatasetTest().assert_jobs_equal( ds.sort_jobs(features='charge',reset=False), ds.sort_jobs(features='name',reset=False))
+        DatasetTest().assert_jobs_equal( ds.sort_jobs(features='charge',inplace=False), ds.sort_jobs(features='name',inplace=False))
         sorted_jobs = [ds[i] for i in [0,2,4,1,3,5]]
         sorted_ds_test = Dataset(sorted_jobs,path=ds.path,name=ds.name,sort=False)
-        ds.sort_jobs(features='nodes',reset=True)
+        ds.sort_jobs(features='nodes',inplace=True)
         DatasetTest().assert_jobs_equal(ds.jobs,sorted_ds_test.jobs)
     

@@ -299,15 +299,13 @@ class Job:
         
 
 
-def get_job_from_directory(
-                            path=None,
-                            job_script_filename=None,
-                            load_outputs=True,
-                            jobs_kwargs=None,
-                            hostname=None,
-                            localdir=None,
-                            remotedir=None,
-                            ):   
+def get_job_from_directory(path=None,
+                           job_script_filename=None,
+                           load_outputs=True,
+                           hostname=None,
+                           localdir=None,
+                           remotedir=None,
+                           jobs_kwargs=None):   
     """
     Get Job object from a directory. The job type is selected based on the content of the folder.
     - If ("INCAR","KPOINTS","POSCAR","POTCAR") files are present, VaspJob is initialized.
@@ -359,7 +357,7 @@ def get_job_from_directory(
                         load_outputs=load_outputs,
                         hostname=hostname,
                         localdir=localdir,
-                        remotedir=remotedir
+                        remotedir=remotedir,
                         **kwargs)
             return j
 
@@ -389,6 +387,6 @@ def get_job_from_directory(
                                             load_outputs=load_outputs,
                                             hostname=hostname,
                                             localdir=localdir,
-                                            remotedir=remotedir
+                                            remotedir=remotedir,
                                             **kwargs)
                 return j

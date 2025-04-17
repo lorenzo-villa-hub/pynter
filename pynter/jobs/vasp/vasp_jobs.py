@@ -53,7 +53,9 @@ def _read_vasprun(path,**kwargs):
 def get_vasp_outputs(path,get_vasprun=True,get_ase_atoms=False,**kwargs):
     outputs = {}
     if get_vasprun:
-        outputs['Vasprun'] = _read_vasprun(path,**kwargs)
+        vasprun = _read_vasprun(path,**kwargs)
+        if vasprun:
+            outputs['Vasprun'] = vasprun
     elif os.path.exists(op.join(path,'OUTCAR')):
         conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(path,'OUTCAR'))
         outputs['convergence'] = {'electronic':conv_el, 'ionic':conv_ionic}  
@@ -1114,14 +1116,14 @@ class VaspNEBJob(Job):
     def _get_step_limit_reached(self):
         """
         Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
-        is equal to the step limit in INCAR file (NSW tag)
+        is equal to the step limit in INCAR file (NSW tag). If OSZICAR is not present returns None.
         """
         limit_reached = True
         image_dirs = self.image_dirs
         for d in image_dirs:
             if d != image_dirs[0] and d != image_dirs[-1]:
                 if not os.path.isfile(os.path.join(d,'OSZICAR')): # check if OSZICAR files are present 
-                    limit_reached = False
+                    limit_reached = None
                 else:                
                     n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
                     nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
