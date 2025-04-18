@@ -12,7 +12,7 @@ except:
     raise KeyError('"API_KEY" needs to be present in the %s file' %cfgfile)
 
 
-class MPDatabase:
+class  MPDatabase:
     
     def __init__(self,mp_id=None):
         """

@@ -420,7 +420,7 @@ class VaspJob(Job):
         Returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        if 'convergence' in self.outputs.keys():
+        if self.outputs is not None and 'convergence' in self.outputs.keys():
             return self.outputs['convergence']['electronic']
         else:
             return None
@@ -431,7 +431,7 @@ class VaspJob(Job):
         Returns "True" if the calculation is converged,
         "False" if reading failed, and "None" if is not present in the outputs dictionary.
         """
-        if 'convergence' in self.outputs.keys():
+        if self.outputs is not None and 'convergence' in self.outputs.keys():
             return self.outputs['convergence']['ionic']
         else:
             return None
@@ -597,7 +597,7 @@ class VaspJob(Job):
     
     def write_input(self):
         """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
-        self.job_settings.write_bash_file(path=self.path,filename=self.job_settings.filename)
+        self.job_settings.write_bash_file(path=self.path,filename=self.job_settings['filename'])
         self.inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
         return
        
@@ -1063,7 +1063,7 @@ class VaspNEBJob(Job):
         incar.write_file(op.join(path,'INCAR'))
         kpoints.write_file(op.join(path,'KPOINTS'))
         potcar.write_file(op.join(path,'POTCAR'))
-        job_settings.write_bash_file(path=path,filename=job_settings.filename)
+        job_settings.write_bash_file(path=path,filename=job_settings['filename'])
         
         return
 

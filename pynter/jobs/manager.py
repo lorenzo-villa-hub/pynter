@@ -83,7 +83,7 @@ class JobManager:
         """
         Class to run and manage job both remotely and/or locally.
         """
-        self.hostname = hostname or job._hostname
+        self.hostname = hostname or job.hostname
         self.job = job
 
 
