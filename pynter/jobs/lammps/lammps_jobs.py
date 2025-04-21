@@ -20,7 +20,7 @@ from pymatgen.io.lammps.outputs import parse_lammps_log
 
 from pynter.jobs.core import Job
 from pynter.hpc.slurm import JobSettings
-from pynter import LOCAL_DIR
+from pynter import LOCAL_DIR, SETTINGS
 
 
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
@@ -33,7 +33,7 @@ def _parse_lammps_log(path,**kwargs):
         return parse_lammps_log(op.join(path,'log.lammps'),**kwargs)
     except:
         warnings.warn('Reading of log.lammps in "%s" failed'%path)
-        return None
+        return False
 
 input_default_filename = 'input.in'
 data_default_filename = 'structure.data'
@@ -220,7 +220,7 @@ class LammpsJob(Job):
             if op.isfile(op.join(path,log_filename)):
                 outputs['log'] = _parse_lammps_log(path,**kwargs)
         
-        job_script_filename = job_script_filename if job_script_filename else JobSettings().filename
+        job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
         return LammpsJob(path=path,
@@ -377,7 +377,7 @@ class LammpsJob(Job):
         is_converged = None
         if self.outputs:
             if 'log' in self.outputs.keys():
-                if self.log:
+                if self.log is not None:
                     is_converged = False                    
                     if type(self.log[-1]) == pd.DataFrame: # check if last element on the list is a dataframe - maybe revisit this?
                         is_converged = True
