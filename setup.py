@@ -31,8 +31,9 @@ setup(
     ],
     package_data={
         "pynter":["*.yml"],
-        "pynter.vasp":["*.yml"],
-        "pynter.hpc":["*.txt"]
+        "pynter.hpc":["*.txt"],
+        "pynter.lammps":["*.yml"],
+        "pynter.vasp":["*.yml"]
         },
     extra_requires={'test':'pytest'},
     entry_points={
