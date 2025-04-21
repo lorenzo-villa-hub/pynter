@@ -1,0 +1,44 @@
+# LAMMPS input generated from LammpsInputFile with pymatgen v2024.10.3
+
+units metal
+boundary p p p
+atom_style atomic
+box tilt large
+read_data structure.data
+pair_style pace/extrapolation
+pair_coeff * * ../../output_potential4.yaml ../../output_potential4.asi Na Ti Bi O
+# compute per-atom extrapolation grade every 10 steps
+fix pace_gamma all pair 10 pace/extrapolation gamma 1
+# compute maximum extrapolation grade over complete structure
+compute max_pace_gamma all reduce max f_pace_gamma
+# dump extrapolative structures if c_max_pace_gamma > 5, skip otherwise, check every 20 steps
+variable dump_skip equal "c_max_pace_gamma < 5"
+dump pace_dump all custom 20 extrapolative_structures.dump id type x y z f_pace_gamma
+dump_modify pace_dump skip v_dump_skip
+# stop simulation if maximum extrapolation grade exceeds 25
+variable max_pace_gamma equal c_max_pace_gamma
+fix extreme_extrapolation all halt 10 v_max_pace_gamma > 25
+# Starting simulation
+thermo 500
+timestep 0.001
+# dump myDump all atom 500 dump.lammpstrj
+velocity all create 100.0 42
+fix 1 all nvt temp 50 300 0.1
+run 10000
+unfix 1
+fix 1 all npt temp 300 300 0.1 aniso 0 10000 1
+run 20000
+unfix 1
+fix 1 all npt temp 300 300 0.1 aniso 10000 0 1
+run 20000
+unfix 1
+fix 1 all nvt temp 300 2000 0.1 #aniso 0 0 1
+run 68000
+unfix 1
+fix 1 all nvt temp 2000 300 0.1 #aniso 0 0 1
+run 68000
+unfix 1
+fix 1 all box/relax aniso 0.0
+minimize 0 1.0e-8 10000 1000000
+unfix 1
+write_data out.data

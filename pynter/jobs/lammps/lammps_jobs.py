@@ -23,21 +23,18 @@ from pynter.hpc.slurm import JobSettings
 from pynter import LOCAL_DIR, SETTINGS
 
 
-from pymatgen.io.vasp.inputs import UnknownPotcarWarning
-
-warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
-
 
 def _parse_lammps_log(path,**kwargs):
     try:
-        return parse_lammps_log(op.join(path,'log.lammps'),**kwargs)
+        log = parse_lammps_log(op.join(path,'log.lammps'),**kwargs)
+        return log
     except:
         warnings.warn('Reading of log.lammps in "%s" failed'%path)
         return False
 
-input_default_filename = 'input.in'
-data_default_filename = 'structure.data'
-log_default_filename = 'log.lammps'  # in the future add config file
+input_default_filename = SETTINGS['lammps']['input_filename']
+data_default_filename = SETTINGS['lammps']['data_filename']
+log_default_filename = SETTINGS['lammps']['log_filename']  
 
 
 class LammpsJob(Job):
@@ -74,8 +71,16 @@ class LammpsJob(Job):
         name : (str)
             Name of the job. If none the name is searched in the job script.
         """
-        super().__init__(path=path,inputs=inputs,job_settings=job_settings,
-                         job_script_filename=job_script_filename,name=name)
+        super().__init__(path=path,
+                         inputs=inputs,
+                         job_settings=job_settings,
+                         outputs=outputs,
+                         job_script_filename=job_script_filename,
+                         name=name,
+                         hostname=hostname,
+                         localdir=localdir,
+                         remotedir=remotedir)
+        
         self._input_filename = input_filename
         self._data_filename = data_filename
         self._log_filename = log_filename
@@ -219,7 +224,7 @@ class LammpsJob(Job):
         if load_outputs:
             if op.isfile(op.join(path,log_filename)):
                 outputs['log'] = _parse_lammps_log(path,**kwargs)
-        
+
         job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
         job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
         
@@ -378,8 +383,8 @@ class LammpsJob(Job):
         if self.outputs:
             if 'log' in self.outputs.keys():
                 if self.log is not None:
-                    is_converged = False                    
-                    if type(self.log[-1]) == pd.DataFrame: # check if last element on the list is a dataframe - maybe revisit this?
+                    is_converged = False    
+                    if self.log and len(self.log) > 1 and type(self.log[-1]) == pd.DataFrame: # check if last element on the list is a dataframe - maybe revisit this?
                         is_converged = True
         return is_converged
         
