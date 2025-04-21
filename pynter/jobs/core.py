@@ -351,7 +351,7 @@ def get_job_from_directory(path=None,
                 kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
             else:
                 kwargs = {}
-            j = VaspJob.from_directory(
+            job = VaspJob.from_directory(
                         path=path,
                         job_script_filename=job_script_filename,
                         load_outputs=load_outputs,
@@ -359,19 +359,19 @@ def get_job_from_directory(path=None,
                         localdir=localdir,
                         remotedir=remotedir,
                         **kwargs)
-            return j
+            return job
 
         # VASP + NEB
         elif all(f in files for f in ['INCAR','KPOINTS','POTCAR']) and 'POSCAR' not in files:
             path = op.abspath(root)
-            j = VaspNEBJob.from_directory(
+            job = VaspNEBJob.from_directory(
                                         path=path,
                                         job_script_filename=job_script_filename,
                                         load_outputs=load_outputs,
                                         hostname=hostname,
                                         localdir=localdir,
                                         remotedir=remotedir)
-            return j
+            return job
 
         # LAMMPS
         else:
@@ -381,7 +381,7 @@ def get_job_from_directory(path=None,
                 kwargs = {}
             lammps_input_filename = kwargs['input_filename'] if 'input_filename' in kwargs.keys() else input_default_filename
             if lammps_input_filename in files:
-                j = LammpsJob.from_directory(
+                job = LammpsJob.from_directory(
                                             path=path,
                                             job_script_filename=job_script_filename,
                                             load_outputs=load_outputs,
@@ -389,4 +389,4 @@ def get_job_from_directory(path=None,
                                             localdir=localdir,
                                             remotedir=remotedir,
                                             **kwargs)
-                return j
+                return job

@@ -36,32 +36,38 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
 
 
+def _read_vasprun_with_generic_function(function,path,**kwargs):
+    if op.exists(op.join(path,'vasprun.xml')):
+        try:
+            return function(op.join(path,'vasprun.xml'),**kwargs)
+        except:
+            warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
+            return False
+    else:
+        warnings.warn('"vasprun.xml" file is not present in Job directory')
+        return None
 
 def _read_vasprun(path,**kwargs):
     if 'parse_dos' not in kwargs.keys():
         kwargs['parse_dos'] = False  # do NOT parse DOS by default
-    if op.exists(op.join(path,'vasprun.xml')):
-        try:
-            return Vasprun(op.join(path,'vasprun.xml'),**kwargs)
-        except:
-            warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
-            return None
-    else:
-        warnings.warn('"vasprun.xml" file is not present in Job directory')
+    return _read_vasprun_with_generic_function(Vasprun, path, **kwargs)
 
 
 def get_vasp_outputs(path,get_vasprun=True,get_ase_atoms=False,**kwargs):
     outputs = {}
     if get_vasprun:
         vasprun = _read_vasprun(path,**kwargs)
-        if vasprun:
+        if vasprun is not None:
             outputs['Vasprun'] = vasprun
     elif os.path.exists(op.join(path,'OUTCAR')):
         conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(path,'OUTCAR'))
         outputs['convergence'] = {'electronic':conv_el, 'ionic':conv_ionic}  
+    else:
+        warnings.warn('OUTCAR is not present in Job directory')
         
     if get_ase_atoms:
-        outputs['Atoms'] = ase.io.read(op.join(path,'vasprun.xml'),index=-1) #read only last structure
+        read = ase.io.read
+        outputs['Atoms'] = _read_vasprun_with_generic_function(read, path, index=-1) #read only last structure
         
     return outputs
 

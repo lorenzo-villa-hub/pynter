@@ -23,10 +23,10 @@ class TestVaspJob(PynterTest):
     def setUp(self):
         import warnings
         warnings.filterwarnings(action='ignore')
-        self.path = op.join(self.test_files_path,'Si-BS')
-        self.job = VaspJob.from_directory(self.path,load_outputs=True,parse_dos=True)
+        self.path = op.join(self.test_files_path,'Si-BS-CG')
+        self.job = VaspJob.from_directory(self.path,load_outputs=True,get_ase_atoms=True,parse_dos=True)
 
-    def test_vaspjob_from_directory(self): 
+    def test_vaspjob_from_directory_CG(self): 
         path, j = self.path, self.job        
         VaspInputsTest().assert_VaspInput_equal(j.inputs,VaspInput.from_directory(path))
         VaspOutputsTest().assert_Vasprun_equal(j.outputs['Vasprun'], Vasprun(op.join(path,'vasprun.xml')))
@@ -34,6 +34,26 @@ class TestVaspJob(PynterTest):
         assert j.job_settings['job-name'] == 'Si-BS_PBE-el-str_3'  
         self.assert_all_close(j.final_energy,-11.00288193)
         self.assert_all_close(j.charge,0)
+        
+    def test_vaspjob_from_directory_FAILED(self):
+        job = VaspJob.from_directory(op.join(self.test_files_path,'Bi2O3-FAILED'))
+        assert job.is_converged == False
+        job = VaspJob.from_directory(op.join(self.test_files_path,'Bi2O3-FAILED'),get_vasprun=False)
+
+    def test_vaspjob_from_directory_convergence_from_outcar(self):
+        job = VaspJob.from_directory(op.join(self.test_files_path,'Si-SCF-CG'),get_vasprun=False)
+        assert 'Vasprun' not in job.outputs.keys()
+        assert job.outputs['convergence']['electronic'] == True
+        assert job.outputs['convergence']['ionic'] == True
+        assert job.is_converged == True
+        
+
+    def test_vaspjob_from_directory_with_ase_atoms(self):
+        job = VaspJob.from_directory(op.join(self.test_files_path,'Si-SCF-CG'),get_ase_atoms=True)
+        atoms = job.outputs['Atoms']
+        assert atoms.calc.name == 'vasp'
+        assert repr(atoms.symbols) == "Symbols('Si2')"
+        
     
     def test_vaspjob_from_dict(self):
         j = VaspJob.from_dict(VaspJob.from_directory(self.path,load_outputs=True).as_dict())
@@ -59,7 +79,7 @@ class TestVaspNEBJob(PynterTest):
     def setUp(self):
         import warnings
         warnings.filterwarnings(action='ignore')
-        self.path = op.join(self.test_files_path,'NN-VO-NEB')
+        self.path = op.join(self.test_files_path,'NN-NEB-FINISHED')
         self.job = VaspNEBJob.from_directory(self.path)        
 
     def test_vaspnebjob_convergence(self):
