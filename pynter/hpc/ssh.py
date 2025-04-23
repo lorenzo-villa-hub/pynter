@@ -20,7 +20,7 @@ def get_ssh_config(host,port=22,path=None):
     host: (str) 
         The SSH host (can be an alias from ~/.ssh/config)
     port: (int)
-        SSH port (default is 22).
+        Default SSH port (default is 22).
     path: (str)
         Path of configuration file, if not provided uses the default ~/.ssh/config  
             
@@ -369,8 +369,13 @@ def get_path_relative_to_hpc(path,localdir=None,remotedir=None):
         is_path_on_hpc = False
         warnings.warn('Path is not within local or remote work directory', UserWarning)
         
-    path_relative = op.abspath(path).replace(localdir,'')
-    path_in_hpc = remotedir + path_relative
+    if is_path_on_hpc:
+        path_relative = op.abspath(path).replace(remotedir,'')
+        path_in_hpc = path
+    else:
+        path_relative = op.abspath(path).replace(localdir,'')
+        path_in_hpc = remotedir + path_relative
+        
     return path_in_hpc, path_relative, is_path_on_hpc
 
 
