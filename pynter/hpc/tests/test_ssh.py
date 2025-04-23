@@ -3,8 +3,10 @@ import os
 import tempfile
 import unittest 
 from unittest.mock import patch, MagicMock, call
+
 from pynter.hpc.ssh import SSHProtocol , get_ssh_config
 from pynter.hpc.ssh import get_path_relative_to_hpc, get_rsync_to_hpc_command, get_rsync_from_hpc_command
+from pynter import LOCAL_DIR, REMOTE_DIR
 
 
 class TestSSHConfig(unittest.TestCase):
@@ -188,13 +190,34 @@ class TestRsync(unittest.TestCase):
                    '--files-from=filelist.txt','--relative','-e ssh fakehost:/work/remote/ /home/local/']
         check_strings_in_command(desired_strings, command)
        
-        
-        from pynter import LOCAL_DIR, REMOTE_DIR
-        import os.path as op
-        localdir = op.path.join(LOCAL_DIR,'data/directory')
+        localdir = os.path.join(LOCAL_DIR,'data/directory')
         command = get_rsync_from_hpc_command(hostname='fakehost',localdir=localdir)        
+        desired_strings= [f'-e ssh fakehost:{REMOTE_DIR}/data/directory/ {LOCAL_DIR}/data/directory/']
+        check_strings_in_command(desired_strings, command)        
         
+
+    def test_rsync_to_hpc_command(self):
         
+        def check_strings_in_command(strings,command):
+            for string in strings:
+                self.assertIn(string,command)
         
-        
+        command = get_rsync_to_hpc_command(hostname='fakehost',
+                                             remotedir='/work/remote',
+                                             localdir='/home/local',
+                                             exclude=['file_ex1','file_ex2'],
+                                             dry_run=True, #always keep it True in tests becuase of mkdir
+                                             makedir_on_hpc=False,  # always keep it False in tests
+                                             rsync_args={
+                                                 'files-from':'filelist.txt',
+                                                 'relative':None
+                                                 })
+        desired_strings = ['--exclude=file_ex1', '--exclude=file_ex2',
+                   '--files-from=filelist.txt','--relative','-e ssh /home/local/ fakehost:/work/remote/']
+        check_strings_in_command(desired_strings, command)
+
+        localdir = os.path.join(LOCAL_DIR,'data/directory')
+        command = get_rsync_to_hpc_command(hostname='fakehost',localdir=localdir,dry_run=True,makedir_on_hpc=False)        
+        desired_strings= [f'-e ssh {LOCAL_DIR}/data/directory/ fakehost:{REMOTE_DIR}/data/directory/']
+        check_strings_in_command(desired_strings, command)           
         

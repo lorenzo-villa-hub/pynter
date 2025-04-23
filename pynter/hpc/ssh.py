@@ -473,8 +473,13 @@ def get_rsync_to_hpc_command(
     remotedir = op.join(remotedir,'')
     
     if makedir_on_hpc:
-        ssh = SSHProtocol(hostname)
-        ssh.run_command('mkdir -p %s' %remotedir)
+        mkdir_command = 'mkdir -p %s' %remotedir
+        if dry_run:
+            print(f'DRY RUN: {mkdir_command}')
+        else:
+            ssh = SSHProtocol(hostname)
+            ssh.run_command(mkdir_command)
+        
     
     cmd = "rsync -r -uavzh " #keep the spaces
     if dry_run:
@@ -490,7 +495,7 @@ def get_rsync_to_hpc_command(
         else:
             cmd += f'--{key} '
             
-    cmd += f"-e ssh  {localdir} {hostname}:{remotedir} "
+    cmd += f"-e ssh {localdir} {hostname}:{remotedir} "
     return cmd
 
 
