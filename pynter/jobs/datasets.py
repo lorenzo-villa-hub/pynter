@@ -850,15 +850,52 @@ class Dataset:
         else:
             return
 
-           
-    def sync_jobs(self):
-        """Sync job data from HPC to local machine"""
-        for j in self.jobs:
-            j.sync_from_hpc()
-        self.get_jobs_outputs()
-        return
+
+    def sync_jobs_to_hpc(self,jobs,stdouts=False,exclude=None,dry_run=False):
+        """
+        Sync only specific jobs to HPC. The --files-from option in rsync is used.
+
+        Parameters
+        ----------
+        jobs : (list)
+            List of jobs to sync.
+        stdouts : (bool), optional
+            Return output and error strings. The default is False.
+        exclude : (list), optional
+            List of files to exclude in rsync. The default is None.
+        dry_run : (bool), optional
+            Perform dry run in rsync with --dry-run. The default is False.
+
+        Returns
+        -------
+        stdout : (str)
+            Output.
+        stderr : (str)
+            Error.
+        """
+        path_strings = [op.join(job.path_relative,'')+'\n' for job in jobs] # ensure slash at the end with os.path.join
+        filelist_path = op.join(self.path,'filelist.txt')
+        with open(filelist_path,'w') as file:
+            file.writelines(path_strings)
         
+        rsync_args = {'files-from':filelist_path,
+                      'relative':None}
+        
+        stdout, stderr = rsync_to_hpc(hostname=self.hostname,
+                                      localdir=LOCAL_DIR, # we are using relative paths in file list
+                                      remotedir=REMOTE_DIR,
+                                      exclude=exclude,
+                                      dry_run=dry_run,
+                                      makedir_on_hpc=False,
+                                      rsync_args=rsync_args
+                                      )
+        os.remove(op.join(self.path,'filelist.txt'))
+        if stdouts:
+            return stdout,stderr
+        else:
+            return
                 
+
     def write_jobs_input(self):
         """Write jobs inputs to files"""
         for job in self.jobs:

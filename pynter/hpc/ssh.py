@@ -232,6 +232,8 @@ def rsync_from_hpc(
                     exclude=None,
                     printout=True,
                     dry_run=False,
+                    makedir_on_local=True,
+                    rsync_args={},
                     **kwargs
                     ):
     """
@@ -250,6 +252,11 @@ def rsync_from_hpc(
         List of files to exclude in rsync. The default is None.
     dry_run : (bool)
         Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+    makedir_on_local : (bool)
+        Make directory on local machine if it doesn't exist.
+    rsync_args : (dict)
+        Dictionary with arguments for rsync command. 
+        If value is not none --key=value is added, else only --key is added.
     kwargs : (dict)
         Kwargs for the local run_command function.
 
@@ -264,7 +271,9 @@ def rsync_from_hpc(
                                     remotedir=remotedir,
                                     localdir=localdir,
                                     exclude=exclude,
-                                    dry_run=dry_run)   
+                                    dry_run=dry_run,
+                                    makedir_on_local=makedir_on_local,
+                                    rsync_args=rsync_args)   
     stdout,stderr = run_command(cmd,printout=printout,dry_run=False,**kwargs)
     return stdout,stderr
 
@@ -279,6 +288,8 @@ def rsync_to_hpc(
                 exclude=None,
                 printout=True,
                 dry_run=False,
+                makedir_on_hpc=True,
+                rsync_args={},
                 **kwargs
                 ):
     """
@@ -297,6 +308,11 @@ def rsync_to_hpc(
         List of files to exclude in rsync. The default is None.
     dry_run : (bool)
         Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+    makedir_on_hpc : (bool)
+        Make directory on HPC if it doesn't exist.
+    rsync_args : (dict)
+        Dictionary with arguments for rsync command. 
+        If value is not none --key=value is added, else only --key is added.
     kwargs : (dict)
         Kwargs for the local run_command function.
 
@@ -312,7 +328,8 @@ def rsync_to_hpc(
                                     remotedir=remotedir,
                                     exclude=exclude,
                                     dry_run=dry_run,
-                                    makedir_on_hpc=True)    
+                                    makedir_on_hpc=makedir_on_hpc,
+                                    rsync_args=rsync_args)    
     stdout,stderr = run_command(cmd,printout=printout,dry_run=False,**kwargs) #dry_run here is for the internal command, not rsync
 
     return stdout,stderr
@@ -362,7 +379,9 @@ def get_rsync_from_hpc_command(
                                 remotedir=None,
                                 localdir=None,
                                 exclude=None,
-                                dry_run=False
+                                dry_run=False,
+                                makedir_on_local=True,
+                                rsync_args={}
                                 ):
     """
     Parameters
@@ -377,6 +396,11 @@ def get_rsync_from_hpc_command(
         List of files to exclude in rsync. The default is None.
     dry_run : (bool)
         Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
+    makedir_on_local : (bool)
+        Make directory on local machine if it doesn't exist.
+    rsync_args : (dict)
+        Dictionary with arguments for rsync command. 
+        If value is not none --key=value is added, else only --key is added.
     """
     hostname = hostname if hostname else SETTINGS['HPC']['hostname']
     localdir = localdir or os.getcwd()
@@ -385,16 +409,25 @@ def get_rsync_from_hpc_command(
     remotedir = op.join(remotedir,'')  #ensure backslash at the end
     localdir = op.join(localdir,'')
     
-    localcmd = 'mkdir -p %s' %localdir
-    #run_command(localcmd)
-    cmd = localcmd + ' ; '
+    cmd = ''
+    if makedir_on_local:
+        cmd += 'mkdir -p %s' %localdir
+        cmd += ' ; '
     
     cmd += "rsync -r -uavzh " #keep the spaces
     if dry_run:
         cmd += "--dry-run "
+        
     if exclude:
         for s in exclude:
             cmd += f'--exclude={s} ' 
+    
+    for key,value in rsync_args.items():
+        if value is not None:
+            cmd += f'--{key}={value} ' #keep the spaces at the end
+        else:
+            cmd += f'--{key} '
+    
     cmd += f"-e ssh {hostname}:{remotedir} {localdir} "
     return cmd
 
@@ -405,7 +438,8 @@ def get_rsync_to_hpc_command(
                                 remotedir=None,
                                 exclude=None,
                                 dry_run=False,
-                                makedir_on_hpc=True
+                                makedir_on_hpc=True,
+                                rsync_args={}
                                 ):
     """
     Parameters
@@ -422,6 +456,9 @@ def get_rsync_to_hpc_command(
         Perform dry run in rsync with --dry-run. The default is False. The dry_run in run_local is set to False.
     makedir_on_hpc : (bool)
         Make directory on HPC if it doesn't exist.
+    rsync_args : (dict)
+        Dictionary with arguments for rsync command. 
+        If value is not none --key=value is added, else only --key is added.
     """
     hostname = hostname or SETTINGS['HPC']['hostname']
     localdir = localdir or os.getcwd()
@@ -437,9 +474,17 @@ def get_rsync_to_hpc_command(
     cmd = "rsync -r -uavzh " #keep the spaces
     if dry_run:
         cmd += "--dry-run "
+        
     if exclude:
         for s in exclude:
             cmd += f'--exclude={s} '
+            
+    for key,value in rsync_args.items():
+        if value is not None:
+            cmd += f'--{key}={value} ' #keep the spaces at the end
+        else:
+            cmd += f'--{key} '
+            
     cmd += f"-e ssh  {localdir} {hostname}:{remotedir} "
     return cmd
 
