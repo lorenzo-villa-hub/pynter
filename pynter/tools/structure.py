@@ -121,6 +121,55 @@ def get_displacement_vectors(structures):
     return structures[0].lattice.get_cartesian_coords(disp)
 
 
+def get_furthest_neighbors(structure, target_site, species):
+    """
+    Get the indexes of atomic sites that are furthest away from the target site
+    and maximally spaced apart from each other, considering periodic boundary conditions.
+
+    Parameters:
+    - structure: pymatgen Structure object
+    - target_site: a pymatgen PeriodicSite or index of the target site in the structure
+    - species: list of species to find (ordered as given)
+
+    Returns:
+    - List of indices corresponding to the furthest sites of the given species
+    """
+    if isinstance(target_site, int):
+        target_site = structure[target_site]
+
+    selected_indices = []
+    
+    for specie in species:
+        max_score = -1
+        best_index = None
+
+        for i, site in enumerate(structure):
+            if site.species_string != specie or i in selected_indices:
+                continue
+            
+            # Distance from target
+            distance_to_target = structure.get_distance(structure.index(target_site),i)
+
+            # Compute minimum distance to already selected sites
+            if selected_indices:
+                distances_to_selected = [structure.get_distance(j,i) for j in selected_indices]
+                min_distance_to_selected = min(distances_to_selected)
+            else:
+                min_distance_to_selected = distance_to_target
+
+            # Define score: prioritize sites far from target and far from other selections
+            score = distance_to_target + min_distance_to_selected
+
+            if score > max_score:
+                max_score = score
+                best_index = i
+        
+        if best_index is not None:
+            selected_indices.append(best_index)
+
+    return selected_indices
+
+
 def is_site_in_structure(site,structure,tol=1e-03):
     """
     Check if Site is part of the Structure list. This function is needed because 
