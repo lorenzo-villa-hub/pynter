@@ -19,35 +19,17 @@ from pynter.jobs.lammps.lammps_jobs import LammpsJob
 
 class DefaultInputs:
     
-    def __init__(self,structure=None,sort_structure=True):
-        """
-        Parameters
-        ----------
-        structure : Pymatgen Structure object.
-        sort_structure (bool) : Sort structure.
-        """
-        if structure and sort_structure:
-            structure.sort()
-        self._structure = structure if structure else None 
-        defaults = SETTINGS['lammps']
-        
-        self.default_potcar_symbols =  defaults['default_potcar_symbols']
-        if self.structure:
-            self.potcar_symbols = [self.default_potcar_symbols[el.symbol] for el in self.structure.composition.elements]
-        self.incar_default_flags = defaults['incar_default']
-
-
-    @property
-    def structure(self):
-        return self._structure
+    def get_lammps_input_default(input_string=None):
+        input_string = SETTINGS['lammps']['input_string_default']
+        if input_string:
+            return LammpsInputFile.from_str(input_string)
+        else:
+            warnings.warn('Default LAMMPS input string is empty')
+            return
     
-    @structure.setter
-    def structure(self,structure):
-        self._structure = structure
+    def get_lammps_data(self,structure,atom_style='atomic'):
+        return LammpsData.from_structure(structure=structure,atom_style=atom_style)
         
-        
-    def get_lammps_input_default(input_string=None) 
-
 
 
 class DefaultJobSettings:
@@ -115,27 +97,28 @@ class DefaultJobSettings:
         job_settings['script_lines'] += lines
         return job_settings
     
+
+input_default_filename = SETTINGS['lammps']['input_filename']
+data_default_filename = SETTINGS['lammps']['data_filename']
     
 
 class InputSets:
     
-    def __init__(self,path=None,structure=None,input_string=None,
-                 job_settings=None,name=None,add_parent_folder=False):
+    def __init__(self,path=None,
+                 structure=None,
+                 input_string=None,
+                 atom_style='atomic',
+                 input_filename=input_default_filename,
+                 data_filename=data_default_filename,
+                 job_settings=None,
+                 name=None,
+                 add_parent_folder=False):
         """
         Parameters
         ----------
         path : (str)
             Main path for the scheme. If None the current work dir is used. The default is None.
-        vaspinput : (Pymatgen VaspInput object), optional
-            Set of VASP inputs, the default is None. if provided the other inputs of the class (structure,incar_settings,kpoints,potcar) are not needed 
-        structure : (Pymatgen Structure object), optional
-            Pymatgen Structure object.
-        incar_settings : (Dict), optional
-            Dictionary with incar flags. The default is None. If None the default settings for PBE functional from the DefaultInputs class are used.
-        kpoints : (Pymatgen Kpoints object), optional
-            Pymatgen Kpoints object. The default is None. If None the default settings from the DefaultInputs class are used.
-        potcar : (Pymatgen kpoints object), optional
-            Pymatgen kpoints object. The default is None. If None the default settings from the DefaultInputs class are used.
+
         job_settings : (Dict), optional
             Dictionary with job settings to create job script, parameters are defined in JobSettings class function. The default is None.\n
             If job_settings is None, the 'job-name' key will be added, the value is the 'name' argument if provided, if 'name' arg is \n
@@ -146,9 +129,17 @@ class InputSets:
             Add folder to the path names like the name of the InputSets. Default is False.
         """
         self.path = op.abspath(path) if path else os.getcwd()
+        self.atom_style = atom_style
+        self.input_filename = input_filename
+        self.data_filename = data_filename
+        
+        input_string = "\n".join(line for line in input_string.splitlines() if line.strip())  # remove empty lines
+        self.lammps_input = LammpsInputFile.from_str(input_string) if input_string else DefaultInputs().get_lammps_input_default()
         if structure:
-            self.structure = structure          
+            self.structure = structure   
+            self.lammps_data = DefaultInputs().get_lammps_data(structure=structure,atom_style=atom_style)
         else:
+            self.lammps_data = None
             warnings.warn('Structure is not provided explicitly, make sure is defined in input string')
             
         if job_settings:
@@ -168,7 +159,7 @@ class InputSets:
             self.path = op.join(self.path,self.name)
             
     
-    def get_lammpsjob(self,atom_style='atomic',add_to_job_name=None,add_to_job_path=None):
+    def get_lammpsjob(self,add_to_job_name=None,add_to_job_path=None):
         """
         Generate LammpsJob object from the input settings of the class.
 
@@ -196,13 +187,18 @@ class InputSets:
         else:
             jobpath = self.path
         
-        lammps_input = LammpsInputFile(self.input_string)
-        inputs = {'inp':lammps_input}
-        if self.structure:
-            lammps_data = LammpsData.from_structure(structure=self.structure,atom_style=atom_style)
-            inputs['data'] = lammps_data
+
+        inputs = {'inp':self.lammps_input}
+        if self.lammps_data:
+            inputs['data'] = self.lammps_data
             
         job_script_filename = job_settings['filename'] if 'filename' in job_settings.keys() else None
-        lammpsjob = LammpsJob(path=jobpath,inputs=inputs,job_settings=job_settings,job_script_filename=job_script_filename,name=jobname)
-        
+        lammpsjob = LammpsJob(path=jobpath,
+                              inputs=inputs,
+                              job_settings=job_settings,
+                              job_script_filename=job_script_filename,
+                              name=jobname,
+                              input_filename=self.input_filename,
+                              data_filename=self.data_filename)
+                              
         return lammpsjob  

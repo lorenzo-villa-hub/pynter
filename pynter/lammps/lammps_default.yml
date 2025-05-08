@@ -9,3 +9,5 @@ job_settings_default:
   lammps_sbatch:
     time: '01:00:00'
     ntasks: 1
+input_string_default: null
+
