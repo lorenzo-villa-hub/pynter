@@ -313,8 +313,7 @@ class DefaultJobSettings:
             return [f'module load {module}' for module in self.modules] 
 
     def get_srun_line(self):
-        vasp_exe = op.abspath(self.vasp_exe)
-        return 'srun %s' %vasp_exe
+        return 'srun %s' %self.vasp_exe
 
     def get_updated_job_settings(self,job_settings):
         """

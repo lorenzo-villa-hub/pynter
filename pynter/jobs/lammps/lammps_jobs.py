@@ -272,7 +272,8 @@ class LammpsJob(Job):
     
     @property
     def data(self):
-        return self.inputs['data']
+        if 'data' in self.inputs.keys():
+            return self.inputs['data']
 
     @property
     def input_filename(self):
@@ -374,7 +375,8 @@ class LammpsJob(Job):
                             filename=op.join(self.path,self.input_filename),
                             ignore_comments=False,
                             keep_stages=True)
-        self.data.write_file(filename=op.join(self.path,self.data_filename))
+        if self.data:
+            self.data.write_file(filename=op.join(self.path,self.data_filename))
     
         
 
