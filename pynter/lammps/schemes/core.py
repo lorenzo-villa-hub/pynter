@@ -10,19 +10,18 @@ import os.path as op
 import warnings
 
 from pymatgen.io.lammps.data import LammpsData
-from pymatgen.io.lammps.inputs import LammpsInputFile
 
 from pynter import SETTINGS
 from pynter.hpc.slurm import JobSettings
 from pynter.jobs.lammps.lammps_jobs import LammpsJob
-
+from pynter.lammps.inputs import LammpsInput
 
 class DefaultInputs:
     
     def get_lammps_input_default(input_string=None):
         input_string = SETTINGS['lammps']['input_string_default']
         if input_string:
-            return LammpsInputFile.from_str(input_string)
+            return LammpsInput.from_string(input_string)
         else:
             warnings.warn('Default LAMMPS input string is empty')
             return
@@ -133,8 +132,12 @@ class InputSets:
         self.input_filename = input_filename
         self.data_filename = data_filename
         
-        input_string = "\n".join(line for line in input_string.splitlines() if line.strip())  # remove empty lines
-        self.lammps_input = LammpsInputFile.from_str(input_string) if input_string else DefaultInputs().get_lammps_input_default()
+        if input_string:
+            input_string = "\n".join(line for line in input_string.splitlines() if line.strip())  # remove empty lines
+            self.lammps_input = LammpsInput.from_string(input_string) 
+        else:
+            self.lammps_input = DefaultInputs().get_lammps_input_default()
+        
         if structure:
             self.structure = structure   
             self.lammps_data = DefaultInputs().get_lammps_data(structure=structure,atom_style=atom_style)

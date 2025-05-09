@@ -14,12 +14,12 @@ import json
 import pandas as pd
 
 from monty.json import jsanitize, MontyDecoder
-from pymatgen.io.lammps.inputs import LammpsInputFile
 from pymatgen.io.lammps.data import LammpsData
 from pymatgen.io.lammps.outputs import parse_lammps_log
 
 from pynter.jobs.core import Job
 from pynter.hpc.slurm import JobSettings
+from pynter.lammps.inputs import LammpsInput
 from pynter import LOCAL_DIR, SETTINGS
 
 
@@ -158,7 +158,7 @@ class LammpsJob(Job):
             path = d['path']
         inputs = {}
         if 'inp' in d['inputs'].keys():
-            inputs['inp'] = LammpsInputFile.from_dict(d['inputs']['inp'])
+            inputs['inp'] = LammpsInput.from_dict(d['inputs']['inp'])
         if 'data' in d['inputs'].keys():
             inputs['data'] = LammpsData.from_dict(d['inputs']['data'])
         job_settings = JobSettings.from_dict(d['job_settings'])
@@ -217,7 +217,7 @@ class LammpsJob(Job):
         """
         path = path if path else os.getcwd()
         inputs = {}
-        inputs['inp'] = LammpsInputFile.from_file(op.join(path,input_filename))
+        inputs['inp'] = LammpsInput.from_file(op.join(path,input_filename))
         if os.path.isfile(op.join(path,data_filename)):
             inputs['data'] = LammpsData.from_file(op.join(path,data_filename),atom_style=atom_style)
         outputs = {}
@@ -327,7 +327,7 @@ class LammpsJob(Job):
         if sync:
             self.sync_from_hpc()
         inputs = {}
-        inputs['inp'] = LammpsInputFile.from_file(op.join(self.path,self.input_filename))
+        inputs['inp'] = LammpsInput.from_file(op.join(self.path,self.input_filename))
         if os.path.isfile(op.join(self.path,self.data_filename)):
             inputs['data'] = LammpsData.from_file(op.join(self.path,self.data_filename),atom_style=atom_style)
         return inputs
@@ -390,3 +390,6 @@ class LammpsJob(Job):
                         is_converged = True
         return is_converged
         
+
+
+

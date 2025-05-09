@@ -17,7 +17,7 @@ class TestLammpsJob(PynterTest):
     def test_from_directory_IN(self):
         job = LammpsJob.from_directory(op.join(self.test_files_path,'Si-IN'))
         assert job.job_settings['script_lines'][-1] == 'srun lmp -in input.in'
-        assert job.inp.get_args('pair_style') == 'sw'
+        assert job.inp.get_command('pair_style')[0] == 'pair_style sw'
         assert job.formula == 'Si2'
         assert job.is_converged == None
         
@@ -25,7 +25,7 @@ class TestLammpsJob(PynterTest):
         job = LammpsJob.from_directory(op.join(self.test_files_path,'NBT-AL-more-fixes-CG'))
         assert type(job.initial_structure) == Structure
         assert job.formula == 'Na4 Ti8 Bi4 O24'
-        assert job.inp.get_args('pair_style') == 'pace/extrapolation'
+        assert job.inp.get_command('pair_style')[0] == 'pair_style pace/extrapolation'
         assert all(key in job.outputs.keys() for key in ['log','convergence'])
         assert job.is_converged == True
         assert job.log[2]['TotEng'][3] == -306.17886

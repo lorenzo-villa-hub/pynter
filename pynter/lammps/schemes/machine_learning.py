@@ -6,8 +6,7 @@ Created on Thu May  8 17:48:31 2025
 @author: villa
 """
 
-from pymatgen.io.lammps.inputs import LammpsInputFile
-
+from pynter.lammps.inputs import LammpsInput
 from pynter.lammps.schemes.core import InputSets
 
 
@@ -41,17 +40,15 @@ class PACEActiveLearningSchemes(InputSets):
         
         variable max_pace_gamma equal c_max_pace_gamma         
         fix extreme_extrapolation all halt 10 v_max_pace_gamma > 25
-        
-        
+         
         thermo 500    
         timestep 0.001
         
-        
+        # test     
         velocity all create 100.0 42
         fix 1 all nvt temp 50 300 0.1 
         run 10000
         unfix 1
-        
         
         fix 1 all npt temp 300 300 0.1 aniso 0 10000 1
         run 20000
@@ -60,7 +57,6 @@ class PACEActiveLearningSchemes(InputSets):
         fix 1 all npt temp 300 300 0.1 aniso 10000 0 1
         run 20000
         unfix 1
-        
         
         fix 1 all nvt temp 300 2000 0.1 
         run 68000
@@ -76,6 +72,7 @@ class PACEActiveLearningSchemes(InputSets):
         
         write_data out.data
         """
-        self.lammps_input = LammpsInputFile.from_str(input_string)
+        input_string = "\n".join(line for line in input_string.splitlines() if line.strip())  # remove empty lines
+        self.lammps_input = LammpsInput.from_string(input_string,keep_stages=True)
         return self.get_lammpsjob(add_to_job_name=add_to_job_name,add_to_job_path=add_to_job_path)
             
