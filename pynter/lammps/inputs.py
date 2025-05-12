@@ -31,10 +31,16 @@ class LammpsInput(MSONable):
     
     @staticmethod
     def from_string(string):
+        """
+        Get LammpsInput object from string
+        """
         return LammpsInput(string.split('\n'))
     
     @staticmethod
     def from_file(filename):
+        """
+        Get LammpsInput object from file
+        """
         with open(filename,'r') as file:
             lines = []
             for line in file.readlines():
@@ -43,10 +49,16 @@ class LammpsInput(MSONable):
                     
     
     def get_command(self,command):
+        """
+        Get line containing a specific command
+        """
         return self.get_command_and_indexes(command)[0]
 
     
     def get_command_and_indexes(self,command):
+        """
+        Get line containing a specific command and relative index
+        """
         target_lines = []
         indexes = []
         for index,line in enumerate(self.lines):
@@ -58,10 +70,26 @@ class LammpsInput(MSONable):
         return target_lines, indexes
     
     def get_string(self):
+        """
+        Get LAMMPS input string
+        """
         return '\n'.join(self.lines)
         
         
     def insert_line(self,line,indexes=None,previous_command=None):
+        """
+        Insert line at a specific index or after a line containing a target command.
+
+        Parameters
+        ----------
+        line : (str)
+            Line to insert.
+        indexes : (int)
+            List index in which to insert the line.
+        previous_command : (str)
+            Insert the line after a specific command. This arg and the indexes
+            arg are mutually exclusive, indexes has the priority.
+        """
         if indexes:
             pass
         elif previous_command:
@@ -76,6 +104,16 @@ class LammpsInput(MSONable):
     
     
     def set_command(self,command,new_line):
+        """
+        Change a line containing a specific command.
+
+        Parameters
+        ----------
+        command : (str)
+            Target command to reset..
+        new_line : (str)
+            New line to insert.
+        """
         _, indexes = self.get_command_and_indexes(command)
         for idx in indexes:
             self.lines[idx] = new_line
@@ -83,5 +121,8 @@ class LammpsInput(MSONable):
             
     
     def write_file(self,filename):
+        """
+        Write LAMMPS input file
+        """
         with open(filename,'w') as file:
             file.writelines('\n'.join(self.lines))

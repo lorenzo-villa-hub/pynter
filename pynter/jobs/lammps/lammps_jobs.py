@@ -196,8 +196,10 @@ class LammpsJob(Job):
                         remotedir=None,
                         **kwargs):
         """
-        Builds lammpsjob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
-        Output files are read usign Pymatgen Vasprun class.
+        Builds LammpsJob object from data stored in a directory.
+        Input files are read using the internal LammpsInput class.
+        Data files are read using Pymatgen's LammpsData class.
+        Output files are read using the parse_lammps_log function from Pymatgen.
         Job settings are read from the job script file.
 
         Parameters
