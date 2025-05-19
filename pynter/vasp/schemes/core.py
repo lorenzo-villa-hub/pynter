@@ -331,8 +331,6 @@ class DefaultJobSettings:
         return job_settings
     
     
-        
-
 
 class InputSets:
     

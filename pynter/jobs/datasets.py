@@ -50,7 +50,7 @@ def find_jobs(path,
               hostname=None,
               localdir=None,
               remotedir=None,
-              jobs_kwargs=None):
+              **kwargs):
     """
     Find jobs in all folders and subfolders contained in path.
     The folder containing jobs are selected based on the presence of the file job_script_filename
@@ -68,9 +68,11 @@ def find_jobs(path,
         Load job outputs. The default is True.
     verbose : (bool)
         Print importing log on screen.
-    jobs_kwargs : (dict), optional
-        Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
-        from directory for each job class.
+    kwargs : (dict)
+        Kwargs to be used when importing job from directory for each job class.
+        If only one job class is imported use the kwargs as usual.
+        If more than 1 job class is imported use it as:
+            JobClass1=jobclass1_kwargs, JobClass2=jobclass2_kwargs
 
     Returns
     -------
@@ -91,7 +93,7 @@ def find_jobs(path,
                                                  hostname=hostname,
                                                  localdir=localdir,
                                                  remotedir=remotedir,
-                                                 jobs_kwargs=jobs_kwargs)
+                                                 **kwargs)
                 except KeyboardInterrupt:
                     print("Keyboard interrupt detected. Exiting gracefully.")
                     sys.exit(0)
@@ -267,7 +269,7 @@ class Dataset:
                        hostname=None,
                        localdir=None,
                        remotedir=None,
-                       jobs_kwargs=None): 
+                       **kwargs): 
         """
         Static method to build Dataset object from a directory. Jobs are selected based on where the job bash script
         is present. VaspJobs are selected based on where all input files are present (INCAR,KPOINTS,POSCAR,POTCAR).
@@ -285,9 +287,11 @@ class Dataset:
             Load job outputs.
         verbose : (bool)
             Print importing log on screen.
-        jobs_kwargs : (dict)
-            Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
-            from directory for each job class.
+        kwargs : (dict)
+            Kwargs to be used when importing job from directory for each job class.
+            If only one job class is imported use the kwargs as usual.
+            If more than 1 job class is imported use it as:
+                JobClass1=jobclass1_kwargs, JobClass2=jobclass2_kwargs
         """
         path = path if path else os.getcwd()
         jobs = find_jobs(path,
@@ -295,7 +299,7 @@ class Dataset:
                          sort=sort,
                          load_outputs=load_outputs,
                          verbose=verbose,
-                         jobs_kwargs=jobs_kwargs) 
+                         **kwargs) 
         
         return  Dataset(path=path,jobs=jobs,sort=sort)
     

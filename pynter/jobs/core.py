@@ -3,6 +3,7 @@ from abc import abstractmethod
 import os
 import os.path as op
 import shutil
+import warnings
 
 from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
 from pynter.hpc.slurm import JobSettings
@@ -305,7 +306,7 @@ def get_job_from_directory(path=None,
                            hostname=None,
                            localdir=None,
                            remotedir=None,
-                           jobs_kwargs=None):   
+                           **kwargs):   
     """
     Get Job object from a directory. The job type is selected based on the content of the folder.
     - If ("INCAR","KPOINTS","POSCAR","POTCAR") files are present, VaspJob is initialized.
@@ -328,9 +329,11 @@ def get_job_from_directory(path=None,
         Sort list of jobs by features. If False or None jobs are not sorted. The default is 'name'.
     load_outputs : (bool)
         Load job outputs. The default is True.
-    jobs_kwargs : (dict), optional
-        Dictionary with job class name as keys and kwargs as values. Kwargs to be used when importing job 
-        from directory for each job class.
+    kwargs : (dict)
+        Kwargs to be used when importing job from directory for each job class.
+        If only one job class is imported use the kwargs as usual.
+        If more than 1 job class is imported use it as:
+            JobClass1=jobclass1_kwargs, JobClass2=jobclass2_kwargs
 
     Returns
     -------
@@ -342,15 +345,19 @@ def get_job_from_directory(path=None,
     
     path = path if path else os.getcwd()
     job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
-        
+    
+    if kwargs:
+        if all([key not in ['VaspJob','VaspNEBJob','LammpsJob'] for key in kwargs.keys()]):
+            warnings.warn('Job class not specified in kwargs, only do this if you are not looping over different job classes')
+    
     for root,dirs,files in os.walk(path):   
         # VASP
         if all(f in files for f in ['INCAR','KPOINTS','POSCAR','POTCAR']):
             path = op.abspath(root)
-            if jobs_kwargs:
-                kwargs = jobs_kwargs['VaspJob'] if 'VaspJob' in jobs_kwargs.keys() else {}
+            if kwargs:
+                vaspjob_kwargs = kwargs['VaspJob'] if 'VaspJob' in kwargs.keys() else kwargs
             else:
-                kwargs = {}
+                vaspjob_kwargs = {}
             job = VaspJob.from_directory(
                         path=path,
                         job_script_filename=job_script_filename,
@@ -358,7 +365,7 @@ def get_job_from_directory(path=None,
                         hostname=hostname,
                         localdir=localdir,
                         remotedir=remotedir,
-                        **kwargs)
+                        **vaspjob_kwargs)
             return job
 
         # VASP + NEB
@@ -375,11 +382,11 @@ def get_job_from_directory(path=None,
 
         # LAMMPS
         else:
-            if jobs_kwargs:
-                kwargs = jobs_kwargs['LammpsJob'] if 'LammpsJob' in jobs_kwargs.keys() else {}
+            if kwargs:
+                lammpsjob_kwargs = kwargs['LammpsJob'] if 'LammpsJob' in kwargs.keys() else kwargs
             else:
-                kwargs = {}
-            lammps_input_filename = kwargs['input_filename'] if 'input_filename' in kwargs.keys() else input_default_filename
+                lammpsjob_kwargs = {}
+            lammps_input_filename = lammpsjob_kwargs['input_filename'] if 'input_filename' in lammpsjob_kwargs.keys() else input_default_filename
             if lammps_input_filename in files:
                 job = LammpsJob.from_directory(
                                             path=path,
@@ -388,5 +395,5 @@ def get_job_from_directory(path=None,
                                             hostname=hostname,
                                             localdir=localdir,
                                             remotedir=remotedir,
-                                            **kwargs)
+                                            **lammpsjob_kwargs)
                 return job

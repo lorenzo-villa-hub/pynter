@@ -142,6 +142,7 @@ class VaspAutomation:
         check_kpoints : (bool)
             Only copy CHGCAR and WAVECAR if the KPOINTS file are the same btw the two jobs.
         """
+        kpoints_equal = True
         if check_kpoints:
             kpoints_equal, kpoints_message = are_kpoints_equal(job1, job2)
             self.status.append(kpoints_message)
