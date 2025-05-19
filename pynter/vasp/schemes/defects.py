@@ -12,10 +12,11 @@ from pynter.vasp.schemes.core import InputSets
 from pynter.vasp.schemes.relaxation import RelaxationSchemes
 from pynter.vasp.schemes.variations import VariationsSchemes
 
+
 class DefectSchemes(InputSets):
             
     
-    def defects_pbe_relaxation(self,defects_with_charges,automation=False,locpot=False,rel_scheme='default'):
+    def defects_pbe_relaxation(self,defects_with_charges,locpot=False,rel_scheme='default'):
         """
         Generate jobs for default defect calculation scheme with PBE.
 
@@ -23,8 +24,6 @@ class DefectSchemes(InputSets):
         ----------
         defects_with_charges : (dict)
             List of tuples with Defect object and relative charge state list, for example [(Defect , [q1,q2,q3,...])].
-        automation : (bool)
-            Add default automation string: 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'.
         locpot : (bool), optional
             Add 'LVTOT=True' in INCAR. The default is False.
         rel_scheme : (str), optional
@@ -64,7 +63,7 @@ class DefectSchemes(InputSets):
         pass
 
             
-    def substitutions_pbe_relaxation(self,elements_to_replace_with_charges,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
+    def substitutions_pbe_relaxation(self,elements_to_replace_with_charges,supercell_size=None,locpot=False,rel_scheme='default'):
         """
         Generate jobs for default substitutions calculation scheme with PBE.
 
@@ -78,8 +77,6 @@ class DefectSchemes(InputSets):
             The format of the substitution string is the same that is generated from the function "create_substitutiion_structures".
         supercell_size : (int or numpy array), optional
             Input for the make_supercell function of the Structure class. The default is 1 (the structure is not modified).
-        automation : (bool)
-            Add default automation string: 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'.
         locpot : (bool), optional
             Add 'LVTOT=True' in INCAR. The default is False.
         rel_scheme : (str), optional
@@ -97,11 +94,11 @@ class DefectSchemes(InputSets):
             substitution = create_substitutions(self.structure,elements_to_replace=elements_to_replace,
                                                 supercell_size=supercell_size)[0]
             defects_with_charges.append((substitution,charge_states))
-        jobs = self.defects_pbe_relaxation(defects_with_charges,automation=automation,locpot=locpot,rel_scheme=rel_scheme)
+        jobs = self.defects_pbe_relaxation(defects_with_charges,locpot=locpot,rel_scheme=rel_scheme)
         return jobs        
         
 
-    def vacancies_pbe_relaxation(self,elements_with_charges,supercell_size=None,automation=False,locpot=False,rel_scheme='default'):
+    def vacancies_pbe_relaxation(self,elements_with_charges,supercell_size=None,locpot=False,rel_scheme='default'):
         """
         Generate jobs for default vacancies calculation scheme with PBE.
 
@@ -112,8 +109,6 @@ class DefectSchemes(InputSets):
         supercell_size : (int or numpy array), optional
             Input for the make_supercell function of the Structure class.
             If None the input structure is not modified. The default is None.
-        automation : (bool)
-            Add default automation string: 'automation_vasp.py --contcar --chgcar --wavecar --error-check --check-kpoints'.
         locpot : (bool), optional
             Add 'LVTOT=True' in INCAR. The default is False.
         rel_scheme : (str), optional
@@ -129,5 +124,5 @@ class DefectSchemes(InputSets):
         for el,charge_states in elements_with_charges.items():
             vacancy = create_vacancies(structure=self.structure,elements=[el],supercell_size=supercell_size)[0]
             defects_with_charges.append((vacancy,charge_states))
-        jobs = self.defects_pbe_relaxation(defects_with_charges,automation=automation,locpot=locpot,rel_scheme=rel_scheme)
+        jobs = self.defects_pbe_relaxation(defects_with_charges,locpot=locpot,rel_scheme=rel_scheme)
         return jobs

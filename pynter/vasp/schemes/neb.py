@@ -224,11 +224,6 @@ class NEBSchemes:
             vaspinput = VaspInput(incar, kpoints, poscar, potcar)
             
             job_settings = self.job_settings.copy()
-            if 'add_automation' not in job_settings  or job_settings['add_automation'] == None:
-                if index ==  structures.index(structures[-1]):
-                    job_settings['add_automation'] = '(cd ../ && pynter automation vasp-NEB)'
-                else:
-                    job_settings['add_automation'] = 'pynter automation vasp --chgcar --wavecar'
             job_settings['job-name'] = '_'.join([self.name,scheme_name,image_name])
             
             jobname = '_'.join([self.name,scheme_name,image_name])
