@@ -31,8 +31,8 @@ def copy_file_from_jobs(filename,job1,job2):
     """
     Copy file from path of Job1 to path of Job2.
     """
-    source = op.join(op.abspath(job1.path1),filename)
-    destination = op.join(op.abspath(job2.path2),filename)
+    source = op.join(op.abspath(job1.path),filename)
+    destination = op.join(op.abspath(job2.path),filename)
     copyfile(source,destination)
     return f'{op.relpath(source)} copied to {op.relpath(destination)}'
     
