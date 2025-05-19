@@ -39,6 +39,18 @@ class TestDataset(PynterTest):
             assert job.outputs == {}
             assert job.is_converged == None         
 
+    def test_mixed_dataset(self):
+        path = op.join(self.test_files_path,'mixed-dataset')
+        ds = Dataset.from_directory()
+        self.assertEqual(ds.jobclasses.sort(), ['LammpsJob','VaspJob'].sort())
+        ds = Dataset.from_directory(path,VaspJob={'get_vasprun':False},LammpsJob={'log_filename':'test_log.test'})
+        vaspjob = ds.select_jobs(jobclass='VaspJob')[0]
+        print(vaspjob.vasprun)        
+        self.assertEqual(vaspjob.vasprun,None)
+        lammpsjob = ds.select_jobs(jobclass='LammpsJob')[0]
+        self.assertEqual(lammpsjob.log_filename,'test_log.test')
+
+
     def test_select_jobs(self):
         ds = self.ds
         DatasetTest().assert_jobs_equal(ds.select_jobs(groups=['q1']),[ds[4],ds[5]])

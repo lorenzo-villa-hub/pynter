@@ -33,10 +33,12 @@ def parse_job_script_args(parser):
 
 
 def write_job_script(args):
-    kwargs = vars(args)
-    if 'func' in kwargs.keys():
-        del kwargs['func']
+    sbatch = vars(args).copy()
+    if 'func' in sbatch.keys():
+        del sbatch['func']
+    del sbatch['filename']
+    del sbatch['script_lines']
 
-    JobSettings(**kwargs).write_bash_file()
+    JobSettings(sbatch=sbatch,filename=args.filename,script_lines=args.script_lines).write_bash_file()
     return
     

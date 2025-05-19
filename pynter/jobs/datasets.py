@@ -318,6 +318,17 @@ class Dataset:
         return self._groups
     
     @property
+    def jobclasses(self):
+        """
+        List of job classes in Dataset
+        """
+        jobclasses = []
+        for job in self.jobs:
+            if job.jobclass not in jobclasses:
+                jobclasses.append(job.jobclass)
+        return jobclasses
+    
+    @property
     def nodes_levels(self):
         """
         Nested lists of common nodes between jobs. The indexes coincide with the index 
