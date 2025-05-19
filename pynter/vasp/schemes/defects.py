@@ -47,6 +47,8 @@ class DefectSchemes(InputSets):
                 schemes_rel = RelaxationSchemes(path=jq.path,vaspinput=jq.inputs,job_settings=jq.job_settings,name=jq.name)
                 if rel_scheme == 'default':
                     rel_jobs = schemes_rel.pbe_relaxation()
+                elif rel_scheme == 'short':
+                    rel_jobs = schemes_rel.pbe_ionic_rel(add_to_job_name=None,add_to_job_path=None)
                 elif rel_scheme == 'gamma':
                     rel_jobs = schemes_rel.pbe_relaxation_gamma()
                 for jrel in rel_jobs:

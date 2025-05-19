@@ -322,16 +322,31 @@ class DefaultJobSettings:
         job_settings = job_settings.copy()
         for k,v in self.vasp_sbatch.items():
             job_settings[k] = v
+                                
         lines = self.vasp_script_lines
-        job_settings['script_lines'] += lines
+        for line_to_add in lines:
+            if all([line_to_add not in line for line in job_settings['script_lines']]):
+                job_settings['script_lines'].append(line_to_add)
+
         return job_settings
+    
+    
         
 
 
 class InputSets:
     
-    def __init__(self,path=None,vaspinput=None,structure=None,incar_settings=None,kpoints=None,potcar=None,
-                 job_settings=None,name=None,add_parent_folder=False):
+    def __init__(self,
+                 path=None,
+                 vaspinput=None,
+                 structure=None,
+                 incar_settings=None,
+                 kpoints=None,
+                 potcar=None,
+                 job_settings=None,
+                 name=None,
+                 add_parent_folder=False,
+                 **kwargs):
         """
         Parameters
         ----------
@@ -379,7 +394,8 @@ class InputSets:
             if self.name: # this return false if name is '', the previuos line considers only if name is None
                 self.job_settings['job-name'] = self.name
             
-            self.job_settings = DefaultJobSettings().get_updated_job_settings(self.job_settings)    
+         #   if all(['srun' not in line for line in self.job_settings['script_lines']]):
+            self.job_settings = DefaultJobSettings(**kwargs).get_updated_job_settings(self.job_settings)    
             
         else:
             raise ValueError('You need to provide Structure, either as Poscar object in VaspInput or in "structure" arg')

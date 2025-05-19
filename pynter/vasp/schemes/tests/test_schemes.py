@@ -10,10 +10,12 @@ import os.path as op
 
 from pymatgen.io.vasp.inputs import Kpoints
 
+from pynter.hpc.slurm import JobSettings
+
 from pynter.jobs.vasp.vasp_jobs import VaspJob
 from pynter.jobs.datasets import Dataset
 
-from pynter.vasp.schemes.core import DefaultInputs, InputSets
+from pynter.vasp.schemes.core import DefaultInputs, DefaultJobSettings, InputSets
 from pynter.vasp.schemes.relaxation import RelaxationSchemes
 from pynter.vasp.schemes.defects import DefectSchemes
 
@@ -54,6 +56,46 @@ class TestDefaultInputs(PynterTest):
         potcar = di.get_potcar(potcar_functional='PBE')
         assert len(potcar) == 1
         assert potcar[0].symbol == "Si"
+
+
+class TestDefaultJobSettings(PynterTest):
+    
+    def setUp(self):
+        self.default = DefaultJobSettings(
+            vasp_exe = '/test/vasp',
+            vasp_sbatch={'ntasks':384},
+            modules=['module1','module2'],
+            lines_before_srun=['line1 before','line2 before'],
+            lines_after_srun=['line1 after','line2 after']
+            )
+    
+    def test_vasp_script_lines(self):        
+        updated_js = self.default.get_updated_job_settings(JobSettings())
+        lines = updated_js['script_lines']
+
+        self.assertIn('module load module1',lines)
+        self.assertIn('module load module2',lines)
+        assert lines.index('module load module1') < lines.index('module load module2')
+        self.assertIn('line1 before',lines)
+        self.assertIn('line2 before',lines)
+        assert lines.index('line1 before') < lines.index('line2 before')
+        self.assertIn('line1 after',lines)
+        self.assertIn('line2 after',lines)
+        assert lines.index('line1 after') < lines.index('line2 after')
+        
+    def test_duplicates_flexibility(self):
+        original_js = self.default.get_updated_job_settings(JobSettings())
+        updated_js = DefaultJobSettings().get_updated_job_settings(original_js)
+        def assert_no_duplicates(target_string,lines):
+            count = 0
+            for line in lines:
+                if target_string in line:
+                    count += 1
+            assert count <= 1
+        strings_to_check = ['module load module1','line1 before','srun','line1 after']
+        for string in strings_to_check:
+            assert_no_duplicates(string, updated_js['script_lines'])
+        
 
 
 class TestVaspSchemes(PynterTest):
