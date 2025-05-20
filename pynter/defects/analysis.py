@@ -222,7 +222,6 @@ class DefectsAnalysis:
         step = abs(energy_range[1]-energy_range[0])/npoints
         e = np.arange(energy_range[0],energy_range[1],step)
         
-        charge_transition_levels = {}
         # starting point is first E value
         previous_stable_charges = self.stable_charges(None,fermi_level=energy_range[0],entries=entries)
         charge_transition_levels = {name:[] for name in previous_stable_charges}
