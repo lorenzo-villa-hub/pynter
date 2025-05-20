@@ -225,6 +225,7 @@ class DefectsAnalysis:
         charge_transition_levels = {}
         # starting point is first E value
         previous_stable_charges = self.stable_charges(None,fermi_level=energy_range[0],entries=entries)
+        charge_transition_levels = {name:[] for name in previous_stable_charges}
         for i in range(0,len(e)):
             stable_charges = self.stable_charges(None, fermi_level = e[i],entries=entries)
             for name in stable_charges:
