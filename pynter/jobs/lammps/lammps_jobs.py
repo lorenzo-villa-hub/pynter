@@ -373,10 +373,7 @@ class LammpsJob(Job):
     
     def write_input(self):
         self.job_settings.write_bash_file(path=self.path,filename=self.job_settings['filename'])
-        self.inp.write_file(
-                            filename=op.join(self.path,self.input_filename),
-                            ignore_comments=False,
-                            keep_stages=True)
+        self.inp.write_file(filename=op.join(self.path,self.input_filename))
         if self.data:
             self.data.write_file(filename=op.join(self.path,self.data_filename))
     

@@ -493,6 +493,24 @@ class Dataset:
             self.jobs.remove(j)
             print('Job "%s" removed from Dataset'%j.name)
         return
+    
+    def set_display_df(self,reset=False,max_rows=None,max_columns=None,max_colwidth=None):
+        """
+        Set option for DataFrame display.
+    
+        Parameters
+        ----------
+        reset : (bool), optional
+            Reset options to default. The default is False.
+        max_rows : (int), optional
+            Max number of rows to display. The default is None.
+        max_columns : (int), optional
+            Max number of columns to display. The default is None.
+        max_colwidth : (int), optional
+            Max column width to display. The default is None.
+        """
+        from pynter.tools.utils import set_display_df
+        set_display_df()
         
             
     def filter_jobs(self,inplace=False,jobs=None,mode='and',exclude=False,names=None,groups=None,
