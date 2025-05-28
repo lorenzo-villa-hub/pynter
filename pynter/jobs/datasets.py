@@ -6,12 +6,12 @@ import warnings
 import pandas as pd
 import json
 from monty.json import MontyDecoder
+import ase.db
 
 from pynter import run_command
 from pynter.jobs.core import get_job_from_directory
 from pynter.jobs.manager import get_qstat_command, JobManager
 from pynter.hpc.ssh import SSHProtocol, rsync_from_hpc, rsync_to_hpc, get_path_relative_to_hpc
-from pynter.hpc.slurm import JobSettings
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
 
@@ -445,7 +445,47 @@ class Dataset:
             commonpath = op.commonpath([path,self.path])
             self.regroup_jobs(path=commonpath)
         return
- 
+
+
+    def add_jobs_to_asedb(self,
+                          db_filename,
+                          jobs=None,
+                          duplicate=False,
+                          converged_only=True,
+                          verbose=True,
+                          properties_to_write=[]):
+        """
+        Add Atoms objects in job.outputs to ASE database
+
+        Parameters
+        ----------
+        db : (str)
+            ASE DB filename.
+        duplicate : (bool)
+            Add job to db even if an entry with same path is already present.
+        converged_only : (bool)
+            Add job only if job.is_converged is True.
+        verbose : (bool)
+            Print info on screen.
+        properties_to_write: (list)
+            List of job properties to add to ASE DB.
+            kwargs of the form feature=get_object_feature(job,feature) will
+            be added to ase.db.write. See docs of get_object_feature for details.
+        """
+        with ase.db.connect(db_filename) as db:
+            jobs = jobs or self.jobs
+            for job in jobs:
+                job.add_to_asedb(db,
+                                 duplicate=duplicate,
+                                 converged_only=converged_only,
+                                 verbose=verbose,
+                                 properties_to_write=properties_to_write)
+            
+            if verbose:
+                print(f'ASE database with {db.count()} entries saved as {db.filename}')
+
+
+
 
     def create_job(self,cls,group='',nodes='',inputs=None,job_settings=None,
                    outputs=None,job_script_filename='job.sh',name=None,**kwargs):
@@ -456,17 +496,17 @@ class Dataset:
         ----------
         cls : (str) 
             Job class.
-        group : (str), optional
-            Name of the group to which the job belongs. The default is ''.
-        nodes : (str), optional
-            Name of the nodes of the job. The default is ''.
-        inputs : (dict), optional
-            Dictionary with input data. The default is None.
-        job_settings : (dict), optional
-            Dictionary with job settings. The default is None. Documentation in SbatchScript class in slurm.job_script module
-        outputs : (dict), optional
-            Dictionary with output data. The default is None.
-        job_script_filename : (str), optional
+        group : (str)
+            Name of the group to which the job belongs.
+        nodes : (str)
+            Name of the nodes of the job.
+        inputs : (dict)
+            Dictionary with input data.
+        job_settings : (dict)
+            Dictionary with job settings
+        outputs : (dict)
+            Dictionary with output data
+        job_script_filename : (str)
             Filename of job script. The default is 'job.sh'.
         name : (str)
             Name of the job. If None the name is searched in the job script.
@@ -934,5 +974,8 @@ class Dataset:
         for job in self.jobs:
             job.write_input()
             
+        
+
+        
         
         

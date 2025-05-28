@@ -6,8 +6,10 @@ import shutil
 import warnings
 
 from pynter import SETTINGS, LOCAL_DIR, REMOTE_DIR
+from pynter.tools.utils import get_object_feature
 from pynter.hpc.slurm import JobSettings
 from pynter.hpc.ssh import rsync_from_hpc, rsync_to_hpc, get_path_relative_to_hpc
+
 
 from pynter.jobs.manager import JobManager
 
@@ -105,7 +107,63 @@ class Job:
             self._job_id = job_id
         return self._job_id
         
+    
+    def add_to_asedb(self,db,
+                     duplicate=False,
+                     converged_only=True,
+                     verbose=True,
+                     properties_to_write=[]):
+        """
+        Add Atoms object in self.outputs to ASE database
+
+        Parameters
+        ----------
+        db : (ase database)
+            ASE database object (SQLite3Database).
+        duplicate : (bool)
+            Add job to db even if an entry with same path is already present.
+        converged_only : (bool)
+            Add job only if job.is_converged is True.
+        verbose : (bool)
+            Print info on screen.
+        properties_to_write: (list)
+            List of job properties to add to ASE DB.
+            kwargs of the form feature=get_object_feature(job,feature) will
+            be added to ase.db.write. See docs of get_object_feature for details.
+        """
+        printout = []
+        properties_to_write.append('path')
+        if not converged_only or self.is_converged:
+            if 'Atoms' in self.outputs.keys():
+                if duplicate or all(self.path != row.path for row in db.select()):
+                    try:
+                        atoms = self.outputs['Atoms']
+                        kwargs={}
+                        for feature in properties_to_write:
+                            if isinstance(feature,list):
+                                key = feature[0]
+                                for k in feature[1:]:
+                                    key = key + '_%s'%k
+                            else:
+                                key = feature
+                            kwargs[key] = get_object_feature(self,feature)
+                        db.write(atoms=atoms,**kwargs)
+                        printout.append(f'Job added to DB {self.path}')
+                    except Exception as e:
+                        print(e)
+                        printout.append(f'Adding Atoms object to DB failed for {self}')
+                else:
+                    printout.append(f'Skipping job already in DB for {self.path}')
+            else:
+                printout.append(f'Atoms object not in outputs dict for {self.path}')
+        else:
+            printout.append(f'Skipping unconverged self at {self.path}')
         
+        if verbose:
+            for line in printout:
+                print(line)
+    
+    
     def cancel_job(self):
         """
         Cancel job on HPC

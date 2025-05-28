@@ -6,7 +6,9 @@ Created on Mon May 15 16:25:45 2023
 @author: villa
 """
 import os.path as op
+import os
 import json
+import ase.db
 
 from pynter.jobs.datasets import Dataset
 
@@ -18,6 +20,24 @@ class TestDataset(PynterTest):
     
     def setUp(self):
         self.ds = Dataset.from_directory(op.join(self.test_files_path,'Vac_Si_adv_schemes_inputs'))
+
+    def test_asedb(self):
+        path = op.join(self.test_files_path,'mixed-dataset')
+        ds = Dataset.from_directory(path,VaspJob={'get_ase_atoms':True})
+        db_filename = 'test.db'
+        try:  
+            ds.add_jobs_to_asedb(db_filename,verbose=False,duplicate=True,properties_to_write=['energy_gap',['incar','NSW']])
+            with ase.db.connect(db_filename) as testdb:
+                for job in ds:
+                    for row in testdb.select():
+                        if row.path == job.path:
+                            self.assertEqual(testdb.count(),1)
+                            self.assertEqual(row.energy_gap,job.energy_gap)
+                            self.assertEqual(row.incar_NSW,0)  
+                
+        finally:
+            os.remove(db_filename)
+        
 
     def test_from_directory(self):
         ds = self.ds
