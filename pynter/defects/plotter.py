@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from pynter.defects.defects import format_legend_with_charge_number, get_defect_name_from_string
-from .analysis import DefectsAnalysis
+
 
 
 def plot_formation_energies(entries,
@@ -59,6 +59,8 @@ def plot_formation_energies(entries,
     Returns:
         matplotlib object
     """
+    from .analysis import DefectsAnalysis
+    
     matplotlib.rcParams.update({'font.size': fontsize}) 
     formation_energies = DefectsAnalysis(entries,vbm,band_gap).formation_energies(chemical_potentials,
                                                                                     fermi_level=0,
@@ -158,6 +160,8 @@ def plot_binding_energies(entries,
     Returns:
         matplotlib object
     """        
+    from .analysis import DefectsAnalysis
+    
     da = DefectsAnalysis(entries, vbm, band_gap)
     plt.figure(figsize=figsize)
     matplotlib.rcParams.update({'font.size': fontsize}) 
@@ -217,6 +221,8 @@ def plot_charge_transition_levels(entries,
     Returns:
         matplotlib object    
     """        
+    from .analysis import DefectsAnalysis
+    
     da = DefectsAnalysis(entries, vbm, band_gap)
     plt.figure(figsize=figsize)         
     if ylim == None:
