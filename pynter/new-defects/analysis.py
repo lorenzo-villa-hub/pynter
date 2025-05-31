@@ -11,7 +11,7 @@ import json
 from pymatgen.electronic_structure.dos import FermiDos
 
 from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
-from .plotter import plot_formation_energies, plot_binding_energies, plot_charge_transition_levels
+from .plotter import *
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 
@@ -491,6 +491,54 @@ class DefectsAnalysis:
             new_entries = new_entries + da.entries
         return DefectsAnalysis(new_entries, self.vbm, self.band_gap)
         
+
+    def plot_brower_diagram(self,
+                            oxygen_chempot,
+                            bulk_dos,
+                            temperature,
+                            fixed_concentrations=None,
+                            external_defects=[],
+                            xtol=1e-05,
+                            **kwargs):
+        reservoirs = None # figure out how to get reservoirs
+        defects_analysis =  DefectThermodynamics(defects_analysis=self,
+                                          bulk_dos=bulk_dos,
+                                          fixed_concentrations=fixed_concentrations,
+                                          external_defects=external_defects,
+                                          xtol=xtol)
+        thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
+                                                                        temperature=temperature,
+                                                                        name='BrowerDiagram')
+        plt = ThermodynamicsPlotter().plot_pO2_vs_concentrations(thermodata=thermodata,**kwargs)
+        self._thermodata = thermodata
+        return plt
+    
+    
+    def plot_doping_diagram(self,
+                            variable_defect_specie,
+                            concentration_range,
+                            chemical_potentials,
+                            bulk_dos,
+                            temperature,
+                            npoints=50):
+        reservoirs = None
+        defects_analysis = DefectThermodynamics(defects_analysis=self,
+                                          bulk_dos=bulk_dos,
+                                          fixed_concentrations=fixed_concentrations,
+                                          external_defects=external_defects,
+                                          xtol=xtol)
+        thermodata = defects_analysis.get_variable_species_thermodata(
+                                                  variable_defect_specie=variable_defect_specie,
+                                                  concentration_range=concentration_range,
+                                                  chemical_potentials=chemical_potentials,
+                                                  temperature=temperature,
+                                                  npoints=npoints,
+                                                  name='DopingDiagram')  
+        plt = ThermodynamicsPlotter().plot_variable_species_vs_concentrations(thermodata, **kwargs)
+        self._thermodata = thermodata
+        return plt
+        
+
               
     def plot_formation_energies(self,
                                 chemical_potentials,
@@ -537,7 +585,7 @@ class DefectsAnalysis:
             matplotlib object
         """
         entries = entries or self.entries
-        return plot_formation_energies(entries, 
+        return plot_formation_energies(entries=entries, 
                                        chemical_potentials=chemical_potentials,
                                        vbm=self.vbm,
                                        band_gap=self.band_gap,

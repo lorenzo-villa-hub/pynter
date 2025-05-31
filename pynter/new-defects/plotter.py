@@ -271,122 +271,7 @@ def plot_charge_transition_levels(entries,
     return plt    
 
 
-class ConcBarPlotter:
 
-    def __init__(self,concentrations,format_names=True):
-        """
-        Class to visualize concentrations dictionaries with pd.DataFrame and 
-        pd.Series (fortotal concentrations).
-
-        Parameters
-        ----------
-        concentrations : (list or dict)
-            Concentrations can be in different formats: list of dict for "all" and 
-            "stable_charges" and dict for "total".
-        format_names : (bool), optional
-            Format names with latex symbols. The default is True.
-        """
-        # to be fixed
-        conc_dict = []
-        for c in concentrations:
-            d = {'charge':c.charge,'conc':c.conc,'stable':c.stable}
-            if format_names:
-                name = c.name.symbol
-            else:
-                name = c.name.fullname
-            d['name'] = format_legend_with_charge_number(name,c.charge)
-            conc_dict.append(d)
-        
-        conc_total_dict = {}
-        for dn,conc in concentrations.total.items():
-            if format_names:
-                name = dn.symbol
-            else:
-                name = dn.fullname
-            conc_total_dict[name] = conc
-
-        self.conc = conc_dict
-        self.conc_total = conc_total_dict
-        self.format = format_names
-        self.df = pd.DataFrame(self.conc)
-        self.series = pd.Series(self.conc_total,name='Total Concentrations')
-    
-
-    def __print__(self):
-        return self.df.__print__()
-    
-    def __repr__(self):
-        return self.df.__repr__()
-
-    def copy(self):
-        return self.df.copy()
-    
-    
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,ylabel_fontsize=15,**kwargs):
-        """
-        Bar plot of concentrations with pd.DataFrame.plot
-
-        Parameters
-        ----------
-        conc_range : (tuple), optional
-            Range of concentrations to include in df. The default is (1e13,1e40).
-        ylim : (tuple), optional
-            Limit of y-axis in plot. If None conc_range is used. The default is None.
-        total : (bool), optional
-            plot total concentrations. The default is True.
-        ylabel_fontsize : (int), optional
-            Size of the label for y-axis. The default is 15.
-        **kwargs : (dict)
-            Kwargs to pass to df.plot().
-
-        Returns
-        -------
-        plt : 
-            Matplotlib object.
-        """
-        if conc_range:
-            if not ylim:
-                ylim = conc_range
-            series = self.limit_conc_range(conc_range,reset_df=False)[1]
-            df = self.limit_conc_range(conc_range,reset_df=False)[0]
-        else:
-            series = self.series
-            df = self.df
-        if not total:
-            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,
-                          xlabel='Name , Charge',legend=None,**kwargs)
-        else:
-            ax = series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
-        ax.set_ylabel('Concentrations(cm$^{-3}$)',fontdict={'fontsize':ylabel_fontsize})
-        return ax
-
-
-    def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
-        """
-        Limit df to a concentration range
-
-        Parameters
-        ----------
-        conc_range : (tuple), optional
-            Range of concentrations to include in df. The default is (1e10,1e40).
-        reset_df : (bool), optional
-            Reset df attribute or return a new df. The default is False.
-
-        Returns
-        -------
-        df, series : 
-            DataFrame object, Series object.
-        """
-        if reset_df:
-            self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
-            self.series = self.series.between(conc_range[0],conc_range[1])
-            return
-        else:
-            df = self.df.copy()
-            series = self.series.copy()
-            df = df[df.conc.between(conc_range[0],conc_range[1])]
-            series = series[series.between(conc_range[0],conc_range[1])]
-            return df , series
     
  
     
@@ -934,5 +819,121 @@ class ThermodynamicsPlotter:
         return slist
         
     
+
+class ConcBarPlotter:
+
+    def __init__(self,concentrations,format_names=True):
+        """
+        Class to visualize concentrations dictionaries with pd.DataFrame and 
+        pd.Series (fortotal concentrations).
+
+        Parameters
+        ----------
+        concentrations : (list or dict)
+            Concentrations can be in different formats: list of dict for "all" and 
+            "stable_charges" and dict for "total".
+        format_names : (bool), optional
+            Format names with latex symbols. The default is True.
+        """
+        # to be fixed
+        conc_dict = []
+        for c in concentrations:
+            d = {'charge':c.charge,'conc':c.conc,'stable':c.stable}
+            if format_names:
+                name = c.name.symbol
+            else:
+                name = c.name.fullname
+            d['name'] = format_legend_with_charge_number(name,c.charge)
+            conc_dict.append(d)
+        
+        conc_total_dict = {}
+        for dn,conc in concentrations.total.items():
+            if format_names:
+                name = dn.symbol
+            else:
+                name = dn.fullname
+            conc_total_dict[name] = conc
+
+        self.conc = conc_dict
+        self.conc_total = conc_total_dict
+        self.format = format_names
+        self.df = pd.DataFrame(self.conc)
+        self.series = pd.Series(self.conc_total,name='Total Concentrations')
     
+
+    def __print__(self):
+        return self.df.__print__()
+    
+    def __repr__(self):
+        return self.df.__repr__()
+
+    def copy(self):
+        return self.df.copy()
+    
+    
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,ylabel_fontsize=15,**kwargs):
+        """
+        Bar plot of concentrations with pd.DataFrame.plot
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e13,1e40).
+        ylim : (tuple), optional
+            Limit of y-axis in plot. If None conc_range is used. The default is None.
+        total : (bool), optional
+            plot total concentrations. The default is True.
+        ylabel_fontsize : (int), optional
+            Size of the label for y-axis. The default is 15.
+        **kwargs : (dict)
+            Kwargs to pass to df.plot().
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        if conc_range:
+            if not ylim:
+                ylim = conc_range
+            series = self.limit_conc_range(conc_range,reset_df=False)[1]
+            df = self.limit_conc_range(conc_range,reset_df=False)[0]
+        else:
+            series = self.series
+            df = self.df
+        if not total:
+            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,
+                          xlabel='Name , Charge',legend=None,**kwargs)
+        else:
+            ax = series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
+        ax.set_ylabel('Concentrations(cm$^{-3}$)',fontdict={'fontsize':ylabel_fontsize})
+        return ax
+
+
+    def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
+        """
+        Limit df to a concentration range
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e10,1e40).
+        reset_df : (bool), optional
+            Reset df attribute or return a new df. The default is False.
+
+        Returns
+        -------
+        df, series : 
+            DataFrame object, Series object.
+        """
+        if reset_df:
+            self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
+            self.series = self.series.between(conc_range[0],conc_range[1])
+            return
+        else:
+            df = self.df.copy()
+            series = self.series.copy()
+            df = df[df.conc.between(conc_range[0],conc_range[1])]
+            series = series[series.between(conc_range[0],conc_range[1])]
+            return df , series    
     
