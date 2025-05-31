@@ -11,7 +11,6 @@ import json
 from pymatgen.electronic_structure.dos import FermiDos
 
 from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
-from .plotter import *
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 
@@ -491,69 +490,10 @@ class DefectsAnalysis:
             new_entries = new_entries + da.entries
         return DefectsAnalysis(new_entries, self.vbm, self.band_gap)
         
-
-    def plot_brower_diagram(self,
-                            oxygen_chempot,
-                            bulk_dos,
-                            temperature,
-                            fixed_concentrations=None,
-                            external_defects=[],
-                            xtol=1e-05,
-                            **kwargs):
-        reservoirs = None # figure out how to get reservoirs
-        defects_analysis =  DefectThermodynamics(defects_analysis=self,
-                                          bulk_dos=bulk_dos,
-                                          fixed_concentrations=fixed_concentrations,
-                                          external_defects=external_defects,
-                                          xtol=xtol)
-        thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
-                                                                        temperature=temperature,
-                                                                        name='BrowerDiagram')
-        plt = ThermodynamicsPlotter().plot_pO2_vs_concentrations(thermodata=thermodata,**kwargs)
-        self._thermodata = thermodata
-        return plt
-    
-    
-    def plot_doping_diagram(self,
-                            variable_defect_specie,
-                            concentration_range,
-                            chemical_potentials,
-                            bulk_dos,
-                            temperature,
-                            npoints=50):
-        reservoirs = None
-        defects_analysis = DefectThermodynamics(defects_analysis=self,
-                                          bulk_dos=bulk_dos,
-                                          fixed_concentrations=fixed_concentrations,
-                                          external_defects=external_defects,
-                                          xtol=xtol)
-        thermodata = defects_analysis.get_variable_species_thermodata(
-                                                  variable_defect_specie=variable_defect_specie,
-                                                  concentration_range=concentration_range,
-                                                  chemical_potentials=chemical_potentials,
-                                                  temperature=temperature,
-                                                  npoints=npoints,
-                                                  name='DopingDiagram')  
-        plt = ThermodynamicsPlotter().plot_variable_species_vs_concentrations(thermodata, **kwargs)
-        self._thermodata = thermodata
-        return plt
-        
-
               
-    def plot_formation_energies(self,
-                                chemical_potentials,
-                                entries=None,
-                                xlim=None,
-                                ylim=None,
-                                title=None,
-                                fermi_level=None,
-                                grid=True,
-                                figsize=(6,6),
-                                fontsize=12,
-                                show_legend=True,
-                                format_legend=True,
-                                get_subplot=False,
-                                subplot_settings=None):
+    def plot(self,chemical_potentials,entries=None,xlim=None,ylim=None,title=None,
+             fermi_level=None,plotsize=1,fontsize=1.2,show_legend=True,
+             format_legend=True,get_subplot=False,subplot_settings=None):
         """
         Produce defect Formation energy vs Fermi energy plot
         Args:
@@ -584,25 +524,85 @@ class DefectsAnalysis:
         Returns:
             matplotlib object
         """
-        entries = entries or self.entries
-        return plot_formation_energies(entries=entries, 
-                                       chemical_potentials=chemical_potentials,
-                                       vbm=self.vbm,
-                                       band_gap=self.band_gap,
-                                       xlim=xlim,
-                                       ylim=ylim,
-                                       title=title,
-                                       fermi_level=fermi_level,
-                                       grid=grid,
-                                       figsize=figsize,
-                                       fontsize=fontsize,
-                                       show_legend=show_legend,
-                                       format_legend=format_legend,
-                                       get_subplot=get_subplot,
-                                       subplot_settings=subplot_settings)
+        entries = entries if entries else self.entries
+        matplotlib.rcParams.update({'font.size': 10*fontsize})        
+        formation_energies = self.formation_energies(chemical_potentials,fermi_level=0,entries=entries)
+        if xlim == None:
+            xlim = (-0.5,self.band_gap+0.5)        
+        npoints = 200
+        step = abs(xlim[1]+0.1-xlim[0])/npoints
+        x = np.arange(xlim[0],xlim[1]+0.1,step)
+        try:
+            if len(plotsize)==2:
+                pass
+        except:
+            plotsize = (plotsize,plotsize)
+        
+        if get_subplot:
+            if subplot_settings[2] == 1:
+                plt.figure(figsize=(8*plotsize[0],6*plotsize[1]))               
+            plt.subplot(subplot_settings[0],subplot_settings[1],subplot_settings[2])
+            plt.grid()
+        else:
+            plt.figure(figsize=(8*plotsize[0],6*plotsize[1]))
+            plt.grid()
+            
+        for name in formation_energies:
+            energy = np.zeros(len(x))
+            emin = np.zeros(len(x))
+            x_star = []
+            y_star = []
+            q_previous = None
+            # this is faster than using self.stable_charges
+            for i in range(0,npoints):
+                emin[i] = 1e40
+                for d in formation_energies[name]:
+                    q = d[0]
+                    e0 = d[1]
+                    energy[i] = e0 + q*x[i]
+                    # finding most stable charge state
+                    if energy[i] < emin[i]:
+                        emin[i] = energy[i]
+                        q_stable = q
+                # getting data to plot transition levels        
+                if q_stable != q_previous:
+                    if q_previous != None:
+                        x_star.append(x[i])
+                        y_star.append(emin[i])
+                    q_previous = q_stable       
+
+            if format_legend:
+                label_txt = name.symbol
+            else:
+                label_txt = name            
+
+            plt.plot(x,emin,label=label_txt,linewidth=3)
+            plt.scatter(x_star,y_star,s=120,marker='*')
+                        
+        plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
+        plt.axvline(x=self.band_gap, linestyle='-', color='k',
+                    linewidth=2)        
+        if fermi_level:
+            plt.axvline(x=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')                
+        # shaded areas
+        plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
+        plt.axvspan(self.band_gap, xlim[1]+0.1, facecolor='k', alpha=0.2)
+        plt.hlines(0,xlim[0],xlim[1]+0.1,colors='k',linestyles='dashed',alpha=0.5)
+        plt.xlim(xlim)
+        if ylim: 
+            plt.ylim(ylim) 
+        plt.xlabel('Fermi level (eV)')
+        plt.ylabel('Formation energy (eV)')
+        if title:
+            plt.title(title)
+        if show_legend:    
+            plt.legend()
+     #   plt.grid()
+
+        return plt
      
         
-    def plot_binding_energies(self, names=None,xlim=None,ylim=None,figsize=(6,6),fontsize=18,format_legend=True):
+    def plot_binding_energies(self, names=None, xlim=None, ylim=None, size=1,format_legend=True):
         """
         Plot binding energies for complex of defects as a function of the fermi level
         Args:
@@ -620,25 +620,44 @@ class DefectsAnalysis:
         Returns:
             matplotlib object
         """        
-        return plot_binding_energies(entries=self.entries,
-                                     vbm=self.vbm,
-                                     band_gap=self.band_gap,
-                                     names=names,
-                                     xlim=xlim,
-                                     ylim=ylim,
-                                     figsize=figsize,
-                                     fontsize=fontsize,
-                                     format_legend=format_legend)
+        plt.figure(figsize=(8*size,6*size))
+        matplotlib.rcParams.update({'font.size': 10*1.8*size}) 
+        if xlim==None:
+            xlim = (-0.5,self.band_gap+0.5)
+        # building array for x values (fermi level)    
+        ef = np.arange(xlim[0],xlim[1]+0.1,(xlim[1]-xlim[0])/200)        
+        binding_energy = np.zeros(len(ef))        
+        if not names:
+            names = []
+            for e in self.entries:
+                if e.defect_type == 'DefectComplex':
+                    if e.name not in names:
+                        names.append(e.name)        
+        # getting binding energy at different fermi levels for every name in list
+        for name in names:
+            label = self.select_entries(names=[name])[0].symbol if format_legend else name
+            for i in range(0,len(ef)):
+                binding_energy[i] = self.binding_energy(name,fermi_level=ef[i])            
+            plt.plot(ef,binding_energy, linewidth=2.5*size,label=label)
+            
+        plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black lines for gap edges
+        plt.axvline(x=self.band_gap, linestyle='-', color='k',
+                    linewidth=2)        
+        # shaded areas
+        plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
+        plt.axvspan(self.band_gap, xlim[1], facecolor='k', alpha=0.2)
+        plt.hlines(0,xlim[0],xlim[1],colors='k',linestyles='dashed',alpha=0.5)
+        plt.legend()
+        plt.xlim(xlim)
+        if ylim: 
+            plt.ylim(ylim) 
+        plt.xlabel('Fermi level (eV)')
+        plt.ylabel('Binding energy (eV)')
+        
+        return plt
     
     
-    def plot_ctl(self,
-                 entries=None,
-                 ylim=None,
-                 figsize=(10,10),
-                 fontsize=16,
-                 fermi_level=None,
-                 format_legend=True,
-                 get_integers=True):
+    def plot_ctl(self, entries=None,ylim=None, size=1, fermi_level=None, format_legend=True,get_integers=True):
         """
         Plotter for the charge transition levels
         Args:
@@ -651,16 +670,57 @@ class DefectsAnalysis:
         Returns:
             matplotlib object    
         """        
-        entries = entries or self.entries
-        return plot_charge_transition_levels(entries=entries,
-                                             vbm=self.vbm,
-                                             band_gap=self.band_gap,
-                                             ylim=ylim,
-                                             figsize=figsize,
-                                             fontsize=fontsize,
-                                             fermi_level=fermi_level,
-                                             format_legend=format_legend,
-                                             get_integers=get_integers)
+        plt.figure(figsize=(10*size,10*size))         
+        if ylim == None:
+            ylim = (-0.5,self.band_gap +0.5)        
+        charge_transition_levels = self.charge_transition_levels(entries=entries,get_integers=get_integers)
+        number_defects = len(charge_transition_levels)   
+        x_max = 10
+        interval = x_max/(number_defects + 1)
+        x = np.arange(0,x_max,interval)
+        # position of x labels
+        x_ticks_positions = []
+        for i in range(0,len(x)-1):
+            x_ticks_positions.append((x[i+1]-x[i])/2 + x[i])            
+        x_ticks_labels = []
+        for name in charge_transition_levels:
+            x_ticks_labels.append(name)        
+        # draw vertical lines to separte defect types
+        for i in x:
+            plt.axvline(x=i, linestyle='-', color='k', linewidth=1.2, alpha=1, zorder=1)
+        xlim = (x[0],x[-1])        
+        #VBM and CBM shaded
+        plt.axhspan(ylim[0], 0, facecolor='grey', alpha=0.9, zorder=2)
+        plt.axhspan(self.band_gap,ylim[1], facecolor = 'grey', alpha=0.9, zorder=2)                
+        # plot CTL
+        for i in range(0,len(x_ticks_labels)):
+            name = x_ticks_labels[i]
+            for ctl in charge_transition_levels[name]:
+                energy = ctl[2]
+                plt.hlines(energy,x[i],x[i+1],colors='k',linewidth=2.25, zorder=3)
+                charge1 = '+' + str(ctl[1]) if ctl[1] > 0 else str(ctl[1])
+                charge2 = '+' + str(ctl[0]) if ctl[0] > 0 else str(ctl[0])
+                label_charge = '(' + charge2 + '/' + charge1 + ')'
+                font_space = abs(ylim[1]-ylim[0]) / 100
+                if energy < ylim[1] and energy > ylim[0]:
+                    plt.text(x[i]+(interval/2)*2/number_defects ,energy+font_space,label_charge,fontsize=16*size)        
+        # format latex-like legend
+        if format_legend:    
+             for name in x_ticks_labels:            
+                x_ticks_labels[x_ticks_labels.index(name)] = name.symbol               
+        if fermi_level:
+            plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
+        
+        plt.text(x[-1]+interval/8,-0.3,'VB',fontsize=25*size)
+        plt.text(x[-1]+interval/8,self.band_gap+0.2,'CB',fontsize=25*size)
+        plt.xticks(ticks=x_ticks_positions,labels=x_ticks_labels,fontsize = (25-number_defects)*size)
+        plt.tick_params(axis='x',length=0,width=0)
+        plt.yticks(fontsize=16*size)
+        plt.xlim(xlim)  
+        plt.ylim(ylim)
+        plt.ylabel('Energy(eV)',fontsize=20*size)  
+        
+        return plt    
 
 
     def select_entries(self,entries=None,mode='and',exclude=False,types=None,elements=None,

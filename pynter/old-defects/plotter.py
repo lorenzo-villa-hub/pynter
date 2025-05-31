@@ -5,273 +5,130 @@ Created on Wed Feb 17 15:24:29 2021
 
 @author: villa
 """
-import numpy as np
+
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from pynter.defects.defects import format_legend_with_charge_number, get_defect_name_from_string
-from .analysis import DefectsAnalysis
 
 
-def plot_formation_energies(entries,
-                            chemical_potentials,
-                            vbm,
-                            band_gap,
-                            xlim=None,
-                            ylim=None,
-                            title=None,
-                            fermi_level=None,
-                            grid=True,
-                            figsize=(6,6),
-                            fontsize=12,
-                            show_legend=True,
-                            format_legend=True,
-                            get_subplot=False,
-                            subplot_settings=None):
-    """
-    Produce defect Formation energy vs Fermi energy plot
-    Args:
-        chemical_potentials:
-            Chempots object containing the chemical
-            potential of each element.
-        entries: 
-            List of entries to calculate. If None all entries are considered.
-        xlim:
-            Tuple (min,max) giving the range of the x (fermi energy) axis.
-        ylim:
-            Tuple (min,max) giving the range for the formation energy axis.
-        fermi_level:
-            float to plot Fermi energy position.
-        plotsize:
-            float or tuple. Can be float or tuple for different x and y sizes
-            multiplier to change plotsize.
-        fontsize:
-            float  multiplier to change fontsize.
-        show_legend:
-            Bool for showing legend.
-        format_legend:
-            Bool for getting latex-like legend based on the name of defect entries.
-        get_subplot:
-            Bool for getting subplot.
-        subplot_settings:
-            List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)). 
-    Returns:
-        matplotlib object
-    """
-    matplotlib.rcParams.update({'font.size': fontsize}) 
-    formation_energies = DefectsAnalysis(entries,vbm,band_gap).formation_energies(chemical_potentials,
-                                                                                    fermi_level=0,
-                                                                                    entries=entries)
-    if xlim == None:
-        xlim = (-0.5,band_gap+0.5)        
-    npoints = 200
-    step = abs(xlim[1]+0.1-xlim[0])/npoints
-    x = np.arange(xlim[0],xlim[1]+0.1,step)
-    
-    if get_subplot:
-        if subplot_settings[2] == 1:
-            plt.figure(figsize=figsize)               
-        plt.subplot(subplot_settings[0],subplot_settings[1],subplot_settings[2])
-    else:
-        plt.figure(figsize=figsize)
+class ConcBarPlotter:
+
+    def __init__(self,concentrations,format_names=True):
+        """
+        Class to visualize concentrations dictionaries with pd.DataFrame and 
+        pd.Series (fortotal concentrations).
+
+        Parameters
+        ----------
+        concentrations : (list or dict)
+            Concentrations can be in different formats: list of dict for "all" and 
+            "stable_charges" and dict for "total".
+        format_names : (bool), optional
+            Format names with latex symbols. The default is True.
+        """
+        # to be fixed
+        conc_dict = []
+        for c in concentrations:
+            d = {'charge':c.charge,'conc':c.conc,'stable':c.stable}
+            if format_names:
+                name = c.name.symbol
+            else:
+                name = c.name.fullname
+            d['name'] = format_legend_with_charge_number(name,c.charge)
+            conc_dict.append(d)
         
-    for name in formation_energies:
-        energy = np.zeros(len(x))
-        emin = np.zeros(len(x))
-        x_star = []
-        y_star = []
-        q_previous = None
-        # this is faster than using self.stable_charges
-        for i in range(0,npoints):
-            emin[i] = 1e40
-            for d in formation_energies[name]:
-                q = d[0]
-                e0 = d[1]
-                energy[i] = e0 + q*x[i]
-                # finding most stable charge state
-                if energy[i] < emin[i]:
-                    emin[i] = energy[i]
-                    q_stable = q
-            # getting data to plot transition levels        
-            if q_stable != q_previous:
-                if q_previous != None:
-                    x_star.append(x[i])
-                    y_star.append(emin[i])
-                q_previous = q_stable       
+        conc_total_dict = {}
+        for dn,conc in concentrations.total.items():
+            if format_names:
+                name = dn.symbol
+            else:
+                name = dn.fullname
+            conc_total_dict[name] = conc
 
-        if format_legend:
-            label_txt = name.symbol
+        self.conc = conc_dict
+        self.conc_total = conc_total_dict
+        self.format = format_names
+        self.df = pd.DataFrame(self.conc)
+        self.series = pd.Series(self.conc_total,name='Total Concentrations')
+    
+
+    def __print__(self):
+        return self.df.__print__()
+    
+    def __repr__(self):
+        return self.df.__repr__()
+
+    def copy(self):
+        return self.df.copy()
+    
+    
+    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,ylabel_fontsize=15,**kwargs):
+        """
+        Bar plot of concentrations with pd.DataFrame.plot
+
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e13,1e40).
+        ylim : (tuple), optional
+            Limit of y-axis in plot. If None conc_range is used. The default is None.
+        total : (bool), optional
+            plot total concentrations. The default is True.
+        ylabel_fontsize : (int), optional
+            Size of the label for y-axis. The default is 15.
+        **kwargs : (dict)
+            Kwargs to pass to df.plot().
+
+        Returns
+        -------
+        plt : 
+            Matplotlib object.
+        """
+        if conc_range:
+            if not ylim:
+                ylim = conc_range
+            series = self.limit_conc_range(conc_range,reset_df=False)[1]
+            df = self.limit_conc_range(conc_range,reset_df=False)[0]
         else:
-            label_txt = name            
-
-        plt.plot(x,emin,label=label_txt,linewidth=3)
-        plt.scatter(x_star,y_star,s=120,marker='*')
-                    
-    plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black dashed lines for gap edges
-    plt.axvline(x=band_gap, linestyle='-', color='k',
-                linewidth=2)        
-    if fermi_level:
-        plt.axvline(x=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')                
-    # shaded areas
-    plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
-    plt.axvspan(band_gap, xlim[1]+0.1, facecolor='k', alpha=0.2)
-    plt.hlines(0,xlim[0],xlim[1]+0.1,colors='k',linestyles='dashed',alpha=0.5)
-    plt.xlim(xlim)
-    if ylim: 
-        plt.ylim(ylim) 
-    plt.xlabel('Fermi level (eV)')
-    plt.ylabel('Formation energy (eV)')
-    if title:
-        plt.title(title)
-    if show_legend:    
-        plt.legend()
-    if grid:
-        plt.grid()
-
-    return plt
+            series = self.series
+            df = self.df
+        if not total:
+            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,
+                          xlabel='Name , Charge',legend=None,**kwargs)
+        else:
+            ax = series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
+        ax.set_ylabel('Concentrations(cm$^{-3}$)',fontdict={'fontsize':ylabel_fontsize})
+        return ax
 
 
-def plot_binding_energies(entries,
-                          vbm,
-                          band_gap,
-                          names=None,
-                          xlim=None,
-                          ylim=None,
-                          figsize=(6,6),
-                          fontsize=18,
-                          format_legend=True):
-    """
-    Plot binding energies for complex of defects as a function of the fermi level
-    Args:
-        names: 
-            List of strings with names of DefectEntry. If None all DefectEntry
-            objects are plotted.
-        xlim:
-            Tuple (min,max) giving the range of the x (fermi energy) axis
-        ylim:
-            Tuple (min,max) giving the range for the formation energy axis
-        size:
-            Float multiplier to change plot size
-        format_legend:
-            Bool for getting latex-like legend based on the name of defect entries
-    Returns:
-        matplotlib object
-    """        
-    da = DefectsAnalysis(entries, vbm, band_gap)
-    plt.figure(figsize=figsize)
-    matplotlib.rcParams.update({'font.size': fontsize}) 
-    if xlim==None:
-        xlim = (-0.5,da.band_gap+0.5)
-    # building array for x values (fermi level)    
-    ef = np.arange(xlim[0],xlim[1]+0.1,(xlim[1]-xlim[0])/200)        
-    binding_energy = np.zeros(len(ef))        
-    if not names:
-        names = []
-        for e in da.entries:
-            if e.defect_type == 'DefectComplex':
-                if e.name not in names:
-                    names.append(e.name)        
-    # getting binding energy at different fermi levels for every name in list
-    for name in names:
-        label = da.select_entries(names=[name])[0].symbol if format_legend else name
-        for i in range(0,len(ef)):
-            binding_energy[i] = da.binding_energy(name,fermi_level=ef[i])            
-        plt.plot(ef,binding_energy, linewidth=2.5*(figsize[1]/figsize[0]),label=label)
-        
-    plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black lines for gap edges
-    plt.axvline(x=da.band_gap, linestyle='-', color='k',
-                linewidth=2)        
-    # shaded areas
-    plt.axvspan(xlim[0], 0, facecolor='k', alpha=0.2)
-    plt.axvspan(da.band_gap, xlim[1], facecolor='k', alpha=0.2)
-    plt.hlines(0,xlim[0],xlim[1],colors='k',linestyles='dashed',alpha=0.5)
-    plt.legend()
-    plt.xlim(xlim)
-    if ylim: 
-        plt.ylim(ylim) 
-    plt.xlabel('Fermi level (eV)')
-    plt.ylabel('Binding energy (eV)')
-    
-    return plt
+    def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
+        """
+        Limit df to a concentration range
 
+        Parameters
+        ----------
+        conc_range : (tuple), optional
+            Range of concentrations to include in df. The default is (1e10,1e40).
+        reset_df : (bool), optional
+            Reset df attribute or return a new df. The default is False.
 
-def plot_charge_transition_levels(entries,
-                                  vbm,
-                                  band_gap,
-                                  ylim=None,
-                                  figsize=(10,10),
-                                  fontsize=16,
-                                  fermi_level=None,
-                                  format_legend=True,
-                                  get_integers=True):
-    """
-    Plotter for the charge transition levels
-    Args:
-        entries: List of entries to calculate. If None all entries are considered.
-        ylim (Tuple): y-axis limits.
-        fermi_level (float) : float to plot Fermi energy position.
-        size (float) : Float multiplier for plot size.
-        format_legend (bool): Bool for getting latex-like legend based on the name of defect entries .
-        get_integers (bool): Get CTLs as integers.
-    Returns:
-        matplotlib object    
-    """        
-    da = DefectsAnalysis(entries, vbm, band_gap)
-    plt.figure(figsize=figsize)         
-    if ylim == None:
-        ylim = (-0.5,da.band_gap +0.5)        
-    charge_transition_levels = da.charge_transition_levels(entries=entries,get_integers=get_integers)
-    number_defects = len(charge_transition_levels)   
-    x_max = 10
-    interval = x_max/(number_defects + 1)
-    x = np.arange(0,x_max,interval)
-    # position of x labels
-    x_ticks_positions = []
-    for i in range(0,len(x)-1):
-        x_ticks_positions.append((x[i+1]-x[i])/2 + x[i])            
-    x_ticks_labels = []
-    for name in charge_transition_levels:
-        x_ticks_labels.append(name)        
-    # draw vertical lines to separte defect types
-    for i in x:
-        plt.axvline(x=i, linestyle='-', color='k', linewidth=1.2, alpha=1, zorder=1)
-    xlim = (x[0],x[-1])        
-    #VBM and CBM shaded
-    plt.axhspan(ylim[0], 0, facecolor='grey', alpha=0.9, zorder=2)
-    plt.axhspan(da.band_gap,ylim[1], facecolor = 'grey', alpha=0.9, zorder=2)                
-    # plot CTL
-    for i in range(0,len(x_ticks_labels)):
-        name = x_ticks_labels[i]
-        for ctl in charge_transition_levels[name]:
-            energy = ctl[2]
-            plt.hlines(energy,x[i],x[i+1],colors='k',linewidth=2.25, zorder=3)
-            charge1 = '+' + str(ctl[1]) if ctl[1] > 0 else str(ctl[1])
-            charge2 = '+' + str(ctl[0]) if ctl[0] > 0 else str(ctl[0])
-            label_charge = '(' + charge2 + '/' + charge1 + ')'
-            font_space = abs(ylim[1]-ylim[0]) / 100
-            if energy < ylim[1] and energy > ylim[0]:
-                plt.text(x[i]+(interval/2)*2/number_defects ,energy+font_space,label_charge,fontsize=fontsize)        
-    # format latex-like legend
-    if format_legend:    
-         for name in x_ticks_labels:            
-            x_ticks_labels[x_ticks_labels.index(name)] = name.symbol               
-    if fermi_level:
-        plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
-    
-    plt.text(x[-1]+interval/8,-0.3,'VB',fontsize=25*(fontsize/16))
-    plt.text(x[-1]+interval/8,da.band_gap+0.2,'CB',fontsize=25*(fontsize/16))
-    plt.xticks(ticks=x_ticks_positions,labels=x_ticks_labels,fontsize = (25-number_defects)*(fontsize/16))
-    plt.tick_params(axis='x',length=0,width=0)
-    plt.yticks(fontsize=16*(fontsize/16))
-    plt.xlim(xlim)  
-    plt.ylim(ylim)
-    plt.ylabel('Energy(eV)',fontsize=20*(fontsize/16))  
-    
-    return plt    
-
-
-
+        Returns
+        -------
+        df, series : 
+            DataFrame object, Series object.
+        """
+        if reset_df:
+            self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
+            self.series = self.series.between(conc_range[0],conc_range[1])
+            return
+        else:
+            df = self.df.copy()
+            series = self.series.copy()
+            df = df[df.conc.between(conc_range[0],conc_range[1])]
+            series = series[series.between(conc_range[0],conc_range[1])]
+            return df , series
     
  
     
@@ -819,121 +676,5 @@ class ThermodynamicsPlotter:
         return slist
         
     
-
-class ConcBarPlotter:
-
-    def __init__(self,concentrations,format_names=True):
-        """
-        Class to visualize concentrations dictionaries with pd.DataFrame and 
-        pd.Series (fortotal concentrations).
-
-        Parameters
-        ----------
-        concentrations : (list or dict)
-            Concentrations can be in different formats: list of dict for "all" and 
-            "stable_charges" and dict for "total".
-        format_names : (bool), optional
-            Format names with latex symbols. The default is True.
-        """
-        # to be fixed
-        conc_dict = []
-        for c in concentrations:
-            d = {'charge':c.charge,'conc':c.conc,'stable':c.stable}
-            if format_names:
-                name = c.name.symbol
-            else:
-                name = c.name.fullname
-            d['name'] = format_legend_with_charge_number(name,c.charge)
-            conc_dict.append(d)
-        
-        conc_total_dict = {}
-        for dn,conc in concentrations.total.items():
-            if format_names:
-                name = dn.symbol
-            else:
-                name = dn.fullname
-            conc_total_dict[name] = conc
-
-        self.conc = conc_dict
-        self.conc_total = conc_total_dict
-        self.format = format_names
-        self.df = pd.DataFrame(self.conc)
-        self.series = pd.Series(self.conc_total,name='Total Concentrations')
     
-
-    def __print__(self):
-        return self.df.__print__()
-    
-    def __repr__(self):
-        return self.df.__repr__()
-
-    def copy(self):
-        return self.df.copy()
-    
-    
-    def plot_bar(self,conc_range=(1e13,1e40),ylim=None,total=True,ylabel_fontsize=15,**kwargs):
-        """
-        Bar plot of concentrations with pd.DataFrame.plot
-
-        Parameters
-        ----------
-        conc_range : (tuple), optional
-            Range of concentrations to include in df. The default is (1e13,1e40).
-        ylim : (tuple), optional
-            Limit of y-axis in plot. If None conc_range is used. The default is None.
-        total : (bool), optional
-            plot total concentrations. The default is True.
-        ylabel_fontsize : (int), optional
-            Size of the label for y-axis. The default is 15.
-        **kwargs : (dict)
-            Kwargs to pass to df.plot().
-
-        Returns
-        -------
-        plt : 
-            Matplotlib object.
-        """
-        if conc_range:
-            if not ylim:
-                ylim = conc_range
-            series = self.limit_conc_range(conc_range,reset_df=False)[1]
-            df = self.limit_conc_range(conc_range,reset_df=False)[0]
-        else:
-            series = self.series
-            df = self.df
-        if not total:
-            ax = df.plot(x='name',y='conc',kind='bar',ylim=ylim,logy=True,grid=True,
-                          xlabel='Name , Charge',legend=None,**kwargs)
-        else:
-            ax = series.plot(kind='bar',logy=True,ylim=ylim,ylabel='Concentrations(cm$^{-3}$)',grid=True,**kwargs)
-        ax.set_ylabel('Concentrations(cm$^{-3}$)',fontdict={'fontsize':ylabel_fontsize})
-        return ax
-
-
-    def limit_conc_range(self,conc_range=(1e10,1e40),reset_df=False):
-        """
-        Limit df to a concentration range
-
-        Parameters
-        ----------
-        conc_range : (tuple), optional
-            Range of concentrations to include in df. The default is (1e10,1e40).
-        reset_df : (bool), optional
-            Reset df attribute or return a new df. The default is False.
-
-        Returns
-        -------
-        df, series : 
-            DataFrame object, Series object.
-        """
-        if reset_df:
-            self.df = self.df[self.df.conc.between(conc_range[0],conc_range[1])]
-            self.series = self.series.between(conc_range[0],conc_range[1])
-            return
-        else:
-            df = self.df.copy()
-            series = self.series.copy()
-            df = df[df.conc.between(conc_range[0],conc_range[1])]
-            series = series[series.between(conc_range[0],conc_range[1])]
-            return df , series    
     
