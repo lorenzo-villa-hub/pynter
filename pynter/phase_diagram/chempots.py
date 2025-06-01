@@ -614,8 +614,6 @@ class PressureReservoirs(Reservoirs):
         return PressureReservoirs.from_dict(d)    
     
     
-    
-    
 class PDHandler:
     
     def __init__(self,phase_diagram):

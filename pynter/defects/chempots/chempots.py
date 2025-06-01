@@ -613,6 +613,82 @@ class PressureReservoirs(Reservoirs):
             d = json.load(path_or_string)
         return PressureReservoirs.from_dict(d)    
     
+
+def barycenter_chemical_potentials(
+    composition,
+    formation_energy,
+    mu_O,
+    mu_min=None,
+    mu_refs=None,
+):
+    """
+    Computes the barycenter of the feasible chemical potential region
+    under: sum(nᵢ * μᵢ) = ΔH_f - n_O * μ_O
+    and μᵢ_min ≤ μᵢ_rel ≤ 0 for i ≠ O
+
+    Parameters:
+    - composition: pymatgen.core.Composition
+    - formation_energy: float, total energy or formation enthalpy per formula unit (eV)
+    - mu_O: float, fixed oxygen chemical potential (absolute, eV)
+    - mu_min: dict {element: min relative μᵢ} (optional)
+    - mu_refs: dict {element: μᵢ_ref} (optional) — absolute chemical potentials of elements
+
+    Returns:
+    - dict {element: μᵢ_abs}
+    """
+    from pymatgen.core.composition import Composition
+    if type(composition) == Composition:
+        pass
+    elif type(composition) == str:
+        composition = Composition(composition)
+    comp = composition.get_el_amt_dict()
+    if "O" not in comp:
+        raise ValueError("Oxygen must be present in the composition.")
+
+    n_O = comp["O"]
+    non_O_elements = [el for el in comp if el != "O"]
+
+    mu_O_rel = mu_O - (mu_refs["O"] if mu_refs and "O" in mu_refs else 0.0)
+    rhs = formation_energy - n_O * mu_O_rel
+
+    mu_vectors = []
+
+    for el_i in non_O_elements:
+        n_i = comp[el_i]
+        mu_i = rhs / n_i
+        mu_point = {el: 0.0 for el in non_O_elements}
+        mu_point[el_i] = mu_i
+
+        # Check bounds
+        valid = True
+        for el in non_O_elements:
+            lower_bound = mu_min[el] if mu_min and el in mu_min else float("-inf")
+            if not (lower_bound <= mu_point[el] <= 0.0):
+                valid = False
+                break
+        if valid:
+            mu_vectors.append(mu_point)
+
+    if not mu_vectors:
+        raise ValueError("No valid chemical potentials found under the given bounds.")
+
+    # Compute barycenter of valid points
+    barycenter_rel = {el: 0.0 for el in non_O_elements}
+    for vec in mu_vectors:
+        for el in non_O_elements:
+            barycenter_rel[el] += vec[el]
+    for el in barycenter_rel:
+        barycenter_rel[el] /= len(mu_vectors)
+
+    barycenter_abs = {}
+    for el in non_O_elements:
+        ref = mu_refs[el] if mu_refs and el in mu_refs else 0.0
+        barycenter_abs[el] = barycenter_rel[el] + ref
+
+    # Add absolute oxygen chemical potential
+    barycenter_abs["O"] = mu_O
+
+    return barycenter_abs
     
     
     
