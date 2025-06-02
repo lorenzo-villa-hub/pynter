@@ -1,8 +1,6 @@
 
 import numpy as np
 from scipy.optimize import bisect
-import matplotlib
-import matplotlib.pyplot as plt
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 import os.path as op
@@ -10,8 +8,14 @@ import json
 
 from pymatgen.electronic_structure.dos import FermiDos
 
-from pynter.defects.pmg.pmg_dos import FermiDosCarriersInfo
-from .plotter import *
+from .pmg.pmg_dos import FermiDosCarriersInfo
+from .thermodynamics import DefectThermodynamics
+from .plotter import (
+                    ThermodynamicsPlotter,
+                    plot_binding_energies,
+                    plot_formation_energies,
+                    plot_charge_transition_levels
+                    )
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 
@@ -520,8 +524,11 @@ class DefectsAnalysis:
                             chemical_potentials,
                             bulk_dos,
                             temperature,
-                            npoints=50):
-        reservoirs = None
+                            fixed_concentrations=None,
+                            external_defects=[],
+                            xtol=1e-05,
+                            npoints=50,
+                            **kwargs):
         defects_analysis = DefectThermodynamics(defects_analysis=self,
                                           bulk_dos=bulk_dos,
                                           fixed_concentrations=fixed_concentrations,
