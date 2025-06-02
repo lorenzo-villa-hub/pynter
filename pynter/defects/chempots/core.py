@@ -1,4 +1,5 @@
 
+import numpy as np
 from itertools import product
 from monty.json import MSONable
 from pymatgen.core.periodic_table import Element
@@ -179,9 +180,32 @@ class Chempots(MSONable):
         Chempots values converted to referenced (mu - mu_ref).
         """
         return Chempots({el:self.mu[el] - mu_refs[el] for el in self.mu})
-            
 
-        
+
+def chempot_ideal_gas(mu0, temperature,partial_pressure):
+    """
+    Get chemical potential at a given temperature and partial pressure. The chemical potential in standard conditions (mu0)
+    has to be know.
+
+    Parameters
+    ----------
+    mu0 : (float)
+        Value of chemical potential in standard conditions.
+    temperature : (float)
+        Temperature. in Kelvin
+    partial_pressure : (float)
+        Partial pressure.
+
+    Returns
+    -------
+    chempot : (float)
+        Value of chemical potential at given T and p/p0.
+    """
+    kb = 8.6173324e-5  # eV / K
+    chempot = mu0 + 0.5*kb*temperature*np.log(partial_pressure)
+    return chempot
+
+
 def barycenter_chemical_potentials_absolute(composition,
                                             energy,
                                             oxygen_chempot_absolute,

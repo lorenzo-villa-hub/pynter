@@ -14,6 +14,9 @@ from monty.json import MSONable, MontyEncoder
 from pynter.tools.format import format_composition
 import copy
 
+from pymatgen.analysis.phase_diagram import PhaseDiagram
+
+from .core import Chempots
 from .phase_diagram import PDHandler
 
 
@@ -440,3 +443,6 @@ class PressureReservoirs(Reservoirs):
         else:
             d = json.load(path_or_string)
         return PressureReservoirs.from_dict(d)   
+    
+    
+    
