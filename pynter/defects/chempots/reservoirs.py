@@ -39,7 +39,7 @@ class Reservoirs(MSONable):
             Set this variable to True if chempots in dictionary are referenced values. The default is False.
         """
         self.res_dict = res_dict
-        self.pd = phase_diagram if phase_diagram else None
+        self.pd = phase_diagram 
         if mu_refs:
             self.mu_refs = mu_refs
         elif self.pd:
@@ -47,7 +47,7 @@ class Reservoirs(MSONable):
         else:
             self.mu_refs = mu_refs
             warnings.warn('Neither PhaseDiagram or reference chempots have been provided, conversions btw ref and abs value will not be possible',UserWarning)
-        self.are_chempots_delta = are_chempots_delta
+        self._are_chempots_delta = are_chempots_delta
 
 
     def __str__(self):
@@ -99,6 +99,10 @@ class Reservoirs(MSONable):
             for key, value in other:
                 self.res_dict[key] = value
 
+
+    @property
+    def are_chempots_delta(self):
+        return self._are_chempots_delta
 
     def as_dict(self):
         """
@@ -327,7 +331,7 @@ class Reservoirs(MSONable):
         """
         new_res_dict = self.get_absolute_res_dict()
         self.res_dict = new_res_dict
-        self.are_chempots_delta = False
+        self._are_chempots_delta = False
         return
 
         
@@ -337,7 +341,7 @@ class Reservoirs(MSONable):
         """
         new_res_dict = self.get_referenced_res_dict()
         self.res_dict = new_res_dict
-        self.are_chempots_delta = True
+        self._are_chempots_delta = True
         return    
     
                 
@@ -352,7 +356,10 @@ class Reservoirs(MSONable):
             chempots = chempots.mu #keep just dict for DataFrame
             for el in chempots:
                 if format_symbols:
-                    label = '$\Delta \mu_{\text{%s}}$' %el
+                    if self.are_chempots_delta:
+                        label = '$\Delta \mu_{\text{%s}}$' %el
+                    else:
+                        label = '$\mu_{\text{%s}}$' %el
                 else:
                     label = el
                 new_dict[res][label] = chempots[el]
