@@ -9,7 +9,6 @@ import json
 from pymatgen.electronic_structure.dos import FermiDos
 
 from .pmg.pmg_dos import FermiDosCarriersInfo
-from .thermodynamics import DefectThermodynamics
 from .plotter import (
                     ThermodynamicsPlotter,
                     plot_binding_energies,
@@ -504,6 +503,8 @@ class DefectsAnalysis:
                             external_defects=[],
                             xtol=1e-05,
                             **kwargs):
+        from .thermodynamics import DefectThermodynamics
+        
         reservoirs = None # figure out how to get reservoirs
         defects_analysis =  DefectThermodynamics(defects_analysis=self,
                                           bulk_dos=bulk_dos,
@@ -529,6 +530,8 @@ class DefectsAnalysis:
                             xtol=1e-05,
                             npoints=50,
                             **kwargs):
+        from .thermodynamics import DefectThermodynamics
+        
         defects_analysis = DefectThermodynamics(defects_analysis=self,
                                           bulk_dos=bulk_dos,
                                           fixed_concentrations=fixed_concentrations,

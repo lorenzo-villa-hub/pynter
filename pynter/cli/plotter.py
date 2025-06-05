@@ -8,6 +8,7 @@ Created on Fri May 26 14:04:04 2023
 
 import os
 import json
+import matplotlib.pyplot as plt 
 
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.electronic_structure.plotter import DosPlotter, BSDOSPlotter, BSPlotter 
@@ -53,8 +54,8 @@ def plot_bs(args):
     v = Vasprun("vasprun.xml")
     bs = v.get_band_structure(kpoints_filename=args.kpoints_filename,line_mode=args.line_mode,
                               force_hybrid_mode=args.force_hybrid_mode)
-    plt = BSPlotter(bs).get_plot(ylim=args.ylim,smooth=args.smooth)
-    plt.gca().get_legend().remove()
+    plot = BSPlotter(bs).get_plot(ylim=args.ylim,smooth=args.smooth)
+    plot.gca().get_legend().remove()
     
     if args.title:
         plt.title(args.title,fontdict={'fontsize':25})
@@ -93,8 +94,10 @@ def plot_dos(args):
     for k in dos_dict:
         if not args.dos_projection=='None':   
             plotter.add_dos(k,dos_dict[k])
-    plt = plotter.get_plot(xlim=xlim,ylim=args.ylim)
-    plt.title(args.title)
+    ax = plotter.get_plot(xlim=xlim,ylim=args.ylim)
+    #plt = ax.get_figure()
+    if args.title:
+        plt.title(args.title)
     if args.savefig:
         plt.savefig('DOS.pdf',bbox_inches='tight')
     else:
@@ -139,9 +142,9 @@ def plot_dos_bs(args):
     cb_range = ylim[1] - gap if ylim else 4  # adjust for nonsense args in BSDOSPlotter
     bs = v.get_band_structure(line_mode=True,force_hybrid_mode=args.hybrid,efermi=efermi)
     
-    plt = BSDOSPlotter(bs_projection=None, dos_projection='elements', bs_legend=None, 
+    plot = BSDOSPlotter(bs_projection=None, dos_projection='elements', bs_legend=None, 
                         vb_energy_range=vb_range, cb_energy_range=cb_range).get_plot(bs,dos)
-    ax = plt.gcf().get_axes()[0]
+    ax = plot.gcf().get_axes()[0]
     ax.set_ylabel('$E - E_F$ (eV)')    
     if args.savefig:
         plt.savefig('DOS-BS.pdf')
