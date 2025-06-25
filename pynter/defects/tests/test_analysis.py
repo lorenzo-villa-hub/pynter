@@ -7,7 +7,7 @@ Created on Tue May 16 17:34:15 2023
 """
 import matplotlib
 
-matplotlib.use('Agg') # no graphical output
+#matplotlib.use('Agg') # no graphical output
 
 from pymatgen.electronic_structure.dos import CompleteDos
 import numpy as np
@@ -203,6 +203,7 @@ class TestDefectsAnalysisComplexes(PynterTest):
     def test_binding_energy(self):
         self.assert_all_close( self.da.binding_energy('Int_Si-Vac_Si') , -1.5579998134255888 )
         self.assert_all_close( self.da.binding_energy('Sub_B_on_Si-Sub_P_on_Si') , -0.17095738713175915 )
+        # include different labels
         
     def test_defect_concentrations_fixed(self):
         concfix = 1e17

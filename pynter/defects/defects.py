@@ -803,7 +803,7 @@ class DefectName(str,MSONable):
 class DefectComplexName(str,MSONable):
     
     def __new__(cls, defect_names, label=None):
-        name = '-'.join([n.name for n in defect_names]) #exclude labels
+        name = '-'.join([n.fullname for n in defect_names]) #include single defect labels
         if label:
             fullname =  name + '(%s)'%label
         else:
@@ -877,7 +877,7 @@ class DefectComplexName(str,MSONable):
     
     @property
     def symbol(self):
-        symbol = '-'.join([n.symbol.split('(')[0] for n in self.defect_names]) 
+        symbol = '-'.join([n.symbol for n in self.defect_names]) #'-'.join([n.symbol.split('(')[0] for n in self.defect_names]) #ignore labels
         if self.label:
             symbol = symbol + '(%s)'%self.label 
         return symbol

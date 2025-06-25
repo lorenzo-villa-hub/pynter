@@ -10,11 +10,22 @@ import numpy as np
 from pandas import DataFrame
 import matplotlib.pyplot as plt
 from pymatgen.core.periodic_table import Element
+from pymatgen.core.composition import Composition
 from pymatgen.symmetry.groups import SpaceGroup
 from pymatgen.analysis.phase_diagram import GrandPotentialPhaseDiagram, PDPlotter
 
 from pynter.tools.format import format_composition
 from .core import Chempots
+
+
+def _get_composition_object(comp):
+    if type(comp) == str:
+        return Composition(comp)
+    elif type(comp) == Composition:
+        return comp
+    else:
+        raise ValueError('Composition needs to be str or pymatgen Composition')
+        
 
 class PDHandler:
     
@@ -38,7 +49,7 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
             Compositions of the phase.
         chempots_ref : (Dict)
             Dictionary with element symbols as keys and respective chemical potential as value ({el:chempot}).
@@ -49,6 +60,7 @@ class PDHandler:
         mu : (float)
             Chemical potential.
         """        
+        comp = _get_composition_object(comp)
         form_energy = self.get_formation_energy_from_stable_comp(comp)
         mu = form_energy
         for el,coeff in comp.items():
@@ -66,14 +78,14 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : 
-            Pymatgen Composition object.
+        comp : (str or Composition)
 
         Returns
         -------
         chempots : (Chempots)
             Chempots object.
         """
+        comp = _get_composition_object(comp)
         chempots_pmg = self.pd.get_all_chempots(comp)
         for r,mu in chempots_pmg.items():
             chempots_pmg[r] = {k:v.item() for k,v in mu.items()} # convert from np.float64
@@ -124,11 +136,12 @@ class PDHandler:
        
        Parameters
        ----------
-       comp : (Pymatgen Composition object)
+       comp : (str or Composition)
        Returns
        -------
        List of Pymatgen PDEntry objects
        """
+       comp = _get_composition_object(comp)
        target_entries=[]
        pd = self.pd
        for e in pd.all_entries:
@@ -146,12 +159,13 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
         Returns
         -------
         from_energies : (Dict)
             Dictionary with PDEntry objects as keys and formation energies as values.
         """
+        comp = _get_composition_object(comp)
         pd = self.pd
         form_energies = {}
         for e in self.get_entries_from_comp(comp):
@@ -166,12 +180,13 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
 
         Returns
         -------
         Formation energy (float)
         """
+        comp = _get_composition_object(comp)
         pd = self.pd
         entry = self.get_stable_entry_from_comp(comp)
         factor = entry.composition.get_reduced_composition_and_factor()[1]
@@ -185,7 +200,7 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
             Composition of the phase you want to get the chemical potentials at the boundary.
         chempot_ref : (Dict)
             Dictionary with fixed element symbol as key and respective chemical potential as value ({el:chempot}).
@@ -195,6 +210,7 @@ class PDHandler:
         chempots : (Dict)
             Dictionary with compositions at the boundaries as keys and delta chemical potentials as value.
         """       
+        comp = _get_composition_object(comp)
         chempots = {}
         comp1,comp2 = self.get_phase_boundaries_compositions(comp, chempot_ref)
         
@@ -216,7 +232,7 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
             Target composition for which you want to get the bounday phases.
         chempot_ref : (Dict)
             Dictionary with fixed element symbol as key and respective chemical potential as value ({el:chempot}).
@@ -227,6 +243,7 @@ class PDHandler:
         comp1,comp2 : (Pymatgen Composition object)
             Compositions of the boundary phases given a fixed chemical potential for one element.
         """
+        comp = _get_composition_object(comp)
         chempot_ref = Chempots(chempot_ref)
         fixed_chempot = chempot_ref.get_absolute(self.mu_refs).to_pmg_elements()
         
@@ -269,7 +286,7 @@ class PDHandler:
 
         Parameters
         ----------
-        comp1,comp2 : (Pymatgen Composition object)
+        comp1,comp2 : (str or Composition)
             Compositions of the two phases at the boundary.
         chempot_ref : (Dict)
             Dictionary with fixed element symbol as key and respective chemical potential as value ({el:chempot}). The chemical potential
@@ -280,6 +297,8 @@ class PDHandler:
         chempots_boundary : (Dict)
             Dictionary of chemical potentials.
         """
+        comp1 = _get_composition_object(comp1)
+        comp2 = _get_composition_object(comp2)
         chempots_boundary ={}
         chempot_ref = Chempots(chempot_ref)
         mu_fixed = chempot_ref.to_pmg_elements()
@@ -359,11 +378,12 @@ class PDHandler:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
         Returns
         -------
         Pymatgen PDEntry object
         """
+        comp = _get_composition_object(comp)
         target_entry=None
         pd = self.pd
         for e in pd.stable_entries:
@@ -429,7 +449,7 @@ class StabilityDiagram:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
             Composition of the phase.
         variable_element : (str)
             Element chosen as indipendent variable.
@@ -441,6 +461,7 @@ class StabilityDiagram:
         -------
         plt : Matplotlib object
         """
+        comp = _get_composition_object(comp)
         axes = plt.gca()
         xlim , ylim = axes.get_xlim() , axes.get_ylim()
         plt.xlim(xlim)
@@ -458,7 +479,7 @@ class StabilityDiagram:
 
         Parameters
         ----------
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
             Composition of interest to compute the chemical potential.
         elements : (list)
             List of strings with elements with free chemical potentials.
@@ -474,6 +495,7 @@ class StabilityDiagram:
         -------
         Matplotlib object
         """        
+        comp = _get_composition_object(comp)
         el1,el2 = elements  
         
         def f(mu1,mu2):            
@@ -545,13 +567,14 @@ class StabilityDiagram:
         ----------
         mu : (float)
             Indipendent variable of chemical potential
-        comp : (Pymatgen Composition object)
+        comp : (str or Composition)
             Composition of the phase.
         variable_element : (Pymatgen Element object)
             Element chosen as indipendent variable.
         chempots_ref : (dict)
             Dictionary with fixed chemical potentials (values relative to reference phase). the format is {Element:chempot}
         """
+        comp = _get_composition_object(comp)
         chempots_ref[variable_element] = mu
         return self.chempots_analysis.calculate_single_chempot(comp,chempots_ref)
     

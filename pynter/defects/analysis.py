@@ -175,9 +175,7 @@ class DefectsAnalysis:
         binding_energy = stable_charges[name][1]
         entry = self.select_entries(names=[name],charge=charge)[0]
         for sd in entry.defect.defects: #subtract energies of single defects
-            dtype = sd.defect_type
-            dspecie = sd.name.dspecie
-            dname = self.select_entries(types=[dtype],defect_specie=dspecie)[0].name
+            dname = sd.name
             binding_energy = binding_energy - stable_charges[dname][1]    
         
         return binding_energy
@@ -595,7 +593,7 @@ class DefectsAnalysis:
             matplotlib object
         """
         entries = entries or self.entries
-        return plot_formation_energies(entries=entries, 
+        plt = plot_formation_energies(entries=entries, 
                                        chemical_potentials=chemical_potentials,
                                        vbm=self.vbm,
                                        band_gap=self.band_gap,
@@ -610,6 +608,7 @@ class DefectsAnalysis:
                                        format_legend=format_legend,
                                        get_subplot=get_subplot,
                                        subplot_settings=subplot_settings)
+        return plt
      
         
     def plot_binding_energies(self, names=None,xlim=None,ylim=None,figsize=(6,6),fontsize=18,format_legend=True):

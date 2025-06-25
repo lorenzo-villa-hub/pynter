@@ -60,6 +60,7 @@ def plot_formation_energies(entries,
         matplotlib object
     """
     from .analysis import DefectsAnalysis
+    import matplotlib.pyplot as plt
     
     matplotlib.rcParams.update({'font.size': fontsize}) 
     formation_energies = DefectsAnalysis(entries,vbm,band_gap).formation_energies(chemical_potentials,
