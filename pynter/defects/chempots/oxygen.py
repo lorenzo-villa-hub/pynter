@@ -67,11 +67,25 @@ def get_oxygen_chempot_from_pO2(temperature=300,partial_pressure=0.2,muO_referen
     return chempot_ideal_gas(muO,temperature,partial_pressure)  
 
 
+def get_pressure_reservoirs_from_chempot_limits(composition,
+                                                temperature,
+                                                pressure_range=(-20,10),
+                                                npoints=50,
+                                                get_pressures_as_strings=False):
+    if type(composition) == str:
+        composition = Composition(composition)
+    partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
+    mu_standard = get_oxygen_chempot_standard_finite_temperature(temperature)
+    
 
-def get_pressure_reservoirs_from_phase_diagram(phase_diagram,target_composition,temperature,
-                                               extrinsic_chempots_range=None,pressure_range=(-20,10),
+def get_pressure_reservoirs_from_phase_diagram(phase_diagram,
+                                               target_composition,
+                                               temperature,
+                                               extrinsic_chempots_range=None,
+                                               pressure_range=(-20,10),
                                                interpolation_function=None,
-                                               npoints=50,get_pressures_as_strings=False):
+                                               npoints=50,
+                                               get_pressures_as_strings=False):
     """
     Generate Reservoirs object with a set of different chemical potentials starting from a range of oxygen partial pressure.
     The code distinguishes between 2-component and 3-component phase diagrams.
@@ -123,9 +137,7 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,target_composition,
     partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
     mu_standard = get_oxygen_chempot_standard_finite_temperature(temperature)
     
-    i = 0
-    for p in partial_pressures:
-        i += 1
+    for idx,p in enumerate(partial_pressures):
         muO = chempot_ideal_gas(mu_standard,temperature=temperature,partial_pressure=p) #delta value
         fixed_chempot = Chempots({'O':muO})
         
@@ -155,7 +167,7 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,target_composition,
         if extrinsic_chempots_range:
             for el in extrinsic_chempots_range:
                 mu_el_O_poor,mu_el_O_rich = extrinsic_chempots_range[el][0], extrinsic_chempots_range[el][1]
-                chempots_abs[el] = mu_el_O_poor + ((mu_el_O_rich - mu_el_O_poor)/npoints)*i 
+                chempots_abs[el] = mu_el_O_poor + ((mu_el_O_rich - mu_el_O_poor)/npoints)*idx 
                     
         if get_pressures_as_strings:
             p = "%.1g" % p
@@ -166,7 +178,8 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,target_composition,
 
         
     return PressureReservoirs(reservoirs,temperature,phase_diagram=pd,are_chempots_delta=False)
-                                
+
+                              
 
 def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
     """
@@ -212,11 +225,11 @@ def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10
 
         
 def get_barycenter_chemical_potentials_absolute(composition,
-                                            energy,
-                                            oxygen_chempot_absolute,
-                                            mu_refs,
-                                            min_absolute_chempots=None,
-                                            max_absolute_chempots=None):
+                                                energy,
+                                                oxygen_chempot_absolute,
+                                                mu_refs,
+                                                min_absolute_chempots=None,
+                                                max_absolute_chempots=None):
     """
     Compute the barycenter of the feasible region for relative chemical potentials,
     constrained by:
@@ -261,10 +274,10 @@ def get_barycenter_chemical_potentials_absolute(composition,
     
 
 def get_barycenter_chemical_potentials_relative(composition,
-                                           formation_energy,
-                                           oxygen_chempot_relative,
-                                           min_relative_chempots=None,
-                                           max_relative_chempots=None):
+                                                formation_energy,
+                                                oxygen_chempot_relative,
+                                                min_relative_chempots=None,
+                                                max_relative_chempots=None):
     """
     Compute the barycenter of the feasible region for relative chemical potentials,
     constrained by:

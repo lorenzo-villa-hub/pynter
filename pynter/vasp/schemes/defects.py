@@ -8,6 +8,7 @@ Created on Thu Apr 10 13:57:21 2025
 import os.path as op
 
 from pynter.defects.defects import create_vacancies, create_substitutions
+from pynter.defects.structure import defect_finder
 from pynter.vasp.schemes.core import InputSets
 from pynter.vasp.schemes.relaxation import RelaxationSchemes
 from pynter.vasp.schemes.variations import VariationsSchemes
@@ -22,7 +23,7 @@ class DefectSchemes(InputSets):
 
         Parameters
         ----------
-        defects_with_charges : (dict)
+        defects_with_charges : (list)
             List of tuples with Defect object and relative charge state list, for example [(Defect , [q1,q2,q3,...])].
         locpot : (bool), optional
             Add 'LVTOT=True' in INCAR. The default is False.
@@ -54,6 +55,35 @@ class DefectSchemes(InputSets):
                 for jrel in rel_jobs:
                         jobs.append(jrel)
         return jobs
+
+
+    def defects_pbe_relaxation_from_structures(self,structures_with_charges,tol=1e-03,locpot=False,rel_scheme='default'):
+        """
+        Generate jobs for default defect calculation scheme with PBE starting from defect structures.
+        defect_finder is used to create defect objects, check that the algorithm wirks as intended.
+
+        Parameters
+        ----------
+        structures_with_charges : (list)
+            List of tuples with Structure object and relative charge state list, for example [(Structure , [q1,q2,q3,...])].
+        tol: (float)
+            Tolerance for defect_finder.
+        locpot : (bool)
+            Add 'LVTOT=True' in INCAR. The default is False.
+        rel_scheme : (str)
+            Relaxation scheme to use with PBE. 'default' for pbe_relaxation and 
+            'gamma' pbe_relaxation_gamma. The default is 'default'.
+
+        Returns
+        -------
+        jobs : (list)
+            List of VaspJob objects.
+        """
+        defects_with_charges = []
+        for structure_defect, charge_states in structures_with_charges:
+            defect = defect_finder(structure_defect, self.structure, tol=tol)
+            defects_with_charges.append( (defect,charge_states) )
+        return self.defects_pbe_relaxation(defects_with_charges,locpot=locpot,rel_scheme=rel_scheme)
 
 
     def interstitials_pbe_relaxation(self):
