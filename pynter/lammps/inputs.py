@@ -30,10 +30,12 @@ class LammpsInput(MSONable):
         return LammpsInput(self.lines.copy())
     
     @staticmethod
-    def from_string(string):
+    def from_string(string,remove_empty_lines=False):
         """
         Get LammpsInput object from string
         """
+        if remove_empty_lines:
+            string = "\n".join(line for line in string.splitlines() if line.strip())
         return LammpsInput(string.split('\n'))
     
     @staticmethod

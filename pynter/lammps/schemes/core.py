@@ -129,14 +129,11 @@ class InputSets:
         """
         self.path = op.abspath(path) if path else os.getcwd()
         self.atom_style = atom_style
+        self.input_string = input_string
+        self.input_string_original = input_string
         self.input_filename = input_filename
         self.data_filename = data_filename
         
-        if input_string:
-            input_string = "\n".join(line for line in input_string.splitlines() if line.strip())  # remove empty lines
-            self.lammps_input = LammpsInput.from_string(input_string) 
-        else:
-            self.lammps_input = DefaultInputs().get_lammps_input_default()
         
         if structure:
             self.structure = structure   
@@ -190,7 +187,10 @@ class InputSets:
         else:
             jobpath = self.path
         
-
+        if self.input_string:
+            self.lammps_input = LammpsInput.from_string(self.input_string) 
+        else:
+            self.lammps_input = DefaultInputs().get_lammps_input_default()
         inputs = {'inp':self.lammps_input}
         if self.lammps_data:
             inputs['data'] = self.lammps_data
@@ -205,3 +205,101 @@ class InputSets:
                               data_filename=self.data_filename)
                               
         return lammpsjob  
+    
+  
+    def npt(self,add_to_job_name=None,add_to_job_path=None,**kwargs):
+        if self.input_string_original:
+            warnings.warn('You are overriding your input in "input_string"')
+        self.input_string = InputPresets().npt(**kwargs)
+        return self.get_lammpsjob(add_to_job_name=add_to_job_name,add_to_job_path=add_to_job_path)
+    
+    def nvt(self,add_to_job_name=None,add_to_job_path=None,**kwargs):
+        if self.input_string_original:
+            warnings.warn('You are overriding your input in "input_string"')
+        self.input_string = InputPresets().nvt(**kwargs)
+        return self.get_lammpsjob(add_to_job_name=add_to_job_name,add_to_job_path=add_to_job_path)
+        
+
+
+class InputPresets:
+    
+            
+    def npt(self,
+            pair_style='',
+            pair_coeff='',
+            T=300,
+            P=1,
+            dt=1,
+            nstepout=100,
+            nstepdump=100,
+            nsteprun=10000):
+        lines = [
+            "units metal",
+            "boundary p p p",
+            "atom_style atomic",
+            "read_data structure.data",
+            "",
+            "pair_style %s" % pair_style,
+            "pair_coeff %s" % pair_coeff,
+            "",
+            "variable T equal %s" % T,
+            "variable P equal %s" %(P*1.01325), # pressure from atm to bar
+            "variable dt equal %s" %(dt*0.001), # timestep from fs to ps,
+            "",
+            "timestep ${dt}",
+            "variable T_init equal 2*$T",
+            "velocity all create ${T_init} 4928459 rot yes dist gaussian",
+            "",
+            "fix             NPT all npt temp $T $T $(100.0*dt) iso $P $P $(1000.0*dt)",
+            "",
+            "variable nstepout equal %s" % nstepout,
+            "variable nstepdump equal %s" % nstepdump,
+            "variable nsteprun equal %s" % nsteprun,
+            "",
+            "thermo          ${nstepout}",
+            "thermo_style    custom step temp pe ke etotal",
+            "dump            myDump all custom ${nstepdump} structure.dump id type x y z",
+            "run             ${nsteprun}",
+        ]
+
+    
+        return '\n'.join(lines)
+    
+    
+    def nvt(self,
+            pair_style='',
+            pair_coeff='',
+            T=300,
+            dt=1,
+            nstepout=100,
+            nstepdump=100,
+            nsteprun=10000):
+        lines = [
+            "units metal",
+            "boundary p p p",
+            "atom_style atomic",
+            "read_data structure.data",
+            "",
+            "pair_style %s" % pair_style,
+            "pair_coeff %s" % pair_coeff,
+            "",
+            "variable T equal %s" % T,
+            "variable dt equal %s" %(dt*0.001), # timestep from fs to ps
+            "",
+            "timestep ${dt}",
+            "variable T_init equal 2*$T",
+            "velocity all create ${T_init} 4928459 rot yes dist gaussian",
+            "",
+            "fix             NVT all nvt temp $T $T $(100.0*dt)",
+            "",
+            "variable nstepout equal %s" % nstepout,
+            "variable nstepdump equal %s" % nstepdump,
+            "variable nsteprun equal %s" % nsteprun,
+            "",
+            "thermo          ${nstepout}",
+            "thermo_style    custom step temp pe ke etotal",
+            "dump            myDump all custom ${nstepdump} structure.dump id type x y z",
+            "run             ${nsteprun}",
+        ]
+    
+        return '\n'.join(lines)

@@ -72,7 +72,6 @@ class PACEActiveLearningSchemes(InputSets):
         
         write_data out.data
         """
-        input_string = "\n".join(line for line in input_string.splitlines() if line.strip())  # remove empty lines
-        self.lammps_input = LammpsInput.from_string(input_string,keep_stages=True)
+        self.lammps_input = LammpsInput.from_string(input_string)
         return self.get_lammpsjob(add_to_job_name=add_to_job_name,add_to_job_path=add_to_job_path)
             
