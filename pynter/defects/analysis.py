@@ -66,6 +66,8 @@ class DefectsAnalysis:
                 groups[e.name].append(e)
         return groups
             
+    def copy(self):
+        return DefectsAnalysis(self.entries, self.vbm, self.band_gap)
     
     def as_dict(self):
         """
@@ -559,9 +561,7 @@ class DefectsAnalysis:
                                 figsize=(6,6),
                                 fontsize=12,
                                 show_legend=True,
-                                format_legend=True,
-                                get_subplot=False,
-                                subplot_settings=None):   # add option to give reservoirs and handle the subplots internally
+                                format_legend=True):
         """
         Produce defect Formation energy vs Fermi energy plot
         Args:
@@ -593,21 +593,39 @@ class DefectsAnalysis:
             matplotlib object
         """
         entries = entries or self.entries
-        plt = plot_formation_energies(entries=entries, 
-                                       chemical_potentials=chemical_potentials,
-                                       vbm=self.vbm,
-                                       band_gap=self.band_gap,
-                                       xlim=xlim,
-                                       ylim=ylim,
-                                       title=title,
-                                       fermi_level=fermi_level,
-                                       grid=grid,
-                                       figsize=figsize,
-                                       fontsize=fontsize,
-                                       show_legend=show_legend,
-                                       format_legend=format_legend,
-                                       get_subplot=get_subplot,
-                                       subplot_settings=subplot_settings)
+        kwargs = {
+            'entries':entries,
+            'chemical_potentials':chemical_potentials,
+            'vbm':self.vbm,
+            'band_gap':self.band_gap,
+            'xlim':xlim,
+            'ylim':ylim,
+            'title':title,
+            'fermi_level':fermi_level,
+            'grid':grid,
+            'figsize':figsize,
+            'fontsize':fontsize,
+            'show_legend':show_legend,
+            'format_legend':format_legend,
+            'get_subplot':False,
+            'subplot_settings':None
+            }
+        values = list(chemical_potentials.values())
+        if type(values[0]) == dict:
+            ncolumns = 2
+            nrows = len(values) // ncolumns + len(values) % ncolumns 
+            print(len(values),nrows,ncolumns)
+            res = chemical_potentials
+            idx = 0
+            for key,value in res.items():
+                idx += 1
+                kwargs['title'] = key
+                kwargs['chemical_potentials'] = value
+                kwargs['get_subplot'] = True
+                kwargs['subplot_settings'] = (nrows,ncolumns,idx)
+                plt = plot_formation_energies(**kwargs)
+        else:
+            plt = plot_formation_energies(**kwargs)
         return plt
      
         
