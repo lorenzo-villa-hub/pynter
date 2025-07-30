@@ -561,7 +561,7 @@ class DefectsAnalysis:
                                 show_legend=True,
                                 format_legend=True,
                                 get_subplot=False,
-                                subplot_settings=None):
+                                subplot_settings=None):   # add option to give reservoirs and handle the subplots internally
         """
         Produce defect Formation energy vs Fermi energy plot
         Args:

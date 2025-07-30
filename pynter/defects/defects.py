@@ -665,6 +665,8 @@ class DefectName(str,MSONable):
             symbol = '$V_{%s}$' %dspecie
             
         elif dtype == 'Substitution':
+            if not bulk_specie:
+                raise ValueError('bulk_specie required for Substitution')
             name = 'Sub_%s_on_%s' %(dspecie,bulk_specie)
             symbol = '$%s_{%s}$' %(dspecie,bulk_specie)
             
@@ -741,6 +743,17 @@ class DefectName(str,MSONable):
         else:
             bulk_specie = None
         return bulk_specie
+
+    @property
+    def delta_atoms(self):
+        if self.dtype=='Vacancy':
+            return {self.dspecie:-1}
+        elif self.dtype=='Substitution':
+            return {self.dspecie:+1,self.bulk_specie:-1}
+        elif self.dtype=='Interstitial':
+            return {self.dspecie:+1}
+        elif self.dtype=='Polaron':
+            return {}
 
     @property        
     def dspecie(self):
@@ -854,6 +867,16 @@ class DefectComplexName(str,MSONable):
     @property
     def defect_names(self):
         return self._defect_names
+    
+    @property
+    def delta_atoms(self):
+        delta_atoms = {}
+        for name in self.defect_names:
+            for el,n in name.delta_atoms.items():
+                if el not in delta_atoms.keys():
+                    delta_atoms[el] = 0
+                delta_atoms[el] += n
+        return delta_atoms
 
     @property
     def dspecies(self):
