@@ -169,6 +169,64 @@ def get_furthest_neighbors(structure, target_site, species):
 
     return selected_indices
 
+def get_WarrenCowley_order_parameter(
+                        structure,
+                        A_symbols,
+                        X_symbols,
+                        neighbors_cutoff):
+    """
+    Compute Warren Cowley order parameter to describe mixing tendencies in alloys
+
+    The WC order parameter is computed as:
+                alpha_{A-X} = 1 - < P_{A-X} > / C_X
+    where:
+    - <P_{A-X}> is the avg probability of finding X near A, computed as:
+        <P_{A-X}> = n_X / n_total , n = number of nighbors of A
+        C_X = concentration of X in structure
+    
+    Parameters
+    ----------
+    structure:
+        Pymatgen Structure
+    A_symbols: (list)
+        List of element symbols to consider for A-site
+    X_symbols: (list)
+        List of element symbols to consider for X-site
+    neighbors_cutoff: (float)
+        Distance cutoff for neighbors counting
+
+    Returns
+    -------
+    alpha: (float)
+        Warren-Cowley order parameter
+    """
+    total_P_AX = 0
+    n_A_sites = 0
+    n_X_sites = 0
+    for site in structure:
+        if site.specie.symbol in A_symbols:
+            n_A_sites += 1
+            neighbors_list = structure.get_neighbors(site,r=neighbors_cutoff)
+            n_X_neighbors = 0
+            n_total_neighbors = 0
+            for neighbor in neighbors_list:
+                if neighbor.specie.symbol in X_symbols:
+                    n_X_neighbors += 1
+                    n_total_neighbors += 1
+                elif neighbor.specie.symbol in A_symbols:
+                    n_total_neighbors += 1
+            total_P_AX += n_X_neighbors / n_total_neighbors
+        elif site.specie.symbol in X_symbols:
+            n_X_sites += 1
+
+    if n_A_sites == 0 or n_X_sites == 0:
+        raise ValueError("No A or X sites found to compute order parameter.")
+
+    C_X = n_X_sites / (n_A_sites + n_X_sites)
+    avg_P_AX = total_P_AX / n_A_sites
+    alpha = 1 - avg_P_AX / C_X 
+    return alpha
+
 
 def is_site_in_structure(site,structure,tol=1e-03):
     """
