@@ -513,7 +513,7 @@ class DefectsAnalysis:
                             reservoirs = None,
                             precursors = None,
                             oxygen_ref = None,
-                            pressure_range=(-20,10),
+                            pressure_range=(1e-20,1e10),
                             npoints = 50,
                             xtol=1e-05,
                             **kwargs):
@@ -545,7 +545,7 @@ class DefectsAnalysis:
         oxygen_ref : (float)
             Absolute chempot of oxygen at 0K.
         pressure_range : (tuple)
-            Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+            Range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
         npoints : (int)
             Number of data points to interpolate the partial pressure with. The default is 50.
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
@@ -571,6 +571,8 @@ class DefectsAnalysis:
         thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
                                                                         temperature=temperature,
                                                                         name='BrowerDiagram')
+        if 'xlim' not in kwargs.keys():
+            kwargs['xlim'] = pressure_range
         plt = ThermodynamicsPlotter().plot_pO2_vs_concentrations(thermodata=thermodata,**kwargs)
         self._thermodata = thermodata
         return plt

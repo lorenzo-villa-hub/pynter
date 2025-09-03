@@ -69,20 +69,20 @@ def get_oxygen_chempot_from_pO2(temperature=300,partial_pressure=0.2,muO_referen
 
 def get_pressure_reservoirs_from_chempot_limits(composition,
                                                 temperature,
-                                                pressure_range=(-20,10),
+                                                pressure_range=(1e-20,1e10),
                                                 npoints=50,
                                                 get_pressures_as_strings=False):
     if type(composition) == str:
         composition = Composition(composition)
-    partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
+    partial_pressures = np.logspace(np.log10(pressure_range[0]),np.log10(pressure_range[1]),num=npoints,base=10)
     mu_standard = get_oxygen_chempot_standard_finite_temperature(temperature)
-    
+    # to be completed
 
 def get_pressure_reservoirs_from_phase_diagram(phase_diagram,
                                                target_composition,
                                                temperature,
                                                extrinsic_chempots_range=None,
-                                               pressure_range=(-20,10),
+                                               pressure_range=(1e-20,1e10),
                                                interpolation_function=None,
                                                npoints=50,
                                                get_pressures_as_strings=False):
@@ -111,7 +111,7 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,
         Dictionary with chemical potentials of elements not belonging to the PD ({element:(O_poor_chempot,O_rich_chempot)}). 
         The default is None.
     pressure_range : (tuple), optional
-        Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+        Range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
     interpolation_function : (function), optional
         Function to determine the chemical potential for the other elements (the ones that are not oxygen).
         interpolation_function(element,boundary_reservoir):
@@ -134,7 +134,7 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,
         target_comp = Composition(target_composition)
     else:
         target_comp = target_composition
-    partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
+    partial_pressures = np.logspace(np.log10(pressure_range[0]),np.log10(pressure_range[1]),num=npoints,base=10)
     mu_standard = get_oxygen_chempot_standard_finite_temperature(temperature)
     
     for idx,p in enumerate(partial_pressures):
@@ -183,7 +183,7 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,
 def get_pressure_reservoirs_from_precursors(precursors,
                                             oxygen_ref,
                                             temperature,
-                                            pressure_range=(-20,10),
+                                            pressure_range=(1e-20,1e10),
                                             npoints=50,
                                             get_pressures_as_strings=False):
     """
@@ -200,7 +200,7 @@ def get_pressure_reservoirs_from_precursors(precursors,
     temperature : (float)
         Temperature.
     pressure_range : (tuple)
-        Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+        Range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
     npoints : (int)
         Number of data points to interpolate the partial pressure with. The default is 50.
     get_pressures_as_strings : (bool)
@@ -247,7 +247,7 @@ def get_pressure_reservoirs_from_precursors(precursors,
     return reservoirs
 
 
-def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
+def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(1e-20,1e10),npoints=50,get_pressures_as_strings=False):
     """
     Get PressureReservoirs object for oxygen starting from the reference value.
 
@@ -258,7 +258,7 @@ def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10
     temperature : (float)
         Temperature.
     pressure_range : (tuple)
-        Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+        Range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
     npoints : (int)
         Number of data points to interpolate the partial pressure with. The default is 50.
     get_pressures_as_strings : (bool)
@@ -271,7 +271,7 @@ def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10
     """
     reservoirs = {}
     mu_refs = Chempots({'O':oxygen_ref})
-    partial_pressures = np.logspace(pressure_range[0],pressure_range[1],num=npoints,base=10)
+    partial_pressures = np.logspace(np.log10(pressure_range[0]),np.log10(pressure_range[1]),num=npoints,base=10)
     mu_standard = get_oxygen_chempot_standard_finite_temperature(temperature)
     for p in partial_pressures:
         mu = {}
