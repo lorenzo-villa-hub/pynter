@@ -9,6 +9,7 @@ import json
 from pymatgen.electronic_structure.dos import FermiDos
 
 from .pmg.pmg_dos import FermiDosCarriersInfo
+from .chempots.oxygen import get_pressure_reservoirs_from_precursors
 from .plotter import (
                     ThermodynamicsPlotter,
                     plot_binding_energies,
@@ -46,6 +47,7 @@ class DefectsAnalysis:
         self.occupation_function = occupation_function
         self.groups = self._group_entries()
         self.names = list(self.groups.keys())
+        self._thermodata = None
         
 
     def __str__(self):     
@@ -69,6 +71,14 @@ class DefectsAnalysis:
     def copy(self):
         return DefectsAnalysis(self.entries, self.vbm, self.band_gap)
     
+    @property
+    def thermodata(self):
+        """
+        Result of thermodynamics calculation (plot_brouwer_diagram or plot_doping_diagram functions).
+        """    
+        return self._thermodata
+
+
     def as_dict(self):
         """
         Returns:
@@ -87,7 +97,7 @@ class DefectsAnalysis:
     @classmethod
     def from_dict(cls,d):
         """
-        Reconstitute a DefectsAnalysis object from a dict representation created using
+        Reconstruct a DefectsAnalysis object from a dict representation created using
         as_dict().
 
         Args:
@@ -105,7 +115,7 @@ class DefectsAnalysis:
     @staticmethod
     def from_json(path_or_string):
         """
-        Build Dataset object from json file or string.
+        Build DefectsAnalysis object from json file or string.
 
         Parameters
         ----------
@@ -495,22 +505,69 @@ class DefectsAnalysis:
         return DefectsAnalysis(new_entries, self.vbm, self.band_gap)
         
 
-    def plot_brower_diagram(self,
-                            oxygen_chempot,
+    def plot_brouwer_diagram(self,
                             bulk_dos,
                             temperature,
                             fixed_concentrations=None,
                             external_defects=[],
+                            reservoirs = None,
+                            precursors = None,
+                            oxygen_ref = None,
+                            pressure_range=(-20,10),
+                            npoints = 50,
                             xtol=1e-05,
                             **kwargs):
+        """
+        Plot Brouwer diagram (defect concentrations vs oxygen partial pressure). Wrapper function for DefectThermodynamics
+        and ThermodynamicsPlotter, if you need more control use the classes individually. 
+        For the chemical potentials, neeed to provide either:
+        -   reservoirs: Dictionary with oxygen partial pressures as keys and dictionary with chemical potential as values ({pO2:{'element':mu_element}}),
+            or PressureReservoirs object.
+        or
+        -   precursors + oxygen_ref: Dictionary with {formula:energy} for synthesis precursors and oxygen reference chempot at 0 K.
+
+        Parameters
+        ----------
+        bulk_dos: (Dos)
+            Density of state of bulk material (Pymatgen Dos object).
+        temperature: (float)
+            Temperature in K.
+        fixed_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names, values are the concentrations. (ex {'Vac_Na':1e20}). 
+        external_defects : (list)
+            List of external defect concentrations (not present in defect entries).
+        reservoirs: (dict or PressureReservoirs)
+            Dictionary with pO2 as keys and chemical potential dictionaly as values ({pO2:{'element':mu_element}})
+        precursors: (dict)
+            Dictionary with formulas (str) as keys and total energies as values. Chemical potentials are found from the energies of the 
+            precursors and the oxygen chempot value (uses the np.linalg.lstsq function). 
+            If the system is underdetermined the minimum-norm solution is found.
+        oxygen_ref : (float)
+            Absolute chempot of oxygen at 0K.
+        pressure_range : (tuple)
+            Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+        npoints : (int)
+            Number of data points to interpolate the partial pressure with. The default is 50.
+        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+        kwargs: (dict)
+            Kwargs to pass to ThermodynamicsPlotter.plot_pO2_vs_concentrations function.
+        """
         from .thermodynamics import DefectThermodynamics
         
-        reservoirs = None # figure out how to get reservoirs
+        if not reservoirs:
+            if not precursors:
+                raise ValueError('You need to either directly provide reservoirs, or precursors + oxygen chempot reference')
+            reservoirs = get_pressure_reservoirs_from_precursors(precursors=precursors,
+                                                                 oxygen_ref=oxygen_ref,
+                                                                 temperature=temperature,
+                                                                 pressure_range=pressure_range,
+                                                                 npoints=npoints)
+            
         defects_analysis =  DefectThermodynamics(defects_analysis=self,
-                                          bulk_dos=bulk_dos,
-                                          fixed_concentrations=fixed_concentrations,
-                                          external_defects=external_defects,
-                                          xtol=xtol)
+                                                bulk_dos=bulk_dos,
+                                                fixed_concentrations=fixed_concentrations,
+                                                external_defects=external_defects,
+                                                xtol=xtol)
         thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
                                                                         temperature=temperature,
                                                                         name='BrowerDiagram')
@@ -530,6 +587,31 @@ class DefectsAnalysis:
                             xtol=1e-05,
                             npoints=50,
                             **kwargs):
+        """
+        Calculate defect and carrier concentrations as a function of the concentration of a particular 
+        defect species (usually a dopant).
+
+        Parameters
+        ----------
+        variable_defect_specie : (str)
+            Name or element of the variable defect species.
+        concentration_range : (tuple or list)
+            Logaritmic range of the concentration of the variable species in cm^-3 (ex. [1,20]).
+        chemical_potentials : (Chempots)
+            Chempots object containing chemical potentials.
+        bulk_dos: (Dos)
+            Density of state of bulk material (Pymatgen Dos object).
+        temperature: (float)
+            Temperature in K.
+        fixed_concentrations: (dict)
+            Dictionary with fixed concentrations. Keys are defect entry names in the standard
+            format, values are the concentrations. (ex {'Vac_Na':1e20}) 
+        external_defects : (list)
+            List of external defect concentrations (not present in defect entries).
+        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+        npoints : (int), optional
+            Number of points to divide concentration range. The default is 50.
+        """
         from .thermodynamics import DefectThermodynamics
         
         defects_analysis = DefectThermodynamics(defects_analysis=self,
@@ -548,8 +630,7 @@ class DefectsAnalysis:
         self._thermodata = thermodata
         return plt
         
-
-              
+         
     def plot_formation_energies(self,
                                 chemical_potentials,
                                 entries=None,

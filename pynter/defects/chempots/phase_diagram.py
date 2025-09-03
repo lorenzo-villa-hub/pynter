@@ -151,7 +151,47 @@ class PDHandler:
            return target_entries
        else:
            raise ValueError('No entry has been found for target composition:%s' %comp.reduced_formula)
-               
+
+
+    def get_energies_from_comp(self,comp):
+        """
+        Get dictionary of energies for all entries of a given reduced composition
+
+        Parameters
+        ----------
+        comp : (str or Composition)
+        Returns
+        -------
+        from_energies : (Dict)
+            Dictionary with PDEntry objects as keys and Energies as values.
+        """
+        comp = _get_composition_object(comp)
+        pd = self.pd
+        energies = {}
+        for e in self.get_entries_from_comp(comp):
+            factor = e.composition.get_reduced_composition_and_factor()[1]
+            energies[e] = e.energy/factor
+        return energies
+            
+
+    def get_energy_from_stable_comp(self,comp):
+        """
+        Get energy of a target stable composition
+
+        Parameters
+        ----------
+        comp : (str or Composition)
+
+        Returns
+        -------
+        Energy (float)
+        """
+        comp = _get_composition_object(comp)
+        pd = self.pd
+        entry = self.get_stable_entry_from_comp(comp)
+        factor = entry.composition.get_reduced_composition_and_factor()[1]
+        return entry.energy/factor
+
 
     def get_formation_energies_from_comp(self,comp):
         """

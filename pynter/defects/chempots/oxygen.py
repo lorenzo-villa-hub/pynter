@@ -179,7 +179,73 @@ def get_pressure_reservoirs_from_phase_diagram(phase_diagram,
         
     return PressureReservoirs(reservoirs,temperature,phase_diagram=pd,are_chempots_delta=False)
 
-                              
+
+def get_pressure_reservoirs_from_precursors(precursors,
+                                            oxygen_ref,
+                                            temperature,
+                                            pressure_range=(-20,10),
+                                            npoints=50,
+                                            get_pressures_as_strings=False):
+    """
+    Get PressureReservoirs object starting from the oxygen reference chemical potential at 0 K and the synthesis precursors.
+    Chemical potentials are found from the energies of the precursors and the oxygen chempot value 
+    (uses the np.linalg.lstsq function). If the system is underdetermined the minimum-norm solution is found.
+
+    Parameters
+    ----------
+    precursors : (dict)
+        Dictionaly with formulas (str) as keys and total energies (float) as values.
+    oxygen_ref : (float)
+        Absolute chempot of oxygen at 0K.
+    temperature : (float)
+        Temperature.
+    pressure_range : (tuple)
+        Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
+    npoints : (int)
+        Number of data points to interpolate the partial pressure with. The default is 50.
+    get_pressures_as_strings : (bool)
+        Get pressure values (keys in the Reservoirs dict) as strings. The default is set to floats.
+
+    Returns
+    -------
+    PressureReservoirs object
+    """
+    row_elements = []
+    for formula in precursors.keys():
+        comp = Composition(formula)
+        for element in comp.elements:
+            el = element.symbol
+            if el not in row_elements and el != 'O':
+                row_elements.append(el)
+    A = []
+    N = len(row_elements)
+    for formula in precursors.keys():
+        a = np.zeros(N)
+        comp = Composition(formula)
+        for element,coeff in comp.items():
+            el = element.symbol
+            if el != 'O':
+                a[row_elements.index(el)] = coeff
+        A.append(a)
+
+    reservoirs = get_oxygen_pressure_reservoirs(oxygen_ref=oxygen_ref,
+                                            temperature=temperature,
+                                            pressure_range=pressure_range,
+                                            npoints=npoints,
+                                            get_pressures_as_strings=get_pressures_as_strings)
+    for chempots in reservoirs.values():
+        muO = chempots['O']
+        B = []
+        for formula,energy in precursors.items():
+            comp = Composition(formula)
+            b = energy - comp['O']*muO
+            B.append(b)
+        X = np.linalg.lstsq(A, B, rcond=None)[0]
+        for index,el in enumerate(row_elements):
+            chempots[el] = X[index]
+    
+    return reservoirs
+
 
 def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10),npoints=50,get_pressures_as_strings=False):
     """
@@ -189,13 +255,13 @@ def get_oxygen_pressure_reservoirs(oxygen_ref,temperature,pressure_range=(-20,10
     ----------
     oxygen_ref : (float)
         Absolute chempot of oxygen at 0K.
-    temperature : (float), optional
+    temperature : (float)
         Temperature.
-    pressure_range : (tuple), optional
+    pressure_range : (tuple)
         Exponential range in which to evaluate the partial pressure . The default is from 1e-20 to 1e10.
-    npoints : (int), optional
+    npoints : (int)
         Number of data points to interpolate the partial pressure with. The default is 50.
-    get_pressures_as_strings : (bool), optional
+    get_pressures_as_strings : (bool)
         Get pressure values (keys in the Reservoirs dict) as strings. The default is set to floats.
 
     Returns
