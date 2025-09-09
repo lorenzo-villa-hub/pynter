@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import bisect
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
+import os
 import os.path as op
 import json
 
@@ -10,6 +11,7 @@ from pymatgen.electronic_structure.dos import FermiDos
 
 from .pmg.pmg_dos import FermiDosCarriersInfo
 from .chempots.oxygen import get_pressure_reservoirs_from_precursors
+from .entries import DefectEntry, _get_computed_entry_from_path
 from .plotter import (
                     ThermodynamicsPlotter,
                     plot_binding_energies,
@@ -134,6 +136,27 @@ class DefectsAnalysis:
         else:
             d = json.loads(path_or_string)
         return DefectsAnalysis.from_dict(d)
+
+
+    def from_vasp_directories(path_defects,path_bulk,get_corrections=False,get_multiplicity=False,tol=1e-02,**kwargs):
+        entries = []
+        for root,dirs,files in os.walk(path):   
+            if 'vasprun.xml' in files:
+                path = op.abspath(root)                
+                from pymatgen.io.vasp.outputs import Vasprun
+                computed_entry_defect = _get_computed_entry_from_path(path,**kwargs)
+                vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
+                computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**kwargs)
+
+                # return DefectEntry.from_computed_entries(
+                #                                         computed_entry_defect=computed_entry_defect,
+                #                                         computed_entry_bulk=computed_entry_bulk,
+                #                                         corrections={},
+                #                                         multiplicity=1,
+                #                                         data=None,
+                #                                         label=label,
+                #                                         tol=tol)
+        
 
 
     @property

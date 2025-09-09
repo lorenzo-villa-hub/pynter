@@ -10,6 +10,7 @@ from abc import ABCMeta
 from monty.json import MSONable, MontyDecoder
 import numpy as np
 import warnings
+import os
 
 from pymatgen.core.units import kb
 
@@ -172,7 +173,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         ----------
         computed_entry_defect : (VaspJob)
             ComputedStructureEntry of the defect calculation.
-        job_bulk : (VaspJob)
+        computed_entry_bulk : (VaspJob)
             ComputedStructureEntry of the bulk calculation.
         corrections : (dict)
             Dict of corrections for defect formation energy. All values will be summed and
@@ -197,7 +198,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         
         return DefectEntry.from_structures(entry_df.structure, entry_bulk.structure, energy_diff,
                                            corrections,charge,multiplicity,data,label,tol=tol)
-        
+    
 
     @staticmethod
     def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,
@@ -287,6 +288,52 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return DefectEntry(defect, energy_diff, corrections,data,label)
 
 
+    @staticmethod
+    def from_vasp_directories(path_defect,path_bulk,corrections,multiplicity=1,data=None,label=None,tol=1e-02,**kwargs):
+        """
+        Generate DefectEntry object from VASP directories read with Pymatgen.
+
+        Parameters
+        ----------
+        path_defect : (str)
+            Path of VASP defect calculation.
+        path_bulk : (str)
+            Path of VASP bulk calculation.
+        corrections : (dict)
+            Dict of corrections for defect formation energy. All values will be summed and
+            added to the defect formation energy.
+        multiplicity : (int), optional
+            Multiplicity of defect within the supercell. 
+            If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
+        data : (dict), optional
+            Store additional data in dict format.
+        label : (str), optional
+            Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
+        kwargs : (dict)
+            Kwargs to pass to Vasprun.get_computed_entry.
+
+        Returns
+        -------
+        DefectEntry
+        """ 
+        from pymatgen.io.vasp.outputs import Vasprun
+
+        computed_entry_defect = _get_computed_entry_from_path(path_defect,**kwargs)
+        vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
+        computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**kwargs)
+
+        return DefectEntry.from_computed_entries(
+                                                computed_entry_defect=computed_entry_defect,
+                                                computed_entry_bulk=computed_entry_bulk,
+                                                corrections=corrections,
+                                                multiplicity=multiplicity,
+                                                data=data,
+                                                label=label,
+                                                tol=tol)
+        
+
     def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
                              per_unit_volume=True,occupation_function='MB'):
         """
@@ -361,6 +408,25 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
 
 
+
+def _get_computed_entry_from_path(path,**kwargs):
+    """
+    Get Pymatgen's ComputedEntry object from VASP calculation path with additional parameters for defect entries.
+    Pass kwargs to Vasprun.get_computed_entry.
+    """
+    from pymatgen.io.vasp.outputs import Vasprun
+    vasprun_defect = os.path.join(path,'vasprun.xml')
+    if kwargs:
+        if 'data' in kwargs.keys(): # computed entry kwarg and list member are called the same
+            if 'parameters' not in kwargs['data']:
+                kwargs['data'].append('parameters')
+        else:
+            kwargs['data'] = ['parameters']
+    else:
+        kwargs = {'data':['parameters']}     
+    return Vasprun(vasprun_defect,parse_dos=False,parse_eigen=False).get_computed_entry(**kwargs)
+
+
 def fermi_dirac(E,T):
     """
     Returns the defect occupation as a function of the formation energy,
@@ -383,3 +449,5 @@ def maxwell_boltzmann(E,T):
         T (float): the temperature in kelvin
     """
     return np.exp(-1.0*E /(kb*T)) 
+
+
