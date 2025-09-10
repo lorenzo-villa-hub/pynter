@@ -56,10 +56,13 @@ class DefectsAnalysis:
         return self.get_dataframe().__str__()
             
     def __repr__(self):
-        return self.__str__()
+        return self.get_dataframe().__repr__()
     
     def __iter__(self):
         return self.entries.__iter__()
+    
+    def __getitem__(self,index):
+        return self.entries.__getitem__(index)
     
     def _group_entries(self):
         groups = {}
@@ -138,24 +141,49 @@ class DefectsAnalysis:
         return DefectsAnalysis.from_dict(d)
 
 
-    def from_vasp_directories(path_defects,path_bulk,get_corrections=False,get_multiplicity=False,tol=1e-02,**kwargs):
-        entries = []
-        for root,dirs,files in os.walk(path):   
-            if 'vasprun.xml' in files:
-                path = op.abspath(root)                
-                from pymatgen.io.vasp.outputs import Vasprun
-                computed_entry_defect = _get_computed_entry_from_path(path,**kwargs)
-                vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
-                computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**kwargs)
+    def from_vasp_directories(
+                            path_defects,
+                            path_bulk,
+                            common_path=None,
+                            get_corrections=False,
+                            get_multiplicity=False,
+                            get_data=True,
+                            band_gap=None,
+                            vbm=None,
+                            tol=1e-02,
+                            **kwargs):
+        
+        from pymatgen.io.vasp.outputs import Vasprun
+        if band_gap and vbm:
+            parse_eigen = False
+        else:
+            parse_eigen = True
+        vasprun_bulk = Vasprun(op.join(path_bulk,'vasprun.xml'),parse_dos=False,parse_eigen=parse_eigen)
+        computed_entry_bulk = vasprun_bulk.get_computed_entry(**kwargs)
+        band_gap = band_gap or vasprun_bulk.eigenvalue_band_properties[0]
+        vbm = vbm or vasprun_bulk.eigenvalue_band_properties[2]
 
-                # return DefectEntry.from_computed_entries(
-                #                                         computed_entry_defect=computed_entry_defect,
-                #                                         computed_entry_bulk=computed_entry_bulk,
-                #                                         corrections={},
-                #                                         multiplicity=1,
-                #                                         data=None,
-                #                                         label=label,
-                #                                         tol=tol)
+        common_path = common_path or path_defects # if not set enter all VASP directories
+        entries = []
+        for root,dirs,files in os.walk(path_defects):   
+            if 'vasprun.xml' in files and common_path in root:
+                path = op.abspath(root)
+                print('importing from %s'%path)                
+                
+                computed_entry_defect = _get_computed_entry_from_path(path,**kwargs)
+                data = {'path':path} if get_data else None
+                entry = DefectEntry.from_computed_entries(
+                                                        computed_entry_defect=computed_entry_defect,
+                                                        computed_entry_bulk=computed_entry_bulk,
+                                                        corrections={}, # get corrections and multiplicity automatically?
+                                                        multiplicity=1,
+                                                        data=data,
+                                                        label=None,
+                                                        tol=tol,
+                                                        **kwargs)
+                entries.append(entry)
+        
+        return DefectsAnalysis(entries=entries,band_gap=band_gap,vbm=vbm)
         
 
 
@@ -716,20 +744,21 @@ class DefectsAnalysis:
             'get_subplot':False,
             'subplot_settings':None
             }
-        values = list(chemical_potentials.values())
-        if type(values[0]) == dict:
-            ncolumns = 2
-            nrows = len(values) // ncolumns + len(values) % ncolumns 
-            print(len(values),nrows,ncolumns)
-            res = chemical_potentials
-            idx = 0
-            for key,value in res.items():
-                idx += 1
-                kwargs['title'] = key
-                kwargs['chemical_potentials'] = value
-                kwargs['get_subplot'] = True
-                kwargs['subplot_settings'] = (nrows,ncolumns,idx)
-                plt = plot_formation_energies(**kwargs)
+        if chemical_potentials:
+            values = list(chemical_potentials.values())
+            if type(values[0]) == dict:
+                ncolumns = 2
+                nrows = len(values) // ncolumns + len(values) % ncolumns 
+                print(len(values),nrows,ncolumns)
+                res = chemical_potentials
+                idx = 0
+                for key,value in res.items():
+                    idx += 1
+                    kwargs['title'] = key
+                    kwargs['chemical_potentials'] = value
+                    kwargs['get_subplot'] = True
+                    kwargs['subplot_settings'] = (nrows,ncolumns,idx)
+                    plt = plot_formation_energies(**kwargs)
         else:
             plt = plot_formation_energies(**kwargs)
         return plt

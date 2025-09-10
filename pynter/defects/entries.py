@@ -273,7 +273,9 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         -------
         DefectEntry
         """
-        defect = defect_finder(defect_structure, bulk_structure,tol=tol)
+        defect = defect_finder(defect_structure, bulk_structure,tol=tol, verbose=True)
+        if not defect:
+            raise ValueError('Cannot create DefectEntry from empty defect object')
         defect.set_charge(charge)
         if multiplicity:
             defect.set_multiplicity(multiplicity)

@@ -200,7 +200,7 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     return new_structure        
 
 
-def defect_finder(structure_defect, structure_bulk, tol=1e-3):
+def defect_finder(structure_defect, structure_bulk, tol=1e-3, verbose=False):
     """
     Optimized function to find defects by comparing defect and bulk structures.
 
@@ -239,12 +239,17 @@ def defect_finder(structure_defect, structure_bulk, tol=1e-3):
     if len(defects) > 1:
         if len(defects) > 3:
             warnings.warn("More than 3 defects found, if not desired try to adjust the tolerance parameter ")
-        return DefectComplex(defects, structure_bulk)
+        defect = DefectComplex(defects, structure_bulk)
     elif len(defects) == 1:
-        return defects[0]
+        defect = defects[0]
     else:
         warnings.warn("No defect has been found. Try to adjust the tolerance parameter.", UserWarning)
-        return defects
+        defect = defects
+    
+    if verbose:
+        print(f'Defect automatically identified for defective structure with composition {structure_defect.composition}: \n {defect}')
+
+    return defect
 
 
 
