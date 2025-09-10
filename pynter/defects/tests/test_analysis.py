@@ -32,23 +32,25 @@ def assert_concentration_equal(actual_concentration_object,desired_charge,desire
 
 class TestDefectsAnalysis(PynterTest):
     
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        self = cls()
         da = DefectsAnalysis.from_vasp_directories(
                                                     path_defects=op.join(self.test_files_path,'Si-defects/Defects'),
                                                     path_bulk=op.join(self.test_files_path,'Si-defects/Bulk/Bulk-3x3x3-supercell'),
                                                     common_path='2-PBE-OPT',
                                                     tol=5e-03)
         da.filter_entries(inplace=True,exclude=True,types=['DefectComplex'])
-        for idx in [0,1,2]:
+        for idx in [0,2,4]:
             da[idx].label = 'mult108'
-        for idx in [3,4,5]:
+        for idx in [1,3,5]:
             da[idx].label = 'mult54'
-        self.da = da
+        cls.da = da
         mu_B = -6.6794
         mu_P = -5.4133
         mu_Si = -5.4224
-        self.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},ndecimals=2)
-        self.dos = get_object_from_json(CompleteDos, self.get_testfile_path('Si_DOS.json')) 
+        cls.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},ndecimals=2)
+        cls.dos = get_object_from_json(CompleteDos, self.get_testfile_path('Si_DOS.json')) 
 
 
     def test_import(self):
@@ -87,12 +89,11 @@ class TestDefectsAnalysis(PynterTest):
     
     def test_charge_transition_levels(self):
         charge_transition_levels = {
-            'Sub_P_on_Si': [(2, 1, -0.44757000000000224), (1, 0, 0.5145204999999566)],
-            'Vac_Si': [(1, 0, -0.08527870000001775), (0, -1, 0.43482689999996005)],
-            'Sub_B_on_Si': [(0, -1, 0.09193469999997461)],
-            'Int_Si(mult108)': [(1, 0, 0.1448889999999724), (0, -1, 0.8207116999999435)],
-            'Int_Si(mult54)': [(1, 0, 0.549648599999955), (0, -1, 0.8631799999999417)]
-            }
+            'Int_Si(mult108)': [(0, -1, 0.8715687999999413)],
+            'Int_Si(mult54)': [(1, 0, 0.90145389999994)],
+            'Sub_B_on_Si': [(0, -1, -0.1843714000000135), (-1, -2, 0.6109916999999525)],
+            'Sub_P_on_Si': [(2, 1, -0.15343770000001483), (1, 0, 0.6639459999999502)],
+            'Vac_Si': [(1, 0, -0.21530510000001218), (0, -1, 0.05837949999997605)]}
         
         self.assert_object_almost_equal( self.da.charge_transition_levels() , charge_transition_levels )
     
@@ -123,36 +124,39 @@ class TestDefectsAnalysis(PynterTest):
         concfix = 1e17
         fixed = {'P':concfix,'B':concfix}
         conc = self.da.defect_concentrations(self.chempots,fermi_level=0.4,fixed_concentrations=fixed)
-        assert_concentration_equal(conc[0], desired_charge=-1, desired_conc=5.33e-52, desired_name='Int_Si(mult108)')
-        assert_concentration_equal(conc[1], desired_charge=-1, desired_conc=4.87e-53, desired_name='Int_Si(mult108)')
-        assert_concentration_equal(conc[2], desired_charge=0, desired_conc=4.37e-44, desired_name='Int_Si(mult108)')
+        assert_concentration_equal(conc[0], desired_charge=-1, desired_conc=5.33e-52, desired_name='Int_Si')
+        assert_concentration_equal(conc[1], desired_charge=-1, desired_conc=4.87e-53, desired_name='Int_Si(mult54)')
+        assert_concentration_equal(conc[2], desired_charge=0, desired_conc=4.37e-44, desired_name='Int_Si')
         assert_concentration_equal(conc[3], desired_charge=0, desired_conc=8.81e-44, desired_name='Int_Si(mult54)')
-        assert_concentration_equal(conc[4], desired_charge=1, desired_conc=2.91e-43, desired_name='Int_Si(mult54)')
+        assert_concentration_equal(conc[4], desired_charge=1, desired_conc=2.91e-43, desired_name='Int_Si')
         assert_concentration_equal(conc[5], desired_charge=1, desired_conc=2.31e-35, desired_name='Int_Si(mult54)')
         assert_concentration_equal(conc[6], desired_charge=-2, desired_conc=2.85e+13, desired_name='Sub_B_on_Si')
-        assert_concentration_equal(conc[7], desired_charge=-1, desired_conc=1.00e+17, desired_name='Sub_B_on_Si')
+        assert_concentration_equal(conc[7], desired_charge=-1, desired_conc=9.97e+16, desired_name='Sub_B_on_Si')
         assert_concentration_equal(conc[8], desired_charge=0, desired_conc=1.49e+07, desired_name='Sub_B_on_Si')
-        assert_concentration_equal(conc[9], desired_charge=0, desired_conc=3.68e+12, desired_name='Sub_P_on_Si')
-        assert_concentration_equal(conc[10], desired_charge=1, desired_conc=1.00e+17, desired_name='Sub_P_on_Si')
-        assert_concentration_equal(conc[11], desired_charge=2, desired_conc=4.96e+07, desired_name='Sub_P_on_Si')
-        assert_concentration_equal(conc[12], desired_charge=-1, desired_conc=7.78e-29, desired_name='Vac_Si')
-        assert_concentration_equal(conc[13], desired_charge=0, desired_conc=1.40e-34, desired_name='Vac_Si')
-        assert_concentration_equal(conc[14], desired_charge=1, desired_conc=6.35e-45, desired_name='Vac_Si')
+        assert_concentration_equal(conc[9], desired_charge=-1, desired_conc=1.74e+07, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(conc[10], desired_charge=0, desired_conc=1.92e+10, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(conc[11], desired_charge=1, desired_conc=8.33e-01, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(conc[12], desired_charge=0, desired_conc=3.68e+12, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(conc[13], desired_charge=1, desired_conc=1.00e+17, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(conc[14], desired_charge=2, desired_conc=4.96e+07, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(conc[15], desired_charge=-1, desired_conc=7.78e-29, desired_name='Vac_Si')
+        assert_concentration_equal(conc[16], desired_charge=0, desired_conc=1.40e-34, desired_name='Vac_Si')
+        assert_concentration_equal(conc[17], desired_charge=1, desired_conc=6.35e-45, desired_name='Vac_Si')
+
         
         conc_elemental = {
-         'Si': 9.504324340294853e-33,
-         'B': 1.0000000000000002e+17,
-         'P': 1.0000000000000002e+17
-         }
+            'Si': 2.3092704698607755e-35,
+            'B': 9.999999999999998e+16,
+            'P': 1e+17,
+            'Vac_Si': 7.781280016145727e-29}
         self.assert_object_almost_equal(conc.elemental , conc_elemental,rtol=100,atol=1e-02 )
         
         conc_total = {
-         'Int_Si(mult108)': 4.7149918453710235e-42,
-         'Int_Si(mult54)': 1.544589116486735e-39,
-         'Sub_B_on_Si': 1.0000000000000002e+17,
-         'Sub_P_on_Si': 1.0000000000000002e+17,
-         'Vac_Si': 9.504322790990746e-33
-         }
+            'Int_Si(mult108)': 4.365510595961556e-44,
+            'Int_Si(mult54)': 2.309270465495265e-35,
+            'Sub_B_on_Si': 1e+17,
+            'Sub_P_on_Si': 1e+17,
+            'Vac_Si': 7.781280016145727e-29}
         
         self.assert_object_almost_equal( conc.total , conc_total ,rtol=100,atol=1e-02)
     
@@ -190,93 +194,85 @@ class TestDefectsAnalysis(PynterTest):
 
     
     def test_sort_entries(self):
-        indexes = [6, 0, 3, 7, 12, 1, 4, 8, 9, 13, 2, 5, 10, 14, 11]
-        sorted_entries = [self.da.entries[i] for i in indexes]
-        assert self.da.sort_entries(features=['charge']) == sorted_entries
+        desired_indexes = [6, 0, 1, 7, 12, 2, 3, 8, 9, 13, 4, 5, 10, 14, 11]
+        actual_indexes = []    
+        for entry in self.da.sort_entries(features=['charge']):
+            actual_indexes.append(self.da.entries.index(entry))
+
+        self.assertEqual(actual_indexes, desired_indexes)
         
-        
-        
+              
 class TestDefectsAnalysisComplexes(PynterTest):
-    
-    def setUp(self):
-        #self.da = DefectsAnalysis.from_json(self.get_testfile_path('DA_Si.json'))
+     
+    @classmethod
+    def setUpClass(cls):
+        self = cls()
         da = DefectsAnalysis.from_vasp_directories(
                                                     path_defects=op.join(self.test_files_path,'Si-defects/Defects'),
                                                     path_bulk=op.join(self.test_files_path,'Si-defects/Bulk/Bulk-3x3x3-supercell'),
                                                     common_path='2-PBE-OPT',
                                                     tol=5e-03)
-        da.filter_entries(inplace=True,exclude=True,types=['DefectComplex'])
-        for idx in [3,4,5]:
+        for idx in [1,3,5]:
             da[idx].label = 'mult54'
-        self.da = da
+        cls.da = da
         mu_B = -6.6794
         mu_P = -5.4133
         mu_Si = -5.4224
-        self.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B})
-        self.dos = get_object_from_json(CompleteDos, self.get_testfile_path('Si_DOS.json'))         
+        cls.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},ndecimals=2)
         
     def test_binding_energy(self):
-        self.assert_all_close( self.da.binding_energy('Int_Si-Vac_Si') , -1.5579998134255888 )
-        self.assert_all_close( self.da.binding_energy('Sub_B_on_Si-Sub_P_on_Si') , -0.17095738713175915 )
+        self.assert_all_close( self.da.binding_energy('Sub_B_on_Si-Sub_P_on_Si') , 0.17095738713175915 )
         # include different labels
         
     def test_defect_concentrations_fixed(self):
         concfix = 1e17
         fixed = {'P':concfix}
         conc = self.da.defect_concentrations(self.chempots,fixed_concentrations=fixed,fermi_level=0.4)
+        assert_concentration_equal(conc[0], desired_charge=-1, desired_conc=5.33e-52, desired_name='Int_Si')
+        assert_concentration_equal(conc[1], desired_charge=-1, desired_conc=4.87e-53, desired_name='Int_Si(mult54)')
+        assert_concentration_equal(conc[2], desired_charge=0, desired_conc=4.37e-44, desired_name='Int_Si')
+        assert_concentration_equal(conc[3], desired_charge=0, desired_conc=8.81e-44, desired_name='Int_Si(mult54)')
+        assert_concentration_equal(conc[4], desired_charge=1, desired_conc=2.91e-43, desired_name='Int_Si')
+        assert_concentration_equal(conc[5], desired_charge=1, desired_conc=2.31e-35, desired_name='Int_Si(mult54)')
+        assert_concentration_equal(conc[6], desired_charge=-2, desired_conc=2.85e+13, desired_name='Sub_B_on_Si')
+        assert_concentration_equal(conc[7], desired_charge=-1, desired_conc=9.97e+16, desired_name='Sub_B_on_Si')
+        assert_concentration_equal(conc[8], desired_charge=0, desired_conc=1.49e+07, desired_name='Sub_B_on_Si')
+        assert_concentration_equal(conc[9], desired_charge=-1, desired_conc=1.74e+07, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(conc[10], desired_charge=0, desired_conc=1.92e+10, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(conc[11], desired_charge=1, desired_conc=8.33e-01, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(conc[12], desired_charge=0, desired_conc=3.68e+12, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(conc[13], desired_charge=1, desired_conc=1.00e+17, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(conc[14], desired_charge=2, desired_conc=4.96e+07, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(conc[15], desired_charge=-1, desired_conc=7.78e-29, desired_name='Vac_Si')
+        assert_concentration_equal(conc[16], desired_charge=0, desired_conc=1.40e-34, desired_name='Vac_Si')
+        assert_concentration_equal(conc[17], desired_charge=1, desired_conc=6.35e-45, desired_name='Vac_Si')
+
         
-        desired_conc = DefectConcentrations([
-            SingleDefConc(charge=-1.0, conc=3.68e-49, name=DefectName.from_string("Int_Si(mult108)"), stable=True),
-            SingleDefConc(charge=0.0, conc=4.30e-42, name=DefectName.from_string("Int_Si(mult108)"), stable=True),
-            SingleDefConc(charge=1.0, conc=2.19e-46, name=DefectName.from_string("Int_Si(mult108)"), stable=True),
-            SingleDefConc(charge=-1.0, conc=7.29e-50, name=DefectName.from_string("Int_Si(mult54)"), stable=True),
-            SingleDefConc(charge=0.0, conc=4.34e-42, name=DefectName.from_string("Int_Si(mult54)"), stable=True),
-            SingleDefConc(charge=1.0, conc=1.40e-39, name=DefectName.from_string("Int_Si(mult54)"), stable=True),
-            SingleDefConc(charge=-1.0, conc=3.96e-74, name=DefectComplexName.from_string("Int_Si-Vac_Si"), stable=True),
-            SingleDefConc(charge=0.0, conc=6.56e-73, name=DefectComplexName.from_string("Int_Si-Vac_Si"), stable=True),
-            SingleDefConc(charge=1.0, conc=1.08e-74, name=DefectComplexName.from_string("Int_Si-Vac_Si"), stable=True),
-            SingleDefConc(charge=-2.0, conc=2.23e+04, name=DefectName.from_string("Sub_B_on_Si"), stable=True),
-            SingleDefConc(charge=-1.0, conc=1.40e+16, name=DefectName.from_string("Sub_B_on_Si"), stable=True),
-            SingleDefConc(charge=0.0, conc=9.30e+10, name=DefectName.from_string("Sub_B_on_Si"), stable=True),
-            SingleDefConc(charge=-1.0, conc=2.53e+12, name=DefectComplexName.from_string("Sub_B_on_Si-Sub_P_on_Si"), stable=True),
-            SingleDefConc(charge=0.0, conc=2.79e+15, name=DefectComplexName.from_string("Sub_B_on_Si-Sub_P_on_Si"), stable=True),
-            SingleDefConc(charge=1.0, conc=1.21e+05, name=DefectComplexName.from_string("Sub_B_on_Si-Sub_P_on_Si"), stable=True),
-            SingleDefConc(charge=0.0, conc=1.16e+15, name=DefectName.from_string("Sub_P_on_Si"), stable=True),
-            SingleDefConc(charge=1.0, conc=9.60e+16, name=DefectName.from_string("Sub_P_on_Si"), stable=True),
-            SingleDefConc(charge=2.0, conc=5.53e+02, name=DefectName.from_string("Sub_P_on_Si"), stable=True),
-            SingleDefConc(charge=-1.0, conc=2.16e-33, name=DefectName.from_string("Vac_Si"), stable=True),
-            SingleDefConc(charge=0.0, conc=8.27e-33, name=DefectName.from_string("Vac_Si"), stable=True),
-            SingleDefConc(charge=1.0, conc=5.71e-41, name=DefectName.from_string("Vac_Si"), stable=True)
-        ])
-        print(conc.as_dict(),'\n \n',desired_conc.as_dict())
-        self.assert_object_almost_equal( conc.as_dict() , desired_conc.as_dict(),rtol=100,atol=1e-02 ,verbose=True)
-        
-        conc_elemental = {'Si': 9.504324340294853e-33, 'B': 1.4920566601530766e+16, 'P': 1e+17}
+        conc_elemental = {
+            'Si': 2.3092704698607755e-35,
+            'B': 9.976863341411933e+16,
+            'P': 9.999803777500397e+16,
+            'Vac_Si': 7.781280016145727e-29}
         self.assert_object_almost_equal( conc.elemental , conc_elemental, rtol=100,atol=1e-02 )
         
         conc_total = {
-         'Int_Si(mult108)': 4.7149918453710235e-42,
-         'Int_Si(mult54)': 1.544589116486735e-39,
-         'Int_Si-Vac_Si': 7.062810210333003e-73,
-         'Sub_B_on_Si': 1.2423427771347858e+16,
-         'Sub_B_on_Si-Sub_P_on_Si': 2497138830182908.5,
-         'Sub_P_on_Si': 9.750286116981709e+16,
-         'Vac_Si': 9.504322790990746e-33
-         }
+                'Int_Si': 3.9784767205219347e-44,
+                'Int_Si(mult54)': 2.104537049311212e-35,
+                'Sub_B_on_Si': 1.1525432095400974e+19,
+                'Sub_B_on_Si-Sub_P_on_Si': 2225298056161.7256,
+                'Sub_P_on_Si': 9.999777470194382e+16,
+                'Vac_Si': 8.538257918013443e-29}
         self.assert_object_almost_equal( conc.total , conc_total ,rtol=100,atol=1e-02)
         
     
     def test_names(self):
         desired_names = [
-            DefectName.from_string("Int_Si(mult108)").as_dict(),
-            DefectName.from_string("Int_Si(mult108)").as_dict(),
-            DefectName.from_string("Int_Si(mult108)").as_dict(),
+            DefectName.from_string("Int_Si").as_dict(),
+            DefectName.from_string("Int_Si").as_dict(),
+            DefectName.from_string("Int_Si").as_dict(),
             DefectName.from_string("Int_Si(mult54)").as_dict(),
             DefectName.from_string("Int_Si(mult54)").as_dict(),
             DefectName.from_string("Int_Si(mult54)").as_dict(),
-            DefectComplexName.from_string("Int_Si-Vac_Si").as_dict(),
-            DefectComplexName.from_string("Int_Si-Vac_Si").as_dict(),
-            DefectComplexName.from_string("Int_Si-Vac_Si").as_dict(),
             DefectName.from_string("Sub_B_on_Si").as_dict(),
             DefectName.from_string("Sub_B_on_Si").as_dict(),
             DefectName.from_string("Sub_B_on_Si").as_dict(),
@@ -318,15 +314,25 @@ class TestSingleDefConc(PynterTest):
 
 class TestDefectConcentrations(PynterTest):
     
-    def setUp(self):
-        da = DefectsAnalysis.from_json(self.get_testfile_path('DA_Si.json'))
+
+    @classmethod
+    def setUpClass(cls):
+        self = cls()
+        da = DefectsAnalysis.from_vasp_directories(
+                                                    path_defects=op.join(self.test_files_path,'Si-defects/Defects'),
+                                                    path_bulk=op.join(self.test_files_path,'Si-defects/Bulk/Bulk-3x3x3-supercell'),
+                                                    common_path='2-PBE-OPT',
+                                                    tol=5e-03)
+        for idx in [3,4,5]:
+            da[idx].label = 'mult54'
+        cls.da = da
         mu_B = -6.6794
         mu_P = -5.4133
         mu_Si = -5.4224
-        chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B})
+        cls.chempots = Chempots({'Si':mu_Si,'P':mu_P,'B':mu_B},ndecimals=2)
         concfix = 1e17
         fixed = {'P':concfix}
-        self.conc = da.defect_concentrations(chempots,fixed_concentrations=fixed,fermi_level=0.4)
+        self.conc = da.defect_concentrations(cls.chempots,fixed_concentrations=fixed,fermi_level=0.4)
         
     def test_as_dict_from_dict(self):
         conc_test = DefectConcentrations.from_dict(self.conc.as_dict())
@@ -334,42 +340,32 @@ class TestDefectConcentrations(PynterTest):
         
     def test_total(self):
         total = {
-         'Int_Si(mult108)': 4.7149918453710235e-42,
-         'Int_Si(mult54)': 1.544589116486735e-39,
-         'Int_Si-Vac_Si': 7.062810210333003e-73,
-         'Sub_B_on_Si': 1.2423427771347858e+16,
-         'Sub_B_on_Si-Sub_P_on_Si': 2497138830182908.5,
-         'Sub_P_on_Si': 9.750286116981709e+16,
-         'Vac_Si': 9.504322790990746e-33
-         }
+            'Int_Si': 3.9784767205219347e-44,
+            'Int_Si(mult54)': 2.104537049311212e-35,
+            'Sub_B_on_Si': 1.1525432095400974e+19,
+            'Sub_B_on_Si-Sub_P_on_Si': 2225298056161.7256,
+            'Sub_P_on_Si': 9.999777470194382e+16,
+            'Vac_Si': 8.538257918013443e-29}
         self.assert_object_almost_equal( self.conc.total , total ,rtol=100,atol=1e-02)
         
     def test_elemental(self):
-        self.assert_object_almost_equal( self.conc.elemental ,
-                                        {'Si': 9.504324340294853e-33, 'B': 1.4920566601530766e+16, 'P': 1e+17} ,rtol=100,atol=1e-02)
+        elemental_desired = {
+            'Si': 2.1045370532896886e-35,
+            'B': 1.152543432069903e+19,
+            'P': 9.999999999999998e+16,
+            'Vac_Si': 8.538257918013443e-29}
+        self.assert_object_almost_equal( self.conc.elemental, elemental_desired, rtol=100,atol=1e-02)
         
     def test_stable(self):
-        defect_concentrations_stable = [
-            SingleDefConc(name=DefectName.from_string("Int_Si(mult108)"), charge=0.0, conc=4.30e-42, stable=True),
-            SingleDefConc(name=DefectName.from_string("Int_Si(mult54)"), charge=1.0, conc=1.40e-39, stable=True),
-            SingleDefConc(name=DefectComplexName.from_string("Int_Si-Vac_Si"), charge=0.0, conc=6.56e-73, stable=True),
-            SingleDefConc(name=DefectName.from_string("Sub_B_on_Si"), charge=-1.0, conc=1.40e+16, stable=True),
-            SingleDefConc(name=DefectComplexName.from_string("Sub_B_on_Si-Sub_P_on_Si"), charge=0.0, conc=2.79e+15, stable=True),
-            SingleDefConc(name=DefectName.from_string("Sub_P_on_Si"), charge=1.0, conc=9.60e+16, stable=True),
-            SingleDefConc(name=DefectName.from_string("Vac_Si"), charge=0.0, conc=8.27e-33, stable=True)
-            ]
-        for index in range(0,len(self.conc.stable)):
-            single_def_conc_actual = self.conc.stable[index]
-            single_def_conc_desired = defect_concentrations_stable[index]            
-            for key,value in single_def_conc_actual.items():
-                if type(value) == np.float64:
-                    actual = float(value)
-                else:
-                    actual = value
-                desired = single_def_conc_desired[key]
-                self.assert_object_almost_equal(actual,desired,rtol=5e-03)
+        stable =self.conc.stable
+        assert_concentration_equal(stable[0], desired_charge=0, desired_conc=3.98e-44, desired_name='Int_Si')
+        assert_concentration_equal(stable[1], desired_charge=1, desired_conc=2.10e-35, desired_name='Int_Si(mult54)')
+        assert_concentration_equal(stable[2], desired_charge=-1, desired_conc=1.15e+19, desired_name='Sub_B_on_Si')
+        assert_concentration_equal(stable[3], desired_charge=0, desired_conc=2.22e+12, desired_name='Sub_B_on_Si-Sub_P_on_Si')
+        assert_concentration_equal(stable[4], desired_charge=1, desired_conc=1.00e+17, desired_name='Sub_P_on_Si')
+        assert_concentration_equal(stable[5], desired_charge=-1, desired_conc=8.54e-29, desired_name='Vac_Si')
 
-        
+
     def test_select_concentrations(self):
         sel_conc = self.conc.select_concentrations(charge=2)
         assert sel_conc[0] == self.conc[-4]
