@@ -10,7 +10,8 @@ from monty.json import MSONable
 from monty.json import jsanitize
 import numpy as np
 
-from pynter.defects.analysis import DefectConcentrations
+from .analysis import DefectConcentrations
+from .defects import get_defect_name_from_string
 import copy
 import os.path as op
 import json
@@ -298,6 +299,11 @@ class DefectThermodynamics:
         defect_concentrations = self.da.defect_concentrations(chemical_potentials=chemical_potentials,
                                                               temperature=temperature,fermi_level=fermi_level,
                                                               fixed_concentrations=fixed_df)
+        if ext_df:
+            for df in ext_df:
+                if type(df.name)==str:
+                    df.name = get_defect_name_from_string(df.name)
+                defect_concentrations.append(df)
         
         thermodata = {'carrier_concentrations':carrier_concentrations,
                       'defect_concentrations':defect_concentrations,

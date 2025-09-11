@@ -735,6 +735,9 @@ class DefectName(str,MSONable):
 
     def __hash__(self):
         return hash(self.fullname)
+    
+    def copy(self):
+        return DefectName(dtype=self.dtype,dspecie=self.dspecie,bulk_specie=self.bulk_specie,label=self.label)
 
     @property    
     def bulk_specie(self):

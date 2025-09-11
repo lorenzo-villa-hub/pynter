@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import os.path as op
 import json
+import copy
 
 from pymatgen.electronic_structure.dos import FermiDos
 
@@ -1096,6 +1097,9 @@ class DefectConcentrations:
             List of SingleDefConc objects.
         """
         self.concentrations = concentrations
+        self._compute_totals()
+
+    def _compute_totals(self):
         d = {}
         # calculate total concentrations
         for c in self.concentrations:
@@ -1114,8 +1118,12 @@ class DefectConcentrations:
                     cmax = c
             conc_stable.append(concs[concs.index(cmax)])
         self._stable = conc_stable
-        
-        
+        return 
+
+    def append(self, item):
+        self.concentrations.append(item)
+        self._compute_totals()
+
     def __len__(self):
         return len(self.concentrations)
         
@@ -1131,6 +1139,8 @@ class DefectConcentrations:
     def __print__(self):
         return '['+ '\n'.join([c.__print__() for c in self.concentrations])+']'  
 
+    def copy(self):
+        return DefectConcentrations(self.concentrations.copy())
    
     def as_dict(self):
         d = [c.as_dict() for c in self.concentrations]
