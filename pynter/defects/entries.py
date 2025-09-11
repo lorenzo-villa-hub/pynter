@@ -132,6 +132,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return self.defect.name
     
     @property
+    def structure(self):
+        return self.defect.defect_structure
+    
+    @property
     def symbol(self):
         return self.defect.name.symbol
 
@@ -291,7 +295,17 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
 
     @staticmethod
-    def from_vasp_directories(path_defect,path_bulk,corrections,multiplicity=1,data=None,label=None,tol=1e-02,**kwargs):
+    def from_vasp_directories(
+                            path_defect,
+                            computed_entry_bulk=None,
+                            path_bulk=None,
+                            corrections={},
+                            multiplicity=1,
+                            data=None,
+                            label=None,
+                            tol=1e-02,
+                            function=None,
+                            **kwargs):
         """
         Generate DefectEntry object from VASP directories read with Pymatgen.
 
@@ -299,8 +313,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         ----------
         path_defect : (str)
             Path of VASP defect calculation.
+        computed_entry_bulk : (VaspJob)
+            ComputedStructureEntry of the bulk calculation.
         path_bulk : (str)
-            Path of VASP bulk calculation.
+            If computed_entry_bulk is not provided, read directly from VASP directory. 
         corrections : (dict)
             Dict of corrections for defect formation energy. All values will be summed and
             added to the defect formation energy.
@@ -313,6 +329,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
         tol : (float)
             Tolerance for defect_finder function. The default is 1e-03.
+        function : (func)
+            Function to apply to DefectEntry. Useful to automate custom entry modification.
         kwargs : (dict)
             Kwargs to pass to Vasprun.get_computed_entry.
 
@@ -323,10 +341,14 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         from pymatgen.io.vasp.outputs import Vasprun
 
         computed_entry_defect = _get_computed_entry_from_path(path_defect,**kwargs)
-        vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
-        computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**kwargs)
+        if not computed_entry_bulk:
+            if path_bulk:
+                vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
+                computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**kwargs)
+            else:
+                raise ValueError('Either bulk ComputedEntry or path of bulk calculation has to be provided')
 
-        return DefectEntry.from_computed_entries(
+        entry = DefectEntry.from_computed_entries(
                                                 computed_entry_defect=computed_entry_defect,
                                                 computed_entry_bulk=computed_entry_bulk,
                                                 corrections=corrections,
@@ -335,9 +357,13 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                                                 label=label,
                                                 tol=tol)
         
+        if function:
+            function(entry)
+        return entry
+        
 
     def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
-                             per_unit_volume=True,occupation_function='MB'):
+                             per_unit_volume=True):
         """
         Compute the defect concentration for a temperature and Fermi level.
         Args:
@@ -351,12 +377,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         n = self.defect.site_concentration_in_cm3 if per_unit_volume else self.multiplicity 
         eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
         
-        if occupation_function=='FD':
-            conc = n * fermi_dirac(eform,temperature)
-        elif occupation_function=='MB':
-            conc = n * maxwell_boltzmann(eform,temperature)
-        else:
-            raise ValueError('Invalid occupation function. Options are: "FD" for Fermi-Dirac and "MB" for Maxwell-Boltzmann.')
+        conc = n * fermi_dirac(eform,temperature)
         return conc
 
 

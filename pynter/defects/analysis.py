@@ -23,7 +23,7 @@ from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 class DefectsAnalysis:
     
-    def __init__(self, entries, vbm, band_gap, sort_entries=True, occupation_function='MB'):
+    def __init__(self, entries, vbm, band_gap, sort_entries=True):
         """ 
         Class to compute defect properties starting from single calculations of defects.
         Args:
@@ -38,15 +38,11 @@ class DefectsAnalysis:
             band_gap : (float)
                 Band gap to use for all defect entries.
                 NOTE if using band shifting-type correction then this gap
-                should still be that of the Hybrid calculation you are shifting to. 
-            occupation_function : (str) 
-                Function to compute defect occupation. 
-                "FD" for Fermi-Dirac, "MB" for Maxwell-Boltzmann.
+                should still be that of the Hybrid calculation you are shifting to.
         """
         self.entries = self.sort_entries(inplace=False,entries=entries) if sort_entries else entries
         self.vbm = vbm
         self.band_gap = band_gap
-        self.occupation_function = occupation_function
         self.groups = self._group_entries()
         self.names = list(self.groups.keys())
         self._thermodata = None
@@ -151,8 +147,38 @@ class DefectsAnalysis:
                             band_gap=None,
                             vbm=None,
                             tol=1e-02,
+                            function=None,
                             **kwargs):
-        
+        """
+        Generate DefectsAnalysis object from VASP directories read with Pymatgen.
+
+        Parameters
+        ----------
+        path_defects : (str)
+            Path of VASP defects calculation.
+        path_bulk : (str)
+            Path of VASP bulk calculation. 
+        get_corrections : (bool)
+
+        get_multiplicity : (bool)
+
+        get_data : (True)
+            Store path in DefectEntry.data dictionary.
+        band_gap : (float)
+            Band gap of bulk material. If not provided is determined from bulk VASP directory.
+        vbm : (float)
+            Valence band maximum of bulk material. If not provided is determined from bulk VASP directory.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
+        function : (func)
+            Function to apply to each DefectEntry. Useful to automate custom entry modification.
+        kwargs : (dict)
+            Kwargs to pass to Vasprun.get_computed_entry.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """ 
         from pymatgen.io.vasp.outputs import Vasprun
         if band_gap and vbm:
             parse_eigen = False
@@ -170,16 +196,16 @@ class DefectsAnalysis:
                 path = op.abspath(root)
                 print('importing from %s'%path)                
                 
-                computed_entry_defect = _get_computed_entry_from_path(path,**kwargs)
                 data = {'path':path} if get_data else None
-                entry = DefectEntry.from_computed_entries(
-                                                        computed_entry_defect=computed_entry_defect,
+                entry = DefectEntry.from_vasp_directories(
+                                                        path_defect=path,
                                                         computed_entry_bulk=computed_entry_bulk,
                                                         corrections={}, # get corrections and multiplicity automatically?
                                                         multiplicity=1,
                                                         data=data,
                                                         label=None,
                                                         tol=tol,
+                                                        function=function,
                                                         **kwargs)
                 entries.append(entry)
         
@@ -345,14 +371,14 @@ class DefectsAnalysis:
             nsites = e.defect.site_concentration_in_cm3 if per_unit_volume else e.multiplicity
             # frozen defects approach
             if fixed_concentrations:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
                 defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,stable=bool(c<=nsites))
                 concentrations.append(defconc)     
             
             else:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume,self.occupation_function)
+                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
                 defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,stable=bool(c<=nsites))
                 concentrations.append(defconc)
             
@@ -1123,7 +1149,7 @@ class DefectConcentrations:
         d = {}
         for c in self:
             for dn in c.name:
-                if dn.dspecie not in d.keys():
+                if dn.dspecie not in d.keys() or dn.name not in d.keys():
                     if dn.dtype == 'Vacancy':
                         ekey = dn.name
                         d[ekey] = self.get_element_total(dn.dspecie,vacancy=True)
@@ -1227,7 +1253,7 @@ class DefectConcentrations:
                 if element == dn.dspecie:
                     if vacancy and dn.dtype=='Vacancy':
                         eltot += c.conc
-                    elif vacancy == False:
+                    elif vacancy == False and dn.dtype!='Vacancy':
                         eltot += c.conc
         return eltot
         

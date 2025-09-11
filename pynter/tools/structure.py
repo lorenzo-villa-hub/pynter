@@ -202,7 +202,7 @@ def is_site_in_structure(site,structure,tol=1e-03):
     return is_site_in_structure,index
 
 
-def is_site_in_structure_coords(site, structure, tol=1e-3):
+def is_site_in_structure_coords(site, structure, tol=1e-3, return_distance=False):
     """
     Check if a site's coordinates are present in a structure, using periodic boundary conditions.
 
@@ -215,6 +215,8 @@ def is_site_in_structure_coords(site, structure, tol=1e-3):
     tol : (float), optional
         Tolerance for site comparison, normalized with respect to lattice size. 
         Default is 1e-03.
+    return_distance : (bool)
+        Return distance btw site coords and closest site in reference structure 
 
     Returns
     -------
@@ -234,10 +236,17 @@ def is_site_in_structure_coords(site, structure, tol=1e-3):
     # Query the KDTree for nearest neighbor
     dist, index = kdtree_structure.query(site.frac_coords, distance_upper_bound=tol)
 
-    if dist < tol:
-        return True, index
+    if return_distance:
+        is_site = [None,None,dist]
     else:
-        return False, None
+        is_site = [None,None]
+
+    if dist < tol:
+        is_site[0], is_site[1] = True, index
+    else:
+        is_site[0], is_site[1] = False, None
+    
+    return is_site
 
 
 def rattle_atoms(structure,stdev=0.05,seed=None):
