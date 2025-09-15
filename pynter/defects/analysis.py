@@ -14,7 +14,8 @@ from .pmg.pmg_dos import FermiDosCarriersInfo
 from .chempots.oxygen import get_pressure_reservoirs_from_precursors
 from .entries import DefectEntry, _get_computed_entry_from_path
 from .plotter import (
-                    ThermodynamicsPlotter,
+                    plot_pO2_vs_concentrations,
+                    plot_variable_species_vs_concentrations,
                     plot_binding_energies,
                     plot_formation_energies,
                     plot_charge_transition_levels
@@ -628,7 +629,7 @@ class DefectsAnalysis:
             Number of data points to interpolate the partial pressure with. The default is 50.
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
         kwargs: (dict)
-            Kwargs to pass to ThermodynamicsPlotter.plot_pO2_vs_concentrations function.
+            Kwargs to pass to plot_pO2_vs_concentrations function.
         """
         from .thermodynamics import DefectThermodynamics
         
@@ -651,7 +652,7 @@ class DefectsAnalysis:
                                                                         name='BrowerDiagram')
         if 'xlim' not in kwargs.keys():
             kwargs['xlim'] = pressure_range
-        plt = ThermodynamicsPlotter().plot_pO2_vs_concentrations(thermodata=thermodata,**kwargs)
+        plt = plot_pO2_vs_concentrations(thermodata=thermodata,**kwargs)
         self._thermodata = thermodata
         return plt
     
@@ -706,7 +707,7 @@ class DefectsAnalysis:
                                                   temperature=temperature,
                                                   npoints=npoints,
                                                   name='DopingDiagram')  
-        plt = ThermodynamicsPlotter().plot_variable_species_vs_concentrations(thermodata, **kwargs)
+        plt = plot_variable_species_vs_concentrations(thermodata, **kwargs)
         self._thermodata = thermodata
         return plt
         
