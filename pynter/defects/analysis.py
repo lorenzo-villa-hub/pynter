@@ -12,7 +12,7 @@ from pymatgen.electronic_structure.dos import FermiDos
 
 from .pmg.pmg_dos import FermiDosCarriersInfo
 from .chempots.oxygen import get_pressure_reservoirs_from_precursors
-from .defects import Defect
+from .defects import Defect, get_defect_from_string
 from .entries import DefectEntry, _get_computed_entry_from_path
 from .plotter import (
                     plot_pO2_vs_concentrations,
@@ -229,6 +229,92 @@ class DefectsAnalysis:
                     elements.append(el)
         return elements
 
+    @staticmethod
+    def from_df(df,vbm, band_gap):
+        default_columns = ['name','charge','multiplicity','energy_diff','bulk_volume']
+        entries = []
+        for idx,row in df.iterrows():
+            defect = get_defect_from_string(
+                                        row['name'],
+                                        charge=row['charge'],
+                                        multiplicity=row['multiplicity'],
+                                        bulk_volume=row['bulk_volume']
+                                        )
+            energy_diff = row['energy_diff']
+            corrections = {}
+            data = {}
+            for col in df.columns:
+                if 'corr' in col:
+                    key = col.split('_')[1]
+                    corrections[key] = row[col]
+                elif col not in default_columns:
+                    data[col] = row[col]
+
+            entry = DefectEntry(
+                            defect=defect,
+                            energy_diff=energy_diff,
+                            corrections=corrections,
+                            data=data)
+            entries.append(entry)
+        
+        return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
+            
+
+    def to_df(self,entries=None,include_data=True,properties=[],functions={}):
+        """
+        Get DataFrame to display entries. 
+
+        Parameters
+        ----------
+        entries : (list), optional
+            Entries to display. If None all entries are displayed. The default is None.
+        pretty : (bool), optional
+            Optimize DataFrame for prettier visualization.
+        include_bulk: (bool), optional
+            Include bulk composition and space group for each entry in DataFrame.
+        display: (list)
+            List of strings with defect entry attributes or method results to display.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if not entries:
+            entries = self.entries
+        d = {}
+        index = []
+        table = []
+        for e in entries:
+            symbol = e.symbol
+            d = {}
+            d['name'] = e.name
+            d['charge'] = e.charge
+            d['multiplicity'] = e.multiplicity
+            d['energy_diff'] = e.energy_diff
+            if e.corrections:
+                for key,value in e.corrections.items():
+                    d[f'corr_{key}'] = value
+            d['bulk_volume'] = e.defect.bulk_volume
+            if include_data:
+                if e.data:
+                    for key,value in e.data.items():
+                        d['key'] = value
+            if properties:
+                for feature in properties:
+                    if isinstance(feature,list):
+                        raise ValueError('Only simple attributes can be exported')
+                    else:
+                        key = feature
+                    d[key] = get_object_feature(e,feature)
+            if functions:
+                for key, fn in functions.items():
+                    d[key] = fn(e)        
+
+            table.append(d)
+        df = pd.DataFrame(table)
+
+        return df
 
     def to_json(self,path='',**kwargs):
         """

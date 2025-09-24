@@ -29,7 +29,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
                 bulk_structure=None,
                 charge=None,
                 multiplicity=None,
-                bulk_structure_volume=None,
+                bulk_volume=None,
                 label=None): 
         """
         Base class for defect objets
@@ -46,7 +46,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
             Charge of the defect.
         multiplicity : (int)
             Multiplicity of defect within the simulation cell.
-        bulk_structure_volume : (float)
+        bulk_volume : (float)
             Volume of bulk cell in A°^3.
         label : (str)
             Defect label.
@@ -61,7 +61,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         self._bulk_structure = bulk_structure
         self._charge = charge
         self._multiplicity = multiplicity
-        self._bulk_structure_volume = bulk_structure_volume
+        self._bulk_volume = bulk_volume
         self._label = label
 
 
@@ -85,7 +85,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         return [self].__iter__()
 
     @staticmethod
-    def from_string(string):
+    def from_string(string, **kwargs):
         if '(' in string:
             name,label = string.split('(')
             label = label.strip(')')
@@ -113,10 +113,10 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
 
         module = importlib.import_module(Defect.__module__)
         defect_class = getattr(module,dtype)
-        kwargs = {
+        kwargs.update({
             'specie':dspecie,
             'label': label
-            }
+            })
         if dtype=='Substitution':
             kwargs['bulk_specie'] = bulk_specie
 
@@ -134,9 +134,9 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
             warnings.warn('Bulk structure is not stored in Defect object')
 
     @property
-    def bulk_structure_volume(self):
-        if self._bulk_structure_volume:
-            return self._bulk_structure_volume
+    def bulk_volume(self):
+        if self._bulk_volume:
+            return self._bulk_volume
         elif self.bulk_structure:
             return self.bulk_structure.volume
         else:
@@ -227,7 +227,7 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
    
     @property
     def site_concentration_in_cm3(self):
-        return self.multiplicity * 1e24 / self.bulk_structure_volume 
+        return self.multiplicity * 1e24 / self.bulk_volume 
    
     @property  
     def symbol(self):
@@ -249,6 +249,13 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         Name in latex format with charge written with kroger and vink notation.
         """
         return format_legend_with_charge_kv(self.symbol,self.charge)
+    
+    def set_bulk_volume(self, new_volume):
+        """
+        Sets the volume of bulk cell
+        """
+        self._bulk_volume = new_volume
+        return
 
     def set_charge(self, new_charge=0.0):
         """
@@ -367,7 +374,7 @@ class Substitution(Defect):
                 bulk_structure=None,
                 charge=None,
                 multiplicity=None,
-                bulk_structure_volume=None,
+                bulk_volume=None,
                 label=None,
                 site_in_bulk=None):
         """
@@ -379,7 +386,7 @@ class Substitution(Defect):
                         bulk_structure=bulk_structure,
                         charge=charge,
                         multiplicity=multiplicity,
-                        bulk_structure_volume=bulk_structure_volume,
+                        bulk_volume=bulk_volume,
                         label=label)
         if bulk_specie:
             self._bulk_specie = bulk_specie 
@@ -575,7 +582,7 @@ class Polaron(Defect):
                 charge=None,
                 multiplicity=None,
                 label=None,
-                bulk_structure_volume=None,
+                bulk_volume=None,
                 defect_structure=None):
         """
         defect_structure: (Structure)
@@ -587,7 +594,7 @@ class Polaron(Defect):
                         bulk_structure=bulk_structure,
                         charge=charge,
                         multiplicity=multiplicity,
-                        bulk_structure_volume=bulk_structure_volume,
+                        bulk_volume=bulk_volume,
                         label=label)
         self._defect_structure = defect_structure
         
@@ -663,7 +670,7 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
                 bulk_structure=None,
                 charge=None,
                 multiplicity=None,
-                bulk_structure_volume=None,
+                bulk_volume=None,
                 label=None):
         """
         Class to describe defect complexes
@@ -683,7 +690,7 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         self._bulk_structure = bulk_structure
         self._charge = charge
         self._multiplicity = multiplicity
-        self._bulk_structure_volume = bulk_structure_volume
+        self._bulk_volume = bulk_volume
         self._label = label
 
 
@@ -701,16 +708,18 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
         return self.defects.__iter__()
     
     @staticmethod
-    def from_string(string):
-        if '(' in string:
-            name,label = string.split('(')
-            label = label.strip(')')
-        else:
-            name = string
-            label=None
-        names = name.split('-')
+    def from_string(string, **kwargs):
+        # exclude DefectComplex label for now, get individual labels
+        # if ')' == string[-1]:
+        #     name,label = string.split('(')
+        #     label = label.strip(')')
+        # else:
+        #     name = string
+        #     label=None
+
+        names = string.split('-')
         defects = [Defect.from_string(n) for n in names]
-        return DefectComplex(defects=defects,label=label)
+        return DefectComplex(defects=defects, **kwargs)
     
 
     @property
@@ -724,9 +733,9 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
             warnings.warn('Bulk structure is not stored in Defect object')
 
     @property
-    def bulk_structure_volume(self):
-        if self._bulk_structure_volume:
-            return self._bulk_structure_volume
+    def bulk_volume(self):
+        if self._bulk_volume:
+            return self._bulk_volume
         elif self.bulk_structure:
             return self.bulk_structure.volume
         else:
@@ -828,7 +837,10 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
     
     @property
     def symbol(self):
-        return self.name.symbol
+        symbol = '-'.join([df.symbol.split('(')[0] for df in self.defects]) 
+        if self.label:
+            symbol = symbol + '(%s)'%self.label 
+        return symbol
 
     @property
     def symbol_with_charge(self):
@@ -868,11 +880,11 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
     
 
 
-# def get_defect_name_from_string(string):
-#     if '-' in string:
-#         return DefectComplexName.from_string(string)
-#     else:
-#         return DefectName.from_string(string)
+def get_defect_from_string(string, **kwargs):
+    if '-' in string:
+        return DefectComplex.from_string(string, **kwargs)
+    else:
+        return Defect.from_string(string, **kwargs)
 
 
 def create_interstitials(structure,elements,supercell_size=None,**kwargs):

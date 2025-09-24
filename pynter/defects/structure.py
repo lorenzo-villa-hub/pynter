@@ -227,7 +227,7 @@ def defect_finder(structure_defect, structure_bulk, tol=1e-3, verbose=False):
             matched_indices.add(index)  # Site exists in bulk, check for substitution
             if site.species != structure_bulk[index].species:
                 defects.append(
-                    Substitution(specie=site.species.symbol,
+                    Substitution(specie=site.specie.symbol,
                                 defect_site=site,
                                 bulk_structure=structure_bulk,
                                 site_in_bulk=structure_bulk[index])
