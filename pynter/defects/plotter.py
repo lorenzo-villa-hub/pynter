@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from pynter.defects.defects import format_legend_with_charge_number, get_defect_name_from_string
+from .defects import Defect, format_legend_with_charge_number#, get_defect_name_from_string
 
 
 
@@ -104,7 +104,7 @@ def plot_formation_energies(entries,
                 q_previous = q_stable       
 
         if format_legend:
-            label_txt = name.symbol
+            label_txt = Defect.from_string(name).symbol
         else:
             label_txt = name            
 
@@ -262,7 +262,7 @@ def plot_charge_transition_levels(entries,
     # format latex-like legend
     if format_legend:    
          for name in x_ticks_labels:            
-            x_ticks_labels[x_ticks_labels.index(name)] = name.symbol               
+            x_ticks_labels[x_ticks_labels.index(name)] = Defect.from_string(name).symbol               
     if fermi_level:
         plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
     

@@ -12,6 +12,7 @@ from pymatgen.electronic_structure.dos import FermiDos
 
 from .pmg.pmg_dos import FermiDosCarriersInfo
 from .chempots.oxygen import get_pressure_reservoirs_from_precursors
+from .defects import Defect
 from .entries import DefectEntry, _get_computed_entry_from_path
 from .plotter import (
                     plot_pO2_vs_concentrations,
@@ -376,12 +377,12 @@ class DefectsAnalysis:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,stable=bool(c<=nsites))
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c)
                 concentrations.append(defconc)     
             
             else:
                 c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
-                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c,stable=bool(c<=nsites))
+                defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c)
                 concentrations.append(defconc)
             
 
@@ -390,8 +391,9 @@ class DefectsAnalysis:
 
     def _get_frozen_correction(self,e,frozen,dc):
         corr = 1
-        for dn in e.name:
-            typ, specie, name = dn.dtype, dn.dspecie, dn.name
+        df = Defect.from_string(e.name)
+        for defect in df:
+            typ, specie, name = defect.type, defect.specie, defect.name
             if typ == 'Vacancy':
                 k = name
                 if k in frozen.keys():
@@ -1054,10 +1056,9 @@ class SingleDefConc(MSONable):
         self.name = name
         self.charge = charge
         self.conc = conc
-        self.stable = stable
         
     def __repr__(self):
-        s = 'charge=%.1f, conc=%.2e, name=%s, stable=%s' %(self.charge,self.conc,self.name,self.stable)
+        s = 'charge=%.1f, conc=%.2e, name=%s' %(self.charge,self.conc,self.name)
         return s
     
     def __print__(self):
@@ -1070,13 +1071,13 @@ class SingleDefConc(MSONable):
         """
         Returns dictionary-like keys of the object's attributes.
         """
-        return ('name', 'charge', 'conc', 'stable')
+        return ('name', 'charge', 'conc')
 
     def values(self):
         """
         Returns dictionary-like values of the object's attributes.
         """
-        return (self.name, self.charge, self.conc, self.stable)
+        return (self.name, self.charge, self.conc)
 
     def items(self):
         """
@@ -1113,7 +1114,7 @@ class DefectConcentrations:
         conc_stable = []
         for n in self.names:
             concs = self.select_concentrations(name=n)
-            cmax = SingleDefConc(name='',conc=None,charge=0,stable=True) # dummy object
+            cmax = SingleDefConc(name='',conc=None,charge=0) # dummy object
             for c in concs:
                 if cmax.conc is None or c.conc >= cmax.conc:
                     cmax = c
@@ -1159,14 +1160,15 @@ class DefectConcentrations:
         """
         d = {}
         for c in self:
-            for dn in c.name:
-                if dn.dspecie not in d.keys() or dn.name not in d.keys():
-                    if dn.dtype == 'Vacancy':
-                        ekey = dn.name
-                        d[ekey] = self.get_element_total(dn.dspecie,vacancy=True)
+            df = Defect.from_string(c.name)
+            for defect in df:
+                if defect.specie not in d.keys() or defect.name not in d.keys():
+                    if defect.type == 'Vacancy':
+                        ekey = defect.name
+                        d[ekey] = self.get_element_total(defect.specie,vacancy=True)
                     else:
-                        ekey = dn.dspecie
-                        d[ekey] = self.get_element_total(dn.dspecie,vacancy=False)
+                        ekey = defect.specie
+                        d[ekey] = self.get_element_total(defect.specie,vacancy=False)
         return d
                     
     
@@ -1260,11 +1262,12 @@ class DefectConcentrations:
         """
         eltot = 0
         for c in self:
-            for dn in c.name:
-                if element == dn.dspecie:
-                    if vacancy and dn.dtype=='Vacancy':
+            df = Defect.from_string(c.name)
+            for defect in df:
+                if element == defect.specie:
+                    if vacancy and defect.type=='Vacancy':
                         eltot += c.conc
-                    elif vacancy == False and dn.dtype!='Vacancy':
+                    elif vacancy == False and defect.type!='Vacancy':
                         eltot += c.conc
         return eltot
         

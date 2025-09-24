@@ -22,7 +22,7 @@ from pynter.vasp.utils import get_charge_from_computed_entry
 
 class DefectEntry(MSONable,metaclass=ABCMeta):
     
-    def __init__(self,defect,energy_diff,corrections,data=None,label=None):
+    def __init__(self,defect,energy_diff,corrections={},data=None,label=None):
         """
         Contains the data for a defect calculation.
         
@@ -38,7 +38,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         """
         self._defect = defect
         self._energy_diff = energy_diff
-        self._corrections = corrections if corrections else {}
+        self._corrections = corrections
         self._data = data if data else {}
         self._defect.set_label(label)
         
@@ -50,7 +50,6 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         output = [
             "DefectEntry",
             "Defect: %s" %(self.defect.__str__()),
-            "Bulk System: %s" %self.bulk_structure.composition,
             "Energy: %.4f" %self.energy_diff,
             "Corrections: %.4f" %sum([v for v in self.corrections.values()]),
             "Charge: %i" %self.charge,
@@ -67,6 +66,9 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
     @property
     def charge(self):
+        if self.defect.charge is None:
+            warnings.warn('Charge is not set in Defect object, setting charge to 0')
+            self.defect.set_charge(0)
         return self.defect.charge
     
     @property
@@ -80,10 +82,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         """
         return self._data
 
-    @data.setter
-    def data(self,data):
-        self._data = data
-        return 
+    # @data.setter
+    # def data(self,data):
+    #     self._data = data
+    #     return 
 
     @property
     def defect(self):
@@ -91,11 +93,11 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     
     @property
     def defect_specie(self):
-        return self.defect.defect_specie
+        return self.defect.specie
     
     @property
     def defect_type(self):
-        return self.defect.defect_type
+        return self.defect.type
     
     @property
     def delta_atoms(self):
@@ -112,32 +114,25 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     @property
     def label(self):
         return self.defect.label
-    
-    @label.setter
-    def label(self,label):
-        self.defect.set_label(label)
-        return
 
     @property
     def multiplicity(self):
+        if self.defect.multiplicity is None:
+            warnings.warn('Multiplicity is not set in Defect object, setting multiplicity to 1.')
+            self.defect.set_multiplicity(1)
         return self.defect.multiplicity
-    
-    @multiplicity.setter
-    def multiplicity(self,multiplicity):
-        self.defect.set_multiplicity(multiplicity)
-        return
-            
+                
     @property
     def name(self):
         return self.defect.name
-    
+        
     @property
     def structure(self):
         return self.defect.defect_structure
     
     @property
     def symbol(self):
-        return self.defect.name.symbol
+        return self.defect.symbol
 
     @property
     def symbol_charge(self):
@@ -147,6 +142,22 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     def symbol_kroger(self):
         return self.defect.symbol_with_charge_kv
     
+    def set_charge(self,new_charge=0):
+        self.defect.set_charge(new_charge)
+        return 
+    
+    def set_data(self,new_data):
+        self._data = new_data
+        return 
+    
+    def set_multiplicity(self,new_multiplicity):
+        self.defect.set_multiplicity(new_multiplicity)
+        return
+    
+    def set_label(self,new_label):
+        self.defect.set_label(new_label)
+        return 
+
 
     @classmethod
     def from_dict(cls,d):
@@ -362,8 +373,12 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return entry
         
 
-    def defect_concentration(self, vbm, chemical_potentials, temperature=300, fermi_level=0.0, 
-                             per_unit_volume=True):
+    def defect_concentration(self,
+                            vbm,
+                            chemical_potentials,
+                            temperature=300,
+                            fermi_level=0.0, 
+                            per_unit_volume=True):
         """
         Compute the defect concentration for a temperature and Fermi level.
         Args:

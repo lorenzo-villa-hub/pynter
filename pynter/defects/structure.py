@@ -227,19 +227,19 @@ def defect_finder(structure_defect, structure_bulk, tol=1e-3, verbose=False):
             matched_indices.add(index)  # Site exists in bulk, check for substitution
             if site.species != structure_bulk[index].species:
                 defects.append(
-                    Substitution(defect_specie=site.species.symbol,
+                    Substitution(specie=site.species.symbol,
                                 defect_site=site,
                                 bulk_structure=structure_bulk,
                                 site_in_bulk=structure_bulk[index])
                     )
         else:
-            defects.append(Interstitial(defect_specie=site.specie.symbol,
+            defects.append(Interstitial(specie=site.specie.symbol,
                                         defect_site=site,
                                         bulk_structure=structure_bulk))
 
     for j, site in enumerate(structure_bulk):
         if j not in matched_indices:
-            defects.append(Vacancy(defect_specie=site.specie.symbol,
+            defects.append(Vacancy(specie=site.specie.symbol,
                                         defect_site=site,
                                         bulk_structure=structure_bulk))
 
