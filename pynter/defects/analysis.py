@@ -248,7 +248,8 @@ class DefectsAnalysis:
                     key = col.split('_')[1]
                     corrections[key] = row[col]
                 elif col not in default_columns:
-                    data[col] = row[col]
+                    if col not in DefectEntry.__dict__.keys(): # check data is not already a property
+                        data[col] = row[col]
 
             entry = DefectEntry(
                             defect=defect,
@@ -291,15 +292,15 @@ class DefectsAnalysis:
             d['name'] = e.name
             d['charge'] = e.charge
             d['multiplicity'] = e.multiplicity
-            d['energy_diff'] = e.energy_diff
+            d['energy_diff'] = round(e.energy_diff,4)
             if e.corrections:
                 for key,value in e.corrections.items():
                     d[f'corr_{key}'] = value
-            d['bulk_volume'] = e.defect.bulk_volume
+            d['bulk_volume'] = round(e.defect.bulk_volume, 4)
             if include_data:
                 if e.data:
                     for key,value in e.data.items():
-                        d['key'] = value
+                        d[key] = value
             if properties:
                 for feature in properties:
                     if isinstance(feature,list):

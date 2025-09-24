@@ -829,7 +829,7 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
     
     @property
     def site_concentration_in_cm3(self):
-        return self.multiplicity * 1e24 / self.bulk_structure.volume 
+        return self.multiplicity * 1e24 / self.bulk_volume 
     
     @property
     def sites(self):
