@@ -52,10 +52,10 @@ class DefectsAnalysis:
         
 
     def __str__(self):     
-        return self.get_dataframe().__str__()
+        return self.table().__str__()
             
     def __repr__(self):
-        return self.get_dataframe().__repr__()
+        return self.table().__repr__()
     
     def __iter__(self):
         return self.entries.__iter__()
@@ -230,11 +230,41 @@ class DefectsAnalysis:
         return elements
 
     @staticmethod
-    def from_df(df,vbm, band_gap):
+    def from_dataframe(df,vbm, band_gap):
+        """
+        Create DefectsAnalysis object from pandas DataFrame. If df has been 
+        exported with include_structure=True, DefectEntry objects will be 
+        imported including defect and bulk structures.
+
+        Parameters
+        ----------
+        df : (DataFrame)
+            pandas DataFrame. Needs to be in the following format:
+            - rows are defect entries
+            - non-optional columns are 'name','charge','multiplicity','energy_diff','bulk_volume'.
+                - name : defect name in the format given by Defect objects. 
+                - charge : defect charge
+                - multiplicity : site multiplicity of the defect
+                - energy_diff : difference in energy btw defect and bulk structures
+            - If the df was not exported from this class, you need to provide also:
+                - bulk_volume : Volume of the bulk cell (unit cell or supercell 
+                  relative to your multiplicity in A°3)
+        vbm : (float)
+            Valence band maximum of bulk structure in eV
+        band_gap : (float)
+            Band gap of bulk structure in eV
+        
+        Returns
+        -------
+        DefectsAnalysis object
+        """
         default_columns = ['name','charge','multiplicity','energy_diff','bulk_volume']
         entries = []
         for idx,row in df.iterrows():
-            defect = get_defect_from_string(
+            if 'defect' in df.columns:
+                defect = row['defect']
+            else:
+                defect = get_defect_from_string(
                                         row['name'],
                                         charge=row['charge'],
                                         multiplicity=row['multiplicity'],
@@ -259,23 +289,52 @@ class DefectsAnalysis:
             entries.append(entry)
         
         return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
-            
+    
 
-    def to_df(self,entries=None,include_data=True,properties=[],functions={}):
+    @staticmethod
+    def from_file(filename,vbm,band_gap,format=None): 
         """
-        Get DataFrame to display entries. 
+        Create DefectsAnalysis object from file. Available formats are
+        'json','pkl','csv' and 'xlsx'. Check docs in from_dataframe function
+        for file formatting requirements.
+        """
+        if '.json' in filename or format == 'json':
+            return DefectsAnalysis.from_json(filename)
+        elif '.pkl' in filename or format == 'pkl':
+            df = pd.read_pickle(filename)
+        elif '.csv' in filename or format == 'csv':
+            df = pd.read_csv(filename)
+        elif '.xlsx' in filename or format == 'excel':
+            df = pd.read_excel(filename)
+        else:
+            raise ValueError('Invalid file format, available are "json","pkl","csv" and "excel"')
+        return DefectsAnalysis.from_dataframe(df=df,vbm=vbm,band_gap=band_gap)
+    
+
+    def to_dataframe(self,
+            entries=None,
+            include_structures=False,
+            include_data=True,
+            properties=[],
+            functions={}):
+        """
+        Export DefectsAnalysis object as DataFrame. 
 
         Parameters
         ----------
-        entries : (list), optional
-            Entries to display. If None all entries are displayed. The default is None.
-        pretty : (bool), optional
-            Optimize DataFrame for prettier visualization.
-        include_bulk: (bool), optional
-            Include bulk composition and space group for each entry in DataFrame.
-        display: (list)
-            List of strings with defect entry attributes or method results to display.
-
+        entries : (list)
+            Entries to export. If None all entries are displayed.
+        include_structures : (bool)
+            Add full Defect object to DataFrame containing defect and bulk structures.
+            This makes the DataFrame less portable. 
+        include_data: (bool)
+            Include entry.data dictionary. 
+        properties: (list)
+            List of strings with defect entry attributes or methods to include in df.
+        functions : (dict)
+            Dictionary with column names as keys and functions as values. 
+            The function needs to take a DefectEntry as input and the output
+            will be stored in df.
         Returns
         -------
         df : 
@@ -293,6 +352,8 @@ class DefectsAnalysis:
             d['charge'] = e.charge
             d['multiplicity'] = e.multiplicity
             d['energy_diff'] = round(e.energy_diff,4)
+            if include_structures:
+                d['defect'] = e.defect
             if e.corrections:
                 for key,value in e.corrections.items():
                     d[f'corr_{key}'] = value
@@ -316,6 +377,43 @@ class DefectsAnalysis:
         df = pd.DataFrame(table)
 
         return df
+    
+    def to_file(self,filename,format='pkl',export_kwargs={},**kwargs):
+        """
+        Export DefectsAnalysis object to file. 
+
+        Parameters
+        ----------
+        filename : (str)
+            Path of file.
+        format : (str)
+            Formats available:
+            - "pkl" : pickle file. Allows to store structures (default).
+            - "json" : DefectsAnalysis object as json file.
+            - "csv" : Does not allow to store structures.
+            - "excel: Does not allow to store structures.   
+        export_kwargs : (dict)
+            Kwargs to pass to file exporting function
+        kwargs : (dict)
+            Kwargs to pass to to_dataframe function. If not provided, 
+            'include_strctures' is to True if chosen format is 'pkl', 
+            set to False if chosen format is 'csv' or 'excel'.
+        """
+        if format == 'json':
+            self.to_json(path=filename) 
+        elif format == 'pkl':
+            if 'include_structures' not in kwargs.keys():
+                kwargs['include_structures'] = True
+            df = self.to_dataframe(**kwargs)
+            df.to_pickle(filename,**export_kwargs)
+        elif format in ['csv','excel']:
+            if 'include_structures' not in kwargs.keys():
+                kwargs['include_structures'] = False
+            df = self.to_dataframe(**kwargs)
+            if format == 'csv':
+                df.to_csv(filename,**export_kwargs)
+            elif format == 'excel':
+                df.to_excel(filename,**export_kwargs)
 
     def to_json(self,path='',**kwargs):
         """
@@ -598,64 +696,6 @@ class DefectsAnalysis:
         
         return charge_transition_level
         
-
-    def get_dataframe(self,entries=None,pretty=False,include_bulk=False,display=[]):
-        """
-        Get DataFrame to display entries. 
-
-        Parameters
-        ----------
-        entries : (list), optional
-            Entries to display. If None all entries are displayed. The default is None.
-        pretty : (bool), optional
-            Optimize DataFrame for prettier visualization.
-        include_bulk: (bool), optional
-            Include bulk composition and space group for each entry in DataFrame.
-        display: (list)
-            List of strings with defect entry attributes or method results to display.
-
-        Returns
-        -------
-        df : 
-            DataFrame object.
-        """
-        if not entries:
-            entries = self.entries
-        d = {}
-        index = []
-        table = []
-        for e in entries:
-            symbol = e.symbol
-            if pretty:
-                index.append(symbol)
-            else:
-                index.append(e.name)
-            d = {}
-            if include_bulk:
-                d['bulk composition'] = e.bulk_structure.composition.formula
-                d['bulk space group'] = e.bulk_structure.get_space_group_info()
-            if not pretty:
-                d['symbol'] = symbol    
-                d['delta atoms'] = e.delta_atoms
-            d['charge'] = e.charge
-            d['multiplicity'] = e.multiplicity
-            if display:
-                for feature in display:
-                    if isinstance(feature,list):
-                        key = feature[0]
-                        for k in feature[1:]:
-                            key = key + '["%s"]'%k
-                    else:
-                        key = feature
-                    d[key] = get_object_feature(e,feature)
-            table.append(d)
-        df = pd.DataFrame(table,index=index)
-        if pretty:
-            df.index.name = 'symbol'
-        else:
-            df.index.name = 'name'
-        return df
-    
 
     def merge_entries(self,*args):
         """
@@ -1107,6 +1147,64 @@ class DefectsAnalysis:
             
         return stable_charges
         
+
+    def table(self,entries=None,pretty=False,include_bulk=False,display=[]):
+        """
+        Get DataFrame to display entries. 
+
+        Parameters
+        ----------
+        entries : (list), optional
+            Entries to display. If None all entries are displayed. The default is None.
+        pretty : (bool), optional
+            Optimize DataFrame for prettier visualization.
+        include_bulk: (bool), optional
+            Include bulk composition and space group for each entry in DataFrame.
+        display: (list)
+            List of strings with defect entry attributes or method results to display.
+
+        Returns
+        -------
+        df : 
+            DataFrame object.
+        """
+        if not entries:
+            entries = self.entries
+        d = {}
+        index = []
+        table = []
+        for e in entries:
+            symbol = e.symbol
+            if pretty:
+                index.append(symbol)
+            else:
+                index.append(e.name)
+            d = {}
+            if include_bulk:
+                d['bulk composition'] = e.bulk_structure.composition.formula
+                d['bulk space group'] = e.bulk_structure.get_space_group_info()
+            if not pretty:
+                d['symbol'] = symbol    
+                d['delta atoms'] = e.delta_atoms
+            d['charge'] = e.charge
+            d['multiplicity'] = e.multiplicity
+            if display:
+                for feature in display:
+                    if isinstance(feature,list):
+                        key = feature[0]
+                        for k in feature[1:]:
+                            key = key + '["%s"]'%k
+                    else:
+                        key = feature
+                    d[key] = get_object_feature(e,feature)
+            table.append(d)
+        df = pd.DataFrame(table,index=index)
+        if pretty:
+            df.index.name = 'symbol'
+        else:
+            df.index.name = 'name'
+        return df
+    
 
     def _get_total_charge(self,fermi_level,chemical_potentials, bulk_dos, temperature=300, 
                           fixed_concentrations=None,external_defects=[], per_unit_volume=True):
