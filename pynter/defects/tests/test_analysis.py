@@ -15,7 +15,6 @@ import os.path as op
 
 from pynter.tools.utils import get_object_from_json
 from pynter.phase_diagram.chempots import Chempots
-from pynter.defects.defects import DefectName, DefectComplexName
 from pynter.defects.analysis import DefectsAnalysis, SingleDefConc, DefectConcentrations
 
 from pynter.testing.core import PynterTest
@@ -42,9 +41,9 @@ class TestDefectsAnalysis(PynterTest):
                                                     tol=5e-03)
         da.filter_entries(inplace=True,exclude=True,types=['DefectComplex'])
         for idx in [0,2,4]:
-            da[idx].label = 'mult108'
+            da[idx].set_label = 'mult108'
         for idx in [1,3,5]:
-            da[idx].label = 'mult54'
+            da[idx].set_label = 'mult54'
         cls.da = da
         mu_B = -6.6794
         mu_P = -5.4133
