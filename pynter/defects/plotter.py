@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .defects import Defect, format_legend_with_charge_number#, get_defect_name_from_string
+from .defects import Defect, format_legend_with_charge_number, get_defect_from_string
 
 
 
@@ -85,7 +85,6 @@ def plot_formation_energies(entries,
         x_star = []
         y_star = []
         q_previous = None
-        # this is faster than using self.stable_charges
         for i in range(0,npoints):
             emin[i] = 1e40
             for d in formation_energies[name]:
@@ -104,7 +103,7 @@ def plot_formation_energies(entries,
                 q_previous = q_stable       
 
         if format_legend:
-            label_txt = Defect.from_string(name).symbol
+            label_txt = get_defect_from_string(name).symbol
         else:
             label_txt = name            
 
@@ -262,7 +261,7 @@ def plot_charge_transition_levels(entries,
     # format latex-like legend
     if format_legend:    
          for name in x_ticks_labels:            
-            x_ticks_labels[x_ticks_labels.index(name)] = Defect.from_string(name).symbol               
+            x_ticks_labels[x_ticks_labels.index(name)] = get_defect_from_string(name).symbol               
     if fermi_level:
         plt.axhline(y=fermi_level, linestyle='dashed', color='k', linewidth=1.5, label='$\mu _{e}$')   
     
@@ -279,13 +278,7 @@ def plot_charge_transition_levels(entries,
 
 
 
-    
- 
-    
-
-        
-
-def plot_pO2_vs_concentrations(self,thermodata,output='total',size=(12,8),fontsize=22,
+def plot_pO2_vs_concentrations(thermodata,output='total',size=(12,8),fontsize=22,
                         xlim=(1e-20,1e05),ylim=None,show_unstable=True,colors=None,**kwargs):
     """
     Plot defect and carrier concentrations in a range of oxygen partial pressure.
@@ -332,15 +325,15 @@ def plot_pO2_vs_concentrations(self,thermodata,output='total',size=(12,8),fontsi
     td = thermodata
     p,dc,cc = td.partial_pressures,td.defect_concentrations,td.carrier_concentrations
     xlabel = 'Oxygen partial pressure (atm)'
-    plt = self.plot_x_vs_concentrations(x=p,xlabel=xlabel,defect_concentrations=dc,
+    plt = plot_x_vs_concentrations(x=p,xlabel=xlabel,defect_concentrations=dc,
                                                 carrier_concentrations=cc,output=output,
                                                 size=size,fontsize=fontsize,xlim=xlim,ylim=ylim,
                                                 show_unstable=show_unstable,colors=colors,**kwargs)
     return plt
 
 
-def plot_pO2_vs_conductivity(self,partial_pressures,conductivities,new_figure=True,
-                                label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None):
+def plot_pO2_vs_conductivity(partial_pressures,conductivities,new_figure=True,
+                            label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None):
     """
     Plot conductivity as a function of the oxygen partial pressure.
 
@@ -368,7 +361,7 @@ def plot_pO2_vs_conductivity(self,partial_pressures,conductivities,new_figure=Tr
         Matplotlib object.
     """
     xlabel = 'Oxygen partial pressure (atm)'
-    plt = self.plot_x_vs_conductivity(x=partial_pressures,xlabel=xlabel,
+    plt = plot_x_vs_conductivity(x=partial_pressures,xlabel=xlabel,
                                         conductivities=conductivities,
                                         new_figure=new_figure,label=label,size=size,
                                         xlim=xlim,ylim=ylim)
@@ -376,7 +369,7 @@ def plot_pO2_vs_conductivity(self,partial_pressures,conductivities,new_figure=Tr
 
 
 
-def plot_pO2_vs_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_figure=True,
+def plot_pO2_vs_fermi_level(partial_pressures,fermi_levels,band_gap,new_figure=True,
                         label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None,colors=None):
     """
     Plot Fermi level as a function of the oxygen partial pressure.
@@ -409,14 +402,14 @@ def plot_pO2_vs_fermi_level(self,partial_pressures,fermi_levels,band_gap,new_fig
         Matplotlib object.
     """
     xlabel = 'Oxygen partial pressure (atm)'
-    plt = self.plot_x_vs_fermi_level(x=partial_pressures,xlabel=xlabel,
+    plt = plot_x_vs_fermi_level(x=partial_pressures,xlabel=xlabel,
                                         fermi_levels=fermi_levels,band_gap=band_gap,
                                         new_figure=new_figure,label=label,size=size,
                                         xlim=xlim,ylim=ylim,colors=colors)
     return plt
 
 
-def plot_variable_species_vs_concentrations(self,thermodata,output='total',size=(12,8),fontsize=22,
+def plot_variable_species_vs_concentrations(thermodata,output='total',size=(12,8),fontsize=22,
                         xlim=(1e-20,1e05),ylim=None,show_unstable=True,colors=None,**kwargs):
     """
     Plot defect and carrier concentrations in a range of oxygen partial pressure.
@@ -464,18 +457,18 @@ def plot_variable_species_vs_concentrations(self,thermodata,output='total',size=
     """
     td = thermodata
     c,dc,cc = td.variable_concentrations,td.defect_concentrations,td.carrier_concentrations
-    dname = self._get_variable_defect_specie_label(td.variable_defect_specie)
+    dname = _get_variable_defect_specie_label(td.variable_defect_specie)
     xlabel = '[%s] (cm$^{-3})$' %dname
     
-    plt = self.plot_x_vs_concentrations(x=c,xlabel=xlabel,defect_concentrations=dc,
+    plt = plot_x_vs_concentrations(x=c,xlabel=xlabel,defect_concentrations=dc,
                                                 carrier_concentrations=cc,output=output,
                                                 size=size,fontsize=fontsize,xlim=xlim,ylim=ylim,
                                                 show_unstable=show_unstable,colors=colors,**kwargs)
     return plt
 
 
-def plot_variable_species_vs_conductivity(self,xlabel,variable_concentrations,conductivities,
-                                            new_figure=True,label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None):
+def plot_variable_species_vs_conductivity(xlabel,variable_concentrations,conductivities,
+                                          new_figure=True,label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None):
     """
     Plot conductivity as a function of the oxygen partial pressure.
 
@@ -505,14 +498,14 @@ def plot_variable_species_vs_conductivity(self,xlabel,variable_concentrations,co
         Matplotlib object.
     """
     xlabel = '%s (cm$^{-3})$' %xlabel
-    plt = self.plot_x_vs_conductivity(x=variable_concentrations,xlabel=xlabel,
+    plt = plot_x_vs_conductivity(x=variable_concentrations,xlabel=xlabel,
                                         conductivities=conductivities,
                                         new_figure=new_figure,label=label,size=size,
                                         xlim=xlim,ylim=ylim)
     return plt
     
 
-def plot_variable_species_vs_fermi_level(self,xlabel,variable_concentrations,fermi_levels,band_gap,
+def plot_variable_species_vs_fermi_level(xlabel,variable_concentrations,fermi_levels,band_gap,
                         new_figure=True,label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None,colors=None):
     """
     Plot Fermi level as a function of the oxygen partial pressure.
@@ -547,7 +540,7 @@ def plot_variable_species_vs_fermi_level(self,xlabel,variable_concentrations,fer
         Matplotlib object.
     """
     xlabel = '%s (cm$^{-3})$' %xlabel
-    plt = self.plot_x_vs_fermi_level(x=variable_concentrations,xlabel=xlabel,
+    plt = plot_x_vs_fermi_level(x=variable_concentrations,xlabel=xlabel,
                                         fermi_levels=fermi_levels,band_gap=band_gap,
                                         new_figure=new_figure,label=label,size=size,
                                         xlim=xlim,ylim=ylim,colors=colors)
@@ -555,9 +548,9 @@ def plot_variable_species_vs_fermi_level(self,xlabel,variable_concentrations,fer
 
 
 
-def plot_x_vs_concentrations(self,x,xlabel,defect_concentrations,carrier_concentrations,
-                                    output='total',size=(12,8),fontsize=22,
-                                    xlim=(1e-20,1e05),ylim=None,show_unstable=True,colors=None,**kwargs):
+def plot_x_vs_concentrations(x,xlabel,defect_concentrations,carrier_concentrations,
+                            output='total',size=(12,8),fontsize=22,
+                            xlim=(1e-20,1e05),ylim=None,show_unstable=True,colors=None,**kwargs):
     """
     Plot defect concentrations as a function of generic data on the x-axis.        
     
@@ -602,11 +595,11 @@ def plot_x_vs_concentrations(self,x,xlabel,defect_concentrations,carrier_concent
         """        
     matplotlib.rcParams.update({'font.size': 22})
     if output == 'all' or output == 'stable':
-        plt = self._plot_conc(x=x,defect_concentrations=defect_concentrations,
+        plt = _plot_conc(x=x,defect_concentrations=defect_concentrations,
                             carrier_concentrations=carrier_concentrations,
                             output=output,size=size,colors=colors,**kwargs)
     elif output == 'total':
-        plt = self._plot_conc_total(x=x,defect_concentrations=defect_concentrations,
+        plt = _plot_conc_total(x=x,defect_concentrations=defect_concentrations,
                                 carrier_concentrations=carrier_concentrations,
                                 size=size,colors=colors,**kwargs)
     else:
@@ -614,10 +607,10 @@ def plot_x_vs_concentrations(self,x,xlabel,defect_concentrations,carrier_concent
         
     plt.xscale('log')
     plt.yscale('log')
-    if show_unstable:
-        stable = self._get_unstable_bool(defect_concentrations)
-        ax = plt.gca()
-        plt.fill_between(x, 0, 1, where=stable, alpha=0.3, transform=ax.get_xaxis_transform(), color='red')
+    # if show_unstable:
+    #     stable = _get_unstable_bool(defect_concentrations)
+    #     ax = plt.gca()
+    #     plt.fill_between(x, 0, 1, where=stable, alpha=0.3, transform=ax.get_xaxis_transform(), color='red')
     plt.xlim(xlim)
     if ylim:
         plt.ylim(ylim)
@@ -631,8 +624,8 @@ def plot_x_vs_concentrations(self,x,xlabel,defect_concentrations,carrier_concent
 
     
 
-def plot_x_vs_conductivity(self,x,xlabel,conductivities,new_figure=True,
-                            label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None):
+def plot_x_vs_conductivity(x,xlabel,conductivities,new_figure=True,
+                           label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None):
     """
     Plot conductivity as a function of the oxygen partial pressure.
 
@@ -684,7 +677,7 @@ def plot_x_vs_conductivity(self,x,xlabel,conductivities,new_figure=True,
     return plt
 
 
-def plot_x_vs_fermi_level(self,x,xlabel,fermi_levels,band_gap,new_figure=True,
+def plot_x_vs_fermi_level(x,xlabel,fermi_levels,band_gap,new_figure=True,
                         label=None,size=(12,8),xlim=(1e-20,1e05),ylim=None,colors=None):
     """
     Parameters
@@ -748,16 +741,16 @@ def plot_x_vs_fermi_level(self,x,xlabel,fermi_levels,band_gap,new_figure=True,
     return plt
 
 
-def _get_variable_defect_specie_label(self,variable_defect_specie):
+def _get_variable_defect_specie_label(variable_defect_specie):
     try:
-        dname = get_defect_name_from_string(variable_defect_specie)
+        defect = get_defect_from_string(variable_defect_specie)
         return dname.symbol
     except:
         return variable_defect_specie
 
 
 
-def _plot_conc(self,x,defect_concentrations,carrier_concentrations,output,size,colors,**kwargs):
+def _plot_conc(x,defect_concentrations,carrier_concentrations,output,size,colors,**kwargs):
     
     plt.figure(figsize=size)
     dc = defect_concentrations if output != 'stable' else [c.stable for c in defect_concentrations] 
@@ -769,7 +762,7 @@ def _plot_conc(self,x,defect_concentrations,carrier_concentrations,output,size,c
     for i in range(0,len(dc[0])):
             conc = [c[i].conc for c in dc]
             charges = [c[i].charge for c in dc]
-            label_txt = dc[0][i].name.symbol
+            label_txt = get_defect_from_string(dc[0][i]).symbol
             if output == 'all':
                 label_txt = format_legend_with_charge_number(label_txt,dc[0][i].charge)
             elif output == 'stable':
@@ -786,7 +779,7 @@ def _plot_conc(self,x,defect_concentrations,carrier_concentrations,output,size,c
     return plt
 
 
-def _plot_conc_total(self,x,defect_concentrations,carrier_concentrations,size,colors,**kwargs):
+def _plot_conc_total(x,defect_concentrations,carrier_concentrations,size,colors,**kwargs):
     
     dc = defect_concentrations
     if kwargs:
@@ -796,7 +789,7 @@ def _plot_conc_total(self,x,defect_concentrations,carrier_concentrations,size,co
     n = [cr[1] for cr in carrier_concentrations]
     for name in dc[0].names:
         conc = [c.total[name] for c in dc]
-        label_txt = name.symbol
+        label_txt = get_defect_from_string(name).symbol
         color = colors[dc[0].names.index(name)] if colors else None
         plt.plot(x,conc,label=label_txt,linewidth=4,color=color)
     plt.plot(x,h,label='$n_{h}$',linestyle='--',color='r',linewidth=4)
@@ -804,7 +797,7 @@ def _plot_conc_total(self,x,defect_concentrations,carrier_concentrations,size,co
     return plt
 
 
-def _get_unstable_bool(self,defect_concentrations):
+def _get_unstable_bool(defect_concentrations):
     slist = []
     for dc in defect_concentrations:
         unstable = False

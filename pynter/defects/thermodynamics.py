@@ -11,7 +11,7 @@ from monty.json import jsanitize
 import numpy as np
 
 from .analysis import DefectConcentrations, SingleDefConc
-from .defects import get_defect_name_from_string
+from .defects import get_defect_from_string
 import copy
 import os.path as op
 import json
@@ -122,7 +122,7 @@ class DefectThermodynamics:
         self.da = defects_analysis
         self.bulk_dos = bulk_dos
         self.fixed_concentrations = fixed_concentrations if fixed_concentrations else None
-        self.external_defects = external_defects if external_defects else []
+        self.external_defects = external_defects or []
         self.xtol = xtol
 
 
@@ -286,7 +286,7 @@ class DefectThermodynamics:
         """
         dos = self.bulk_dos
         fixed_df = fixed_concentrations if fixed_concentrations else self.fixed_concentrations
-        ext_df = self.external_defects if external_defects else self.external_defects
+        ext_df = external_defects or self.external_defects
         
         fermi_level = self.da.solve_fermi_level(chemical_potentials=chemical_potentials,
                                                 bulk_dos=dos,temperature=temperature,
@@ -301,8 +301,6 @@ class DefectThermodynamics:
                                                               fixed_concentrations=fixed_df)
         if ext_df:
             for df in ext_df:
-                if type(df.name)==str:
-                    df.name = get_defect_name_from_string(df.name)
                 defect_concentrations.append(df)
         
         thermodata = {'carrier_concentrations':carrier_concentrations,
@@ -355,7 +353,7 @@ class DefectThermodynamics:
                     Fermi level value
         """
         fixed_df = fixed_concentrations if fixed_concentrations else self.fixed_concentrations
-        ext_df = external_defects if external_defects else self.external_defects
+        ext_df = external_defects or self.external_defects
         
         single_thermodata = self.get_single_point_thermodata(
                                                     chemical_potentials=chemical_potentials,
@@ -389,6 +387,29 @@ class DefectThermodynamics:
         return single_quenched_thermodata
 
 
+    def _update_variable_species_concentration(self,variable_defect_specie, c, fixed_df, ext_df):
+        if type(variable_defect_specie) == str :
+            fixed_df.update({variable_defect_specie:c})
+            variable_defect_specie_str = variable_defect_specie
+        elif type(variable_defect_specie) == dict:
+            vds = variable_defect_specie
+            variable_defect_specie_str = get_defect_from_string(vds['name']).specie
+            if not ext_df:
+                single_df_conc = SingleDefConc(
+                                name=vds['name'],
+                                charge=vds['charge'],
+                                conc=c) # variable concentration
+                ext_df = DefectConcentrations([single_df_conc])
+            else:
+                single_df_conc = ext_df.select_concentrations(name=vds['name'],charge=vds['charge'])[0]
+                single_df_conc.conc = c 
+
+            return fixed_df, ext_df, variable_defect_specie_str  
+
+        else:
+            raise ValueError('Variable species has to be either a string (if present in DefectsAnalysis) or dict (if not present in DefectsAnalysis)')
+
+                 
     def get_variable_species_thermodata(self,variable_defect_specie,concentration_range,
                                         chemical_potentials,temperature,external_defects=[],
                                         npoints=50,name=None):
@@ -399,7 +420,9 @@ class DefectThermodynamics:
         Parameters
         ----------
         variable_defect_specie : (str or dict)
-            Name or element of the variable defect species.
+            Variable species. Possible formats are:
+            - str: name or element, if the variable defect species is in defect entries.
+            - dict : {'name':str,'charge':int or float} if the variable species is not in defect entries. 
         concentration_range : (tuple or list)
             Logaritmic range of the concentration of the variable species in cm^-3 (ex. [1,20]).
         chemical_potentials : (Chempots)
@@ -434,22 +457,13 @@ class DefectThermodynamics:
         
         concentrations = np.logspace(start=np.log10(concentration_range[0]),stop=np.log10(concentration_range[1]),num=npoints)
         fixed_df = self.fixed_concentrations.copy() if self.fixed_concentrations else {}
-        ext_df = external_defects if external_defects else self.external_defects
+        ext_df = external_defects or self.external_defects
+        if ext_df and type(ext_df) != DefectConcentrations:
+            ext_df = DefectConcentrations(ext_df)
+
         for c in concentrations:
-            if type(variable_defect_specie) == str :
-                fixed_df.update({variable_defect_specie:c})
-                variable_defect_specie_str = variable_defect_specie
-            elif type(variable_defect_specie) == dict:
-                vds = variable_defect_specie
-                single_df_conc = SingleDefConc(
-                                name=get_defect_name_from_string(vds['name']),
-                                charge=vds['charge'],
-                                conc=c) # variable concentration
-                ext_df.append(single_df_conc)
-                variable_defect_specie_str = single_df_conc.name.dspecie
-            else:
-                raise ValueError('Variable species has to be either a string (if present in DefectsAnalysis) or dict (if not present in DefectsAnalysis)')
-                
+            fixed_df, ext_df, variable_defect_specie_str = self._update_variable_species_concentration(
+                                                    variable_defect_specie,c,fixed_df,ext_df)
             
             single_thermodata = self.get_single_point_thermodata(
                                             chemical_potentials=chemical_potentials,
@@ -530,21 +544,10 @@ class DefectThermodynamics:
         
         concentrations = np.logspace(start=np.log10(concentration_range[0]),stop=np.log10(concentration_range[1]),num=npoints)
         fixed_df = self.fixed_concentrations.copy() if self.fixed_concentrations else {}
-        ext_df = external_defects if external_defects else self.external_defects
+        ext_df = external_defects or self.external_defects
         for c in concentrations:
-            if type(variable_defect_specie) == str :
-                fixed_df.update({variable_defect_specie:c})
-                variable_defect_specie_str = variable_defect_specie
-            elif type(variable_defect_specie) == dict:
-                vds = variable_defect_specie
-                single_df_conc = SingleDefConc(
-                                name=get_defect_name_from_string(vds['name']),
-                                charge=vds['charge'],
-                                conc=c) # variable concentration
-                ext_df.append(single_df_conc)
-                variable_defect_specie_str = single_df_conc.name.dspecie
-            else:
-                raise ValueError('Variable species has to be either a string (if present in DefectsAnalysis) or dict (if not present in DefectsAnalysis)')
+            fixed_df, ext_df, variable_defect_specie_str = self._update_variable_species_concentration(
+                                                    variable_defect_specie,c,fixed_df,ext_df)
                         
             single_quenched_thermodata = self.get_single_point_quenched_thermodata(
                                                     chemical_potentials=chemical_potentials,
