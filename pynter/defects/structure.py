@@ -176,14 +176,14 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
         dfs = defects
     else:
         df_found = defect_finder(df,bk,tol=tol)
-        if df_found.defect_type=='DefectComplex':
+        if df_found.type=='DefectComplex':
             dfs = df_found.defects
         else:
             dfs = [df_found]
    
     for d in dfs:
         dsite = d.site
-        dtype = d.defect_type
+        dtype = d.type
         if dtype == 'Vacancy':
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
@@ -223,6 +223,8 @@ def defect_finder(
         are ranked based on the coordinate distance btw defect and bulk sites
         (descending order), the first max_number_of_defects in the list 
         are given as the output (as single defect or defect complex).
+    verbose : (bool)
+        Print output.
 
     Returns
     -------
@@ -282,66 +284,6 @@ def defect_finder(
         print(f'Defect automatically identified for defective structure with composition {structure_defect.composition}: \n {defect}')
 
     return defect
-
-
-def _defect_finder(structure_defect, structure_bulk, tol=1e-3, verbose=False):
-    """
-    Find defects by comparing defect and bulk structures.
-
-    Parameters
-    ----------
-    structure_defect : Pymatgen Structure
-        Defect structure.
-    structure_bulk : Pymatgen Structure
-        Bulk structure.
-    tol : float, optional
-        Tolerance for fractional coordinates comparison (default is 1e-3).
-
-    Returns
-    -------
-    Defect object (single or complex)
-    """
-    defects = []
-    # Identify missing (vacancies) and additional (interstitials) sites
-    matched_indices = set()
-    for site in structure_defect:
-        check, index = is_site_in_structure_coords(site,structure_bulk,tol=tol)
-        
-        if check:
-            matched_indices.add(index)  # Site exists in bulk, check for substitution
-            if site.species != structure_bulk[index].species:
-                defects.append(
-                    Substitution(specie=site.specie.symbol,
-                                defect_site=site,
-                                bulk_structure=structure_bulk,
-                                site_in_bulk=structure_bulk[index])
-                    )
-        else:
-            defects.append(Interstitial(specie=site.specie.symbol,
-                                        defect_site=site,
-                                        bulk_structure=structure_bulk))
-
-    for j, site in enumerate(structure_bulk):
-        if j not in matched_indices:
-            defects.append(Vacancy(specie=site.specie.symbol,
-                                        defect_site=site,
-                                        bulk_structure=structure_bulk))
-
-    if len(defects) > 1:
-        if len(defects) > 3:
-            warnings.warn("More than 3 defects found, if not desired try to adjust the tolerance parameter ")
-        defect = DefectComplex(defects, bulk_structure=structure_bulk)
-    elif len(defects) == 1:
-        defect = defects[0]
-    else:
-        warnings.warn("No defect has been found. Try to adjust the tolerance parameter.", UserWarning)
-        defect = defects
-    
-    if verbose:
-        print(f'Defect automatically identified for defective structure with composition {structure_defect.composition}: \n {defect}')
-
-    return defect
-
 
 
 def get_trajectory_for_visualization(structure_defect,structure_bulk,defects=None,tol=1e-03,file=None):

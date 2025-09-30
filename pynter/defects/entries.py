@@ -245,8 +245,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             Store additional data in dict format.
         label : (str), optional
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
-        tol : (float)
-            Tolerance for defect_finder function. The default is 1e-03.
+        kwargs : (dict)
+            Kwargs to pass to defect_finder. 'verbose' is set to True by default.
 
         Returns
         -------
