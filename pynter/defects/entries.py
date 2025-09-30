@@ -82,11 +82,6 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         """
         return self._data
 
-    # @data.setter
-    # def data(self,data):
-    #     self._data = data
-    #     return 
-
     @property
     def defect(self):
         return self._defect  
@@ -178,9 +173,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         label = d['label']
         return cls(defect=defect,energy_diff=energy_diff,corrections=corrections,data=data,label=label)
 
+
     @staticmethod
     def from_computed_entries(computed_entry_defect,computed_entry_bulk,corrections,
-                              multiplicity=1,data=None,label=None,tol=1e-03):
+                              multiplicity=1,data=None,label=None,initial_structure=False,**kwargs):
         """
         Generate DefectEntry object from Pymatgen's ComputedStructureEntry objects.
 
@@ -200,8 +196,11 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             Store additional data in dict format.
         label : (str), optional
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
-        tol : (float)
-            Tolerance for defect_finder function. The default is 1e-03.
+        initial_structure : (bool)
+            Use initial structure for defect recognition. Useful when relaxations are large and 
+            defect_finder struggles to find the right defects.
+        kwargs : (dict)
+            Kwargs to pass to defect_finder.
 
         Returns
         -------
@@ -210,14 +209,21 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         entry_df, entry_bulk = computed_entry_defect,computed_entry_bulk
         charge = get_charge_from_computed_entry(entry_df)
         energy_diff = entry_df.energy - entry_bulk.energy
+        if initial_structure:
+            defect_structure = entry_df.data['ionic_steps'][0]['structure']
+        else:
+            defect_structure = entry_df.structure
         
-        return DefectEntry.from_structures(entry_df.structure, entry_bulk.structure, energy_diff,
-                                           corrections,charge,multiplicity,data,label,tol=tol)
+        return DefectEntry.from_structures(defect_structure=defect_structure,
+                                           bulk_structure=entry_bulk.structure,
+                                           energy_diff=energy_diff,corrections=corrections,
+                                           charge=charge,multiplicity=multiplicity,data=data,
+                                           label=label,**kwargs)
     
 
     @staticmethod
     def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,
-                  multiplicity=1,data=None,label=None,tol=1e-03):
+                  multiplicity=1,data=None,label=None,**kwargs):
         """
         Generate DefectEntry object from VaspJob objects.
 
@@ -252,12 +258,12 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         charge = job_defect.charge
         
         return DefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,
-                                                  charge,multiplicity,data,label,tol=tol)
+                                                  charge,multiplicity,data,label,**kwargs)
 
 
     @staticmethod
     def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,
-                        multiplicity=1,data=None,label=None,tol=1e-03):
+                        multiplicity=1,data=None,label=None,**kwargs):
         """
         Generate DefectEntry object from Structure objects.
 
@@ -281,14 +287,18 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             Store additional data in dict format.
         label : (str), optional
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
-        tol : (float)
-            Tolerance for defect_finder function. The default is 1e-03.
+        kwargs : (dict)
+            Kwargs to pass to defect_finder. 'verbose' is set to True by default.
 
         Returns
         -------
         DefectEntry
         """
-        defect = defect_finder(defect_structure, bulk_structure,tol=tol, verbose=True)
+        if not kwargs:
+            kwargs = {'verbose':True}
+        elif 'verbose' not in kwargs.keys():
+            kwargs['verbose'] = True
+        defect = defect_finder(defect_structure, bulk_structure,**kwargs)
         if not defect:
             raise ValueError('Cannot create DefectEntry from empty defect object')
         defect.set_charge(charge)
@@ -314,9 +324,10 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                             multiplicity=1,
                             data=None,
                             label=None,
-                            tol=1e-02,
+                            initial_structure=False,
                             function=None,
-                            **kwargs):
+                            computed_entry_kwargs={},
+                            finder_kwargs={}):
         """
         Generate DefectEntry object from VASP directories read with Pymatgen.
 
@@ -338,12 +349,16 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             Store additional data in dict format.
         label : (str), optional
             Additional label to add to defect specie. Does not influence non equilibrium calculations.
-        tol : (float)
-            Tolerance for defect_finder function. The default is 1e-03.
+        initial_structure : (bool)
+            Use initial structure for defect recognition. Useful when relaxations are large and 
+            defect_finder struggles to find the right defects.
         function : (func)
             Function to apply to DefectEntry. Useful to automate custom entry modification.
-        kwargs : (dict)
-            Kwargs to pass to Vasprun.get_computed_entry.
+            The function can modify entry attributes and returns None.
+        computed_entr_kwargs : (dict)
+            Kwargs to pass to Vasprun.get_computed_entry. 
+        finder_kwargs : (dict)
+            Kwargs to pass to defect_finder.
 
         Returns
         -------
@@ -351,11 +366,19 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         """ 
         from pymatgen.io.vasp.outputs import Vasprun
 
-        computed_entry_defect = _get_computed_entry_from_path(path_defect,**kwargs)
+        if initial_structure:
+            if computed_entry_kwargs:
+                if 'data' in computed_entry_kwargs.keys():
+                    computed_entry_kwargs['data'].append('ionic_steps')
+                else:
+                    computed_entry_kwargs['data'] = ['ionic_steps']
+            else:
+                computed_entry_kwargs = {'data':['ionic_steps']}
+        computed_entry_defect = _get_computed_entry_from_path(path_defect,**computed_entry_kwargs)
         if not computed_entry_bulk:
             if path_bulk:
                 vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
-                computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**kwargs)
+                computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**computed_entry_kwargs)
             else:
                 raise ValueError('Either bulk ComputedEntry or path of bulk calculation has to be provided')
 
@@ -366,7 +389,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                                                 multiplicity=multiplicity,
                                                 data=data,
                                                 label=label,
-                                                tol=tol)
+                                                initial_structure=initial_structure,
+                                                **finder_kwargs)
         
         if function:
             function(entry)

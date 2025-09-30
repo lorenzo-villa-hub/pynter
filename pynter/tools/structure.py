@@ -224,13 +224,17 @@ def is_site_in_structure_coords(site, structure, tol=1e-3, return_distance=False
         Whether the site exists in the structure within tolerance.
     index : (int or None)
         Index of matching site in structure if found, otherwise None.
+    distance : (float)
+        Returned if return_distance is set to True. 
+        distance btw site coords and closest site in reference structure.
     """
     # Normalize tolerance with lattice vector size
     l = site.lattice
     tol = np.sqrt(l.a**2 + l.b**2 + l.c**2) * tol
 
     # Convert structure sites to fractional coordinates
-    frac_coords_structure = np.array([s.frac_coords for s in structure])
+    #frac_coords_structure = np.array([s.frac_coords for s in structure])
+    frac_coords_structure = np.array([s.frac_coords % 1 for s in structure]) # ensure no negative coords
     kdtree_structure = KDTree(frac_coords_structure, boxsize=1.0)  # Take periodicity into account
 
     # Query the KDTree for nearest neighbor

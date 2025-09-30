@@ -246,9 +246,10 @@ class DefectsAnalysis:
                             get_data=True,
                             band_gap=None,
                             vbm=None,
-                            tol=1e-02,
                             function=None,
-                            **kwargs):
+                            initial_structure=False,
+                            computed_entry_kwargs={},
+                            finder_kwargs={}):
         """
         Generate DefectsAnalysis object from VASP directories read with Pymatgen.
 
@@ -268,8 +269,9 @@ class DefectsAnalysis:
             Band gap of bulk material. If not provided is determined from bulk VASP directory.
         vbm : (float)
             Valence band maximum of bulk material. If not provided is determined from bulk VASP directory.
-        tol : (float)
-            Tolerance for defect_finder function. The default is 1e-03.
+        initial_structure : (bool)
+            Use initial structure for defect recognition. Useful when relaxations are large and 
+            defect_finder struggles to find the right defects.
         function : (func)
             Function to apply to each DefectEntry. Useful to automate custom entry modification.
         kwargs : (dict)
@@ -285,7 +287,7 @@ class DefectsAnalysis:
         else:
             parse_eigen = True
         vasprun_bulk = Vasprun(op.join(path_bulk,'vasprun.xml'),parse_dos=False,parse_eigen=parse_eigen)
-        computed_entry_bulk = vasprun_bulk.get_computed_entry(**kwargs)
+        computed_entry_bulk = vasprun_bulk.get_computed_entry(**computed_entry_kwargs)
         band_gap = band_gap or vasprun_bulk.eigenvalue_band_properties[0]
         vbm = vbm or vasprun_bulk.eigenvalue_band_properties[2]
 
@@ -304,9 +306,10 @@ class DefectsAnalysis:
                                                         multiplicity=1,
                                                         data=data,
                                                         label=None,
-                                                        tol=tol,
                                                         function=function,
-                                                        **kwargs)
+                                                        initial_structure=initial_structure,
+                                                        computed_entry_kwargs=computed_entry_kwargs,
+                                                        finder_kwargs=finder_kwargs)
                 entries.append(entry)
         
         return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
@@ -786,8 +789,8 @@ class DefectsAnalysis:
                                                 external_defects=external_defects,
                                                 xtol=xtol)
         thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
-                                                                        temperature=temperature,
-                                                                        name='BrowerDiagram')
+                                                        temperature=temperature,
+                                                        name='BrowerDiagram')
         self._thermodata = thermodata
         if 'xlim' not in kwargs.keys():
             kwargs['xlim'] = pressure_range

@@ -7,6 +7,7 @@ Created on Tue Apr  4 17:10:46 2023
 """
 
 import warnings
+import numpy as np
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.periodic_table import Element
 import os.path as op
@@ -200,9 +201,92 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     return new_structure        
 
 
-def defect_finder(structure_defect, structure_bulk, tol=1e-3, verbose=False):
+def defect_finder(
+                structure_defect,
+                structure_bulk,
+                tol=1e-3,
+                max_number_of_defects=None,
+                verbose=False):
     """
-    Optimized function to find defects by comparing defect and bulk structures.
+    Find defects by comparing defect and bulk structures.
+
+    Parameters
+    ----------
+    structure_defect : Pymatgen Structure
+        Defect structure.
+    structure_bulk : Pymatgen Structure
+        Bulk structure.
+    tol : float
+        Tolerance for fractional coordinates comparison (default is 1e-3).
+    max_number_of_defects : (int)
+        Impose a max number of defects to be found. If set, defects
+        are ranked based on the coordinate distance btw defect and bulk sites
+        (descending order), the first max_number_of_defects in the list 
+        are given as the output (as single defect or defect complex).
+
+    Returns
+    -------
+    Defect object (single or complex)
+    """
+    defects = []
+    # Identify missing (vacancies) and additional (interstitials) sites
+    matched_indices = set()
+    for site in structure_defect:
+        check, index = is_site_in_structure_coords(site,structure_bulk,tol=tol,return_distance=False)
+
+        if check:
+            matched_indices.add(index)  # Site exists in bulk, check for substitution
+            if site.species != structure_bulk[index].species:
+                defects.append(
+                    Substitution(specie=site.specie.symbol,
+                                defect_site=site,
+                                bulk_structure=structure_bulk,
+                                site_in_bulk=structure_bulk[index]))
+        else:
+            defects.append(Interstitial(specie=site.specie.symbol,
+                                        defect_site=site,
+                                        bulk_structure=structure_bulk))
+
+    for j, site in enumerate(structure_bulk):
+        if j not in matched_indices:
+            defects.append(Vacancy(specie=site.specie.symbol,
+                                        defect_site=site,
+                                        bulk_structure=structure_bulk))
+
+    if max_number_of_defects:
+        filtered_defects = []
+        defect_distances = []
+        for df in defects:
+            if df.type == 'Vacancy':
+                check, i, d = is_site_in_structure_coords(df.site,structure_defect,tol=tol,return_distance=True)
+                defect_distances.append((df,d))
+            else:
+                check, i, d = is_site_in_structure_coords(df.site,structure_bulk,tol=tol,return_distance=True)
+                defect_distances.append((df,d))
+        sorted_defect_distances = defect_distances.sort(key = lambda x : x[1], reverse=True)
+        filtered_defects = [defect_distances[i][0] for i in range(max_number_of_defects)]
+    else:
+        filtered_defects = defects
+
+    if len(filtered_defects) > 1:
+        if len(filtered_defects) > 3:
+            warnings.warn("More than 3 defects found, if not desired try to adjust the tolerance parameter ")
+        defect = DefectComplex(filtered_defects, bulk_structure=structure_bulk)
+    elif len(filtered_defects) == 1:
+        defect = filtered_defects[0]
+    else:
+        warnings.warn("No defect has been found. Try to adjust the tolerance parameter.", UserWarning)
+        defect = None
+    
+    if verbose:
+        print(f'Defect automatically identified for defective structure with composition {structure_defect.composition}: \n {defect}')
+
+    return defect
+
+
+def _defect_finder(structure_defect, structure_bulk, tol=1e-3, verbose=False):
+    """
+    Find defects by comparing defect and bulk structures.
 
     Parameters
     ----------
