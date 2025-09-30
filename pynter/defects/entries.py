@@ -473,7 +473,9 @@ def fermi_dirac(E,T):
         E (float): energy in eV
         T (float): the temperature in kelvin
     """
-    return 1. / (1. + np.exp(E/(kb*T)) )
+    from scipy.special import expit
+    exponent = E/(kb*T)
+    return expit(-exponent)
 
 
 def maxwell_boltzmann(E,T):

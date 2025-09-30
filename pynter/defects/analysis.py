@@ -13,6 +13,7 @@ from pymatgen.electronic_structure.dos import FermiDos
 from .pmg.pmg_dos import FermiDosCarriersInfo
 from .chempots.oxygen import get_pressure_reservoirs_from_precursors
 from .defects import Defect, get_defect_from_string
+from .electronic_structure import get_carrier_concentrations
 from .entries import DefectEntry, _get_computed_entry_from_path
 from .plotter import (
                     plot_pO2_vs_concentrations,
@@ -470,13 +471,7 @@ class DefectsAnalysis:
         Returns:
             h,n in absolute values
         """
-        
-        fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
-        _,fdos_vbm = fdos.get_cbm_vbm()    
-        
-        h, n = fdos.get_doping(fermi_level=fermi_level + fdos_vbm, temperature=temperature,carriers_values=True)
-        
-        return abs(h) , abs(n)
+        return get_carrier_concentrations(dos=bulk_dos,fermi_level=fermi_level,temperature=temperature)
 
 
     def charge_transition_levels(self, energy_range=None,entries=None,get_integers=True):
@@ -1074,24 +1069,7 @@ class DefectsAnalysis:
         (float)
             Fermi level dictated by charge neutrality.
         """
-        
-        # fdos = FermiDosCarriersInfo(bulk_dos, bandgap=self.band_gap)
-        # _,fdos_vbm = fdos.get_cbm_vbm()
-
-        # def _get_total_q(ef):
-        #     qd_tot = sum([
-        #         d.charge * d.conc
-        #         for d in self.defect_concentrations(chemical_potentials,temperature,ef,
-        #                                             fixed_concentrations)])
-        #     for d_ext in external_defects:
-        #         if type(d_ext) == dict:
-        #             d_ext = SingleDefConc(name=d_ext['name'],charge=d_ext['charge'])
-        #         qd_tot += d_ext.charge * d_ext.conc                
-        #     #qd_tot += fdos.get_doping(fermi_level=ef + fdos_vbm, temperature=temperature)
-        #     h, n = get_carrier_concentrations(dos=bulk_dos,fermi_level=ef,temperature=temperature,band_gap=self.band_gap)
-        #     qd_tot += h - n
-        #     return qd_tot
-        
+                
         def _get_total_q(ef):
             qd_tot = self._get_total_charge(fermi_level=ef,
                                             chemical_potentials=chemical_potentials,
@@ -1227,78 +1205,18 @@ class DefectsAnalysis:
     
 
     def _get_total_charge(self,fermi_level,chemical_potentials, bulk_dos, temperature=300, 
-                          fixed_concentrations=None,external_defects=[], per_unit_volume=True):
-        # fdos = FermiDos(bulk_dos, bandgap=self.band_gap)
-        # _,fdos_vbm = fdos.get_cbm_vbm()    
+                          fixed_concentrations=None,external_defects=[], per_unit_volume=True): 
         qd_tot = sum([
             d.charge * d.conc
             for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
                                                 fixed_concentrations,per_unit_volume)])
         for d_ext in external_defects:
             qd_tot += d_ext.charge * d_ext.conc
-        #qd_tot += fdos.get_doping(fermi_level=fermi_level + fdos_vbm, temperature=temperature)
+
         h, n = get_carrier_concentrations(dos=bulk_dos,fermi_level=fermi_level,temperature=temperature,band_gap=self.band_gap)
         qd_tot += h - n
         return qd_tot
 
-
-def get_carrier_concentrations(dos, fermi_level, temperature, band_gap=None):
-    """
-    Code from pymatgen.electronic_structure.dos.FermiDos.get_doping
-    The function has been modified to return the absolute values of
-    hole and electron concentrations.
-
-    Calculate tcarrier concentrations at a given
-    Fermi level and temperature. A simple Left Riemann sum is used for
-    integrating the density of states over energy & equilibrium Fermi-Dirac
-    distribution.
-
-    Args:
-        fermi_level (float): The Fermi level in eV.
-        temperature (float): The temperature in Kelvin.
-
-    Returns:
-        float: The doping concentration in units of 1/cm^3. Negative values
-            indicate that the majority carriers are electrons (N-type),
-            whereas positive values indicates the majority carriers are holes
-            (P-type).
-    """
-    def f0(E, fermi, T):
-        """Fermi-Dirac distribution function.
-
-        Args:
-            E (float): Energy in eV.
-            fermi (float): The Fermi level in eV.
-            T (float): The temperature in kelvin.
-
-        Returns:
-            float: The Fermi-Dirac occupation probability at energy E.
-        """
-        from scipy.constants import value as _constant
-        from scipy.special import expit
-        exponent = (E - fermi) / (_constant("Boltzmann constant in eV/K") * T)
-        return expit(-exponent) 
-    
-    fdos = FermiDos(dos=dos,bandgap=band_gap)
-    _,fdos_vbm = fdos.get_cbm_vbm()
-    fermi_level = fdos_vbm + fermi_level
-
-    cb_integral = np.sum(
-        fdos.tdos[max(fdos.idx_mid_gap, fdos.idx_vbm + 1) :]
-        * f0(fdos.energies[max(fdos.idx_mid_gap, fdos.idx_vbm + 1) :], fermi_level, temperature)
-        * fdos.de[max(fdos.idx_mid_gap, fdos.idx_vbm + 1) :],
-        axis=0,
-    )
-    vb_integral = np.sum(
-        fdos.tdos[: min(fdos.idx_mid_gap, fdos.idx_cbm - 1) + 1]
-        * f0(-fdos.energies[: min(fdos.idx_mid_gap, fdos.idx_cbm - 1) + 1], -fermi_level, temperature)
-        * fdos.de[: min(fdos.idx_mid_gap, fdos.idx_cbm - 1) + 1],
-        axis=0,
-    )
-    h = (vb_integral) / (fdos.volume * fdos.A_to_cm ** 3) 
-    n = -1*(cb_integral) / (fdos.volume * fdos.A_to_cm ** 3)
-    
-    return abs(h), abs(n)
     
 
 class SingleDefConc(MSONable):
