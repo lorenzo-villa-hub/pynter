@@ -397,6 +397,7 @@ class DefectThermodynamics:
         if type(variable_defect_specie) == str :
             fixed_df.update({variable_defect_specie:c})
             variable_defect_specie_str = variable_defect_specie
+            return fixed_df, ext_df, variable_defect_specie_str 
         elif type(variable_defect_specie) == dict:
             vds = variable_defect_specie
             variable_defect_specie_str = get_defect_from_string(vds['name']).specie

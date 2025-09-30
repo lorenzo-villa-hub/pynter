@@ -1045,8 +1045,8 @@ class DefectsAnalysis:
         
         if elements:
             def felements(entry):
-                for name in entry.name:
-                    if name.dspecie in elements:
+                for defect in entry.defect:
+                    if defect.specie in elements:
                         return True
             functions.append(felements)
                 

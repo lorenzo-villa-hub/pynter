@@ -416,7 +416,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         n = self.defect.site_concentration_in_cm3 if per_unit_volume else self.multiplicity 
         eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
         
-        conc = n * fermi_dirac(eform,temperature) # maxwell_boltzmann(eform,temperature) 
+        conc = n * fermi_dirac(eform,temperature) # maxwell_boltzmann(eform,temperature) #
         return conc
 
 
