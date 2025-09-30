@@ -22,9 +22,10 @@ def get_carrier_concentrations(dos, fermi_level, temperature, band_gap=None):
         dos : (dict or Dos)
             Density of states to integrate. 
             Can either be a dictionary with following keys:
-            - 'energies' : list or np.array with energy values
-            - 'densitites' : list or np.array with total density values
-            - 'structure' : pymatgen Structure of the material, needed for DOS volume normalization.
+                - 'energies' : list or np.array with energy values
+                - 'densitites' : list or np.array with total density values
+                - 'structure' : pymatgen Structure of the material, needed for DOS volume normalization.
+            or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         fermi_level : (float)
             The Fermi level relative to the VBM in eV.
         temperature : (float)

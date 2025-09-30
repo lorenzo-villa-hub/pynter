@@ -82,6 +82,19 @@ class DefectsAnalysis:
         Result of thermodynamics calculation (plot_brouwer_diagram or plot_doping_diagram functions).
         """    
         return self._thermodata
+    
+    @property
+    def elements(self):
+        """
+        List of all the elements involved in exchange of atoms with a reservoir 
+        (elements present in entry.delta_atoms for all entries).
+        """
+        elements = []
+        for entry in self.entries:
+            for el in entry.delta_atoms.keys():
+                if el not in elements:
+                    elements.append(el)
+        return elements
 
 
     def as_dict(self):
@@ -115,120 +128,7 @@ class DefectsAnalysis:
         vbm = d['vbm']
         band_gap = d['band_gap']
         return cls(entries,vbm,band_gap)
-    
-    
-    @staticmethod
-    def from_json(path_or_string):
-        """
-        Build DefectsAnalysis object from json file or string.
 
-        Parameters
-        ----------
-        path_or_string : (str)
-            If an existing path to a file is given the object is constructed reading the json file.
-            Otherwise it will be read as a string.
-
-        Returns
-        -------
-        DefectsAnalysis object.
-
-        """
-        if op.isfile(path_or_string):
-            with open(path_or_string) as file:
-                d = json.load(file)
-        else:
-            d = json.loads(path_or_string)
-        return DefectsAnalysis.from_dict(d)
-
-
-    def from_vasp_directories(
-                            path_defects,
-                            path_bulk,
-                            common_path=None,
-                            get_corrections=False,
-                            get_multiplicity=False,
-                            get_data=True,
-                            band_gap=None,
-                            vbm=None,
-                            tol=1e-02,
-                            function=None,
-                            **kwargs):
-        """
-        Generate DefectsAnalysis object from VASP directories read with Pymatgen.
-
-        Parameters
-        ----------
-        path_defects : (str)
-            Path of VASP defects calculation.
-        path_bulk : (str)
-            Path of VASP bulk calculation. 
-        get_corrections : (bool)
-
-        get_multiplicity : (bool)
-
-        get_data : (True)
-            Store path in DefectEntry.data dictionary.
-        band_gap : (float)
-            Band gap of bulk material. If not provided is determined from bulk VASP directory.
-        vbm : (float)
-            Valence band maximum of bulk material. If not provided is determined from bulk VASP directory.
-        tol : (float)
-            Tolerance for defect_finder function. The default is 1e-03.
-        function : (func)
-            Function to apply to each DefectEntry. Useful to automate custom entry modification.
-        kwargs : (dict)
-            Kwargs to pass to Vasprun.get_computed_entry.
-
-        Returns
-        -------
-        DefectsAnalysis object.
-        """ 
-        from pymatgen.io.vasp.outputs import Vasprun
-        if band_gap and vbm:
-            parse_eigen = False
-        else:
-            parse_eigen = True
-        vasprun_bulk = Vasprun(op.join(path_bulk,'vasprun.xml'),parse_dos=False,parse_eigen=parse_eigen)
-        computed_entry_bulk = vasprun_bulk.get_computed_entry(**kwargs)
-        band_gap = band_gap or vasprun_bulk.eigenvalue_band_properties[0]
-        vbm = vbm or vasprun_bulk.eigenvalue_band_properties[2]
-
-        common_path = common_path or path_defects # if not set enter all VASP directories
-        entries = []
-        for root,dirs,files in os.walk(path_defects):   
-            if 'vasprun.xml' in files and common_path in root:
-                path = op.abspath(root)
-                print('importing from %s'%path)                
-                
-                data = {'path':path} if get_data else None
-                entry = DefectEntry.from_vasp_directories(
-                                                        path_defect=path,
-                                                        computed_entry_bulk=computed_entry_bulk,
-                                                        corrections={}, # get corrections and multiplicity automatically?
-                                                        multiplicity=1,
-                                                        data=data,
-                                                        label=None,
-                                                        tol=tol,
-                                                        function=function,
-                                                        **kwargs)
-                entries.append(entry)
-        
-        return DefectsAnalysis(entries=entries,band_gap=band_gap,vbm=vbm)
-        
-
-
-    @property
-    def elements(self):
-        """
-        List of all the elements involved in exchange of atoms with a reservoir 
-        (elements present in entry.delta_atoms for all entries).
-        """
-        elements = []
-        for entry in self.entries:
-            for el in entry.delta_atoms.keys():
-                if el not in elements:
-                    elements.append(el)
-        return elements
 
     @staticmethod
     def from_dataframe(df,vbm, band_gap):
@@ -310,7 +210,108 @@ class DefectsAnalysis:
         else:
             raise ValueError('Invalid file format, available are "json","pkl","csv" and "excel"')
         return DefectsAnalysis.from_dataframe(df=df,vbm=vbm,band_gap=band_gap)
-    
+
+
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build DefectsAnalysis object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.loads(path_or_string)
+        return DefectsAnalysis.from_dict(d)
+
+
+    @staticmethod
+    def from_vasp_directories(
+                            path_defects,
+                            path_bulk,
+                            common_path=None,
+                            get_corrections=False,
+                            get_multiplicity=False,
+                            get_data=True,
+                            band_gap=None,
+                            vbm=None,
+                            tol=1e-02,
+                            function=None,
+                            **kwargs):
+        """
+        Generate DefectsAnalysis object from VASP directories read with Pymatgen.
+
+        Parameters
+        ----------
+        path_defects : (str)
+            Path of VASP defects calculation.
+        path_bulk : (str)
+            Path of VASP bulk calculation. 
+        get_corrections : (bool)
+
+        get_multiplicity : (bool)
+
+        get_data : (True)
+            Store path in DefectEntry.data dictionary.
+        band_gap : (float)
+            Band gap of bulk material. If not provided is determined from bulk VASP directory.
+        vbm : (float)
+            Valence band maximum of bulk material. If not provided is determined from bulk VASP directory.
+        tol : (float)
+            Tolerance for defect_finder function. The default is 1e-03.
+        function : (func)
+            Function to apply to each DefectEntry. Useful to automate custom entry modification.
+        kwargs : (dict)
+            Kwargs to pass to Vasprun.get_computed_entry.
+
+        Returns
+        -------
+        DefectsAnalysis object.
+        """ 
+        from pymatgen.io.vasp.outputs import Vasprun
+        if band_gap and vbm:
+            parse_eigen = False
+        else:
+            parse_eigen = True
+        vasprun_bulk = Vasprun(op.join(path_bulk,'vasprun.xml'),parse_dos=False,parse_eigen=parse_eigen)
+        computed_entry_bulk = vasprun_bulk.get_computed_entry(**kwargs)
+        band_gap = band_gap or vasprun_bulk.eigenvalue_band_properties[0]
+        vbm = vbm or vasprun_bulk.eigenvalue_band_properties[2]
+
+        common_path = common_path or path_defects # if not set enter all VASP directories
+        entries = []
+        for root,dirs,files in os.walk(path_defects):   
+            if 'vasprun.xml' in files and common_path in root:
+                path = op.abspath(root)
+                print('importing from %s'%path)                
+                
+                data = {'path':path} if get_data else None
+                entry = DefectEntry.from_vasp_directories(
+                                                        path_defect=path,
+                                                        computed_entry_bulk=computed_entry_bulk,
+                                                        corrections={}, # get corrections and multiplicity automatically?
+                                                        multiplicity=1,
+                                                        data=data,
+                                                        label=None,
+                                                        tol=tol,
+                                                        function=function,
+                                                        **kwargs)
+                entries.append(entry)
+        
+        return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
+
+
 
     def to_dataframe(self,
             entries=None,
@@ -379,6 +380,7 @@ class DefectsAnalysis:
 
         return df
     
+
     def to_file(self,filename,format='pkl',export_kwargs={},**kwargs):
         """
         Export DefectsAnalysis object to file. 
@@ -439,6 +441,8 @@ class DefectsAnalysis:
         else:
             return d.__str__() 
         
+
+
 
     def binding_energy(self,name,fermi_level=0):
         """
@@ -527,7 +531,7 @@ class DefectsAnalysis:
         Parameters
         ----------
         chemical_potentials: (dict)
-            Dictionary of chemical potentials ({Element: number})   
+            Dictionary of chemical potentials ({element: chempot})   
         temperature: (float) 
             Temperature to produce concentrations at.
         fermi_level: (float) 
@@ -673,7 +677,7 @@ class DefectsAnalysis:
         """
         Args:
             chemical_potentials: 
-                a dictionnary of {Element:value} giving the chemical
+                a dictionnary of {element:champot} giving the chemical
                 potential of each element
             name: (str) Name of the defect system to get the charge transition levels for
             q1, q2 (int) : Charges for whcih you want to evaluate the transition levels
@@ -723,22 +727,30 @@ class DefectsAnalysis:
         """
         Plot Brouwer diagram (defect concentrations vs oxygen partial pressure). Wrapper function for DefectThermodynamics
         and ThermodynamicsPlotter, if you need more control use the classes individually. 
-        For the chemical potentials, neeed to provide either:
-        -   reservoirs: Dictionary with oxygen partial pressures as keys and dictionary with chemical potential as values ({pO2:{'element':mu_element}}),
-            or PressureReservoirs object.
+
+        For the chemical potentials, you must provide either:
+            -   reservoirs: Dictionary with oxygen partial pressures as keys and dictionary with chemical potential
+                as values ({pO2:{'element':chempot}}), or PressureReservoirs object.
         or
-        -   precursors + oxygen_ref: Dictionary with {formula:energy} for synthesis precursors and oxygen reference chempot at 0 K.
+            -   precursors + oxygen_ref: Dictionary with {formula:energy} for synthesis precursors and oxygen reference chempot at 0 K.
 
         Parameters
         ----------
-        bulk_dos: (Dos)
-            Density of state of bulk material (Pymatgen Dos object).
+        bulk_dos : (dict or Dos)
+            Density of states to integrate. 
+            Can either be a dictionary with following keys:
+                - 'energies' : list or np.array with energy values
+                - 'densitites' : list or np.array with total density values
+                - 'structure' : pymatgen Structure of the material, needed for DOS volume normalization.
+            or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         temperature: (float)
             Temperature in K.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names, values are the concentrations. (ex {'Vac_Na':1e20}). 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         reservoirs: (dict or PressureReservoirs)
             Dictionary with pO2 as keys and chemical potential dictionaly as values ({pO2:{'element':mu_element}})
         precursors: (dict)
@@ -816,6 +828,8 @@ class DefectsAnalysis:
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
         npoints : (int), optional
             Number of points to divide concentration range. The default is 50.
@@ -855,32 +869,35 @@ class DefectsAnalysis:
                                 show_legend=True,
                                 format_legend=True):
         """
-        Produce defect Formation energy vs Fermi energy plot
-        Args:
-            chemical_potentials:
-                Chempots object containing the chemical
-                potential of each element.
-            entries: 
+        Produce defect Formation energy vs Fermi energy plot.
+
+        -----------
+        Parameters:
+
+            chemical_potentials : (dict)
+                Dictionary with chemical potentials of the elements {'element':chempot}
+            entries : (list) 
                 List of entries to calculate. If None all entries are considered.
-            xlim:
+            xlim : (tuple)
                 Tuple (min,max) giving the range of the x (fermi energy) axis.
-            ylim:
+            ylim : (tuple)
                 Tuple (min,max) giving the range for the formation energy axis.
-            fermi_level:
-                float to plot Fermi energy position.
-            plotsize:
-                float or tuple. Can be float or tuple for different x and y sizes
-                multiplier to change plotsize.
-            fontsize:
-                float  multiplier to change fontsize.
-            show_legend:
-                Bool for showing legend.
-            format_legend:
-                Bool for getting latex-like legend based on the name of defect entries.
-            get_subplot:
-                Bool for getting subplot.
-            subplot_settings:
-                List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)). 
+            title : (str)
+                Title of the figure.
+            fermi_level : (float)
+                Plot Fermi energy position with a vertical line.
+            grid : (bool)
+                Show grid.
+            figsize : (float or tuple)
+                Can be float or tuple for different x and y sizes multiplier to change the figure size.
+            fontsize : (float)
+                Multiplier to change font size.
+            show_legend  : (Bool)
+                Show legend.
+            format_legend : (bool)
+                Get latex-like legend based on the name of defect entries.
+                
+        --------
         Returns:
             matplotlib object
         """
@@ -1050,18 +1067,24 @@ class DefectsAnalysis:
         Parameters
         ----------
         chemical_potentials : (Dict)
-            Dictionary of chemical potentials in the format {Element('el'):chempot}.
-        bulk_dos : (CompleteDos object)
-            Pymatgen CompleteDos object of the DOS of the bulk system.
-        temperature : (float), optional
+            Dictionary of chemical potentials in the format {'element':chempot}.
+        bulk_dos : (dict or Dos)
+            Density of states to integrate. 
+            Can either be a dictionary with following keys:
+                - 'energies' : list or np.array with energy values
+                - 'densitites' : list or np.array with total density values
+                - 'structure' : pymatgen Structure of the material, needed for DOS volume normalization.
+            or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
+        temperature : (float)
             Temperature to equilibrate the system to. The default is 300.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations (ex {'Vac_A':1e20}) . For more info, 
             read the documentation of the defect_concentrations method.
         external_defects : (list)
-            List of SingleDefConc objects containing external defect concentrations 
-            (not present in defect entries).
+            List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'name': str, 'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
 
         Returns
@@ -1076,8 +1099,7 @@ class DefectsAnalysis:
                                             bulk_dos=bulk_dos,
                                             temperature=temperature,
                                             fixed_concentrations=fixed_concentrations,
-                                            external_defects=external_defects,
-                                            per_unit_volume=True)
+                                            external_defects=external_defects)
             return qd_tot
                        
         return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=xtol)
@@ -1204,24 +1226,33 @@ class DefectsAnalysis:
         return df
     
 
-    def _get_total_charge(self,fermi_level,chemical_potentials, bulk_dos, temperature=300, 
-                          fixed_concentrations=None,external_defects=[], per_unit_volume=True): 
+    def _get_total_charge(self,
+                          fermi_level,
+                          chemical_potentials,
+                          bulk_dos,
+                          temperature=300, 
+                          fixed_concentrations=None,
+                          external_defects=[]): 
+        """
+        Calculate the total charge concentration (defects + holes - electrons) needed to solve charge neutrality.
+        Check solve_fermi_level docs
+        """
         qd_tot = sum([
             d.charge * d.conc
             for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                                fixed_concentrations,per_unit_volume)])
+                                                fixed_concentrations,per_unit_volume=True)])
         for d_ext in external_defects:
-            qd_tot += d_ext.charge * d_ext.conc
+            qd_tot += d_ext['charge'] * d_ext['conc']
 
         h, n = get_carrier_concentrations(dos=bulk_dos,fermi_level=fermi_level,temperature=temperature,band_gap=self.band_gap)
         qd_tot += h - n
         return qd_tot
 
-    
+
 
 class SingleDefConc(MSONable):
     
-    def __init__(self,name,charge,conc,stable=True):
+    def __init__(self,name,charge,conc):
         """
         Object to store defect concentrations data. It is also subscribtable like a dictionary.
 
@@ -1233,8 +1264,6 @@ class SingleDefConc(MSONable):
             Charge of defect specie.
         conc : (float)
             Concentration value.
-        stable : (bool)
-            If formation energy is positive, i.e. the concentration < Nsites.
         """
         self.name = name
         self.charge = charge

@@ -117,6 +117,8 @@ class DefectThermodynamics:
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
         """
         self.da = defects_analysis
@@ -270,6 +272,8 @@ class DefectThermodynamics:
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         name : (str)
             Label for ThermoData. The default is None.
 
@@ -338,6 +342,8 @@ class DefectThermodynamics:
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         name : (str)
             Label for ThermoData. The default is None.
 
@@ -433,6 +439,8 @@ class DefectThermodynamics:
             Number of points to divide concentration range. The default is 50.
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         name : (str), optional
             Label for ThermoData. The default is None.
 
@@ -500,8 +508,10 @@ class DefectThermodynamics:
 
         Parameters
         ----------
-        variable_defect_specie : (str)
-            Name or element of the variable defect species.
+        variable_defect_specie : (str or dict)
+            Variable species. Possible formats are:
+            - str: name or element, if the variable defect species is in defect entries.
+            - dict : {'name':str,'charge':int or float} if the variable species is not in defect entries. 
         concentration_range : (tuple or list)
             Range of the concentration of the variable species in cm^-3.
         chemical_potentials : (Chempots)
@@ -518,6 +528,8 @@ class DefectThermodynamics:
             to equilibrate on different sites). The default is False.
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
+            or a list of SingleDefConc objects. 
         npoints : (int), optional
             Number of points to divide concentration range. The default is 50.
         name : (str), optional

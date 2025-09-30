@@ -30,30 +30,34 @@ def plot_formation_energies(entries,
                             get_subplot=False,
                             subplot_settings=None):
     """
-    Produce defect Formation energy vs Fermi energy plot
-    Args:
-        chemical_potentials:
-            Chempots object containing the chemical
-            potential of each element.
-        entries: 
+    Produce defect Formation energy vs Fermi energy plot.
+
+    -----------
+    Parameters:
+        chemical_potentials : (dict)
+            Dictionary with chemical potentials of the elements {'element':chempot}
+        entries : (list) 
             List of entries to calculate. If None all entries are considered.
-        xlim:
+        xlim : (tuple)
             Tuple (min,max) giving the range of the x (fermi energy) axis.
-        ylim:
+        ylim : (tuple)
             Tuple (min,max) giving the range for the formation energy axis.
-        fermi_level:
-            float to plot Fermi energy position.
-        plotsize:
-            float or tuple. Can be float or tuple for different x and y sizes
-            multiplier to change plotsize.
-        fontsize:
-            float  multiplier to change fontsize.
-        show_legend:
-            Bool for showing legend.
-        format_legend:
-            Bool for getting latex-like legend based on the name of defect entries.
-        get_subplot:
-            Bool for getting subplot.
+        title : (str)
+            Title of the figure.
+        fermi_level : (float)
+            Plot Fermi energy position with a vertical line.
+        grid : (bool)
+            Show grid.
+        figsize : (float or tuple)
+            Can be float or tuple for different x and y sizes multiplier to change the figure size.
+        fontsize : (float)
+            Multiplier to change font size.
+        show_legend  : (Bool)
+            Show legend.
+        format_legend : (bool)
+            Get latex-like legend based on the name of defect entries.
+        get_subplot : (bool)
+            Get subplot.
         subplot_settings:
             List with integers for subplot setting on matplotlib (plt.subplot(nrows,ncolumns,index)). 
     Returns:
