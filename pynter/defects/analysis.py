@@ -58,6 +58,9 @@ class DefectsAnalysis:
     def __repr__(self):
         return self.table().__repr__()
     
+    def _repr_html_(self):
+        return self.table()._repr_html_()
+    
     def __iter__(self):
         return self.entries.__iter__()
     
