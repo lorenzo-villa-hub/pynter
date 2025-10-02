@@ -68,7 +68,10 @@ def get_kumagai_correction(
     corr = correction if get_correction_data else correction.correction_energy
     if get_plot:
         from pydefect.corrections.site_potential_plotter import SitePotentialMplPlotter
-        SitePotentialMplPlotter.from_efnv_corr(title=None,efnv_correction=correction.metadata['efnv_corr']).construct_plot()
+        SitePotentialMplPlotter.from_efnv_corr(
+                                            title=defect_structure.composition,
+                                            efnv_correction=correction.metadata['efnv_corr']
+                                            ).construct_plot()
         ax = plt.gca()
         return corr, ax
     else:
@@ -251,145 +254,145 @@ def _convert_dielectric_tensor(dielectric):
 
 
 
-########################## CORRECTIONS WITH OLD pymatgen defects #########################################
+# ########################## CORRECTIONS WITH OLD pymatgen defects #########################################
 
-from ._pmg.pmg_defects_core import Vacancy , DefectEntry, Interstitial, Substitution
-from ._pmg.pmg_defects_corrections import KumagaiCorrection
+# from ._pmg.pmg_defects_core import Vacancy , DefectEntry, Interstitial, Substitution
+# from ._pmg.pmg_defects_corrections import KumagaiCorrection
 
 
-def get_kumagai_correction_old_pmg(
-                        defect_path,
-                        bulk_path,
-                        charge,
-                        dielectric_tensor,
-                        sampling_radius=None,
-                        gamma=None,
-                        get_plot=False,
-                        initial_structure=True,
-                        **kwargs):
-    vasprun_defect = Vasprun(op.join(defect_path,'vasprun.xml'),parse_potcar_file=False,parse_dos=False,parse_eigen=False)
-    vasprun_bulk = Vasprun(op.join(defect_path,'vasprun.xml'),parse_potcar_file=False,parse_dos=False,parse_eigen=False)
-    if initial_structure:
-        structure_defect = vasprun_defect.structures[0]
-    else:
-        structure_defect = vasprun_defect.final_structure
-    structure_bulk = vasprun_bulk.final_structure
-    path_to_defect_outcar = op.join(defect_path,'OUTCAR')
-    path_to_bulk_outcar = op.join(bulk_path,'OUTCAR')
+# def get_kumagai_correction_old_pmg(
+#                         defect_path,
+#                         bulk_path,
+#                         charge,
+#                         dielectric_tensor,
+#                         sampling_radius=None,
+#                         gamma=None,
+#                         get_plot=False,
+#                         initial_structure=True,
+#                         **kwargs):
+#     vasprun_defect = Vasprun(op.join(defect_path,'vasprun.xml'),parse_potcar_file=False,parse_dos=False,parse_eigen=False)
+#     vasprun_bulk = Vasprun(op.join(defect_path,'vasprun.xml'),parse_potcar_file=False,parse_dos=False,parse_eigen=False)
+#     if initial_structure:
+#         structure_defect = vasprun_defect.structures[0]
+#     else:
+#         structure_defect = vasprun_defect.final_structure
+#     structure_bulk = vasprun_bulk.final_structure
+#     path_to_defect_outcar = op.join(defect_path,'OUTCAR')
+#     path_to_bulk_outcar = op.join(bulk_path,'OUTCAR')
 
-    corr = get_kumagai_correction_from_old_pmg(
-                                            structure_defect=structure_defect,
-                                            structure_bulk=structure_bulk,
-                                            path_to_defect_outcar=path_to_defect_outcar,
-                                            path_to_bulk_outcar=path_to_bulk_outcar,
-                                            dielectric_tensor=dielectric_tensor,
-                                            charge=charge,
-                                            sampling_radius=sampling_radius,
-                                            gamma=gamma,
-                                            get_plot=get_plot,
-                                            **kwargs)
+#     corr = get_kumagai_correction_from_old_pmg(
+#                                             structure_defect=structure_defect,
+#                                             structure_bulk=structure_bulk,
+#                                             path_to_defect_outcar=path_to_defect_outcar,
+#                                             path_to_bulk_outcar=path_to_bulk_outcar,
+#                                             dielectric_tensor=dielectric_tensor,
+#                                             charge=charge,
+#                                             sampling_radius=sampling_radius,
+#                                             gamma=gamma,
+#                                             get_plot=get_plot,
+#                                             **kwargs)
     
-    return corr
+#     return corr
     
 
-def get_kumagai_correction_from_old_pmg(
-                        structure_defect,
-                        structure_bulk,
-                        path_to_defect_outcar,
-                        path_to_bulk_outcar,
-                        dielectric_tensor,
-                        charge,
-                        defect_type=None,
-                        defect_specie=None,
-                        defect_site=None,
-                        sampling_radius=None,
-                        gamma=None,
-                        get_plot=False,
-                        **kwargs):
-    """
-    Get Kumagai correction with Pymatgen.
+# def get_kumagai_correction_from_old_pmg(
+#                         structure_defect,
+#                         structure_bulk,
+#                         path_to_defect_outcar,
+#                         path_to_bulk_outcar,
+#                         dielectric_tensor,
+#                         charge,
+#                         defect_type=None,
+#                         defect_specie=None,
+#                         defect_site=None,
+#                         sampling_radius=None,
+#                         gamma=None,
+#                         get_plot=False,
+#                         **kwargs):
+#     """
+#     Get Kumagai correction with Pymatgen.
 
-    Parameters
-    ----------
-    structure_defect : (Structure)
-        Structure of defect.
-    structure_bulk : (Structure)
-        Bulk structure.
-    path_to_defect_outcar : (str)
-        Path to OUTCAR of defect calculation.
-    path_to_bulk_outcar : (str)
-        Path to OUTCAR of pure calculation.
-    dielectric_tensor : (array or float)
-        Dielectric tensor, if is a float a diagonal matrix is constructed.
-    charge : (int or float)
-        Charge of the defect.
-    defect_type : (str), optional
-        Type of defect ('Vacancy','Interstitial' or 'Substitution')
-        If None it's determined with defect_finder. The default is None.
-    defect_specie : (str), optional
-        Symbol of the defect specie.
-        If None it's determined with defect_finder. The default is None.
-    defect_site : (Site), optional
-        Site of defect. If None it's determined with defect_finder. The default is None.
-    sampling_radius (float): radius (in Angstrom) which sites must be outside
-        of to be included in the correction. Publication by Kumagai advises to
-        use Wigner-Seitz radius of defect supercell, so this is default value.
-    gamma (float): convergence parameter for gamma function.
-                    Code will automatically determine this if set to None.
-    tol : (float)
-        Tolerance for comparing sites and defect_finder function. The default is 1e-03.
-    get_plot : (bool), optional
-        Get Matplotlib object with plot. The default is False.
+#     Parameters
+#     ----------
+#     structure_defect : (Structure)
+#         Structure of defect.
+#     structure_bulk : (Structure)
+#         Bulk structure.
+#     path_to_defect_outcar : (str)
+#         Path to OUTCAR of defect calculation.
+#     path_to_bulk_outcar : (str)
+#         Path to OUTCAR of pure calculation.
+#     dielectric_tensor : (array or float)
+#         Dielectric tensor, if is a float a diagonal matrix is constructed.
+#     charge : (int or float)
+#         Charge of the defect.
+#     defect_type : (str), optional
+#         Type of defect ('Vacancy','Interstitial' or 'Substitution')
+#         If None it's determined with defect_finder. The default is None.
+#     defect_specie : (str), optional
+#         Symbol of the defect specie.
+#         If None it's determined with defect_finder. The default is None.
+#     defect_site : (Site), optional
+#         Site of defect. If None it's determined with defect_finder. The default is None.
+#     sampling_radius (float): radius (in Angstrom) which sites must be outside
+#         of to be included in the correction. Publication by Kumagai advises to
+#         use Wigner-Seitz radius of defect supercell, so this is default value.
+#     gamma (float): convergence parameter for gamma function.
+#                     Code will automatically determine this if set to None.
+#     tol : (float)
+#         Tolerance for comparing sites and defect_finder function. The default is 1e-03.
+#     get_plot : (bool), optional
+#         Get Matplotlib object with plot. The default is False.
 
-    Returns
-    -------
-    corr : (dict or tuple)
-        Dictionary with corrections, if get_plot is True a tuple with dict and plt object is returned.
-    """
-    if 'max_number_of_defects' not in kwargs.keys():
-        kwargs['max_number_of_defects'] = 1
-    elif kwargs['max_number_of_defects'] != 1:
-        kwargs['max_number_of_defects'] = 1
-        warnings.warn('Corrections are only defined for single defects')
+#     Returns
+#     -------
+#     corr : (dict or tuple)
+#         Dictionary with corrections, if get_plot is True a tuple with dict and plt object is returned.
+#     """
+#     if 'max_number_of_defects' not in kwargs.keys():
+#         kwargs['max_number_of_defects'] = 1
+#     elif kwargs['max_number_of_defects'] != 1:
+#         kwargs['max_number_of_defects'] = 1
+#         warnings.warn('Corrections are only defined for single defects')
     
-    if not defect_site and not defect_type and not defect_specie:
-        df_found = defect_finder(structure_defect, structure_bulk, **kwargs)
-        defect_site, defect_type = df_found.site, df_found.type
-        defect_specie = defect_site.specie.symbol
+#     if not defect_site and not defect_type and not defect_specie:
+#         df_found = defect_finder(structure_defect, structure_bulk, **kwargs)
+#         defect_site, defect_type = df_found.site, df_found.type
+#         defect_specie = defect_site.specie.symbol
    
-    is_site_kwargs = {}
-    if 'tol' in kwargs:
-        is_site_kwargs['tol'] = kwargs['tol']
-    site_matching_indices = []
-    for site in structure_defect:
-        site_in_str ,index_bulk = is_site_in_structure_coords(site, structure_bulk, **is_site_kwargs)
-        if site_in_str:
-            site_matching_indices.append([index_bulk,structure_defect.index(site)])
-        else:
-            print(f'Warning in Kumagai corrections: Site {site} is not in bulk structure')
+#     is_site_kwargs = {}
+#     if 'tol' in kwargs:
+#         is_site_kwargs['tol'] = kwargs['tol']
+#     site_matching_indices = []
+#     for site in structure_defect:
+#         site_in_str ,index_bulk = is_site_in_structure_coords(site, structure_bulk, **is_site_kwargs)
+#         if site_in_str:
+#             site_matching_indices.append([index_bulk,structure_defect.index(site)])
+#         else:
+#             print(f'Warning in Kumagai corrections: Site {site} is not in bulk structure')
     
-    bulk_atomic_site_averages = Outcar(path_to_bulk_outcar).read_avg_core_poten()[-1]
-    defect_atomic_site_averages = Outcar(path_to_defect_outcar).read_avg_core_poten()[0]
-    defect_frac_sc_coords = defect_site.frac_coords
-    initial_defect_structure = structure_defect
+#     bulk_atomic_site_averages = Outcar(path_to_bulk_outcar).read_avg_core_poten()[-1]
+#     defect_atomic_site_averages = Outcar(path_to_defect_outcar).read_avg_core_poten()[0]
+#     defect_frac_sc_coords = defect_site.frac_coords
+#     initial_defect_structure = structure_defect
     
-    parameters = {}
-    parameters['bulk_atomic_site_averages'] = bulk_atomic_site_averages
-    parameters['defect_atomic_site_averages'] = defect_atomic_site_averages
-    parameters['site_matching_indices'] = site_matching_indices
-    parameters['initial_defect_structure'] = initial_defect_structure
-    parameters['defect_frac_sc_coords'] = defect_frac_sc_coords
+#     parameters = {}
+#     parameters['bulk_atomic_site_averages'] = bulk_atomic_site_averages
+#     parameters['defect_atomic_site_averages'] = defect_atomic_site_averages
+#     parameters['site_matching_indices'] = site_matching_indices
+#     parameters['initial_defect_structure'] = initial_defect_structure
+#     parameters['defect_frac_sc_coords'] = defect_frac_sc_coords
     
-    module = importlib.import_module("pynter.defects.corrections._pmg.pmg_defects_core")
-    defect_class = getattr(module,defect_type)
-    defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=1)
-    defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
+#     module = importlib.import_module("pynter.defects.corrections._pmg.pmg_defects_core")
+#     defect_class = getattr(module,defect_type)
+#     defect = defect_class(structure_bulk, defect_site, charge=charge, multiplicity=1)
+#     defect_entry = DefectEntry(defect,None,corrections=None,parameters=parameters)
 
-    kumagai = KumagaiCorrection(dielectric_tensor,sampling_radius,gamma)
-    kumagai_corrections = kumagai.get_correction(defect_entry)
+#     kumagai = KumagaiCorrection(dielectric_tensor,sampling_radius,gamma)
+#     kumagai_corrections = kumagai.get_correction(defect_entry)
     
-    if get_plot:
-        plt = kumagai.plot()
-        return kumagai_corrections , plt
-    else:    
-        return kumagai_corrections
+#     if get_plot:
+#         plt = kumagai.plot()
+#         return kumagai_corrections , plt
+#     else:    
+#         return kumagai_corrections

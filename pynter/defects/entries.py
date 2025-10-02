@@ -15,7 +15,7 @@ import os
 from pymatgen.core.units import kb
 
 from pynter.defects.structure import defect_finder
-from pynter.defects.elasticity import Stresses
+from pynter.defects.elasticity import get_relaxation_volume
 from pynter.vasp.utils import get_charge_from_computed_entry
 
 
@@ -141,6 +141,13 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         self.defect.set_charge(new_charge)
         return 
     
+    def set_corrections(self,**kwargs):
+        if self._corrections is None:
+            self._corrections = {}
+        for k,v in kwargs.items():
+            self._corrections[k] = v
+        return
+
     def set_data(self,new_data):
         self._data = new_data
         return 
@@ -445,28 +452,41 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return formation_energy
     
     
-    def relaxation_volume(self,stress_bulk,bulk_modulus,add_corrections=True): #still to decide weather to keep this method
+    def relaxation_volume(self,stress_bulk,bulk_modulus,stress_defect=None,corrections={}):
         """
-        Calculate relaxation volume from stresses. Stresses data needs to be in numpy.array format and present 
-        in the "data" dictionary with realtive "stress" key. Duplicate of function that can be found in Stresses
-        class in elasticity module, added here for convenience.
+        Calculate relaxation volume from stresses.
+        Stress of defect calculation needs to be provided either directly or in data dict with "stress" key.'
 
         Parameters
         ----------
         stress_bulk : (np.array)
-            Stresses of bulk calculation.
+            Stresses from bulk calculation in kbar (VASP output)
+        bulk_volume : (float)
+            Cell volume of bulk calculation in A°^3.
         bulk_modulus : (float)
             Bulk modulus in GPa.
-        add_corrections : (bool)
-            Add correction terms from "elastic_corrections" dict (if key is present in dict).
-
+        stress_defect : (np.array)
+            Stresses from defect calculation in kbar (VASP output)
+        corrections : (bool)
+            Add correction terms to the residual stress tensor.
+            
         Returns
         -------
         rel_volume : (float)
             Relaxation volume in A°^3.
         """
-        es = Stresses(stress_bulk)
-        return es.get_relaxation_volume(self, bulk_modulus)
+        if not stress_defect:
+            if 'stress' in self.data.keys():
+                stress_defect = self.data['stress']
+            else:
+                raise ValueError('Stress of defect calculation needs to be provided, either directly or in data dict with "stress" key.')
+        
+        return get_relaxation_volume(stress_defect=stress_defect,
+                                    stress_bulk=stress_bulk,
+                                    bulk_volume=self.bulk_volume,
+                                    bulk_modulus=bulk_modulus,
+                                    corrections=corrections)
+
 
 
 

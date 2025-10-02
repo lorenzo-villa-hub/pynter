@@ -7,11 +7,14 @@ import os
 import os.path as op
 import json
 import copy
+import warnings
+import matplotlib.pyplot as plt
 
 from pymatgen.electronic_structure.dos import FermiDos
 
-from .pmg.pmg_dos import FermiDosCarriersInfo
 from .chempots.oxygen import get_pressure_reservoirs_from_precursors
+from .corrections.kumagai import get_kumagai_correction
+from .corrections.freysoldt import get_freysoldt_correction_from_locpot
 from .defects import Defect, get_defect_from_string
 from .electronic_structure import get_carrier_concentrations
 from .entries import DefectEntry, _get_computed_entry_from_path
@@ -244,7 +247,8 @@ class DefectsAnalysis:
                             path_defects,
                             path_bulk,
                             common_path=None,
-                            get_corrections=False,
+                            get_charge_correction='kumagai',
+                            dielectric_tensor=None,
                             get_multiplicity=False,
                             get_data=True,
                             band_gap=None,
@@ -252,7 +256,8 @@ class DefectsAnalysis:
                             function=None,
                             initial_structure=False,
                             computed_entry_kwargs={},
-                            finder_kwargs={}):
+                            finder_kwargs={},
+                            correction_kwargs={}):
         """
         Generate DefectsAnalysis object from VASP directories read with Pymatgen.
 
@@ -262,7 +267,7 @@ class DefectsAnalysis:
             Path of VASP defects calculation.
         path_bulk : (str)
             Path of VASP bulk calculation. 
-        get_corrections : (bool)
+        get_charge_correction : (bool)
 
         get_multiplicity : (bool)
 
@@ -300,7 +305,7 @@ class DefectsAnalysis:
             if 'vasprun.xml' in files and common_path in root:
                 path = op.abspath(root)
                 print('importing from %s'%path)                
-                
+
                 data = {'path':path} if get_data else None
                 entry = DefectEntry.from_vasp_directories(
                                                         path_defect=path,
@@ -314,6 +319,32 @@ class DefectsAnalysis:
                                                         computed_entry_kwargs=computed_entry_kwargs,
                                                         finder_kwargs=finder_kwargs)
                 entries.append(entry)
+
+                ck = correction_kwargs
+                ck['charge'] = entry.charge
+                if get_charge_correction == 'kumagai':
+                    ck['defect_path'] = path
+                    ck['bulk_path'] = path_bulk
+                    if dielectric_tensor:
+                        ck['dielectric_tensor'] = dielectric_tensor
+                    ck['get_correction_data'] = False
+                    corr = get_kumagai_correction(**ck)
+
+                elif get_charge_correction == 'freysoldt':
+                    defect_path_locpot = op.join(path,'LOCPOT')
+                    bulk_path_locpot = op.join(path_bulk,'LOCPOT')
+                    ck['defect_path_locpot'] = defect_path_locpot
+                    ck['bulk_path_locpot'] = bulk_path_locpot
+                    ck['finder_kwargs'] = finder_kwargs
+                    if dielectric_tensor:
+                        ck['dielectric_tensor'] = dielectric_tensor
+                    corr = get_freysoldt_correction_from_locpot(**ck)
+
+                if type(corr) == tuple:
+                    corr = corr[0]
+                    plt.show()
+
+                entry.set_corrections(**{get_charge_correction:corr})
         
         return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
 
@@ -1214,6 +1245,7 @@ class DefectsAnalysis:
                 d['delta atoms'] = e.delta_atoms
             d['charge'] = e.charge
             d['multiplicity'] = e.multiplicity
+            d['corrections'] = e.corrections
             if display:
                 for feature in display:
                     if isinstance(feature,list):

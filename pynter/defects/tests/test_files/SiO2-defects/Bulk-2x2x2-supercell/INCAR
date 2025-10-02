@@ -11,6 +11,7 @@ ISYM = 2
 LCHARG = True
 LORBIT = 11
 LREAL = False
+LVTOT = True
 LWAVE = True
 NELM = 200
 NSW = 0

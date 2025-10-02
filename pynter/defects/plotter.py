@@ -281,7 +281,6 @@ def plot_charge_transition_levels(entries,
     return plt    
 
 
-
 def plot_pO2_vs_concentrations(thermodata,output='total',size=(12,8),fontsize=22,
                         xlim=(1e-20,1e05),ylim=None,show_unstable=True,colors=None,**kwargs):
     """
