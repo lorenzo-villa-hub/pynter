@@ -289,7 +289,7 @@ class DefectsAnalysis:
             parse_eigen = False
         else:
             parse_eigen = True
-        vasprun_bulk = Vasprun(op.join(path_bulk,'vasprun.xml'),parse_dos=False,parse_eigen=parse_eigen)
+        vasprun_bulk = Vasprun(op.join(path_bulk,'vasprun.xml'),parse_dos=False,parse_eigen=parse_eigen,parse_potcar_file=False)
         computed_entry_bulk = vasprun_bulk.get_computed_entry(**computed_entry_kwargs)
         band_gap = band_gap or vasprun_bulk.eigenvalue_band_properties[0]
         vbm = vbm or vasprun_bulk.eigenvalue_band_properties[2]

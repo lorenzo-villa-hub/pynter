@@ -378,7 +378,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         if not computed_entry_bulk:
             if path_bulk:
                 vasprun_bulk = os.path.join(path_bulk,'vasprun.xml')
-                computed_entry_bulk = Vasprun(vasprun_bulk).get_computed_entry(**computed_entry_kwargs)
+                computed_entry_bulk = Vasprun(vasprun_bulk,parse_dos=False,parse_eigen=False,parse_potcar_file=False).get_computed_entry(**computed_entry_kwargs)
             else:
                 raise ValueError('Either bulk ComputedEntry or path of bulk calculation has to be provided')
 
@@ -486,7 +486,7 @@ def _get_computed_entry_from_path(path,**kwargs):
             kwargs['data'] = ['parameters']
     else:
         kwargs = {'data':['parameters']}     
-    return Vasprun(vasprun_defect,parse_dos=False,parse_eigen=False).get_computed_entry(**kwargs)
+    return Vasprun(vasprun_defect,parse_dos=False,parse_eigen=False,parse_potcar_file=False).get_computed_entry(**kwargs)
 
 
 def fermi_dirac(E,T):

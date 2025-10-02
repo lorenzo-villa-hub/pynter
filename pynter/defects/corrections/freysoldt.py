@@ -12,7 +12,7 @@ def get_freysoldt_correction_from_locpot(
                                     defect_path_locpot,
                                     bulk_path_locpot,
                                     get_correction_data=True,
-                                    get_plot=False,
+                                    get_plot=True,
                                     plot_axis_index=0,
                                     finder_kwargs={},
                                     **kwargs):
