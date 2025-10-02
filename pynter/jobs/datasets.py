@@ -163,10 +163,13 @@ class Dataset:
                                                         remotedir=self.remotedir)
 
     def __str__(self):     
-        return self.jobs_table().__str__()
+        return self.table().__str__()
             
     def __repr__(self):
-        return self.__str__()
+        return self.table().__repr__()
+    
+    def _repr_html_(self):
+        return self.table()._repr_html_()
     
     def __iter__(self):
         return self.jobs.__iter__()
@@ -651,56 +654,7 @@ class Dataset:
                     nodes_levels[index].append(node)
         return nodes_levels
 
-    
-    def jobs_table(self,jobs=[],status=False,display=[]):
-        """
-        Create a pandas DataFrame object to display the jobs in the dataset.
-
-        Parameters
-        ----------
-        jobs : (list), optional
-            List of jobs to display in the table. The default is []. If [] the attribute "jobs" is used.
-        status : (bool), optional
-            Display job status in table.
-        display : (list), optional
-            List of kwargs with methods in the Job class. The properties referred to these will be added
-            to the table. See get_object_feature for more details. The default is [].
-
-        Returns
-        -------
-        df : (DataFrame object)
-
-        """
-        jobs = jobs if jobs else self.jobs                           
-        table = []
-        index = []
-        if status:
-            stdout,stderr = self.queue(stdouts=True,printout=False)
-        for j in jobs:
-            index.append(j.name)
-            d = {}
-            d['formula'] = j.formula
-            d['group'] = j.group
-            d['nodes'] = j.nodes
-            d['is_converged'] = j.is_converged
-            if status:
-                d['status'] = JobManager(j).get_status_from_queue(stdout)
-            for feature in display:
-                if isinstance(feature,list):
-                    key = feature[0]
-                    for k in feature[1:]:
-                        key = key + '["%s"]'%k
-                else:
-                    key = feature
-                d[key] = get_object_feature(j,feature)
-            table.append(d)
             
-        df = pd.DataFrame(table,index=index)
-        df.index.name = 'job_name'
-        
-        return df
-            
-
     def queue(self,stdouts=False,printout=True):
         """
         Display queue from HPC. If stdouts is True returns out and err strings.
@@ -967,7 +921,56 @@ class Dataset:
             return stdout,stderr
         else:
             return
-                
+
+    
+    def table(self,jobs=[],status=False,display=[]):
+        """
+        Create a pandas DataFrame object to display the jobs in the dataset.
+
+        Parameters
+        ----------
+        jobs : (list), optional
+            List of jobs to display in the table. The default is []. If [] the attribute "jobs" is used.
+        status : (bool), optional
+            Display job status in table.
+        display : (list), optional
+            List of kwargs with methods in the Job class. The properties referred to these will be added
+            to the table. See get_object_feature for more details. The default is [].
+
+        Returns
+        -------
+        df : (DataFrame object)
+
+        """
+        jobs = jobs if jobs else self.jobs                           
+        table = []
+        index = []
+        if status:
+            stdout,stderr = self.queue(stdouts=True,printout=False)
+        for j in jobs:
+            index.append(j.name)
+            d = {}
+            d['formula'] = j.formula
+            d['group'] = j.group
+            d['nodes'] = j.nodes
+            d['is_converged'] = j.is_converged
+            if status:
+                d['status'] = JobManager(j).get_status_from_queue(stdout)
+            for feature in display:
+                if isinstance(feature,list):
+                    key = feature[0]
+                    for k in feature[1:]:
+                        key = key + '["%s"]'%k
+                else:
+                    key = feature
+                d[key] = get_object_feature(j,feature)
+            table.append(d)
+            
+        df = pd.DataFrame(table,index=index)
+        df.index.name = 'job_name'
+        
+        return df
+
 
     def write_jobs_input(self):
         """Write jobs inputs to files"""

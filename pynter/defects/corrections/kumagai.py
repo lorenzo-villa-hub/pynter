@@ -6,8 +6,14 @@ from pynter.defects.pmg.pmg_defects_corrections import KumagaiCorrection
 from pymatgen.analysis.defects.corrections.kumagai import get_structure_with_pot, get_efnv_correction
 import os.path as op
 import importlib
+import matplotlib.pyplot as plt
+import math
+
 from pynter.tools.structure import is_site_in_structure_coords
 from pynter.defects.structure import defect_finder
+
+from pydefect.analyzer.calc_results import CalcResults
+from pydefect.cli.vasp.make_efnv_correction import make_efnv_correction
 
 
 def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampling_radius=None,
@@ -59,16 +65,44 @@ def get_kumagai_correction_from_jobs(job_defect,job_bulk,dielectric_tensor,sampl
 
 
 
-def get_kumagai_correction(
-                        defect_path_outcar,
-                        bulk_path_outcar,
-                        charge,
-                        dielectric_tensor):
+# def get_kumagai_correction(
+#                         defect_path,
+#                         bulk_path,
+#                         charge,
+#                         dielectric_tensor,
+#                         get_correction_data=True,
+#                         get_plot=False):
     
-    defect_structure = get_structure_with_pot(defect_path_outcar)
-    bulk_structure = get_structure_with_pot(bulk_path_outcar)
+#     defect_structure = get_structure_with_pot(defect_path)
+#     bulk_structure = get_structure_with_pot(bulk_path)
+#     correction = get_kumagai_correction_from_structures(
+#                                             defect_structure_with_potentials=defect_structure,
+#                                             bulk_structure_with_potentials=bulk_structure,
+#                                             charge=charge,
+#                                             dielectric_tensor=dielectric_tensor)
+    
+#     corr = correction if get_correction_data else correction.correction_energy
+#     if get_plot:
+#         from pydefect.corrections.site_potential_plotter import SitePotentialMplPlotter
+#         SitePotentialMplPlotter.from_efnv_corr(title=None,efnv_correction=correction.metadata['efnv_corr']).construct_plot()
+#         ax = plt.gca()
+#         return corr, ax
+#     else:
+#         return corr 
+
+
+def get_kumagai_correction_from_structures(
+                                        defect_structure_with_potentials,
+                                        bulk_structure_with_potentials,
+                                        charge,
+                                        dielectric_tensor):
     dielectric_tensor = _convert_dielectric_tensor(dielectric_tensor)
-    
+    correction =  get_efnv_correction(
+                            charge=charge,
+                            defect_structure=defect_structure_with_potentials,
+                            bulk_structure=bulk_structure_with_potentials,
+                            dielectric_tensor=dielectric_tensor)
+    return correction
 
 
 def get_kumagai_correction_from_old_pmg(

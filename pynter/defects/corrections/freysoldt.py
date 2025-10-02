@@ -61,7 +61,7 @@ def get_freysoldt_correction_from_locpot(
     
     corr = correction if get_correction_data else correction.correction_energy
     if get_plot:
-        ax = plot_plnr_avg(correction.metadata['plot_data'][plot_axis_index]).get_figure()
+        ax = plot_plnr_avg(correction.metadata['plot_data'][plot_axis_index])
         return corr, ax
     else:
         return corr 
