@@ -483,7 +483,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         
         return get_relaxation_volume(stress_defect=stress_defect,
                                     stress_bulk=stress_bulk,
-                                    bulk_volume=self.bulk_volume,
+                                    bulk_volume=self.defect.bulk_volume,
                                     bulk_modulus=bulk_modulus,
                                     corrections=corrections)
 

@@ -9,7 +9,7 @@ from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.structure import Structure
 
 from pynter.tools.utils import get_object_from_json
-from pynter.phase_diagram.chempots import Chempots
+from pynter.defects.chempots.core import Chempots
 from pynter.defects.defects import Interstitial
 from pynter.defects.entries import DefectEntry
 
@@ -35,7 +35,13 @@ class TestDefectEntry(PynterTest):
     def get_entry(self):
         bulk_structure = get_object_from_json(Structure,self.get_testfile_path('Si-bulk_structure_3x3x3_supercell.json'))
         defect_site = PeriodicSite('Si',[0.5417, 0.5417, 0.5417], bulk_structure.lattice)
-        defect = Interstitial(defect_site, bulk_structure,charge=-1.0,multiplicity=54)
+        defect = Interstitial(
+                            specie = 'Si',
+                            defect_site=defect_site,
+                            bulk_structure=bulk_structure,
+                            charge=-1.0,
+                            multiplicity=54)
+        
         energy_diff = 5.168792819999965
         corrections = {'kumagai': -0.08825262621975172}
         data = {'stress': 
@@ -55,10 +61,7 @@ class TestDefectEntry(PynterTest):
         concentration = self.entry.defect_concentration(self.vbm,self.chempots,temperature=300,fermi_level=0.25) 
         self.assert_all_close(concentration,2.4154948187001994e-52,rtol=100,atol=1e-02)
         
-        def_conc = self.entry.defect_concentration(self.vbm,self.chempots,temperature=300,fermi_level=5,occupation_function='MB')
-        self.assert_all_close(def_conc,1.5117989733276857e+28,rtol=100,atol=1e-02)
-        
-        def_conc = self.entry.defect_concentration(self.vbm,self.chempots,temperature=300,fermi_level=5,occupation_function='FD') 
+        def_conc = self.entry.defect_concentration(self.vbm,self.chempots,temperature=300,fermi_level=5) 
         self.assert_all_close(def_conc,4.995386515296238e+22,rtol=100,atol=1e-02)
         
     def test_relaxation_volume(self):

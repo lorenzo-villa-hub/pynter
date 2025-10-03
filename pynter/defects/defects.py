@@ -358,7 +358,10 @@ class Vacancy(Defect):
     
     @property
     def symbol(self):
-        return "$V_{%s}$" %self.specie 
+        symbol = "$V_{%s}$" %self.specie
+        if self.label:
+            symbol += '(%s)' %self.label
+        return symbol 
         
         
     
@@ -408,12 +411,12 @@ class Substitution(Defect):
         Composition of the defect.
         """
         defect_index = self.defect_site_index
-        temp_comp = self.bulk_structure.composition.as_dict()
-        if str(self.site.specie) not in temp_comp.keys():
-            temp_comp[str(self.site.specie)] = 0
-        temp_comp[str(self.site.specie)] += 1
-        temp_comp[str(self.bulk_structure[defect_index].specie)] -= 1
-        return Composition(temp_comp)
+        comp = self.bulk_structure.composition.as_dict()
+        if str(self.specie) not in comp.keys():
+            comp[str(self.specie)] = 0
+        comp[str(self.specie)] += 1
+        comp[str(self.bulk_structure[defect_index].specie)] -= 1
+        return Composition(comp)
 
     @property
     def defect_site_index(self):
@@ -491,7 +494,10 @@ Try using the unrelaxed defect structure or provide bulk site manually""")
     
     @property
     def symbol(self):
-        return "$%s_{%s}$" %(self.specie, self.bulk_specie)   
+        symbol = "$%s_{%s}$" %(self.specie, self.bulk_specie)   
+        if self.label:
+            symbol += '(%s)' %self.label
+        return symbol 
     
     @property
     def site_in_bulk(self):
@@ -567,7 +573,10 @@ class Interstitial(Defect):
 
     @property
     def symbol(self):
-        return "$%s_i$" %(self.specie)        
+        symbol = "$%s_i$" %(self.specie)     
+        if self.label:
+            symbol += '(%s)' %self.label
+        return symbol    
         
       
 class Polaron(Defect):
@@ -659,8 +668,10 @@ class Polaron(Defect):
     
     @property
     def symbol(self):
-        return "$%s_{%s}$" %(self.specie,self.specie)
-  
+        symbol = "$%s_{%s}$" %(self.specie,self.specie)
+        if self.label:
+            symbol += '(%s)' %self.label
+        return symbol   
     
     
 class DefectComplex(MSONable,metaclass=ABCMeta):

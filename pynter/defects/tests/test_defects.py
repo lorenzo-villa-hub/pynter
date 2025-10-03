@@ -42,9 +42,9 @@ class TestDefect(PynterTest):
         assert inter.name == 'Int_Si(test)'
         assert inter.charge == 0
         assert inter.delta_atoms == {'Si': 1}
-        assert inter.symbol == '$Si_{i}$(test)'
-        assert inter.symbol_with_charge == '$Si_{i}$(test)$^{\\;0}$'
-        assert inter.symbol_with_charge_kv == '$Si_{i}$(test)$^{x}$'
+        assert inter.symbol == '$Si_i$(test)'
+        assert inter.symbol_with_charge == '$Si_i$(test)$^{\\;0}$'
+        assert inter.symbol_with_charge_kv == '$Si_i$(test)$^{x}$'
     
     
     def test_polaron(self):
@@ -145,8 +145,8 @@ class TestDefect(PynterTest):
         sub_site = structure[1]
         defect_site = PeriodicSite('P',sub_site.frac_coords,sub_site.lattice)
         sub = Substitution(
-                           specie='Si',
-                           bulk_specie='P',
+                           specie='P',
+                           bulk_specie='Si',
                            defect_site=sub_site,
                            bulk_structure=structure,
                            charge=1,
