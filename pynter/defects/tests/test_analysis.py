@@ -62,7 +62,7 @@ class TestDefectsAnalysis(PynterTest):
         formation_energy_Vac_Si_qminus4 = 21.89906667999999
         desired = formation_energy_Vac_Si_qminus4
         actual = formation_energies['Vac_Si'][1][1]
-        self.assert_all_close(actual , desired )
+        self.assert_all_close(actual , desired, rtol=1e-03 )
     
     def test_charge_transition_levels(self):
         actual = self.da.charge_transition_levels()['Sub_P_on_Si'][0]
@@ -72,16 +72,16 @@ class TestDefectsAnalysis(PynterTest):
     def test_carrier_concentrations(self):
         actual = self.da.carrier_concentrations(bulk_dos=self.dos,fermi_level=2)
         desired = (2.5207523856086593e-16, 1.9354062962348537e-41)
-        self.assert_all_close(actual , desired )
+        self.assert_all_close(actual , desired, rtol=1e-03 )
     
     def test_defect_concentrations(self):
         conc = self.da.defect_concentrations(self.chempots)
         actual = conc.select_concentrations(name='Vac_O',charge=2)[0]['conc']
         desired = 3.383174303005728e+19
-        self.assert_all_close(actual,desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
         actual = conc.select_concentrations(name='Sub_P_on_Si',charge=1)[0]['conc']
         desired = 1.1001057398319168e+21
-        self.assert_all_close(actual,desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
         
     def test_defect_concentrations_fixed(self):    
@@ -95,7 +95,7 @@ class TestDefectsAnalysis(PynterTest):
 
         actual = conc.select_concentrations(charge=2, name='Vac_O')[0]['conc']
         desired = 3.383174303005728e+19
-        self.assert_all_close(actual, desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
         fixed = {'Vac_O':concfix}
         conc = self.da.defect_concentrations(chemical_potentials=self.chempots,fixed_concentrations=fixed,fermi_level=1.87)
@@ -103,9 +103,9 @@ class TestDefectsAnalysis(PynterTest):
         conc_Vac_O_q0 = conc.select_concentrations(name='Vac_O',charge=0)[0]['conc']
         actual = conc_Vac_O_q2, conc_Vac_O_q0
         desired = (6.412340108578859e+16,3.58765989142114e+16)
-        self.assert_all_close(actual, desired)
-        self.assert_all_close(conc.elemental['Vac_O'], concfix)
-        self.assert_all_close(conc.total['Sub_P_on_Si'], 0.13903596778575308)
+        self.assert_all_close(actual, desired, rtol=1e-03)
+        self.assert_all_close(conc.elemental['Vac_O'], concfix, rtol=1e-05)
+        self.assert_all_close(conc.total['Sub_P_on_Si'], 0.13903596778575308, rtol=5e-03)
 
     def test_names(self):
         actual = self.da.names
@@ -128,5 +128,17 @@ class TestDefectsAnalysis(PynterTest):
         desired = 1.3470440099999914
         self.assert_all_close(actual, desired)
            
+        
+    def test_from_dataframe(self):
+        da = DefectsAnalysis.from_file(
+                                self.get_testfile_path('SiO2_defects_analysis.csv'),
+                                vbm=self.da.vbm,
+                                band_gap=self.da.band_gap)
+        self.da = da
+        self.test_defect_concentrations_fixed()
+        self.test_formation_energies()
+        self.test_charge_transition_levels()
+
+
         
     

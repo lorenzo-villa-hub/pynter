@@ -114,7 +114,7 @@ class TestDefect(PynterTest):
                            charge=0,
                            multiplicity=1,
                            label='test') 
-        vac = Vacancy(site,structure,charge=0,multiplicity=1,label='test')
+
         assert vac.specie == 'Si'
         assert vac.type == 'Vacancy'
         assert vac.defect_site_index == 0
