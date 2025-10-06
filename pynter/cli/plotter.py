@@ -91,6 +91,8 @@ def plot_dos(args):
         dos_dict = complete_dos.get_spd_dos()
     elif args.dos_projection == 'elements':
         dos_dict = complete_dos.get_element_dos()
+    else:
+        dos_dict = {'total':complete_dos}
     for k in dos_dict:
         if not args.dos_projection=='None':   
             plotter.add_dos(k,dos_dict[k])

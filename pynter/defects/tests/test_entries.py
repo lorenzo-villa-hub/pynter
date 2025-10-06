@@ -67,6 +67,14 @@ class TestDefectEntry(PynterTest):
     def test_relaxation_volume(self):
         relaxation_volume = self.entry.relaxation_volume(self.stress_bulk,self.bulk_modulus) # doesn't make physical sense with charged defect
         self.assert_all_close(relaxation_volume,-15.063823947648379)
+
+    def test_label(self):
+        entry = self.entry
+        label = 'test'
+        entry.set_label(label)
+        actual = entry.label
+        desired = label
+        self.assertEqual(actual, desired)
         
     def test_as_dict_from_dict(self):
         entry_dict_1 = self.entry.as_dict()

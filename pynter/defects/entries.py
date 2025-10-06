@@ -22,7 +22,14 @@ from pynter.vasp.utils import get_charge_from_computed_entry
 
 class DefectEntry(MSONable,metaclass=ABCMeta):
     
-    def __init__(self,defect,energy_diff,corrections={},data=None,label=None):
+    def __init__(self,
+                defect,
+                energy_diff=None,
+                corrections={},
+                data=None,
+                label=None,
+                formation_energy_function=None,
+                concentration_function=None):
         """
         Contains the data for a defect calculation.
         
@@ -41,7 +48,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         self._corrections = corrections
         self._data = data if data else {}
         self._defect.set_label(label)
-        
+        self._formation_energy_function = formation_energy_function
+        self._concentration_function = concentration_function
     
     def __repr__(self):
         return "DefectEntry: Name=%s, Charge=%i" %(self.name,self.charge)
@@ -427,7 +435,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         return conc
 
 
-    def formation_energy(self,vbm,chemical_potentials,fermi_level=0):
+    def formation_energy(self,vbm=None,chemical_potentials=None,fermi_level=0,**kwargs):
         """
         Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
         Args:
@@ -437,6 +445,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                 Values are float numbers equal to the atomic chemical potential for that element.
             fermi_level (float):  Value corresponding to the electron chemical potential.
             """
+        if self._formation_energy_function:
+            return self._formation_energy_function(self,vbm,chemical_potentials,fermi_level,**kwargs)
             
         formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
                        sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 

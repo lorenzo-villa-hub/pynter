@@ -66,9 +66,8 @@ def import_entries(args):
 
     da = DefectsAnalysis.from_vasp_directories(
                                             path_defects=args.path,
-                                            path_bulk=args.path_bulk
-                                            common_path=common_path
-    )  ### to be finished 
+                                            path_bulk=args.path_bulk,
+                                            common_path=args.common_path)  ### to be finished 
     da.filter_entries(inplace=True,exclude=True,types=args.exclude)
     print('\nDefectsAnalysis:')
     print(da.get_dataframe())

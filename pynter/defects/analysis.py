@@ -340,11 +340,11 @@ class DefectsAnalysis:
                         ck['dielectric_tensor'] = dielectric_tensor
                     corr = get_freysoldt_correction_from_locpot(**ck)
 
-                if type(corr) == tuple:
-                    corr = corr[0]
-                    plt.show()
-
-                entry.set_corrections(**{get_charge_correction:corr})
+                if get_charge_correction:
+                    if type(corr) == tuple:
+                        corr = corr[0]
+                        plt.show()
+                    entry.set_corrections(**{get_charge_correction:corr})
         
         return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
 
@@ -973,6 +973,8 @@ class DefectsAnalysis:
                     plt = plot_formation_energies(**kwargs)
             else:
                 plt = plot_formation_energies(**kwargs)
+        else:
+            plt = plot_formation_energies(**kwargs)
         return plt
      
         
