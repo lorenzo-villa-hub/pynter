@@ -439,6 +439,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                             temperature=300,
                             fermi_level=0.0, 
                             per_unit_volume=True,
+                            eform_kwargs={},
                             **kwargs):
         """
         Compute the defect concentration for a temperature and Fermi level.
@@ -457,13 +458,19 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                                                     temperature=temperature,
                                                     fermi_level=fermi_level,
                                                     per_unit_volume=per_unit_volume,
+                                                    eform_kwargs=eform_kwargs,
                                                     **kwargs)
         
         
         n = self.defect.site_concentration_in_cm3 if per_unit_volume else self.multiplicity 
-        eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
+        eform = self.formation_energy(
+                                vbm=vbm,
+                                chemical_potentials=chemical_potentials,
+                                fermi_level=fermi_level,
+                                temperature=temperature,
+                                **eform_kwargs)
         
-        conc = n *  fermi_dirac(eform,temperature) # maxwell_boltzmann(eform,temperature) # 
+        conc = n * fermi_dirac(eform,temperature) # maxwell_boltzmann(eform,temperature) # 
         return conc
 
 

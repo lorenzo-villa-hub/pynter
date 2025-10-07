@@ -16,6 +16,8 @@ import pandas as pd
 
 from pynter.tools.utils import get_object_from_json
 from pynter.defects.chempots.core import Chempots
+from pynter.defects.defects import Vacancy
+from pynter.defects.entries import DefectEntry
 from pynter.defects.analysis import DefectsAnalysis, SingleDefConc, DefectConcentrations
 
 from pynter.testing.core import PynterTest
@@ -210,6 +212,14 @@ class TestDefectsAnalysis(PynterTest):
         self.test_formation_energies()
         self.test_charge_transition_levels()
 
-        return
+    
+    def test_textbook_case_from_entries(self):
+        e1 = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
+        e2 = DefectEntry(Vacancy('Sr',charge=-2,bulk_volume=800,multiplicity=1),energy_diff=8)
+        da = DefectsAnalysis([e1,e2],vbm=0,band_gap=2)
+        chempots = {'O':-4.95,'Sr':-2}
+        mdos = {'m_eff_e':0.5,'m_eff_h':0.4}
+        da.plot_formation_energies(chempots)
+        #da.plot_brouwer_diagram(mdos,1000,precursors={'SrO':-10},oxygen_ref=-4.95,xtol=1e-100)
         
     

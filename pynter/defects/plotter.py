@@ -18,6 +18,7 @@ def plot_formation_energies(entries,
                             chemical_potentials,
                             vbm,
                             band_gap,
+                            temperature=0,
                             xlim=None,
                             ylim=None,
                             title=None,
@@ -28,7 +29,8 @@ def plot_formation_energies(entries,
                             show_legend=True,
                             format_legend=True,
                             get_subplot=False,
-                            subplot_settings=None):
+                            subplot_settings=None,
+                            **eform_kwargs):
     """
     Produce defect Formation energy vs Fermi energy plot.
 
@@ -67,9 +69,11 @@ def plot_formation_energies(entries,
     import matplotlib.pyplot as plt
     
     matplotlib.rcParams.update({'font.size': fontsize}) 
-    formation_energies = DefectsAnalysis(entries,vbm,band_gap).formation_energies(chemical_potentials,
+    formation_energies = DefectsAnalysis(entries,vbm,band_gap).formation_energies(chemical_potentials=chemical_potentials,
                                                                                     fermi_level=0,
-                                                                                    entries=entries)
+                                                                                    temperature=temperature,
+                                                                                    entries=entries,
+                                                                                    **eform_kwargs)
     if xlim == None:
         xlim = (-0.5,band_gap+0.5)        
     npoints = 200
@@ -141,12 +145,14 @@ def plot_formation_energies(entries,
 def plot_binding_energies(entries,
                           vbm,
                           band_gap,
+                          temperature=0,
                           names=None,
                           xlim=None,
                           ylim=None,
                           figsize=(6,6),
                           fontsize=18,
-                          format_legend=True):
+                          format_legend=True,
+                          **eform_kwargs):
     """
     Plot binding energies for complex of defects as a function of the fermi level
     Args:
@@ -179,12 +185,20 @@ def plot_binding_energies(entries,
         for e in da.entries:
             if e.defect_type == 'DefectComplex':
                 if e.name not in names:
-                    names.append(e.name)        
+                    names.append(e.name)   
+    if not names:
+        raise ValueError('No DefectComplex entries found')  
+
     # getting binding energy at different fermi levels for every name in list
     for name in names:
         label = da.select_entries(names=[name])[0].symbol if format_legend else name
         for i in range(0,len(ef)):
-            binding_energy[i] = da.binding_energy(name,fermi_level=ef[i])            
+            binding_energy[i] = da.binding_energy(
+                                        name=name,
+                                        fermi_level=ef[i],
+                                        temperature=temperature,
+                                        **eform_kwargs)
+                        
         plt.plot(ef,binding_energy, linewidth=2.5*(figsize[1]/figsize[0]),label=label)
         
     plt.axvline(x=0.0, linestyle='-', color='k', linewidth=2)  # black lines for gap edges
@@ -207,12 +221,14 @@ def plot_binding_energies(entries,
 def plot_charge_transition_levels(entries,
                                   vbm,
                                   band_gap,
+                                  temperature=0,
                                   ylim=None,
                                   figsize=(10,10),
                                   fontsize=16,
                                   fermi_level=None,
                                   format_legend=True,
-                                  get_integers=True):
+                                  get_integers=True,
+                                  **eform_kwargs):
     """
     Plotter for the charge transition levels
     Args:
@@ -231,7 +247,12 @@ def plot_charge_transition_levels(entries,
     plt.figure(figsize=figsize)         
     if ylim == None:
         ylim = (-0.5,da.band_gap +0.5)        
-    charge_transition_levels = da.charge_transition_levels(entries=entries,get_integers=get_integers)
+    charge_transition_levels = da.charge_transition_levels(
+                                                temperature=temperature,
+                                                entries=entries,
+                                                get_integers=get_integers,
+                                                **eform_kwargs)
+    
     number_defects = len(charge_transition_levels)   
     x_max = 10
     interval = x_max/(number_defects + 1)

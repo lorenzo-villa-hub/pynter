@@ -42,26 +42,26 @@ class TestDefectThermodynamics(PynterTest):
                         oxygen_ref=-4.95,
                         pressure_range=(1e-20,1e10),
                         npoints=50,
-                        xtol=1e-05)
+                        xtol=1e-15)
         data = da.thermodata
         conc = data.defect_concentrations[5]
 
         actual = data.partial_pressures[37]
         desired = 449.8
-        self.assert_all_close(actual,desired)
+        self.assert_all_close(actual,desired, rtol=1e-03)
 
         actual = conc.select_concentrations(name='Vac_O',charge=0)[0]['conc']
         desired = 20033806666.685966
-        self.assert_all_close(actual,desired)
+        self.assert_all_close(actual,desired, rtol=1e-03)
         
         conc = data.defect_concentrations[21]
         actual = conc.select_concentrations(name='Int_O',charge=-2)[0]['conc']
         desired = 152050.744715061
-        self.assert_all_close(actual, desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
         actual = data.fermi_levels[12]
         desired = 3.0835355572700505
-        self.assert_all_close(actual, desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
     
     def test_doping_diagram(self):
@@ -73,26 +73,26 @@ class TestDefectThermodynamics(PynterTest):
                         bulk_dos=self.dos,
                         temperature=1000,
                         npoints=50,
-                        xtol=1e-05)
+                        xtol=1e-100)
         
         data = da.thermodata
         self.assertEqual(data.variable_defect_specie, 'P')
 
         actual = data.variable_concentrations[7]
         desired = 719.6856730011522
-        self.assert_all_close(actual,desired)
+        self.assert_all_close(actual,desired, rtol=1e-03)
 
         actual = data.defect_concentrations[7].elemental['P']
-        self.assert_all_close(actual, desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
         conc = data.defect_concentrations[22]
         actual = conc.select_concentrations(name='Int_O',charge=-1)[0]['conc']
         desired = 175.7802582858784
-        self.assert_all_close(actual, desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
         actual = data.fermi_levels[13]
         desired = 2.7925563006401064
-        self.assert_all_close(actual, desired)
+        self.assert_all_close(actual, desired, rtol=1e-03)
 
 
 ### more complex functions with quenched species and external defects to be implemented

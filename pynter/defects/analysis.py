@@ -1,6 +1,6 @@
 
 import numpy as np
-from scipy.optimize import bisect, root_scalar, minimize_scalar
+from scipy.optimize import bisect, root_scalar, minimize_scalar, minimize
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 import os
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from pymatgen.electronic_structure.dos import FermiDos
 
-from .chempots.oxygen import get_pressure_reservoirs_from_precursors
+from .chempots.oxygen import get_pressure_reservoirs_from_precursors, get_oxygen_pressure_reservoirs
 from .corrections.kumagai import get_kumagai_correction
 from .corrections.freysoldt import get_freysoldt_correction_from_locpot
 from .defects import Defect, get_defect_from_string
@@ -484,7 +484,7 @@ class DefectsAnalysis:
 
 
 
-    def binding_energy(self,name,fermi_level=0):
+    def binding_energy(self,name,fermi_level=0, temperature=0, **eform_kwargs):
         """
         Args:
             name (string): name of defect complex as assigned in defect entry object
@@ -492,7 +492,13 @@ class DefectsAnalysis:
         Returns:
             binding_energy (float)
         """
-        stable_charges = self.stable_charges(None,fermi_level)
+        stable_charges = self.stable_charges(
+                                    chemical_potentials=None,
+                                    fermi_level=fermi_level,
+                                    temperature=temperature,
+                                    entries=None,
+                                    **eform_kwargs)
+        
         charge = stable_charges[name][0]
         binding_energy = stable_charges[name][1]
         entry = self.select_entries(names=[name],charge=charge)[0]
@@ -515,10 +521,19 @@ class DefectsAnalysis:
         Returns:
             h,n in absolute values
         """
-        return get_carrier_concentrations(dos=bulk_dos,fermi_level=fermi_level,temperature=temperature)
+        return get_carrier_concentrations(
+                                    dos=bulk_dos,
+                                    fermi_level=fermi_level,
+                                    temperature=temperature,
+                                    band_gap=self.band_gap)
 
 
-    def charge_transition_levels(self, energy_range=None,entries=None,get_integers=True):
+    def charge_transition_levels(self,
+                                energy_range=None,
+                                temperature=0,
+                                entries=None,
+                                get_integers=True,
+                                **eform_kwargs):
         """
         Computes charge transition levels for all defect entries
         Args:
@@ -541,10 +556,22 @@ class DefectsAnalysis:
         e = np.arange(energy_range[0],energy_range[1],step)
         
         # starting point is first E value
-        previous_stable_charges = self.stable_charges(None,fermi_level=energy_range[0],entries=entries)
+        previous_stable_charges = self.stable_charges(
+                                    chemical_potentials=None,
+                                    fermi_level=energy_range[0],
+                                    temperature=temperature,
+                                    entries=entries,
+                                    **eform_kwargs)
+        
         charge_transition_levels = {name:[] for name in previous_stable_charges}
         for i in range(0,len(e)):
-            stable_charges = self.stable_charges(None, fermi_level = e[i],entries=entries)
+            stable_charges = self.stable_charges(
+                                    chemical_potentials=None,
+                                    fermi_level=e[i],
+                                    temperature=temperature,
+                                    entries=entries,
+                                    **eform_kwargs)
+            
             for name in stable_charges:
                 new_charge = stable_charges[name][0]
                 previous_charge = previous_stable_charges[name][0]
@@ -560,8 +587,14 @@ class DefectsAnalysis:
         return charge_transition_levels        
     
 
-    def defect_concentrations(self, chemical_potentials, temperature=300, fermi_level=0.,
-                              fixed_concentrations=None,per_unit_volume=True):
+    def defect_concentrations(self,
+                            chemical_potentials,
+                            temperature=300,
+                            fermi_level=0.,
+                            fixed_concentrations=None,
+                            per_unit_volume=True,
+                            eform_kwargs={},
+                            **kwargs):
         """
         Give list of all concentrations at specified efermi.
         If fixed_concentrations is provided the concentration of defect entries are 
@@ -590,22 +623,44 @@ class DefectsAnalysis:
         """
         concentrations = []
         if fixed_concentrations:
-            dc = self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                            fixed_concentrations=None,per_unit_volume=per_unit_volume)
+            dc = self.defect_concentrations(
+                                chemical_potentials=chemical_potentials,
+                                temperature=temperature,
+                                fermi_level=fermi_level,
+                                fixed_concentrations=None,
+                                per_unit_volume=per_unit_volume,
+                                eform_kwargs=eform_kwargs,
+                                **kwargs)
+            
             frozen = fixed_concentrations 
 
         for e in self.entries:
-            nsites = e.defect.site_concentration_in_cm3 if per_unit_volume else e.multiplicity
             # frozen defects approach
             if fixed_concentrations:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+                c = e.defect_concentration(
+                                vbm=self.vbm,
+                                chemical_potentials=chemical_potentials,
+                                temperature=temperature,
+                                fermi_level=fermi_level,
+                                per_unit_volume=per_unit_volume,
+                                eform_kwargs=eform_kwargs,
+                                **kwargs)
+                
                 corr = self._get_frozen_correction(e,frozen,dc)
                 c = c * corr
                 defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c)
                 concentrations.append(defconc)     
             
             else:
-                c = e.defect_concentration(self.vbm, chemical_potentials,temperature,fermi_level,per_unit_volume)
+                c = e.defect_concentration(
+                                vbm=self.vbm,
+                                chemical_potentials=chemical_potentials,
+                                temperature=temperature,
+                                fermi_level=fermi_level,
+                                per_unit_volume=per_unit_volume,
+                                eform_kwargs=eform_kwargs,
+                                **kwargs)
+                
                 defconc = SingleDefConc(name=e.name,charge=e.charge,conc=c)
                 concentrations.append(defconc)
             
@@ -682,7 +737,12 @@ class DefectsAnalysis:
             return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
 
 
-    def formation_energies(self,chemical_potentials,fermi_level=0,entries=None):
+    def formation_energies(self,
+                           chemical_potentials=None,
+                           fermi_level=0,
+                           temperature=0,
+                           entries=None,
+                           **eform_kwargs):
         """
         Creating a dictionary with names of single defect entry as keys and
         a list of tuples (charge,formation_energy) as values
@@ -703,7 +763,13 @@ class DefectsAnalysis:
         for entry in entries:
             name = entry.name
             charge = entry.charge
-            eform = entry.formation_energy(self.vbm,chemical_potentials,fermi_level=fermi_level)
+            eform = entry.formation_energy(
+                                vbm=self.vbm,
+                                chemical_potentials=chemical_potentials,
+                                fermi_level=fermi_level,
+                                temperature=temperature,
+                                **eform_kwargs)
+            
             if name in formation_energies:
                 formation_energies[name].append((charge,eform))
             else:
@@ -713,7 +779,7 @@ class DefectsAnalysis:
         return formation_energies
         
            
-    def get_charge_transition_level(self,name,q1,q2):
+    def get_charge_transition_level(self,name,q1,q2,temperature=0,**eform_kwargs):
         """
         Args:
             chemical_potentials: 
@@ -724,7 +790,11 @@ class DefectsAnalysis:
         Returns: Charge transition level (float)
         """
         chemical_potentials = None
-        formation_energies = self.formation_energies(chemical_potentials)
+        formation_energies = self.formation_energies(
+                                chemical_potentials=chemical_potentials,
+                                fermi_level=0,
+                                temperature=temperature,
+                                **eform_kwargs)
         
         for d in formation_energies[name]:
             if d[0] == q1:
@@ -762,7 +832,9 @@ class DefectsAnalysis:
                             oxygen_ref = None,
                             pressure_range=(1e-20,1e10),
                             npoints = 50,
-                            xtol=1e-05,
+                            xtol=1e-10,
+                            eform_kwargs={},
+                            dconc_kwargs={},
                             **kwargs):
         """
         Plot Brouwer diagram (defect concentrations vs oxygen partial pressure). Wrapper function for DefectThermodynamics
@@ -811,20 +883,32 @@ class DefectsAnalysis:
         
         if not reservoirs:
             if not precursors:
-                raise ValueError('You need to either directly provide reservoirs, or precursors + oxygen chempot reference')
+                if self.elements != ['O']:
+                    raise ValueError('You need to either directly provide reservoirs, or precursors + oxygen chempot reference')
             if not oxygen_ref:
                 raise ValueError('You need to provide the oxygen chempot reference when using precursors')
-            reservoirs = get_pressure_reservoirs_from_precursors(precursors=precursors,
+
+            if self.elements == ['O']:
+                reservoirs = get_oxygen_pressure_reservoirs(oxygen_ref=oxygen_ref,
+                                                            temperature=temperature,
+                                                            pressure_range=pressure_range,
+                                                            npoints=npoints)
+            else:
+                reservoirs = get_pressure_reservoirs_from_precursors(precursors=precursors,
                                                                  oxygen_ref=oxygen_ref,
                                                                  temperature=temperature,
                                                                  pressure_range=pressure_range,
                                                                  npoints=npoints)
+                
             
         defects_analysis =  DefectThermodynamics(defects_analysis=self,
                                                 bulk_dos=bulk_dos,
                                                 fixed_concentrations=fixed_concentrations,
                                                 external_defects=external_defects,
-                                                xtol=xtol)
+                                                xtol=xtol,
+                                                eform_kwargs=eform_kwargs,
+                                                dconc_kwargs=dconc_kwargs)
+        
         thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
                                                         temperature=temperature,
                                                         name='BrowerDiagram')
@@ -844,8 +928,10 @@ class DefectsAnalysis:
                             temperature,
                             fixed_concentrations=None,
                             external_defects=[],
-                            xtol=1e-05,
+                            xtol=1e-10,
                             npoints=50,
+                            eform_kwargs={},
+                            dconc_kwargs={},
                             **kwargs):
         """
         Calculate defect and carrier concentrations as a function of the concentration of a particular 
@@ -876,11 +962,15 @@ class DefectsAnalysis:
         """
         from .thermodynamics import DefectThermodynamics
         
-        defects_analysis = DefectThermodynamics(defects_analysis=self,
-                                          bulk_dos=bulk_dos,
-                                          fixed_concentrations=fixed_concentrations,
-                                          external_defects=external_defects,
-                                          xtol=xtol)
+        defects_analysis = DefectThermodynamics(
+                                                defects_analysis=self,
+                                                bulk_dos=bulk_dos,
+                                                fixed_concentrations=fixed_concentrations,
+                                                external_defects=external_defects,
+                                                xtol=xtol,
+                                                eform_kwargs=eform_kwargs,
+                                                dconc_kwargs=dconc_kwargs)
+        
         thermodata = defects_analysis.get_variable_species_thermodata(
                                                   variable_defect_specie=variable_defect_specie,
                                                   concentration_range=concentration_range,
@@ -898,6 +988,7 @@ class DefectsAnalysis:
          
     def plot_formation_energies(self,
                                 chemical_potentials,
+                                temperature=0,
                                 entries=None,
                                 xlim=None,
                                 ylim=None,
@@ -907,7 +998,8 @@ class DefectsAnalysis:
                                 figsize=(6,6),
                                 fontsize=12,
                                 show_legend=True,
-                                format_legend=True):
+                                format_legend=True,
+                                **eform_kwargs):
         """
         Produce defect Formation energy vs Fermi energy plot.
 
@@ -945,6 +1037,7 @@ class DefectsAnalysis:
         kwargs = {
             'entries':entries,
             'chemical_potentials':chemical_potentials,
+            'temperature':temperature,
             'vbm':self.vbm,
             'band_gap':self.band_gap,
             'xlim':xlim,
@@ -957,7 +1050,8 @@ class DefectsAnalysis:
             'show_legend':show_legend,
             'format_legend':format_legend,
             'get_subplot':False,
-            'subplot_settings':None
+            'subplot_settings':None,
+            'eform_kwargs':eform_kwargs
             }
         if chemical_potentials:
             values = list(chemical_potentials.values())
@@ -981,7 +1075,15 @@ class DefectsAnalysis:
         return plt
      
         
-    def plot_binding_energies(self, names=None,xlim=None,ylim=None,figsize=(6,6),fontsize=18,format_legend=True):
+    def plot_binding_energies(self,
+                            temperature=0,
+                            names=None,
+                            xlim=None,
+                            ylim=None,
+                            figsize=(6,6),
+                            fontsize=18,
+                            format_legend=True,
+                            **eform_kwargs):
         """
         Plot binding energies for complex of defects as a function of the fermi level
         Args:
@@ -1000,24 +1102,28 @@ class DefectsAnalysis:
             matplotlib object
         """        
         return plot_binding_energies(entries=self.entries,
-                                     vbm=self.vbm,
-                                     band_gap=self.band_gap,
-                                     names=names,
-                                     xlim=xlim,
-                                     ylim=ylim,
-                                     figsize=figsize,
-                                     fontsize=fontsize,
-                                     format_legend=format_legend)
+                                    vbm=self.vbm,
+                                    band_gap=self.band_gap,
+                                    temperature=0,
+                                    names=names,
+                                    xlim=xlim,
+                                    ylim=ylim,
+                                    figsize=figsize,
+                                    fontsize=fontsize,
+                                    format_legend=format_legend,
+                                    **eform_kwargs)
     
     
     def plot_ctl(self,
-                 entries=None,
-                 ylim=None,
-                 figsize=(10,10),
-                 fontsize=16,
-                 fermi_level=None,
-                 format_legend=True,
-                 get_integers=True):
+                entries=None,
+                temperature=0,
+                ylim=None,
+                figsize=(10,10),
+                fontsize=16,
+                fermi_level=None,
+                format_legend=True,
+                get_integers=True,
+                **eform_kwargs):
         """
         Plotter for the charge transition levels
         Args:
@@ -1032,14 +1138,15 @@ class DefectsAnalysis:
         """        
         entries = entries or self.entries
         return plot_charge_transition_levels(entries=entries,
-                                             vbm=self.vbm,
-                                             band_gap=self.band_gap,
-                                             ylim=ylim,
-                                             figsize=figsize,
-                                             fontsize=fontsize,
-                                             fermi_level=fermi_level,
-                                             format_legend=format_legend,
-                                             get_integers=get_integers)
+                                            vbm=self.vbm,
+                                            band_gap=self.band_gap,
+                                            ylim=ylim,
+                                            figsize=figsize,
+                                            fontsize=fontsize,
+                                            fermi_level=fermi_level,
+                                            format_legend=format_legend,
+                                            get_integers=get_integers,
+                                            **eform_kwargs)
 
 
     def select_entries(self,entries=None,mode='and',exclude=False,types=None,elements=None,
@@ -1107,7 +1214,9 @@ class DefectsAnalysis:
                         temperature=300,
                         fixed_concentrations=None,
                         external_defects=[],
-                        xtol=1e-05):
+                        xtol=1e-05,
+                        eform_kwargs={},
+                        dconc_kwargs={}):
         """
         Solve charge neutrality and get the value of Fermi level at thermodynamic equilibrium.
         
@@ -1154,10 +1263,13 @@ class DefectsAnalysis:
                                             bulk_dos=bulk_dos,
                                             temperature=temperature,
                                             fixed_concentrations=fixed_concentrations,
-                                            external_defects=external_defects)
+                                            external_defects=external_defects,
+                                            eform_kwargs=eform_kwargs,
+                                            dconc_kwargs=dconc_kwargs)
             return qd_tot
         
         root = bisect(_get_total_q, -1, self.band_gap + 1.,xtol=xtol) # set full_output=True for bisect info 
+    
         qd_tot = _get_total_q(root)
         if abs(qd_tot) > 1e03:
             warnings.warn(
@@ -1197,7 +1309,12 @@ class DefectsAnalysis:
             return sorted_entries
             
     
-    def stable_charges(self,chemical_potentials,fermi_level=0,entries=None):
+    def stable_charges(self,
+                       chemical_potentials=None,
+                       fermi_level=0,
+                       temperature=0,
+                       entries=None,
+                       **eform_kwargs):
         """
         Creating a dictionary with names of single defect entry as keys and
         as value a tuple (charge,formation_energy) that gives the most stable 
@@ -1214,7 +1331,12 @@ class DefectsAnalysis:
         Returns:
             {name:(stable charge, formation energy)}
        """
-        formation_energies = self.formation_energies(chemical_potentials,fermi_level,entries)        
+        formation_energies = self.formation_energies(
+                                        chemical_potentials=chemical_potentials,
+                                        fermi_level=fermi_level,
+                                        temperature=temperature,
+                                        entries=entries,
+                                        **eform_kwargs)        
         stable_charges = {}
         for name in formation_energies:
             emin = 1e40
@@ -1295,11 +1417,14 @@ class DefectsAnalysis:
                           bulk_dos,
                           temperature=300, 
                           fixed_concentrations=None,
-                          external_defects=[]): 
+                          external_defects=[],
+                          eform_kwargs={},
+                          dconc_kwargs={}): 
         """
         Calculate the total charge concentration (defects + holes - electrons) needed to solve charge neutrality.
         Check solve_fermi_level docs
         """
+        # defect contribution
         qd_tot = sum([
             d.charge * d.conc
             for d in self.defect_concentrations(
@@ -1307,10 +1432,16 @@ class DefectsAnalysis:
                                         temperature=temperature,
                                         fermi_level=fermi_level,
                                         fixed_concentrations=fixed_concentrations,
-                                        per_unit_volume=True)])
+                                        per_unit_volume=True,
+                                        eform_kwargs=eform_kwargs,
+                                        **dconc_kwargs)
+            ])
+        
+        # defects with fixed behaviour
         for d_ext in external_defects:
             qd_tot += d_ext['charge'] * d_ext['conc']
 
+        # charge carriers (holes and electrons)
         h, n = get_carrier_concentrations(
                                 dos=bulk_dos,
                                 fermi_level=fermi_level,

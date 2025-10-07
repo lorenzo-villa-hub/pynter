@@ -10,7 +10,7 @@ from pymatgen.core.structure import Structure
 
 from pynter.tools.utils import get_object_from_json
 from pynter.defects.chempots.core import Chempots
-from pynter.defects.defects import Interstitial
+from pynter.defects.defects import Interstitial, Vacancy
 from pynter.defects.entries import DefectEntry
 
 from pynter.testing.core import PynterTest
@@ -80,3 +80,38 @@ class TestDefectEntry(PynterTest):
         entry_dict_1 = self.entry.as_dict()
         entry_dict_2 = DefectEntry.from_dict(self.entry.as_dict()).as_dict()
         self.assert_object_almost_equal(entry_dict_1,entry_dict_2)
+
+
+    def test_custom_functions(self):
+        entry = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
+        chempots = {'O': -4.95, 'Sr': -2}
+        vbm = 0
+        band_gap = 2
+
+        def custom_eform(entry,vbm=None,chemical_potentials=None,fermi_level=0,temperature=0, **kwargs):
+            
+            formation_energy = entry.energy_diff + entry.charge*(vbm+fermi_level)
+            if chemical_potentials:
+                chempot_correction = -1 * sum([entry.delta_atoms[el]*chemical_potentials[el] for el in entry.delta_atoms])
+            else:
+                chempot_correction = 0
+                
+            test_quantity = kwargs['test'] if kwargs and 'test' in kwargs.keys() else 0
+            return formation_energy - 1/500 *temperature + test_quantity
+        
+        actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1)
+        desired = 4.05
+        self.assert_all_close(actual, desired)
+        actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,temperature=500)
+        self.assert_all_close(actual, desired)
+
+        entry.set_formation_energy_function(custom_eform)
+        actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,temperature=0)
+        self.assert_all_close(actual, desired)
+        actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,temperature=500)
+        desired = 3.05
+        self.assert_all_close(actual, desired)
+
+        actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,temperature=500,test=2)
+        desired = 5.05
+        self.assert_all_close(actual, desired)
