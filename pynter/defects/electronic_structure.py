@@ -30,8 +30,7 @@ def get_carrier_concentrations(dos, fermi_level, temperature, band_gap=None):
             Format for effective masses:
                 dict with following keys:
                     - "m_eff_h" : holes effective mass in units of m_e (electron mass)
-                    - "m_eff_e" : electrons effective mass in units of m_h
-                    - "vbm" : Valence band maximum in eV
+                    - "m_eff_e" : electrons effective mass in units of m_h          
                     - `band_gap` needs to be provided in args
             Formats for explicit DOS:
                 dictionary with following keys:

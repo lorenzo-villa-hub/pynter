@@ -1,6 +1,6 @@
 
 import numpy as np
-from scipy.optimize import bisect
+from scipy.optimize import bisect, root_scalar, minimize_scalar
 from monty.json import MontyDecoder, MSONable
 import pandas as pd
 import os
@@ -69,6 +69,9 @@ class DefectsAnalysis:
     
     def __getitem__(self,index):
         return self.entries.__getitem__(index)
+    
+    def append(self,item):
+        return self.entries.append(item)
     
     def _group_entries(self):
         groups = {}
@@ -1098,8 +1101,13 @@ class DefectsAnalysis:
                               functions=functions,**kwargs)
     
     
-    def solve_fermi_level(self,chemical_potentials,bulk_dos,temperature=300,
-                                    fixed_concentrations=None,external_defects=[],xtol=1e-05):
+    def solve_fermi_level(self,
+                        chemical_potentials,
+                        bulk_dos,
+                        temperature=300,
+                        fixed_concentrations=None,
+                        external_defects=[],
+                        xtol=1e-05):
         """
         Solve charge neutrality and get the value of Fermi level at thermodynamic equilibrium.
         
@@ -1108,14 +1116,22 @@ class DefectsAnalysis:
         chemical_potentials : (Dict)
             Dictionary of chemical potentials in the format {'element':chempot}.
         bulk_dos : (dict or Dos)
-            Density of states to integrate. 
-            Can either be a dictionary with following keys:
-                - 'energies' : list or np.array with energy values
-                - 'densitites' : list or np.array with total density values
-                - 'structure' : pymatgen Structure of the material, needed for DOS volume normalization.
-            or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
+            Density of states to integrate. Can be provided as density of states D(E)
+            or using effective masses.
+            Format for effective masses:
+                dict with following keys:
+                    - "m_eff_h" : holes effective mass in units of m_e (electron mass)
+                    - "m_eff_e" : electrons effective mass in units of m_h          
+                    - `band_gap` needs to be provided in args
+            Formats for explicit DOS:
+                dictionary with following keys:
+                    - 'energies' : list or np.array with energy values
+                    - 'densitites' : list or np.array with total density values
+                    - 'structure' : pymatgen Structure of the material, 
+                                    needed for DOS volume and charge normalization.
+                or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         temperature : (float)
-            Temperature to equilibrate the system to. The default is 300.
+            Temperature to equilibrate the system to. The default is 300 K.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations (ex {'Vac_A':1e20}) . For more info, 
@@ -1140,8 +1156,15 @@ class DefectsAnalysis:
                                             fixed_concentrations=fixed_concentrations,
                                             external_defects=external_defects)
             return qd_tot
-                       
-        return bisect(_get_total_q, -1., self.band_gap + 1.,xtol=xtol)
+        
+        root = bisect(_get_total_q, -1, self.band_gap + 1.,xtol=xtol) # set full_output=True for bisect info 
+        qd_tot = _get_total_q(root)
+        if abs(qd_tot) > 1e03:
+            warnings.warn(
+                    f"Fermi level solver with xtol={xtol} yields high residual charge: "
+                    f"({qd_tot} cm^-3). Check total_charge vs fermi_level behaviour")      
+
+        return root
     
     
     def sort_entries(self,inplace=False,entries=None,features=['name','charge'],reverse=False):
@@ -1279,12 +1302,20 @@ class DefectsAnalysis:
         """
         qd_tot = sum([
             d.charge * d.conc
-            for d in self.defect_concentrations(chemical_potentials,temperature,fermi_level,
-                                                fixed_concentrations,per_unit_volume=True)])
+            for d in self.defect_concentrations(
+                                        chemical_potentials=chemical_potentials,
+                                        temperature=temperature,
+                                        fermi_level=fermi_level,
+                                        fixed_concentrations=fixed_concentrations,
+                                        per_unit_volume=True)])
         for d_ext in external_defects:
             qd_tot += d_ext['charge'] * d_ext['conc']
 
-        h, n = get_carrier_concentrations(dos=bulk_dos,fermi_level=fermi_level,temperature=temperature,band_gap=self.band_gap)
+        h, n = get_carrier_concentrations(
+                                dos=bulk_dos,
+                                fermi_level=fermi_level,
+                                temperature=temperature,
+                                band_gap=self.band_gap)
         qd_tot += h - n
         return qd_tot
 

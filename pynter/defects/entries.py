@@ -29,7 +29,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                 data=None,
                 label=None,
                 formation_energy_function=None,
-                concentration_function=None):
+                defect_concentration_function=None):
         """
         Contains the data for a defect calculation.
         
@@ -49,7 +49,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         self._data = data if data else {}
         self._defect.set_label(label)
         self._formation_energy_function = formation_energy_function
-        self._concentration_function = concentration_function
+        self._defect_concentration_function = defect_concentration_function
     
     def __repr__(self):
         return "DefectEntry: Name=%s, Charge=%i" %(self.name,self.charge)
@@ -145,6 +145,15 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
     def symbol_kroger(self):
         return self.defect.symbol_with_charge_kv
     
+
+    @property
+    def formation_energy_function(self):
+        return self._formation_energy_function
+    
+    @property
+    def defect_concentration_function(self):
+        return self._defect_concentration_function
+    
     def set_charge(self,new_charge=0):
         self.defect.set_charge(new_charge)
         return 
@@ -158,15 +167,27 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
     def set_data(self,new_data):
         self._data = new_data
-        return 
     
     def set_multiplicity(self,new_multiplicity):
         self.defect.set_multiplicity(new_multiplicity)
-        return
     
     def set_label(self,new_label):
         self.defect.set_label(new_label)
-        return 
+
+
+    def set_defect_concentration_function(self, new_function):
+        self._defect_concentration_function = new_function
+    
+    def set_formation_energy_function(self, new_function):
+        self._formation_energy_function = new_function
+
+    def reset_defect_concentration_function(self):
+        self._defect_concentration_function = None
+    
+    def reset_formation_energy_function(self):
+        self._formation_energy_function = None
+
+    
 
 
     @classmethod
@@ -236,44 +257,44 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                                            label=label,**kwargs)
     
 
-    @staticmethod
-    def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,
-                  multiplicity=1,data=None,label=None,**kwargs):
-        """
-        Generate DefectEntry object from VaspJob objects.
+    # @staticmethod
+    # def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,
+    #               multiplicity=1,data=None,label=None,**kwargs):
+    #     """
+    #     Generate DefectEntry object from VaspJob objects.
 
-        Parameters
-        ----------
-        job_defect : (VaspJob)
-            Defect calculation.
-        job_bulk : (VaspJob)
-            Bulk calculation.
-        corrections : (dict)
-            Dict of corrections for defect formation energy. All values will be summed and
-            added to the defect formation energy.
-        defect_structure : (Structure)
-            Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
-        multiplicity : (int), optional
-            Multiplicity of defect within the supercell. 
-            If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
-        data : (dict), optional
-            Store additional data in dict format.
-        label : (str), optional
-            Additional label to add to defect specie. Does not influence non equilibrium calculations.
-        kwargs : (dict)
-            Kwargs to pass to defect_finder. 'verbose' is set to True by default.
+    #     Parameters
+    #     ----------
+    #     job_defect : (VaspJob)
+    #         Defect calculation.
+    #     job_bulk : (VaspJob)
+    #         Bulk calculation.
+    #     corrections : (dict)
+    #         Dict of corrections for defect formation energy. All values will be summed and
+    #         added to the defect formation energy.
+    #     defect_structure : (Structure)
+    #         Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
+    #     multiplicity : (int), optional
+    #         Multiplicity of defect within the supercell. 
+    #         If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
+    #     data : (dict), optional
+    #         Store additional data in dict format.
+    #     label : (str), optional
+    #         Additional label to add to defect specie. Does not influence non equilibrium calculations.
+    #     kwargs : (dict)
+    #         Kwargs to pass to defect_finder. 'verbose' is set to True by default.
 
-        Returns
-        -------
-        DefectEntry
-        """ 
-        defect_structure = defect_structure if defect_structure else job_defect.initial_structure
-        bulk_structure = job_bulk.final_structure
-        energy_diff = job_defect.final_energy - job_bulk.final_energy
-        charge = job_defect.charge
+    #     Returns
+    #     -------
+    #     DefectEntry
+    #     """ 
+    #     defect_structure = defect_structure if defect_structure else job_defect.initial_structure
+    #     bulk_structure = job_bulk.final_structure
+    #     energy_diff = job_defect.final_energy - job_bulk.final_energy
+    #     charge = job_defect.charge
         
-        return DefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,
-                                                  charge,multiplicity,data,label,**kwargs)
+    #     return DefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,
+    #                                               charge,multiplicity,data,label,**kwargs)
 
 
     @staticmethod
@@ -353,7 +374,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         computed_entry_bulk : (VaspJob)
             ComputedStructureEntry of the bulk calculation.
         path_bulk : (str)
-            If computed_entry_bulk is not provided, read directly from VASP directory. 
+            If `computed_entry_bulk` is not provided, read directly from VASP directory. 
         corrections : (dict)
             Dict of corrections for defect formation energy. All values will be summed and
             added to the defect formation energy.
@@ -417,7 +438,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                             chemical_potentials,
                             temperature=300,
                             fermi_level=0.0, 
-                            per_unit_volume=True):
+                            per_unit_volume=True,
+                            **kwargs):
         """
         Compute the defect concentration for a temperature and Fermi level.
         Args:
@@ -428,14 +450,29 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         Returns:
             defects concentration in cm^-3
         """
+        if self.defect_concentration_function:
+            return self.defect_concentration_function(self,
+                                                    vbm=vbm,
+                                                    chemical_potentials=chemical_potentials,
+                                                    temperature=temperature,
+                                                    fermi_level=fermi_level,
+                                                    per_unit_volume=per_unit_volume,
+                                                    **kwargs)
+        
+        
         n = self.defect.site_concentration_in_cm3 if per_unit_volume else self.multiplicity 
         eform = self.formation_energy(vbm, chemical_potentials, fermi_level=fermi_level)
         
-        conc = n * fermi_dirac(eform,temperature) # maxwell_boltzmann(eform,temperature) #
+        conc = n *  fermi_dirac(eform,temperature) # maxwell_boltzmann(eform,temperature) # 
         return conc
 
 
-    def formation_energy(self,vbm=None,chemical_potentials=None,fermi_level=0,**kwargs):
+    def formation_energy(self,
+                        vbm=None,
+                        chemical_potentials=None,
+                        fermi_level=0,
+                        temperature=0,
+                        **kwargs):
         """
         Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
         Args:
@@ -446,7 +483,12 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
             fermi_level (float):  Value corresponding to the electron chemical potential.
             """
         if self._formation_energy_function:
-            return self._formation_energy_function(self,vbm,chemical_potentials,fermi_level,**kwargs)
+            return self.formation_energy_function(self,
+                                                vbm=vbm,
+                                                chemical_potentials=chemical_potentials,
+                                                fermi_level=fermi_level,
+                                                temperature=temperature,
+                                                **kwargs)
             
         formation_energy = (self.energy_diff + self.charge*(vbm+fermi_level) + 
                        sum([ self.corrections[correction_type]  for correction_type in self.corrections ]) 

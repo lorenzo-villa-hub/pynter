@@ -12,6 +12,7 @@ import matplotlib
 from pymatgen.electronic_structure.dos import CompleteDos
 import numpy as np
 import os.path as op
+import pandas as pd
 
 from pynter.tools.utils import get_object_from_json
 from pynter.defects.chempots.core import Chempots
@@ -129,16 +130,86 @@ class TestDefectsAnalysis(PynterTest):
         self.assert_all_close(actual, desired)
            
         
-    def test_from_dataframe(self):
+    def test_from_csv(self):
+        vbm = self.da.vbm
+        band_gap = self.da.band_gap
         da = DefectsAnalysis.from_file(
                                 self.get_testfile_path('SiO2_defects_analysis.csv'),
-                                vbm=self.da.vbm,
-                                band_gap=self.da.band_gap)
+                                vbm=vbm,
+                                band_gap=band_gap)
         self.da = da
         self.test_defect_concentrations_fixed()
         self.test_formation_energies()
         self.test_charge_transition_levels()
 
 
+    def test_from_dataframe(self):
+        bulk_volume = 909.0035
+        d =[{'name': 'Int_O',
+            'charge': -2.0,
+            'multiplicity': 1,
+            'energy_diff': 4.543,
+            'bulk_volume': bulk_volume},
+            {'name': 'Int_O',
+            'charge': -1.0,
+            'multiplicity': 1,
+            'energy_diff': 1.7746,
+            'bulk_volume': bulk_volume},
+            {'name': 'Int_O',
+            'charge': 0.0,
+            'multiplicity': 1,
+            'energy_diff': -0.3334,
+            'bulk_volume': bulk_volume},
+            {'name': 'Sub_P_on_Si',
+            'charge': 0.0,
+            'multiplicity': 1,
+            'energy_diff': 5.6674,
+            'bulk_volume': bulk_volume},
+            {'name': 'Sub_P_on_Si',
+            'charge': 1.0,
+            'multiplicity': 1,
+            'energy_diff': -1.5959,
+            'bulk_volume': bulk_volume},
+            {'name': 'Vac_O',
+            'charge': 0.0,
+            'multiplicity': 1,
+            'energy_diff': 9.8442,
+            'bulk_volume': bulk_volume},
+            {'name': 'Vac_O',
+            'charge': 1.0,
+            'multiplicity': 1,
+            'energy_diff': 8.3845,
+            'bulk_volume': bulk_volume},
+            {'name': 'Vac_O',
+            'charge': 2.0,
+            'multiplicity': 1,
+            'energy_diff': 4.0104,
+            'bulk_volume': bulk_volume},
+            {'name': 'Vac_Si',
+            'charge': -5.0,
+            'multiplicity': 1,
+            'energy_diff': 38.4723,
+            'bulk_volume': bulk_volume},
+            {'name': 'Vac_Si',
+            'charge': -4.0,
+            'multiplicity': 1,
+            'energy_diff': 31.4767,
+            'bulk_volume': bulk_volume},
+            {'name': 'Vac_Si',
+            'charge': -3.0,
+            'multiplicity': 1,
+            'energy_diff': 28.4873,
+            'bulk_volume': bulk_volume}]
+        
+        df = pd.DataFrame(d)
+        vbm = self.da.vbm
+        band_gap = self.da.band_gap
+        da = DefectsAnalysis.from_dataframe(df,vbm=vbm,band_gap=band_gap)
+        self.da = da
+        self.test_defect_concentrations_fixed()
+        self.test_formation_energies()
+        self.test_charge_transition_levels()
+
+        return
         
     
