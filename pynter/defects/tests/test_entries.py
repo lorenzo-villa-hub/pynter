@@ -116,3 +116,7 @@ class TestDefectEntry(PynterTest):
         actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,temperature=500,test=2)
         desired = 5.05
         self.assert_all_close(actual, desired)
+
+        actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,test=2)
+        desired = 6.05
+        self.assert_all_close(actual, desired)
