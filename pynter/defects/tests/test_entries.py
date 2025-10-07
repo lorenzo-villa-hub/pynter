@@ -88,16 +88,17 @@ class TestDefectEntry(PynterTest):
         vbm = 0
         band_gap = 2
 
-        def custom_eform(entry,vbm=None,chemical_potentials=None,fermi_level=0,temperature=0, **kwargs):
-            
-            formation_energy = entry.energy_diff + entry.charge*(vbm+fermi_level)
-            if chemical_potentials:
-                chempot_correction = -1 * sum([entry.delta_atoms[el]*chemical_potentials[el] for el in entry.delta_atoms])
-            else:
-                chempot_correction = 0
-                
-            test_quantity = kwargs['test'] if kwargs and 'test' in kwargs.keys() else 0
-            return formation_energy - 1/500 *temperature + test_quantity
+        def custom_eform(entry,vbm=None,chemical_potentials=None,fermi_level=0,temperature=300,**kwargs):
+
+                formation_energy = entry.energy_diff + entry.charge*(vbm+fermi_level) 
+                if chemical_potentials:
+                    chempot_correction = -1 * sum([entry.delta_atoms[el]*chemical_potentials[el] for el in entry.delta_atoms])
+                else:
+                    chempot_correction = 0
+                    
+                formation_energy = formation_energy + chempot_correction
+                test_quantity = kwargs['test'] if kwargs and 'test' in kwargs.keys() else 0
+                return formation_energy - 1/500 *temperature + test_quantity
         
         actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1)
         desired = 4.05

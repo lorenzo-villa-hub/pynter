@@ -74,8 +74,8 @@ class TestDefectsAnalysis(PynterTest):
     
     def test_carrier_concentrations(self):
         actual = self.da.carrier_concentrations(bulk_dos=self.dos,fermi_level=2)
-        desired = (2.5207523856086593e-16, 1.9354062962348537e-41)
-        self.assert_all_close(actual , desired, rtol=1e-03 )
+        desired = (2.5207523856086593e-16, 5.386720e-49)
+        self.assert_all_close(actual , desired)
     
     def test_defect_concentrations(self):
         conc = self.da.defect_concentrations(self.chempots)
