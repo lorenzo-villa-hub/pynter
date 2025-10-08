@@ -100,7 +100,7 @@ class Conductivity:
 
 class DefectThermodynamics:
     """
-    Class that handles the analysis of defect equilibrium.
+    Class that handles the calculations of defect equilibriua under different conditions.
     """
     
     def __init__(self,
@@ -114,10 +114,23 @@ class DefectThermodynamics:
         """
         Parameters
         ----------
-        defects_analysis :
+        defects_analysis : (DefectsAnalysis)
             DefectsAnalysis object.
-        bulk_dos : 
-            Pymatgen Dos object.
+        bulk_dos: (dict or Dos)
+            Density of states to integrate. Can be provided as density of states D(E)
+            or using effective masses.
+            Format for effective masses:
+                dict with following keys:
+                    - "m_eff_h" : holes effective mass in units of m_e (electron mass)
+                    - "m_eff_e" : electrons effective mass in units of m_h          
+                    - `band_gap` needs to be provided in args
+            Formats for explicit DOS:
+                dictionary with following keys:
+                    - 'energies' : list or np.array with energy values
+                    - 'densitites' : list or np.array with total density values
+                    - 'structure' : pymatgen Structure of the material, 
+                                    needed for DOS volume and charge normalization.
+                or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
@@ -125,7 +138,12 @@ class DefectThermodynamics:
             List of external defect concentrations (not present in defect entries).
             Must either be a list of dictionaries with {'charge': float, 'conc': float} 
             or a list of SingleDefConc objects. 
-        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+        xtol : (float)
+            Tolerance for bisect (scipy) to solve charge neutrality.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+        dconc_kwargs : (dict)
+            Kwargs to pass to `entry.defect_concentration`.
         """
         self.da = defects_analysis
         self.bulk_dos = bulk_dos
@@ -158,13 +176,13 @@ class DefectThermodynamics:
         thermodata : (ThermoData)
             ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
-                    List of partial pressure values.
+                    List of partial pressure values in atm.
                 defect_concentrations : (list)
-                    List of DefectConcentrations objects
+                    List of DefectConcentrations objects (cm^-3)
                 carrier_concentrations : (list)
-                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                    List of tuples with intrinsic carriers concentrations (holes,electrons) in cm^-3.
                 fermi_levels : (list)
-                    list of Fermi level values
+                    list of Fermi level values in eV.
         """
         res = reservoirs
         if temperature:
@@ -234,13 +252,13 @@ class DefectThermodynamics:
         thermodata : (ThermoData)
             ThermoData object that contains the thermodynamic data:
                 partial_pressures : (list)
-                    List of partial pressure values.
+                    List of partial pressure values in atm.
                 defect_concentrations : (list)
-                    List of DefectConcentrations objects
+                    List of DefectConcentrations objects (cm^-3)
                 carrier_concentrations : (list)
-                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                    List of tuples with intrinsic carriers concentrations (holes,electrons) in cm^-3.
                 fermi_levels : (list)
-                    list of Fermi level values
+                    list of Fermi level values in eV.
         """        
         res = reservoirs
         if hasattr(res,'temperature'):
@@ -301,17 +319,21 @@ class DefectThermodynamics:
             or a list of SingleDefConc objects. 
         name : (str)
             Label for ThermoData. The default is None.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+        dconc_kwargs : (dict)
+            Kwargs to pass to `entry.defect_concentration`.
 
         Returns
         -------
         thermodata : (ThermoData)
             ThermoData object that contains the thermodynamic data:
                 defect_concentrations : (DefectConcentrations)
-                    DefectConcentrations object.
+                    DefectConcentrations object (cm^-3).
                 carrier_concentrations : (tuple)
-                    Tuple with intrinsic carriers concentrations (holes,electrons).
+                    Tuple with intrinsic carriers concentrations in cm^-3 (holes,electrons).
                 fermi_levels : (float)
-                    Fermi level value
+                    Fermi level value in eV.
         """
         dos = self.bulk_dos
         fixed_df = fixed_concentrations or self.fixed_concentrations
@@ -395,11 +417,11 @@ class DefectThermodynamics:
         thermodata : (ThermoData)
             ThermoData object that contains the thermodynamic data:
                 defect_concentrations : (DefectConcentrations)
-                    DefectConcentrations object.
+                    DefectConcentrations object (cm^-3).
                 carrier_concentrations : (tuple)
-                    Tuple with intrinsic carriers concentrations (holes,electrons).
+                    Tuple with intrinsic carriers concentrations (holes,electrons) in cm^-3.
                 fermi_levels : (float)
-                    Fermi level value
+                    Fermi level value in eV.
         """
         fixed_df = fixed_concentrations or self.fixed_concentrations
         ext_df = external_defects or self.external_defects
@@ -505,9 +527,9 @@ class DefectThermodynamics:
                 defect_concentrations : (list or dict)
                     Defect concentrations in the same format as the output of DefectsAnalysis. 
                 carrier_concentrations : (list)
-                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                    List of tuples with intrinsic carriers concentrations (holes,electrons) in cm^-3.
                 fermi_levels : (list)
-                    List of Fermi level values.
+                    List of Fermi level values in eV.
         """
         carrier_concentrations = []
         defect_concentrations = []
@@ -603,9 +625,9 @@ class DefectThermodynamics:
                 defect_concentrations : (list or dict)
                     Defect concentrations in the same format as the output of DefectsAnalysis. 
                 carrier_concentrations : (list)
-                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                    List of tuples with intrinsic carriers concentrations (holes,electrons) in cm^-3.
                 fermi_levels : (list)
-                    List of Fermi level values.
+                    List of Fermi level values in eV.
         """
         carrier_concentrations = []
         defect_concentrations = []
@@ -668,15 +690,15 @@ class ThermoData(MSONable):
                 variable_concentrations : (list)
                     List of concentrations of variable species. 
                 defect_concentrations : (list)
-                    List of DefectConcentrations objects.
+                    List of DefectConcentrations objects (cm^-3).
                 carrier_concentrations : (list)
-                    List of tuples with intrinsic carriers concentrations (holes,electrons).
+                    List of tuples with intrinsic carriers concentrations (holes,electrons) in cm^-3.
                 conductivities : (list)
                     List of conductivity values (in S/m).
                 fermi_levels : (list)
-                    list of Fermi level values.
+                    list of Fermi level values in eV.
         temperature : (float), optional
-            Temperature at which the data is computed. The default is None.
+            Temperature in K at which the data is computed. The default is None.
         name : (str), optional
             Name to assign to ThermoData. The default is None.
         """
