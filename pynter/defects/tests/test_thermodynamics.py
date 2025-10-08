@@ -15,6 +15,8 @@ from pymatgen.core.units import kb
 
 from pynter.defects.analysis import DefectsAnalysis
 from pynter.defects.chempots.core import Chempots
+from pynter.defects.defects import Vacancy
+from pynter.defects.entries import DefectEntry
 from pynter.defects.thermodynamics import DefectThermodynamics
 from pynter.tools.utils import get_object_from_json
 
@@ -159,6 +161,56 @@ class TestDefectThermodynamics(PynterTest):
         actual = data.fermi_levels[13]
         desired = 2.7925563006401064
         self.assert_all_close(actual, desired, rtol=1e-03)
+
+    
+    def test_custom_functions(self):
+        e1 = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
+        e2 = DefectEntry(Vacancy('Sr',charge=-2,bulk_volume=800,multiplicity=1),energy_diff=8)
+        da = DefectsAnalysis([e1,e2],vbm=0,band_gap=2)
+        chempots = {'O':-4.95,'Sr':-2}
+        mdos = {'m_eff_e':0.5,'m_eff_h':0.4}
+
+        def custom_eform(entry,vbm=None,chemical_potentials=None,fermi_level=0,temperature=300,**kwargs):
+                formation_energy = entry.energy_diff + entry.charge*(vbm+fermi_level) 
+                if chemical_potentials:
+                    chempot_correction = -1 * sum([entry.delta_atoms[el]*chemical_potentials[el] for el in entry.delta_atoms])
+                else:
+                    chempot_correction = 0
+                    
+                formation_energy = formation_energy + chempot_correction
+                test_quantity = kwargs['test'] if kwargs and 'test' in kwargs.keys() else 0
+                return formation_energy - 1/500 *temperature + test_quantity       
+        
+
+        def custom_dconc(entry,vbm=0,chemical_potentials=None,temperature=0,fermi_level=0,per_unit_volume=True,eform_kwargs={},**kwargs):
+                from pynter.defects.entries import fermi_dirac
+                n = entry.defect.site_concentration_in_cm3 if per_unit_volume else entry.multiplicity 
+                if per_unit_volume:
+                    n = n * (1+1/500*temperature)
+                eform = entry.formation_energy(
+                                        vbm=vbm,
+                                        chemical_potentials=chemical_potentials,
+                                        fermi_level=fermi_level,
+                                        temperature=temperature,
+                                        **eform_kwargs)
+                
+                test_quantity = kwargs['test_conc'] if kwargs and 'test_conc' in kwargs.keys() else 1
+                return  n * fermi_dirac(eform,temperature) * test_quantity
+        
+        da.set_formation_energy_functions(function=custom_eform,name='Vac_O')
+        da.set_defect_concentration_functions(function=custom_dconc,name='Vac_Sr')
+
+        da.plot_brouwer_diagram(mdos,1000,precursors={'SrO':-10},oxygen_ref=-4.95,xtol=1e-100)
+        data = da.thermodata
+
+        conc = data.defect_concentrations[35]
+        actual = conc.select_concentrations(name='Vac_O')[0]['conc']
+        desired = 537497932157133.1
+        self.assert_all_close(actual, desired)
+
+        actual = data.carrier_concentrations[28][0]
+        desired = 28853383959330.863
+        self.assert_all_close(actual, desired)
 
 
 ### more complex functions with quenched species and external defects to be implemented

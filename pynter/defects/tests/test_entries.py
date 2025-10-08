@@ -84,12 +84,11 @@ class TestDefectEntry(PynterTest):
 
     def test_custom_functions(self):
         entry = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
-        chempots = {'O': -4.95, 'Sr': -2}
+        chempots = {'O': -4.95}
         vbm = 0
         band_gap = 2
 
         def custom_eform(entry,vbm=None,chemical_potentials=None,fermi_level=0,temperature=300,**kwargs):
-
                 formation_energy = entry.energy_diff + entry.charge*(vbm+fermi_level) 
                 if chemical_potentials:
                     chempot_correction = -1 * sum([entry.delta_atoms[el]*chemical_potentials[el] for el in entry.delta_atoms])
@@ -98,7 +97,23 @@ class TestDefectEntry(PynterTest):
                     
                 formation_energy = formation_energy + chempot_correction
                 test_quantity = kwargs['test'] if kwargs and 'test' in kwargs.keys() else 0
-                return formation_energy - 1/500 *temperature + test_quantity
+                return formation_energy - 1/500 *temperature + test_quantity       
+        
+
+        def custom_dconc(entry,vbm=0,chemical_potentials=None,temperature=0,fermi_level=0,per_unit_volume=True,eform_kwargs={},**kwargs):
+                from pynter.defects.entries import fermi_dirac
+                n = entry.defect.site_concentration_in_cm3 if per_unit_volume else entry.multiplicity 
+                if per_unit_volume:
+                    n = n * (1+1/500*temperature)
+                eform = entry.formation_energy(
+                                        vbm=vbm,
+                                        chemical_potentials=chemical_potentials,
+                                        fermi_level=fermi_level,
+                                        temperature=temperature,
+                                        **eform_kwargs)
+                
+                test_quantity = kwargs['test_conc'] if kwargs and 'test_conc' in kwargs.keys() else 1
+                return  n * fermi_dirac(eform,temperature) * test_quantity
         
         actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1)
         desired = 4.05
@@ -120,3 +135,27 @@ class TestDefectEntry(PynterTest):
         actual = entry.formation_energy(vbm=vbm,chemical_potentials=chempots,fermi_level=1,test=2)
         desired = 6.05
         self.assert_all_close(actual, desired)
+
+
+        actual = entry.defect_concentration(vbm=0,chemical_potentials=chempots,fermi_level=0,temperature=800)
+        desired = 1.8255765558702477e+18
+        self.assert_all_close(actual, desired, rtol=1e-03)
+
+        entry.set_defect_concentration_function(custom_dconc)
+        actual = entry.defect_concentration(vbm=0,chemical_potentials=chempots,fermi_level=0,temperature=800)
+        desired = 4.746499045262644e+18
+        self.assert_all_close(actual, desired, rtol=1e-03)
+
+        actual = entry.defect_concentration(vbm=0,chemical_potentials=chempots,fermi_level=0,temperature=800,eform_kwargs={'test':1})
+        desired = 2383885542239.6626
+        self.assert_all_close(actual, desired, rtol=1e-03)
+
+        actual = entry.defect_concentration(vbm=0,chemical_potentials=chempots,fermi_level=0,temperature=800,eform_kwargs={'test':1},test_conc=10)
+        desired = desired * 10
+        self.assert_all_close(actual, desired, rtol=1e-03)
+
+        actual = entry.defect_concentration(vbm=0,chemical_potentials=chempots,fermi_level=0,temperature=800,test_conc=10)
+        desired = 4.746499045262644e+19
+        self.assert_all_close(actual, desired, rtol=1e-03)
+
+

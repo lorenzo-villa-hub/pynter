@@ -85,7 +85,7 @@ class TestDefaultJobSettings(PynterTest):
         
     def test_duplicates_flexibility(self):
         original_js = self.default.get_updated_job_settings(JobSettings())
-        updated_js = DefaultJobSettings().get_updated_job_settings(original_js)
+        updated_js = DefaultJobSettings(vasp_exe='/test/vasp').get_updated_job_settings(original_js)
         def assert_no_duplicates(target_string,lines):
             count = 0
             for line in lines:

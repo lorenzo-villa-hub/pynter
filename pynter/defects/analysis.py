@@ -471,6 +471,7 @@ class DefectsAnalysis:
         d : (str)
             If path is not set a string is returned.
         """
+        self.reset_all_custom_functions()
         d = self.as_dict(**kwargs)
         if path == '':
             path = op.join(self.path,self.name+'.json')
@@ -1149,8 +1150,15 @@ class DefectsAnalysis:
                                             **eform_kwargs)
 
 
-    def select_entries(self,entries=None,mode='and',exclude=False,types=None,elements=None,
-                       names=None,function=None,**kwargs):
+    def select_entries(self,
+                       entries=None,
+                       mode='and',
+                       exclude=False,
+                       types=None,
+                       elements=None,
+                       names=None,
+                       function=None,
+                       **kwargs):
         """
         Find entries based on different criteria. Returns a list of DefectEntry objects.
 
@@ -1208,6 +1216,61 @@ class DefectsAnalysis:
                               functions=functions,**kwargs)
     
     
+    def set_formation_energy_functions(self,function,**kwargs):
+        """
+        Customize the function for formation energy calculations for specific
+        defect entries. Pass kwargs to `select_entries` function to choose 
+        which entries to apply the function to.
+        """
+        entries = self.select_entries(**kwargs)
+        for entry in entries:
+            entry.set_formation_energy_function(function)
+        
+    def reset_formation_energy_functions(self,reset_all=True,**kwargs):
+        """
+        Reset formation energy function to default for selected entries, 
+        Pass kwargs to `select_entries` function to choose which entries 
+        to reset. If reset_all is True all entries are reset to default.
+        """
+        if reset_all:
+            kwargs = {'exclude':True}
+        entries = self.select_entries(**kwargs)
+        for entry in entries:
+            entry.reset_formation_energy_function()
+
+    def set_defect_concentration_functions(self,function,**kwargs):
+        """
+        Customize the function for defect concentration calculations for specific
+        defect entries. Pass kwargs to `select_entries` function to choose 
+        which entries to apply the function to.
+        """
+        entries = self.select_entries(**kwargs)
+        for entry in entries:
+            entry.set_defect_concentration_function(function)
+        
+    def reset_defect_concentration_functions(self,reset_all=True,**kwargs):
+        """
+        Reset defect concentration function to default for selected entries, 
+        Pass kwargs to `select_entries` function to choose which entries 
+        to reset. If reset_all is True all entries are reset to default.
+        """
+        if reset_all:
+            kwargs = {'exclude':True}
+        entries = self.select_entries(**kwargs)
+        for entry in entries:
+            entry.reset_defect_concentration_function()
+
+    def reset_all_custom_functions(self,reset_all=True,**kwargs):
+        """
+        Reset all customized functions to default for selected entries, 
+        Pass kwargs to `select_entries` function to choose which entries 
+        to reset. If reset_all is True all entries are reset to default.
+        """
+        self.reset_formation_energy_functions(reset_all=reset_all,**kwargs)
+        self.reset_defect_concentration_functions(reset_all=reset_all,**kwargs)
+
+
+
     def solve_fermi_level(self,
                         chemical_potentials,
                         bulk_dos,
@@ -1271,10 +1334,10 @@ class DefectsAnalysis:
         root = bisect(_get_total_q, -1, self.band_gap + 1.,xtol=xtol) # set full_output=True for bisect info 
     
         qd_tot = _get_total_q(root)
-        if abs(qd_tot) > 1e03:
+        if abs(qd_tot) > 1e10:
             warnings.warn(
                     f"Fermi level solver with xtol={xtol} yields high residual charge: "
-                    f"({qd_tot} cm^-3). Check total_charge vs fermi_level behaviour")      
+                    f"({qd_tot: .2e} cm^-3). Check total_charge vs fermi_level behaviour")      
 
         return root
     
