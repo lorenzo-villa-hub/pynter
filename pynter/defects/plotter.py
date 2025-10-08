@@ -631,10 +631,6 @@ def plot_x_vs_concentrations(x,xlabel,defect_concentrations,carrier_concentratio
         
     plt.xscale('log')
     plt.yscale('log')
-    # if show_unstable:
-    #     stable = _get_unstable_bool(defect_concentrations)
-    #     ax = plt.gca()
-    #     plt.fill_between(x, 0, 1, where=stable, alpha=0.3, transform=ax.get_xaxis_transform(), color='red')
     plt.xlim(xlim)
     if ylim:
         plt.ylim(ylim)
@@ -786,7 +782,7 @@ def _plot_conc(x,defect_concentrations,carrier_concentrations,output,size,colors
     for i in range(0,len(dc[0])):
             conc = [c[i].conc for c in dc]
             charges = [c[i].charge for c in dc]
-            label_txt = get_defect_from_string(dc[0][i]).symbol
+            label_txt = get_defect_from_string(dc[0][i].name).symbol
             if output == 'all':
                 label_txt = format_legend_with_charge_number(label_txt,dc[0][i].charge)
             elif output == 'stable':

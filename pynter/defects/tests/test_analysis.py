@@ -25,12 +25,6 @@ from pynter.testing.defects import DefectEntryTest
 from pynter.defects.tests.test_entries import TestDefectEntry
 
 
-def assert_concentration_equal(actual_concentration_object,desired_charge,desired_conc,desired_name):
-    sdc = actual_concentration_object
-    assert sdc.charge == float(desired_charge)
-    np.testing.assert_allclose(sdc.conc, desired_conc, rtol=100, atol=0.2) 
-    assert sdc.name == desired_name
-
 
 class TestDefectsAnalysis(PynterTest):
     
@@ -53,13 +47,13 @@ class TestDefectsAnalysis(PynterTest):
         cls.dos = get_object_from_json(CompleteDos, self.get_testfile_path('SiO2-defects/Bulk-2x2x2-supercell/complete_dos.json')) 
 
     
-    def get_textbook_case(self):
-        e1 = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
-        e2 = DefectEntry(Vacancy('Sr',charge=-2,bulk_volume=800,multiplicity=1),energy_diff=8)
-        da = DefectsAnalysis([e1,e2],vbm=0,band_gap=2)
-        chempots = {'O':-4.95,'Sr':-2}
-        mdos = {'m_eff_e':0.5,'m_eff_h':0.4}
-        return da, chempots, mdos
+    # def get_textbook_case(self):
+    #     e1 = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
+    #     e2 = DefectEntry(Vacancy('Sr',charge=-2,bulk_volume=800,multiplicity=1),energy_diff=8)
+    #     da = DefectsAnalysis([e1,e2],vbm=0,band_gap=2)
+    #     chempots = {'O':-4.95,'Sr':-2}
+    #     mdos = {'m_eff_e':0.5,'m_eff_h':0.4}
+    #     return da, chempots, mdos
 
 
         
@@ -231,6 +225,20 @@ class TestDefectsAnalysis(PynterTest):
             os.remove('test.json')
 
 
+
+
+class TestDefectsAnalysisTextbook(PynterTest):
+
+        
+    def get_textbook_case(self):
+        e1 = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
+        e2 = DefectEntry(Vacancy('Sr',charge=-2,bulk_volume=800,multiplicity=1),energy_diff=8)
+        da = DefectsAnalysis([e1,e2],vbm=0,band_gap=2)
+        chempots = {'O':-4.95,'Sr':-2}
+        mdos = {'m_eff_e':0.5,'m_eff_h':0.4}
+        return da, chempots, mdos
+
+
     def test_textbook_case_from_entries(self):
         da, chempots , mdos = self.get_textbook_case()
         da.plot_formation_energies(chempots)
@@ -309,6 +317,72 @@ class TestDefectsAnalysis(PynterTest):
         desired = 2868.7081307702956
         self.assert_all_close(actual, desired)
 
+
+def TestDefectConcentrations(PynterTest):
+
+    @classmethod
+    def setUpClass(cls):
+        self = cls()
+        self.conc = DefectConcentrations([
+        SingleDefConc(charge=-2.0,conc=2.08e-20,name='Int_O'),
+        SingleDefConc(charge=-1.0,conc=8.15e-16,name='Int_O'),
+        SingleDefConc(charge=0.0,conc=2.21e-15,name='Int_O'),
+        SingleDefConc(charge=0.0,conc=2.52e-15,name='Sub_P_on_Si'),
+        SingleDefConc(charge=1.0,conc=2.04e+18,name='Sub_P_on_Si'),
+        SingleDefConc(charge=0.0,conc=6.67e-04,name='Vac_O'),
+        SingleDefConc(charge=1.0,conc=1.49e-07,name='Vac_O'),
+        SingleDefConc(charge=2.0,conc=7.59e+07,name='Vac_O'),
+        SingleDefConc(charge=-5.0,conc=1.15e-123,name='Vac_Si'),
+        SingleDefConc(charge=-4.0,conc=1.91e-92,name='Vac_Si'),
+        SingleDefConc(charge=-3.0,conc=1.85e-86,name='Vac_Si')
+        ])
+ 
+
+    def test_total(self):
+
+        total = self.conc.total
+        
+        actual = total['Sub_P_on_Si']
+        desired = 2.0403206475490184e+18
+        self.assert_all_close(actual,desired)
+
+        actual = total['Vac_O']
+        desired = 75867140.1773762
+        self.assert_all_close(actual,desired)
+
+
+    def test_elemental(self):
+        el = self.conc.elemental
+        actual = el['P']
+        desired = 2.0403206475490184e+18
+        self.assert_all_close(actual,desired)
+
+        actual = el['O']
+        desired = 3.0203081157289413e-15
+        self.assert_all_close(actual,desired)
+
+    
+    def test_stable(self):
+        stable = self.conc.stable
+        self.assertEqual(type(stable),DefectConcentrations)
+
+        actual = stable.select_concentrations(name='Vac_O')[0]['charge']
+        desired = 2.0
+        self.assert_all_close(actual,desired)
+
+        actual = stable.select_concentrations(name='Int_O')[0]['conc']
+        desired = 2.2050864130947814e-15
+        self.assert_all_close(actual,desired)
+
+    
+    def test_select_concentrations(self):
+        selected = self.conc.select_concentrations(name='Vac_O',charge=2)
+        
+        self.assertEqual(len(selected), 1)
+
+        actual = selected[0]['conc']
+        desired = 75867140.17670918
+        self.assert_all_close(actual, desired)
 
 
 

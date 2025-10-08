@@ -22,8 +22,8 @@ def get_carrier_concentrations(dos, fermi_level, temperature, band_gap=None):
     integrating the density of states over energy & equilibrium Fermi-Dirac
     distribution.
 
-    -----------
-    Parameters:
+    Parameters
+    ----------
         dos : (dict or Dos)
             Density of states to integrate. Can be provided as density of states D(E)
             or using effective masses.
@@ -48,6 +48,7 @@ def get_carrier_concentrations(dos, fermi_level, temperature, band_gap=None):
             The band gap in eV. If None is determined from the DOS.
 
     Returns:
+    --------
         h : (float)
             Absolute value of hole concentration in 1/cm^3
         n : (float)

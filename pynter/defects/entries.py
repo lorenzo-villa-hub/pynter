@@ -7,7 +7,7 @@ Created on Fri Dec 11 14:33:12 2020
 """
 
 from abc import ABCMeta
-from monty.json import MSONable, MontyDecoder
+from monty.json import MSONable, MontyDecoder, MontyEncoder, jsanitize
 import numpy as np
 import warnings
 import os
@@ -31,17 +31,30 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                 formation_energy_function=None,
                 defect_concentration_function=None):
         """
-        Contains the data for a defect calculation.
+        Object to store the results of a defect calculation. 
+        This object is usually created automatically when importing results, either from directories or
+        DataFrame.
         
-        Args:
-            defect: Defect object (Vacancy, Interstitial, Substitution, Polaron or DefectComplex)
-            energy_diff (float): difference btw energy of defect structure and energy of pure structure
-            corrections (dict): Dict of corrections for defect formation energy. All values will be summed and
-                                added to the defect formation energy.     
-            data : (dict), optional
-                Store additional data in dict format.
-            label : (str), optional
-                Additional label to add to defect specie. Does not influence non equilibrium calculations.
+        Parameters
+        ----------
+        defect : (Defect) 
+            Defect object (Vacancy, Interstitial, Substitution, Polaron or DefectComplex)
+        energy_diff : (float)
+            Difference btw energy of defect structure and energy of pristine (bulk) structure in eV.
+        corrections : (dict)
+            Dictionary of corrections to apply to defect formation energy.
+            All values will be added to the defect formation energy. Keys indicate the correction type.     
+        data : (dict)
+            Store additional data in dict format.
+        label : (str)
+            Additional label to add to defect specie.
+        formation_energy:function : (function)
+            Custom function for calculation of defect formation energy.
+            Check documentation in `formation_energy` function for more details.
+        defect_concentration_function : (function)
+        formation_energy:function : (function)
+            Custom function for calculation of defect concentration.
+            Check documentation in `defect_concentration` function for more details.
         """
         self._defect = defect
         self._energy_diff = energy_diff
@@ -188,6 +201,18 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         self._formation_energy_function = None
 
     
+    def as_dict(self):
+        """
+        Returns:
+            Json-serializable dict representation of DefectEntry.
+        """
+        d = {}
+        d['defect'] = MontyEncoder().encode(self.defect)
+        d['energy_diff'] = self.energy_diff
+        d['corrections'] = jsanitize(self.corrections)
+        d['data'] = jsanitize(self.data)
+        d['label'] = self.label
+        return d
 
 
     @classmethod
@@ -202,7 +227,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         Returns:
             DefectEntry object
         """
-        defect = MontyDecoder().process_decoded(d['defect'])
+        defect = MontyDecoder().decode(d['defect'])
         energy_diff = d['energy_diff']
         corrections = d['corrections']
         data = d['data']
@@ -256,46 +281,6 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                                            charge=charge,multiplicity=multiplicity,data=data,
                                            label=label,**kwargs)
     
-
-    # @staticmethod
-    # def from_jobs(job_defect, job_bulk, corrections, defect_structure=None,
-    #               multiplicity=1,data=None,label=None,**kwargs):
-    #     """
-    #     Generate DefectEntry object from VaspJob objects.
-
-    #     Parameters
-    #     ----------
-    #     job_defect : (VaspJob)
-    #         Defect calculation.
-    #     job_bulk : (VaspJob)
-    #         Bulk calculation.
-    #     corrections : (dict)
-    #         Dict of corrections for defect formation energy. All values will be summed and
-    #         added to the defect formation energy.
-    #     defect_structure : (Structure)
-    #         Structure of the defect. If None the intial structure of job_defect is taken. The default is None. 
-    #     multiplicity : (int), optional
-    #         Multiplicity of defect within the supercell. 
-    #         If set to None is attempted to be determined automatically with Pymatgen. The default is 1.
-    #     data : (dict), optional
-    #         Store additional data in dict format.
-    #     label : (str), optional
-    #         Additional label to add to defect specie. Does not influence non equilibrium calculations.
-    #     kwargs : (dict)
-    #         Kwargs to pass to defect_finder. 'verbose' is set to True by default.
-
-    #     Returns
-    #     -------
-    #     DefectEntry
-    #     """ 
-    #     defect_structure = defect_structure if defect_structure else job_defect.initial_structure
-    #     bulk_structure = job_bulk.final_structure
-    #     energy_diff = job_defect.final_energy - job_bulk.final_energy
-    #     charge = job_defect.charge
-        
-    #     return DefectEntry.from_structures(defect_structure, bulk_structure, energy_diff, corrections,
-    #                                               charge,multiplicity,data,label,**kwargs)
-
 
     @staticmethod
     def from_structures(defect_structure,bulk_structure,energy_diff,corrections,charge=0,
@@ -442,14 +427,41 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                             eform_kwargs={},
                             **kwargs):
         """
-        Compute the defect concentration for a temperature and Fermi level.
-        Args:
-            temperature:
-                the temperature in K
-            fermi_level:
-                the fermi level in eV (with respect to the VBM)
+        Compute the defect concentration.
+        If `defect_concentration_function` is set, the custom function is called, 
+        otherwise, the concentration is computed in the dilute limit as:
+        n = N * (1 / e^(Ef/kT) + 1), where:
+            - N is the site multiplicity (in cm^-3 or per unit cell)
+            - Ef is the formation energy of the defect.
+            - k is the Boltzmann constant.
+            - T is the temperature.
+
+        A custom function can be set when initializing the `DefectEntry` or by using the
+        'set_defect_concentration_function` method. Use `reset_defect_concentration_function`
+        to restore the default behaviour.
+        If a custom function is given, the input must have the same args as this function,
+        with the possibility to add more kwargs. 
+
+        Parameters
+        ----------
+        vbm : (float)
+            Valence band maximum of bulk calculation in eV
+        chemical_potentials : (dict)
+            Chemical potentials of the elements involved in the defect.
+        temperature : (float)
+            Temperature in Kelvin.
+        fermi_level : (float)
+            Fermi level in eV (with respect to the VBM)
+        per_unit_volume : (bool)
+            Compute concentrations per unit volume using `self.defect.bulk_volume`.
+        eform_kwargs : (dict)
+            Kwargs to pass to `self.formation_energy`.
+        kwargs : (dict)
+            Kwargs to pass to custom function.
+                
         Returns:
-            defects concentration in cm^-3
+        --------
+            Defect concentration in cm^-3 or per unit cell.
         """
         if self.defect_concentration_function:
             return self.defect_concentration_function(self,
@@ -481,13 +493,44 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
                         temperature=0,
                         **kwargs):
         """
-        Compute the formation energy for a defect taking into account a given chemical potential and fermi_level
-        Args:
-            vbm(float): Valence band maximum of pure structure
-            chemical_potentials (dict): Dictionary of elemental chemical potential values.
-                Keys are Element objects within the defect structure's composition.
-                Values are float numbers equal to the atomic chemical potential for that element.
-            fermi_level (float):  Value corresponding to the electron chemical potential.
+        Compute the formation energy of the defect.
+        If `formation_energy_function` is set, the custom function is called, 
+        otherwise, the formation energy is computed as:
+
+        Ef = E_D - E_B + q(eVBM + fermi_level) + Ecorr - sum_i [(ni(D) - ni(B))* mu_i]
+
+        where:
+            - E_D is the energy of the defective cell
+            - E_B is the energy of the pristine (bulk) cell
+                Note: E_D - E_B is `self.energy_diff`
+            - eVBM is the valence band maximum energy
+            - fermi_level is the chemical potential of electrons
+            - Ecorr are correction terms
+            - ni are the number of particles in the defective and pristine cells
+            - mu_i are the chemical potentials of the elements.
+
+        A custom function can be set when initializing the `DefectEntry` or by using the
+        'set_formation_energy_function` method. Use `reset_formation_energy_function`
+        to restore the default behaviour.
+        If a custom function is given, the input must have the same args as this function,
+        with the possibility to add more kwargs. 
+
+        Parameters
+        ----------
+        vbm : (float)
+            Valence band maximum of bulk calculation in eV
+        chemical_potentials : (dict)
+            Chemical potentials of the elements involved in the defect.
+        fermi_level : (float)
+            Fermi level in eV (with respect to the VBM).
+        temperature : (float)
+            Temperature in Kelvin. If a custom function is not passed, this parameter has no effect.
+        kwargs : (dict)
+            Kwargs to pass to custom function.
+        
+        Returns
+        -------
+            Formation energy in eV.
             """
         if self._formation_energy_function:
             return self.formation_energy_function(self,

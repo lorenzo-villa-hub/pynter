@@ -1,7 +1,8 @@
 
 import numpy as np
 from scipy.optimize import bisect, root_scalar, minimize_scalar, minimize
-from monty.json import MontyDecoder, MSONable
+from monty.json import MontyDecoder, MSONable, MontyEncoder
+from abc import ABCMeta
 import pandas as pd
 import os
 import os.path as op
@@ -28,24 +29,20 @@ from .plotter import (
 from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 
-class DefectsAnalysis:
+class DefectsAnalysis(MSONable,metaclass=ABCMeta):
     
     def __init__(self, entries, vbm, band_gap, sort_entries=True):
         """ 
-        Class to compute defect properties starting from single calculations of defects.
-        Args:
-            entries: (list) 
-                A list of DefectEntry objects.
-            vbm: (float) 
-                Valence Band energy to use for all defect entries.
-                NOTE if using band shifting-type correction then this VBM
-                should still be that of the GGA calculation
-                (the bandedgeshifting_correction accounts for shift's
-                contribution to formation energy).
-            band_gap : (float)
-                Band gap to use for all defect entries.
-                NOTE if using band shifting-type correction then this gap
-                should still be that of the Hybrid calculation you are shifting to.
+        Class to compute collective properties starting from single calculations of point defects.
+
+        Parameters
+        ----------
+        entries: (list) 
+            A list of DefectEntry objects.
+        vbm: (float) 
+            Valence band maximum of the pristine material in eV.
+        band_gap : (float)
+            Band gap of the pristine material in eV
         """
         self.entries = self.sort_entries(inplace=False,entries=entries) if sort_entries else entries
         self.vbm = vbm
@@ -88,7 +85,7 @@ class DefectsAnalysis:
     @property
     def thermodata(self):
         """
-        Result of thermodynamics calculation (plot_brouwer_diagram or plot_doping_diagram functions).
+        Result of thermodynamics calculation (`plot_brouwer_diagram` or `plot_doping_diagram functions`).
         """    
         return self._thermodata
     
@@ -112,9 +109,7 @@ class DefectsAnalysis:
             Json-serializable dict representation of DefectsAnalysis
         """
         d = {
-        "@module": self.__class__.__module__,
-        "@class": self.__class__.__name__,
-        "entries": [entry.as_dict() for entry in self.entries],
+        "entries" : MontyEncoder().encode(self.entries),
         "vbm":self.vbm,
         "band_gap":self.band_gap
             }
@@ -127,13 +122,15 @@ class DefectsAnalysis:
         Reconstruct a DefectsAnalysis object from a dict representation created using
         as_dict().
 
-        Args:
+        Parameters
+        ----------
             d (dict): dict representation of DefectsAnalysis.
 
         Returns:
+        -------
             DefectsAnalysis object
         """
-        entries = [MontyDecoder().process_decoded(entry_dict) for entry_dict in d['entries']]        
+        entries = MontyDecoder().decode(d['entries'])        
         vbm = d['vbm']
         band_gap = d['band_gap']
         return cls(entries,vbm,band_gap)
@@ -142,7 +139,7 @@ class DefectsAnalysis:
     @staticmethod
     def from_dataframe(df,vbm, band_gap):
         """
-        Create DefectsAnalysis object from pandas DataFrame. If df has been 
+        Create DefectsAnalysis object from pandas DataFrame (df). If df has been 
         exported with include_structure=True, DefectEntry objects will be 
         imported including defect and bulk structures.
 
@@ -150,19 +147,22 @@ class DefectsAnalysis:
         ----------
         df : (DataFrame)
             pandas DataFrame. Needs to be in the following format:
+
             - rows are defect entries
-            - non-optional columns are 'name','charge','multiplicity','energy_diff','bulk_volume'.
+
+            - non-optional columns are:
                 - name : defect name in the format given by Defect objects. 
                 - charge : defect charge
                 - multiplicity : site multiplicity of the defect
                 - energy_diff : difference in energy btw defect and bulk structures
+
             - If the df was not exported from this class, you need to provide also:
-                - bulk_volume : Volume of the bulk cell (unit cell or supercell 
-                  relative to your multiplicity in A°3)
+                - bulk_volume : Volume of the bulk cell in A°3(unit cell or supercell 
+                                relative to your multiplicity)
         vbm : (float)
-            Valence band maximum of bulk structure in eV
+            Valence band maximum of bulk structure in eV.
         band_gap : (float)
-            Band gap of bulk structure in eV
+            Band gap of bulk structure in eV.
         
         Returns
         -------
@@ -202,20 +202,26 @@ class DefectsAnalysis:
     
 
     @staticmethod
-    def from_file(filename,vbm,band_gap,format=None): 
+    def from_file(filename,vbm,band_gap,format=None, **kwargs): 
         """
-        Create DefectsAnalysis object from file. Available formats are
-        'json','pkl','csv' and 'xlsx'. Check docs in from_dataframe function
-        for file formatting requirements.
+        Create DefectsAnalysis object from file.
+        Available formats are:
+            - 'json'
+            - 'pkl'
+            - 'csv'
+        Check docs in `from_dataframe` function for file formatting requirements.
         """
         if '.json' in filename or format == 'json':
             return DefectsAnalysis.from_json(filename)
         elif '.pkl' in filename or format == 'pkl':
-            df = pd.read_pickle(filename)
+            df = pd.read_pickle(filename, **kwargs)
         elif '.csv' in filename or format == 'csv':
-            df = pd.read_csv(filename)
-        elif '.xlsx' in filename or format == 'excel':
-            df = pd.read_excel(filename)
+            if kwargs:
+                if 'index_col' not in kwargs:
+                    kwargs['index_col'] = False
+            else:
+                kwargs['index_col'] = False
+            df = pd.read_csv(filename, **kwargs)
         else:
             raise ValueError('Invalid file format, available are "json","pkl","csv" and "excel"')
         return DefectsAnalysis.from_dataframe(df=df,vbm=vbm,band_gap=band_gap)
@@ -235,7 +241,6 @@ class DefectsAnalysis:
         Returns
         -------
         DefectsAnalysis object.
-
         """
         if op.isfile(path_or_string):
             with open(path_or_string) as file:
@@ -256,8 +261,8 @@ class DefectsAnalysis:
                             get_data=True,
                             band_gap=None,
                             vbm=None,
-                            function=None,
                             initial_structure=False,
+                            function=None,
                             computed_entry_kwargs={},
                             finder_kwargs={},
                             correction_kwargs={}):
@@ -270,8 +275,12 @@ class DefectsAnalysis:
             Path of VASP defects calculation.
         path_bulk : (str)
             Path of VASP bulk calculation. 
-        get_charge_correction : (bool)
-
+        get_charge_correction : (str or bool)
+            Compute charge corrections from VASP directories. 
+            To skip corrections set it to False.
+            Methods available are:
+                - "kumagai" : Extended FNV scheme (eFNV).
+                - "freysoldt" : FNV scheme.
         get_multiplicity : (bool)
 
         get_data : (True)
@@ -285,8 +294,12 @@ class DefectsAnalysis:
             defect_finder struggles to find the right defects.
         function : (func)
             Function to apply to each DefectEntry. Useful to automate custom entry modification.
-        kwargs : (dict)
-            Kwargs to pass to Vasprun.get_computed_entry.
+        computed_entry_kwargs : (dict)
+            Kwargs to pass to `Vasprun.get_computed_entry`.
+        finder_kwargs : (dict)
+            Kwargs to pass to `defect_finder`.
+        correction_kwargs : (dict)
+            Kwargs to pass to the charge correction methods.
 
         Returns
         -------
@@ -354,13 +367,22 @@ class DefectsAnalysis:
 
 
     def to_dataframe(self,
-            entries=None,
-            include_structures=False,
-            include_data=True,
-            properties=[],
-            functions={}):
+                    entries=None,
+                    include_structures=False,
+                    include_data=True,
+                    properties=[],
+                    functions={}):
         """
         Export DefectsAnalysis object as DataFrame. 
+        Default exported columns are:
+            - "name"
+            - "charge"
+            - "multiplicity"
+            - "energy_diff"
+            - "bulk_volume"
+        
+        Corrections dict (`entry.corrections`) are exported as separate columns
+        for each keys in this format "corr_{key}".
 
         Parameters
         ----------
@@ -421,20 +443,20 @@ class DefectsAnalysis:
         return df
     
 
-    def to_file(self,filename,format='pkl',export_kwargs={},**kwargs):
+    def to_file(self,filename,format=None,export_kwargs={},**kwargs):
         """
         Export DefectsAnalysis object to file. 
 
         Parameters
         ----------
         filename : (str)
-            Path of file.
+            Path of file. 
         format : (str)
+            If not specified the file extension in `filename` is used.
             Formats available:
             - "pkl" : pickle file. Allows to store structures (default).
             - "json" : DefectsAnalysis object as json file.
-            - "csv" : Does not allow to store structures.
-            - "excel: Does not allow to store structures.   
+            - "csv" : Does not allow to store structures. 
         export_kwargs : (dict)
             Kwargs to pass to file exporting function
         kwargs : (dict)
@@ -442,21 +464,24 @@ class DefectsAnalysis:
             'include_strctures' is to True if chosen format is 'pkl', 
             set to False if chosen format is 'csv' or 'excel'.
         """
-        if format == 'json':
+        if format == 'json' or '.json' in filename:
             self.to_json(path=filename) 
-        elif format == 'pkl':
+        elif format == 'pkl'  or '.pkl' in filename:
             if 'include_structures' not in kwargs.keys():
                 kwargs['include_structures'] = True
             df = self.to_dataframe(**kwargs)
             df.to_pickle(filename,**export_kwargs)
-        elif format in ['csv','excel']:
+        elif format == 'csv' or '.csv' in filename:
             if 'include_structures' not in kwargs.keys():
                 kwargs['include_structures'] = False
             df = self.to_dataframe(**kwargs)
-            if format == 'csv':
-                df.to_csv(filename,**export_kwargs)
-            elif format == 'excel':
-                df.to_excel(filename,**export_kwargs)
+            if export_kwargs:
+                if 'index' not in export_kwargs:
+                    export_kwargs['index'] = False
+            else:
+                export_kwargs = {'index': False}
+            df.to_csv(filename,**export_kwargs)
+
 
     def to_json(self,path='',**kwargs):
         """
@@ -487,11 +512,23 @@ class DefectsAnalysis:
 
     def binding_energy(self,name,fermi_level=0, temperature=0, **eform_kwargs):
         """
-        Args:
-            name (string): name of defect complex as assigned in defect entry object
-            fermi_level (float): Fermi level at which binding energy needs to be computed
+        Compute the binding energy for a defect complex as:
+        Eb = Ef(complex) - \sum_D Ef(D), where D are the individual defects.
+        
+        Parameters
+        ----------
+        name :(string)
+            Name of defect complex as assigned in defect entry object
+        fermi_level : (float)
+            Fermi level in eV.
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+
         Returns:
-            binding_energy (float)
+        --------
+            float : Binding energy in eV
         """
         stable_charges = self.stable_charges(
                                     chemical_potentials=None,
@@ -513,15 +550,38 @@ class DefectsAnalysis:
     def carrier_concentrations(self,bulk_dos,temperature=300,fermi_level=0.):
         """
         Get intrinsic carrier concentrations by integrating over the density of states
-        given a fixed Fermi level
-        Args:
-            bulk_dos: bulk system dos (pymatgen Dos object)
-            temperature: Temperature to equilibrate fermi energies for
-            fermi_level: (float) is fermi level relative to valence band maximum
-                Default efermi = 0 = VBM energy         
+        given a fixed Fermi level.
+
+        Parameters
+        ----------
+            dos : (dict or Dos)
+                Density of states to integrate. Can be provided as density of states D(E)
+                or using effective masses.
+                Format for effective masses:
+                    dict with following keys:
+                        - "m_eff_h" : holes effective mass in units of m_e (electron mass)
+                        - "m_eff_e" : electrons effective mass in units of m_h          
+                        - `band_gap` needs to be provided in args
+                Formats for explicit DOS:
+                    dictionary with following keys:
+                        - 'energies' : list or np.array with energy values
+                        - 'densitites' : list or np.array with total density values
+                        - 'structure' : pymatgen Structure of the material, 
+                                        needed for DOS volume and charge normalization.
+                    or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
+
+            fermi_level : (float)
+                The Fermi level relative to the VBM in eV.
+            temperature : (float)
+                The temperature in Kelvin.
+
         Returns:
-            h,n in absolute values
-        """
+        --------
+            h : (float)
+                Absolute value of hole concentration in 1/cm^3
+            n : (float)
+                Absolute value of electron concentration in 1/cm^3
+        """   
         return get_carrier_concentrations(
                                     dos=bulk_dos,
                                     fermi_level=fermi_level,
@@ -536,16 +596,24 @@ class DefectsAnalysis:
                                 get_integers=True,
                                 **eform_kwargs):
         """
-        Computes charge transition levels for all defect entries
-        Args:
-            energy_range (Tuple): Energy range to evaluate the charge transition levels in
-                                  default to (-0.5, Eg + 0.5)    
-            entries:
-                List of entries to calculate. If None all entries are considered.
-            get_integers : (bool)
-                Save charges as integers. More convenient for plotting.
+        Computes charge transition levels for all defect entries.
+        
+        Parameters
+        ----------
+        energy_range : (list or tuple)
+            Energy range in eV to evaluate the charge transition levels, default to (-0.5, band_gap + 0.5).   
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        entries : (list)
+            List of entries to calculate. If None all entries are considered.
+        get_integers : (bool)
+            Save charges as integers. More convenient for plotting.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+        
         Returns:
-            Dictionary with defect name and list of tuples for charge transition levels:
+        --------
+        Dictionary with defect name and list of tuples for charge transition levels in eV:
                 {name:[(q1,q2,ctl),(q2,q3,ctl),...}
         """                
         entries = entries if entries else self.entries
@@ -597,7 +665,30 @@ class DefectsAnalysis:
                             eform_kwargs={},
                             **kwargs):
         """
-        Give list of all concentrations at specified efermi.
+        Compute concentrations of all defects.
+
+        For each entry, is possible to set a custom function to compute the defect 
+        concentration using `set_defect_concentration_function`. If that is set,
+        the new function is used instead of the default. 
+        The function args must be the following:
+            vbm : (float)
+                Valence band maximum of bulk calculation in eV
+            chemical_potentials : (dict)
+                Chemical potentials of the elements involved in the defect.
+            temperature : (float)
+                Temperature in Kelvin.
+            fermi_level : (float)
+                Fermi level in eV (with respect to the VBM)
+            per_unit_volume : (bool)
+                Compute concentrations per unit volume using `self.defect.bulk_volume`.
+            eform_kwargs : (dict)
+                Kwargs to pass to `self.formation_energy`.
+            kwargs : (dict)
+                Additional custom kwargs.
+        It is possible to set custom functions collectively using the 
+        `set_defect_concentration_functions` method in this class.
+        To reset functions to default, use `reset_defect_concentration_functions`.
+
         If fixed_concentrations is provided the concentration of defect entries are 
         corrected according to the fixed provided values. More details can be found in 
         https://doi.org/10.1103/PhysRevB.106.134101 .
@@ -607,20 +698,24 @@ class DefectsAnalysis:
         chemical_potentials: (dict)
             Dictionary of chemical potentials ({element: chempot})   
         temperature: (float) 
-            Temperature to produce concentrations at.
+            Temperature in K.
         fermi_level: (float) 
-            Fermi level relative to valence band maximum. The default is 0. 
+            Fermi level in eV relative to valence band maximum.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys can be simple element strings
             (or vacancies of elements in the format 'Vac_{el}') if that element needs to be 
             fixed across all defect species, alternatively defect entry names can be used as well 
             to target specific defect entries. The values are the concentrations.
         per_unit_volume: (bool)
-            Get concentrations in cm^-3. If False they are per unit cell. The default is True.
-        
+            Get concentrations in cm^-3. If False they are per unit cell.
+        eform_kwargs : (dict)
+                Kwargs to pass to `self.formation_energy`.
+        kwargs : (dict)
+            Additional custom kwargs to pass to `entry.defect_concentration`.
+
         Returns:
         --------
-            list of dictionaries of defect concentrations
+        DefectConcentrations object, behaves like a list.
         """
         concentrations = []
         if fixed_concentrations:
@@ -694,8 +789,16 @@ class DefectsAnalysis:
         return corr
 
     
-    def filter_entries(self,inplace=False,entries=None,mode='and',exclude=False,types=None,
-                       elements=None,names=None,function=None,**kwargs):
+    def filter_entries(self,
+                       inplace=False,
+                       entries=None,
+                       mode='and',
+                       exclude=False,
+                       types=None,
+                       elements=None,
+                       names=None,
+                       function=None,
+                       **kwargs):
         """
         Filter entries based on different criteria. Return another DefectsAnalysis object.
 
@@ -745,18 +848,45 @@ class DefectsAnalysis:
                            entries=None,
                            **eform_kwargs):
         """
-        Creating a dictionary with names of single defect entry as keys and
-        a list of tuples (charge,formation_energy) as values
-        Every defect name identifies a type of defect
-        Args:
-            chemical_potentials:
-                a dictionnary of {Element:value} giving the chemical
-                potential of each element
-            fermi_level:
-                Value of fermi level to use for calculating formation energies
-            entries:
-                List of entries to calculate. If None all entries are considered.
-        Returns:
+        Compute formation energies for all defect entries.
+        Returns a dictionary with names of defect entries as keys and 
+        a list of tuples (charge,formation_energy) as values.    
+
+        For each entry, is possible to set a custom function to compute the formation 
+        energy using `set_formation_energy_function`. If that is set,
+        the new function is used instead of the default. 
+        The function args must be the following:
+            vbm : (float)
+                Valence band maximum of bulk calculation in eV
+            chemical_potentials : (dict)
+                Chemical potentials of the elements involved in the defect.
+            fermi_level : (float)
+                Fermi level in eV (with respect to the VBM).
+            temperature : (float)
+                Temperature in Kelvin.
+            kwargs : (dict)
+                Additional custom kwargs.
+        It is possible to set custom functions collectively using the 
+        `set_formation_energy_functions` method in this class.
+        To reset functions to default, use `reset_formation_energy_functions`.
+
+        
+        Parameters
+        ----------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({element: chempot})   
+        fermi_level: (float) 
+            Fermi level in eV relative to valence band maximum.
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        entries : (list)
+            List of defect entries to calculate. If None all entries are considered.
+        eform_kwargs : (dict)
+            Additional custom kwargs to pass to `entry.formation_energy`
+
+        Returns
+        -------
+        Dictionary in the format:
             {name: [(charge,formation energy)] }
         """
         formation_energies = {}
@@ -782,13 +912,24 @@ class DefectsAnalysis:
            
     def get_charge_transition_level(self,name,q1,q2,temperature=0,**eform_kwargs):
         """
-        Args:
-            chemical_potentials: 
-                a dictionnary of {element:champot} giving the chemical
-                potential of each element
-            name: (str) Name of the defect system to get the charge transition levels for
-            q1, q2 (int) : Charges for whcih you want to evaluate the transition levels
-        Returns: Charge transition level (float)
+        Compute charge transition level.
+
+        Parameters
+        ----------
+        name : (str)
+            Defect name in the format given by the Defect object.
+        q1 : (int or float)
+            Charge state (in units of electron charge).
+        q2 : (int or float)
+            Charge state (in units of electron charge).
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy
+
+        Returns
+        -------
+        Charge transition level (float)
         """
         chemical_potentials = None
         formation_energies = self.formation_energies(
@@ -838,8 +979,11 @@ class DefectsAnalysis:
                             dconc_kwargs={},
                             **kwargs):
         """
-        Plot Brouwer diagram (defect concentrations vs oxygen partial pressure). Wrapper function for DefectThermodynamics
-        and ThermodynamicsPlotter, if you need more control use the classes individually. 
+        Plot Brouwer diagram (defect concentrations vs oxygen partial pressure). Wrapper function for 
+        `pynter.defects.thermodynamics.DefectThermodynamics` and `pynter.defects.plotter`.
+        If you need more control use the classes individually. 
+
+        The results of the calculation are stored in the `thermodata` property.
 
         For the chemical potentials, you must provide either:
             -   reservoirs: Dictionary with oxygen partial pressures as keys and dictionary with chemical potential
@@ -850,22 +994,29 @@ class DefectsAnalysis:
         Parameters
         ----------
         bulk_dos : (dict or Dos)
-            Density of states to integrate. 
-            Can either be a dictionary with following keys:
-                - 'energies' : list or np.array with energy values
-                - 'densitites' : list or np.array with total density values
-                - 'structure' : pymatgen Structure of the material, needed for DOS volume normalization.
-            or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
+            Density of states to integrate. Can be provided as density of states D(E)
+            or using effective masses.
+            Format for effective masses:
+                dict with following keys:
+                    - "m_eff_h" : holes effective mass in units of m_e (electron mass)
+                    - "m_eff_e" : electrons effective mass in units of m_h          
+                    - `band_gap` needs to be provided in args
+            Formats for explicit DOS:
+                dictionary with following keys:
+                    - 'energies' : list or np.array with energy values
+                    - 'densitites' : list or np.array with total density values
+                    - 'structure' : pymatgen Structure of the material, 
+                                    needed for DOS volume and charge normalization.
+                or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         temperature: (float)
             Temperature in K.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names, values are the concentrations. (ex {'Vac_Na':1e20}). 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
-            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
-            or a list of SingleDefConc objects. 
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} or a list of SingleDefConc objects. 
         reservoirs: (dict or PressureReservoirs)
-            Dictionary with pO2 as keys and chemical potential dictionaly as values ({pO2:{'element':mu_element}})
+            Dictionary with pO2 (float) as keys and chemical potential dictionaly as values ({pO2:{'element':mu_element}})
         precursors: (dict)
             Dictionary with formulas (str) as keys and total energies as values. Chemical potentials are found from the energies of the 
             precursors and the oxygen chempot value (uses the np.linalg.lstsq function). 
@@ -873,12 +1024,17 @@ class DefectsAnalysis:
         oxygen_ref : (float)
             Absolute chempot of oxygen at 0K.
         pressure_range : (tuple)
-            Range in which to evaluate the partial pressure. The default is from 1e-20 to 1e10.
+            Range in which to evaluate the partial pressure.
         npoints : (int)
-            Number of data points to interpolate the partial pressure with. The default is 50.
-        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+            Number of data points to interpolate the partial pressure with.
+        xtol : (float)
+            Tolerance for bisect (scipy) to solve charge neutrality.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+        dconc_kwargs : (dict)
+            Kwargs to pass to `entry.defect_concentration`.
         kwargs: (dict)
-            Kwargs to pass to plot_pO2_vs_concentrations function.
+            Kwargs to pass to `plot_pO2_vs_concentrations`.
         """
         from .thermodynamics import DefectThermodynamics
         
@@ -929,8 +1085,8 @@ class DefectsAnalysis:
                             temperature,
                             fixed_concentrations=None,
                             external_defects=[],
-                            xtol=1e-10,
                             npoints=50,
+                            xtol=1e-10,
                             eform_kwargs={},
                             dconc_kwargs={},
                             **kwargs):
@@ -944,10 +1100,23 @@ class DefectsAnalysis:
             Name or element of the variable defect species.
         concentration_range : (tuple or list)
             Logaritmic range of the concentration of the variable species in cm^-3 (ex. [1,20]).
-        chemical_potentials : (Chempots)
-            Chempots object containing chemical potentials.
-        bulk_dos: (Dos)
-            Density of state of bulk material (Pymatgen Dos object).
+        chemical_potentials : (dict)
+            Dictionary containing chemical potentials ({element:chempot}).
+        bulk_dos: (dict or Dos)
+            Density of states to integrate. Can be provided as density of states D(E)
+            or using effective masses.
+            Format for effective masses:
+                dict with following keys:
+                    - "m_eff_h" : holes effective mass in units of m_e (electron mass)
+                    - "m_eff_e" : electrons effective mass in units of m_h          
+                    - `band_gap` needs to be provided in args
+            Formats for explicit DOS:
+                dictionary with following keys:
+                    - 'energies' : list or np.array with energy values
+                    - 'densitites' : list or np.array with total density values
+                    - 'structure' : pymatgen Structure of the material, 
+                                    needed for DOS volume and charge normalization.
+                or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         temperature: (float)
             Temperature in K.
         fixed_concentrations: (dict)
@@ -955,11 +1124,17 @@ class DefectsAnalysis:
             format, values are the concentrations. (ex {'Vac_Na':1e20}) 
         external_defects : (list)
             List of external defect concentrations (not present in defect entries).
-            Must either be a list of dictionaries with {'charge': float, 'conc': float} 
-            or a list of SingleDefConc objects. 
-        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+            Must either be a list of dictionaries with {'charge': float, 'conc': float} or a list of SingleDefConc objects. 
+        xtol : (float)
+            Tolerance for bisect (scipy) to solve charge neutrality.
         npoints : (int), optional
-            Number of points to divide concentration range. The default is 50.
+            Number of points to divide concentration range.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+        dconc_kwargs : (dict)
+            Kwargs to pass to `entry.defect_concentration`.
+        kwargs: (dict)
+            Kwargs to pass to `plot_variable_species_vs_concentrations`.
         """
         from .thermodynamics import DefectThermodynamics
         
@@ -1004,31 +1179,34 @@ class DefectsAnalysis:
         """
         Produce defect Formation energy vs Fermi energy plot.
 
-        -----------
-        Parameters:
-
-            chemical_potentials : (dict)
-                Dictionary with chemical potentials of the elements {'element':chempot}
-            entries : (list) 
-                List of entries to calculate. If None all entries are considered.
-            xlim : (tuple)
-                Tuple (min,max) giving the range of the x (fermi energy) axis.
-            ylim : (tuple)
-                Tuple (min,max) giving the range for the formation energy axis.
-            title : (str)
-                Title of the figure.
-            fermi_level : (float)
-                Plot Fermi energy position with a vertical line.
-            grid : (bool)
-                Show grid.
-            figsize : (float or tuple)
-                Can be float or tuple for different x and y sizes multiplier to change the figure size.
-            fontsize : (float)
-                Multiplier to change font size.
-            show_legend  : (Bool)
-                Show legend.
-            format_legend : (bool)
-                Get latex-like legend based on the name of defect entries.
+        Parameters
+        -----------        
+        chemical_potentials : (dict)
+            Dictionary with chemical potentials of the elements {'element':chempot}
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        entries : (list) 
+            List of entries to calculate. If None all entries are considered.
+        xlim : (tuple)
+            Tuple (min,max) giving the range of the x (fermi energy) axis.
+        ylim : (tuple)
+            Tuple (min,max) giving the range for the formation energy axis.
+        title : (str)
+            Title of the figure.
+        fermi_level : (float)
+            Plot Fermi energy position with a vertical line.
+        grid : (bool)
+            Show grid.
+        figsize : (float or tuple)
+            Can be float or tuple for different x and y sizes multiplier to change the figure size.
+        fontsize : (float)
+            Multiplier to change font size.
+        show_legend  : (Bool)
+            Show legend.
+        format_legend : (bool)
+            Get latex-like legend based on the name of defect entries.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
                 
         --------
         Returns:
@@ -1087,19 +1265,26 @@ class DefectsAnalysis:
                             **eform_kwargs):
         """
         Plot binding energies for complex of defects as a function of the fermi level
-        Args:
-            names: 
-                List of strings with names of DefectEntry. If None all DefectEntry
-                objects are plotted.
-            xlim:
-                Tuple (min,max) giving the range of the x (fermi energy) axis
-            ylim:
-                Tuple (min,max) giving the range for the formation energy axis
-            size:
-                Float multiplier to change plot size
-            format_legend:
-                Bool for getting latex-like legend based on the name of defect entries
-        Returns:
+
+        Parameters
+        ----------
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        names : (list)
+            List of strings with names of DefectEntry. If None, all defect complexes are plotted.
+        xlim : (tuple)
+            Tuple (min,max) giving the range of the x (fermi energy) axis
+        ylim : (tuple)
+            Tuple (min,max) giving the range for the formation energy axis
+        figsize : (tuple)
+            Figure size.
+        fontsize : (float)
+            Font size.
+        format_legend : (bool)
+            Bool for getting latex-like legend based on the name of defect entries.
+
+        Returns
+        -------
             matplotlib object
         """        
         return plot_binding_energies(entries=self.entries,
@@ -1126,15 +1311,29 @@ class DefectsAnalysis:
                 get_integers=True,
                 **eform_kwargs):
         """
-        Plotter for the charge transition levels
-        Args:
-            entries: List of entries to calculate. If None all entries are considered.
-            ylim (Tuple): y-axis limits.
-            fermi_level (float) : float to plot Fermi energy position.
-            size (float) : Float multiplier for plot size.
-            format_legend (bool): Bool for getting latex-like legend based on the name of defect entries .
-            get_integers (bool): Get CTLs as integers.
-        Returns:
+        Plotter for the charge transition levels.
+
+        Parameters
+        ----------
+        entries : (list)
+            List of entries to calculate. If None all entries are considered.
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        ylim : (tuple)
+            y-axis limits.
+        figsize : (tuple)
+            Figure size.
+        fontsize : (float)
+            Font size.
+        fermi_level : (float)
+            Plot Fermi energy position.
+        format_legend : (bool)
+            Bool for getting latex-like legend based on the name of defect entries.
+        get_integers : (bool)
+            Get charge transition levels as integers.
+
+        Returns
+        -------
             matplotlib object    
         """        
         entries = entries or self.entries
@@ -1303,7 +1502,7 @@ class DefectsAnalysis:
                                     needed for DOS volume and charge normalization.
                 or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         temperature : (float)
-            Temperature to equilibrate the system to. The default is 300 K.
+            Temperature in Kelvin.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names in the standard
             format, values are the concentrations (ex {'Vac_A':1e20}) . For more info, 
@@ -1312,12 +1511,17 @@ class DefectsAnalysis:
             List of external defect concentrations (not present in defect entries).
             Must either be a list of dictionaries with {'name': str, 'charge': float, 'conc': float} 
             or a list of SingleDefConc objects. 
-        xtol: Tolerance for bisect (scipy) to solve charge neutrality. The default is 1e-05.
+        xtol : (float)
+            Tolerance for bisect (scipy) to solve charge neutrality.
+        eform_kwargs : (dict)
+            Kwargs to pass to `entry.formation_energy`.
+        dconc_kwargs : (dict)
+            Kwargs to pass to `entry.defect_concentration`.
 
         Returns
         -------
         (float)
-            Fermi level dictated by charge neutrality.
+            Fermi level satisfying charge neutrality.
         """
                 
         def _get_total_q(ef):
@@ -1382,17 +1586,41 @@ class DefectsAnalysis:
         Creating a dictionary with names of single defect entry as keys and
         as value a tuple (charge,formation_energy) that gives the most stable 
         charge state at the inserted fermi level.
-        Every defect name identifies a type of defect
-        Args:
-            chemical_potentials:
-                a dictionnary of {Element:value} giving the chemical
-                potential of each element
-            fermi_level:
-                Value of fermi level to use for calculating formation energies 
-            entries:
-                List of entries to calculate. If None all entries are considered.
+
+        For each entry, is possible to set a custom function to compute the formation 
+        energy using `set_formation_energy_function`. If that is set,
+        the new function is used instead of the default. 
+        The function args must be the following:
+            vbm : (float)
+                Valence band maximum of bulk calculation in eV
+            chemical_potentials : (dict)
+                Chemical potentials of the elements involved in the defect.
+            fermi_level : (float)
+                Fermi level in eV (with respect to the VBM).
+            temperature : (float)
+                Temperature in Kelvin.
+            kwargs : (dict)
+                Additional custom kwargs.
+        It is possible to set custom functions collectively using the 
+        `set_formation_energy_functions` method in this class.
+        To reset functions to default, use `reset_formation_energy_functions`.
+
+        
+        Parameters
+        ----------
+        chemical_potentials: (dict)
+            Dictionary of chemical potentials ({element: chempot})   
+        fermi_level: (float) 
+            Fermi level in eV relative to valence band maximum.
+        temperature : (float)
+            Temperature in K. If no custom formation energy is provided, this arg has no effect.
+        entries : (list)
+            List of defect entries to calculate. If None all entries are considered.
+        eform_kwargs : (dict)
+            Additional custom kwargs to pass to `entry.formation_energy`
+
         Returns:
-            {name:(stable charge, formation energy)}
+            dict in the format {name:(stable charge, formation energy)}
        """
         formation_energies = self.formation_energies(
                                         chemical_potentials=chemical_potentials,
@@ -1415,7 +1643,12 @@ class DefectsAnalysis:
         return stable_charges
         
 
-    def table(self,entries=None,pretty=False,include_bulk=False,display=[]):
+    def table(
+            self,
+            entries=None,
+            pretty=False,
+            include_bulk=False,
+            display=[]):
         """
         Get DataFrame to display entries. 
 
@@ -1441,21 +1674,27 @@ class DefectsAnalysis:
         index = []
         table = []
         for e in entries:
-            symbol = e.symbol
-            if pretty:
-                index.append(symbol)
-            else:
-                index.append(e.name)
             d = {}
+            if pretty:
+                d['defect'] = e.symbol
+            else:
+                d['name'] = e.name
             if include_bulk:
-                d['bulk composition'] = e.bulk_structure.composition.formula
-                d['bulk space group'] = e.bulk_structure.get_space_group_info()
+                if e.bulk_structure:
+                    d['bulk composition'] = e.bulk_structure.composition.formula
+                    d['bulk space group'] = e.bulk_structure.get_space_group_info()
+                d['bulk_volume'] = e.defect.bulk_volume
             if not pretty:
-                d['symbol'] = symbol    
+                d['symbol'] = e.symbol    
                 d['delta atoms'] = e.delta_atoms
             d['charge'] = e.charge
             d['multiplicity'] = e.multiplicity
-            d['corrections'] = e.corrections
+            if pretty:
+                if e.corrections:
+                    for key,value in e.corrections.items():
+                        d[f'{key} correction'] = value
+            else:
+                d['corrections'] = e.corrections
             if display:
                 for feature in display:
                     if isinstance(feature,list):
@@ -1466,11 +1705,7 @@ class DefectsAnalysis:
                         key = feature
                     d[key] = get_object_feature(e,feature)
             table.append(d)
-        df = pd.DataFrame(table,index=index)
-        if pretty:
-            df.index.name = 'symbol'
-        else:
-            df.index.name = 'name'
+        df = pd.DataFrame(table)
         return df
     
 
@@ -1669,7 +1904,7 @@ class DefectConcentrations:
         """
         Get concentrations of only stable charge states. List of SingleDefConc objects.
         """
-        return self._stable    
+        return DefectConcentrations(self._stable)    
 
     @property
     def total(self):
