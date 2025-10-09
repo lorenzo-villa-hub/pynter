@@ -879,7 +879,7 @@ def plot_x_vs_fermi_level(
         Initialize a new matplotlib figure.
     label : (str)
         Label for the data.
-    size : (tuple)
+    figsize : (tuple)
         Size of the matplotlib figure.
     xlim : (tuple)
         Range of x-axis. 
@@ -894,7 +894,7 @@ def plot_x_vs_fermi_level(
         Matplotlib object.
     """
     ylim = ylim if ylim else (-0.5, band_gap+0.5)
-    matplotlib.rcParams.update({'font.size': 22})
+    matplotlib.rcParams.update({'font.size': 20})
     if new_figure:
         plt.figure(figsize=figsize)
     if isinstance(fermi_levels,dict):
@@ -918,7 +918,8 @@ def plot_x_vs_fermi_level(
 
     plt.xlabel(xlabel)
     plt.ylabel('Electron chemical potential (eV)')
-    plt.legend()
+    if type(fermi_levels) == dict:
+        plt.legend()
     if new_figure:
         plt.grid()
     

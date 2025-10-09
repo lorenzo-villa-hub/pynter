@@ -1810,6 +1810,9 @@ class DefectConcentrations:
         concentrations : (list)
             List of SingleDefConc objects.
         """
+        for c in concentrations:
+            if type(c) == dict:
+                c = SingleDefConc(c)
         self.concentrations = concentrations
         self._compute_totals()
 
@@ -1835,6 +1838,8 @@ class DefectConcentrations:
         return 
 
     def append(self, item):
+        if type(item) == dict:
+            item = SingleDefConc.from_dict(item)
         self.concentrations.append(item)
         self._compute_totals()
 

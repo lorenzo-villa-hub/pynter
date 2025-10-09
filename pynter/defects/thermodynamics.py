@@ -364,7 +364,7 @@ class DefectThermodynamics:
                                                             eform_kwargs=eform_kwargs,
                                                             **dconc_kwargs)
         if ext_df:
-            for df in ext_df:
+            for df in ext_df:         
                 defect_concentrations.append(df)
         
         thermodata = {'carrier_concentrations':carrier_concentrations,
