@@ -967,6 +967,9 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
     def plot_brouwer_diagram(self,
                             bulk_dos,
                             temperature,
+                            quench_temperature=None,
+                            quenched_species=None,
+                            quench_elements=False,
                             fixed_concentrations=None,
                             external_defects=[],
                             reservoirs = None,
@@ -982,6 +985,14 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
         Plot Brouwer diagram (defect concentrations vs oxygen partial pressure). Wrapper function for 
         `pynter.defects.thermodynamics.DefectThermodynamics` and `pynter.defects.plotter`.
         If you need more control use the classes individually. 
+
+        If `quenched_temperature` is set, defect concentrations are computed at the initial `temperature`, 
+        and defect quilibrium in solved at `quenched_temperature`. For the same defect species, the charge
+        state follow the temperature and Fermi level dependency at `quench_temperature`, the total
+        concentration is kept fix at the initial `temperature`.
+        If additional `fixed_concentrations` are provided, the concentration of defect entries are 
+        corrected according to the fixed provided values. 
+        More details can be found in https://doi.org/10.1103/PhysRevB.106.134101 .
 
         The results of the calculation are stored in the `thermodata` property.
 
@@ -1010,6 +1021,14 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                 or a pymatgen Dos object (Dos, CompleteDos or FermiDos).
         temperature: (float)
             Temperature in K.
+        quench_temperature : (float)
+            Value of quenching temperature in K.
+        quenched_species : (list), optional
+            List of defect species to quench. If None all defect species are quenched.The default is None.
+        quench_elements : (bool)
+            If True the total concentrations of elements at high temperature go in the charge neutrality at low temperature.
+            If False the quenched concentrations are the ones of single defect species (e.g. elements are not allowed
+            to equilibrate on different sites). The default is False.
         fixed_concentrations: (dict)
             Dictionary with fixed concentrations. Keys are defect entry names, values are the concentrations. (ex {'Vac_Na':1e20}). 
         external_defects : (list)
@@ -1046,19 +1065,21 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                 raise ValueError('You need to provide the oxygen chempot reference when using precursors')
 
             if self.elements == ['O']:
-                reservoirs = get_oxygen_pressure_reservoirs(oxygen_ref=oxygen_ref,
+                reservoirs = get_oxygen_pressure_reservoirs(
+                                                            oxygen_ref=oxygen_ref,
                                                             temperature=temperature,
                                                             pressure_range=pressure_range,
                                                             npoints=npoints)
             else:
-                reservoirs = get_pressure_reservoirs_from_precursors(precursors=precursors,
-                                                                 oxygen_ref=oxygen_ref,
-                                                                 temperature=temperature,
-                                                                 pressure_range=pressure_range,
-                                                                 npoints=npoints)
+                reservoirs = get_pressure_reservoirs_from_precursors(
+                                                                    precursors=precursors,
+                                                                    oxygen_ref=oxygen_ref,
+                                                                    temperature=temperature,
+                                                                    pressure_range=pressure_range,
+                                                                    npoints=npoints)
                 
-            
-        defects_analysis =  DefectThermodynamics(defects_analysis=self,
+        defects_analysis =  DefectThermodynamics(
+                                                defects_analysis=self,
                                                 bulk_dos=bulk_dos,
                                                 fixed_concentrations=fixed_concentrations,
                                                 external_defects=external_defects,
@@ -1066,9 +1087,20 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                                                 eform_kwargs=eform_kwargs,
                                                 dconc_kwargs=dconc_kwargs)
         
-        thermodata = defects_analysis.get_pO2_thermodata(reservoirs=reservoirs,
-                                                        temperature=temperature,
-                                                        name='BrowerDiagram')
+        if quench_temperature:
+            thermodata = defects_analysis.get_pO2_quenched_thermodata(
+                                                                    reservoirs=reservoirs,
+                                                                    initial_temperature=temperature,
+                                                                    final_temperature=quench_temperature,
+                                                                    quenched_species=quenched_species,
+                                                                    quench_elements=quench_elements,
+                                                                    name='QuenchedBrowerDiagram')
+        else:
+            thermodata = defects_analysis.get_pO2_thermodata(
+                                                            reservoirs=reservoirs,
+                                                            temperature=temperature,
+                                                            name='BrowerDiagram')
+            
         self._thermodata = thermodata
         if 'xlim' not in kwargs.keys():
             kwargs['xlim'] = pressure_range
@@ -1083,6 +1115,9 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                             chemical_potentials,
                             bulk_dos,
                             temperature,
+                            quench_temperature=None,
+                            quenched_species=None,
+                            quench_elements=False,
                             fixed_concentrations=None,
                             external_defects=[],
                             npoints=50,
@@ -1147,13 +1182,25 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                                                 eform_kwargs=eform_kwargs,
                                                 dconc_kwargs=dconc_kwargs)
         
+        if quench_temperature:
+            thermodata = defects_analysis.get_variable_species_quenched_thermodata(
+                                                        variable_defect_specie=variable_defect_specie,
+                                                        concentration_range=concentration_range,
+                                                        chemical_potentials=chemical_potentials,
+                                                        initial_temperature=temperature,
+                                                        final_temperature=quench_temperature,
+                                                        quenched_species=quenched_species,
+                                                        quench_elements=quench_elements,
+                                                        npoints=npoints,
+                                                        name='QuenchedDopingDiagram')  
+                
         thermodata = defects_analysis.get_variable_species_thermodata(
-                                                  variable_defect_specie=variable_defect_specie,
-                                                  concentration_range=concentration_range,
-                                                  chemical_potentials=chemical_potentials,
-                                                  temperature=temperature,
-                                                  npoints=npoints,
-                                                  name='DopingDiagram')  
+                                                        variable_defect_specie=variable_defect_specie,
+                                                        concentration_range=concentration_range,
+                                                        chemical_potentials=chemical_potentials,
+                                                        temperature=temperature,
+                                                        npoints=npoints,
+                                                        name='DopingDiagram')  
         self._thermodata = thermodata
         if 'xlim' not in kwargs.keys():
             kwargs['xlim'] = concentration_range

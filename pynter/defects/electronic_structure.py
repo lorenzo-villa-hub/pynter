@@ -68,12 +68,14 @@ def get_carrier_concentrations(dos, fermi_level, temperature, band_gap=None):
             m_eff_h = dos['m_eff_h'] * m_e
             m_eff_e = dos['m_eff_e'] * m_e
             T = temperature
+
+            E = fermi_level  # fermi_level referenced to VBM
+            occupation_h = maxwell_boltzmann(E=E, T=T)
+            h = get_dos_from_effective_mass(m_eff_h,T=T) * occupation_h
             
-            exponent_h = np.exp(-(fermi_level)/(kb*T))  # fermi_level referenced to VBM
-            h = get_dos_from_effective_mass(m_eff_h,T=T) * exponent_h
-            
-            exponent_e = np.exp(-(band_gap - fermi_level)/(kb*T))
-            n = get_dos_from_effective_mass(m_eff_e,T=T) * exponent_e
+            E = band_gap - fermi_level  # fermi_level referenced to VBM
+            occupation_e = maxwell_boltzmann(E=E, T=T) 
+            n = get_dos_from_effective_mass(m_eff_e,T=T) * occupation_e
             return abs(h), abs(n)
 
     elif type(dos) in  (Dos,FermiDos,CompleteDos):
@@ -112,20 +114,50 @@ def solve_intrinsic_fermi_level(dos,temperature,band_gap,xtol=1e-05):
 
 
 def f0(E, fermi, T):
-    """Fermi-Dirac distribution function.
+    """
+    Fermi-Dirac distribution function.
 
-    Args:
-        E (float): Energy in eV.
-        fermi (float): The Fermi level in eV.
-        T (float): The temperature in kelvin.
+    Parameters
+    ----------
+    E : (float)
+        Energy in eV.
+    fermi : (float)
+        The Fermi level in eV.
+    T : (float)
+        The temperature in kelvin.
 
-    Returns:
+    Returns
+    -------
         float: The Fermi-Dirac occupation probability at energy E.
     """
-    from scipy.constants import value as _constant
     from scipy.special import expit
     exponent = (E - fermi) / (kb * T)
     return expit(-exponent) 
+
+def maxwell_boltzmann(E, T, clip=True):
+    """
+    Maxwell-Boltzmann distribution function.
+    Can be clipped to prevent divergence
+
+    Parameters
+    ----------
+    E : (float)
+        Energy in eV.
+    fermi : (float)
+        The Fermi level in eV.
+    T : (float)
+        The temperature in kelvin.
+    clip : (bool)
+        Clip exponential factor to 700, returns 1e304.
+
+    Returns
+    -------
+        float: The Maxwell-Boltzmann occupation probability at energy E.
+    """
+    factor = -E / (kb*T)
+    if clip:
+        factor = np.clip(factor,None,700)
+    return np.exp(factor)
 
 
 def get_dos_from_effective_mass(m_eff, T):
