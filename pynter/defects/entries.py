@@ -419,8 +419,8 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
         
 
     def defect_concentration(self,
-                            vbm,
-                            chemical_potentials,
+                            vbm=0,
+                            chemical_potentials=None,
                             temperature=300,
                             fermi_level=0.0, 
                             per_unit_volume=True,
@@ -487,7 +487,7 @@ class DefectEntry(MSONable,metaclass=ABCMeta):
 
 
     def formation_energy(self,
-                        vbm=None,
+                        vbm=0,
                         chemical_potentials=None,
                         fermi_level=0,
                         temperature=0,

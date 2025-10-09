@@ -14,8 +14,8 @@ from pymatgen.core.sites import PeriodicSite
 import importlib
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords, remove_oxidation_state_from_site
-# Adapted from pymatgen.analysis.defect.core 
+from pynter.tools.structure import is_site_in_structure, is_site_in_structure_coords
+
 
 
 class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_dict methods
@@ -271,10 +271,14 @@ class Defect(MSONable,metaclass=ABCMeta): #MSONable contains as_dict and from_di
         self._label = new_label
         return
 
-    def set_multiplicity(self, new_multiplicity=1):
+    def set_multiplicity(self, new_multiplicity=None):
         """
-        Sets the charge of the defect.
+        Sets the Multiplicity of the defect.
+        If `new_multiplicity` is not provided it is determined 
+        with `self.get_multiplicity`
         """
+        if new_multiplicity is None:
+            new_multiplicity = self.get_multiplicity()
         self._multiplicity = new_multiplicity
         return
         
@@ -559,7 +563,7 @@ class Interstitial(Defect):
         
 
     def get_multiplicity(self):
-        raise NotImplementedError('Not implemented for Interstitial')
+        raise NotImplementedError('Multiplicity calculation not implemented for Interstitial')
 
     @property
     def name(self):
@@ -720,14 +724,9 @@ class DefectComplex(MSONable,metaclass=ABCMeta):
     
     @staticmethod
     def from_string(string, **kwargs):
-        # exclude DefectComplex label for now, get individual labels
-        # if ')' == string[-1]:
-        #     name,label = string.split('(')
-        #     label = label.strip(')')
-        # else:
-        #     name = string
-        #     label=None
-
+        """
+        Get `DefectComplex` object from string.
+        """
         names = string.split('-')
         defects = [Defect.from_string(n) for n in names]
         return DefectComplex(defects=defects, **kwargs)
@@ -896,142 +895,7 @@ def get_defect_from_string(string, **kwargs):
         return DefectComplex.from_string(string, **kwargs)
     else:
         return Defect.from_string(string, **kwargs)
-
-
-def create_interstitials(structure,elements,supercell_size=None,**kwargs):
-    """
-    Create Interstitial objects based on Voronoi with pymatgen. 
-
-    Parameters
-    ----------
-    structure : (Structure)
-        Bulk structure.
-    elements : (list)
-        List of element symbols.
-    supercell_size : (int), optional
-        Input for the make_supercell function of the Structure class.
-        If None the input structure is not modified. The default is None.
-    kwargs: 
-        Arguments to pass to VoronoiInterstitialGenerator:
-            clustering_tol: Tolerance for clustering the Voronoi nodes.
-            min_dist: Minimum distance between an interstitial and the nearest atom.
-            ltol: Tolerance for lattice matching.
-            stol: Tolerance for structure matching.
-            angle_tol: Angle tolerance for structure matching.
-            kwargs: Additional keyword arguments for the ``TopographyAnalyzer`` constructor.
-
-    Returns
-    -------
-    defects : (list)
-        List of Interstitial objects
-    """
-    from pymatgen.analysis.defects.generators import VoronoiInterstitialGenerator
-    
-    defects = []
-    bulk_structure = structure.copy()
-    if supercell_size:
-        bulk_structure.make_supercell(supercell_size)
-    generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
-    for inter in generator:
-        bulk_structure.remove_oxidation_states()
-        remove_oxidation_state_from_site(inter.site)
-        interstitial = Interstitial(
-                                defect_site=inter.site,
-                                bulk_structure=bulk_structure,
-                                multiplicity=inter.multiplicity,
-                                label=f'mult{inter.multiplicity}')
-        defects.append(interstitial)
-    return defects
-
-
-def create_substitutions(structure,elements_to_replace,supercell_size=None,site_indexes=None):
-    """
-    Create Substitution objects starting from a bulk structure (unit cell or supercell).
-
-    Parameters
-    ----------
-    structure : Structure
-        Bulk structure, both unit cell or supercell can be used as input.
-    elements_to_replace : (str), optional
-        Dict with element symbol of specie to be replaced as keys and element 
-        symbol of the species to be replaced with as values ({'old_El':'new_El'}).
-    supercell_size : (int or numpy array), optional
-        Input for the generate_defect_structure function of the old pymatgen Substitution class.
-    site_indexes : (list), optional
-        Site indexes where the defects need to be created. If None the first site found is 
-        used. The default is None.
-
-    Returns
-    -------
-    defects : (list)
-        List of Substitution objects
-    """
-    defects = [] 
-    bulk_structure = structure.copy()
-    if supercell_size:
-        bulk_structure.make_supercell(supercell_size)
-    if site_indexes:
-        sites = [bulk_structure[i] for i in site_indexes]
-    else:
-        sites = bulk_structure.sites
-    for el_to_sub,el_subbed in elements_to_replace.items():
-        for site in sites:
-            if site.specie.symbol == el_to_sub:
-                defect_site = PeriodicSite(el_subbed,site.frac_coords,site.lattice)
-                defects.append(Substitution(
-                                        defect_site=defect_site,
-                                        bulk_structure=bulk_structure,
-                                        site_in_bulk=site))
-                if not site_indexes:
-                    break
-    return defects   
-
-
-def create_vacancies(structure,elements=None,supercell_size=None,site_indexes=None):
-    """
-    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
-
-    Parameters
-    ----------
-    structure : Structure
-        Bulk structure, both unit cell or supercell can be used as input.
-    elements : (str), optional
-        Symbol of the elements for which vacancies are needed.
-        If None all of the elements are considered. The default is None.
-    supercell_size : (int or numpy array), optional
-        Input for the make_supercell function of the Structure class.
-        If None the input structure is not modified. The default is None.
-    site_indexes : (list), optional
-        Site indexes where the defects need to be created. If None the first site found is 
-        used. The default is None.
-
-    Returns
-    -------
-    defects : (list)
-        List of Vacancy objects
-    """
-    defects = []
-    bulk_structure = structure.copy()
-    if supercell_size:
-        bulk_structure.make_supercell(supercell_size)
-    if not elements:
-        elements = [el.symbol for el in bulk_structure.composition.elements]
-    if site_indexes:
-        sites = [bulk_structure[i] for i in site_indexes]
-    else:
-        sites = bulk_structure.sites
-    for el in bulk_structure.composition.elements:
-        for site in sites:
-            if el.symbol in elements:
-                if site.specie == el:
-                    vacancy = Vacancy(
-                                    defect_site=site,
-                                    bulk_structure=bulk_structure)
-                    defects.append(vacancy)
-                    if not site_indexes:
-                        break
-    return defects        
-
+   
 
 def format_legend_with_charge_number(label,charge):
     """
@@ -1130,25 +994,4 @@ def get_delta_atoms_from_comp(comp_defect,comp_bulk):
         
     return delta_atoms    
     
-
-def get_old_pmg_object(defect):
-    """
-    Convert defect object to the old version of pymatgen defect object.
-    """
-    module = importlib.import_module("pynter.defects.pmg.pmg_defects_core")
-    pmg_class = getattr(module,defect.type)
-    charge = defect.charge if defect.charge else 0
-    pmg_object = pmg_class(structure=defect.bulk_structure,defect_site=defect.site,
-                           charge=charge,multiplicity=defect.multiplicity)
-    return pmg_object
-
-def get_pmg_object(defect):
-    """
-    Convert defect object to pymatgen defect object.
-    """
-    module = importlib.import_module("pymatgen.analysis.defects.core")
-    pmg_class = getattr(module,defect.type)
-    pmg_object = pmg_class(structure=defect.bulk_structure,site=defect.site,
-                           multiplicity=defect.multiplicity)
-    return pmg_object
     

@@ -31,7 +31,7 @@ from pynter.tools.utils import get_object_feature, select_objects, sort_objects
 
 class DefectsAnalysis(MSONable,metaclass=ABCMeta):
     
-    def __init__(self, entries, vbm, band_gap, sort_entries=True):
+    def __init__(self, entries, band_gap, vbm=0, sort_entries=True):
         """ 
         Class to compute collective properties starting from single calculations of point defects.
 
@@ -39,14 +39,14 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
         ----------
         entries: (list) 
             A list of DefectEntry objects.
+        band_gap : (float)
+            Band gap of the pristine material in eV.
         vbm: (float) 
             Valence band maximum of the pristine material in eV.
-        band_gap : (float)
-            Band gap of the pristine material in eV
         """
         self.entries = self.sort_entries(inplace=False,entries=entries) if sort_entries else entries
-        self.vbm = vbm
         self.band_gap = band_gap
+        self.vbm = vbm
         self.groups = self._group_entries()
         self.names = list(self.groups.keys())
         self._thermodata = None
@@ -80,7 +80,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
         return groups
             
     def copy(self):
-        return DefectsAnalysis(self.entries, self.vbm, self.band_gap)
+        return DefectsAnalysis(entries=self.entries,band_gap=self.band_gap,vbm=self.vbm)
     
     @property
     def thermodata(self):
@@ -137,7 +137,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
 
 
     @staticmethod
-    def from_dataframe(df,vbm, band_gap):
+    def from_dataframe(df,band_gap, vbm=0):
         """
         Create DefectsAnalysis object from pandas DataFrame (df). If df has been 
         exported with include_structure=True, DefectEntry objects will be 
@@ -198,7 +198,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                             data=data)
             entries.append(entry)
         
-        return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
+        return DefectsAnalysis(entries=entries,band_gap=band_gap,vbm=vbm)
     
 
     @staticmethod
@@ -224,7 +224,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
             df = pd.read_csv(filename, **kwargs)
         else:
             raise ValueError('Invalid file format, available are "json","pkl","csv" and "excel"')
-        return DefectsAnalysis.from_dataframe(df=df,vbm=vbm,band_gap=band_gap)
+        return DefectsAnalysis.from_dataframe(df=df,band_gap=band_gap,vbm=vbm)
 
 
     @staticmethod
@@ -362,7 +362,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                         plt.show()
                     entry.set_corrections(**{get_charge_correction:corr})
         
-        return DefectsAnalysis(entries=entries,vbm=vbm,band_gap=band_gap)
+        return DefectsAnalysis(entries=entries,band_gap=band_gap,vbm=vbm)
 
 
 
@@ -838,7 +838,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
             self.entries = output_entries
             return
         else:
-            return DefectsAnalysis(output_entries, self.vbm, self.band_gap)
+            return DefectsAnalysis(entries=output_entries, band_gap=self.band_gap, vbm=self.vbm)
 
 
     def formation_energies(self,
@@ -961,7 +961,7 @@ class DefectsAnalysis(MSONable,metaclass=ABCMeta):
                 if da.vbm != previous_da.vbm and da.band_gap != previous_da.band_gap:
                     raise ValueError('Cannot merge entries, band gap and VBM are different')
             new_entries = new_entries + da.entries
-        return DefectsAnalysis(new_entries, self.vbm, self.band_gap)
+        return DefectsAnalysis(entries=new_entries, band_gap=self.band_gap, vbm=self.vbm)
         
 
     def plot_brouwer_diagram(self,
