@@ -46,16 +46,6 @@ class TestDefectsAnalysis(PynterTest):
         cls.chempots = Chempots({'Si':mu_Si,'P':mu_P,'O':mu_O},ndecimals=2)
         cls.dos = get_object_from_json(CompleteDos, self.get_testfile_path('SiO2-defects/Bulk-2x2x2-supercell/complete_dos.json')) 
 
-    
-    # def get_textbook_case(self):
-    #     e1 = DefectEntry(Vacancy('O',charge=2,bulk_volume=800,multiplicity=1),energy_diff=7)
-    #     e2 = DefectEntry(Vacancy('Sr',charge=-2,bulk_volume=800,multiplicity=1),energy_diff=8)
-    #     da = DefectsAnalysis([e1,e2],vbm=0,band_gap=2)
-    #     chempots = {'O':-4.95,'Sr':-2}
-    #     mdos = {'m_eff_e':0.5,'m_eff_h':0.4}
-    #     return da, chempots, mdos
-
-
         
     def test_stable_charges(self):
         stable_charge_Vac_O = (2, 0.08920299999999681)
@@ -223,7 +213,6 @@ class TestDefectsAnalysis(PynterTest):
         finally:
             import os
             os.remove('test.json')
-
 
 
 
