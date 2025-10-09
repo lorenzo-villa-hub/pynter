@@ -43,14 +43,14 @@ class TestDataset(PynterTest):
         ds = self.ds
         assert ds.name == 'Vac_Si_adv_schemes_inputs'
         assert ds.groups == ['q-1','q0','q1']
-        assert ds.jobs_table().__class__.__name__ == 'DataFrame'
+        assert ds.table().__class__.__name__ == 'DataFrame'
         
     def test_from_json(self):
         ds = self.ds
         ds_from_json = Dataset.from_json(json.dumps(ds.as_dict()))
         assert ds_from_json.name == 'Vac_Si_adv_schemes_inputs'
         assert ds_from_json.groups == ['q-1','q0','q1']
-        assert ds_from_json.jobs_table().__class__.__name__ == 'DataFrame'
+        assert ds_from_json.table().__class__.__name__ == 'DataFrame'
         return        
 
     def test_is_converged(self):

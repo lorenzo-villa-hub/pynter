@@ -7,19 +7,25 @@ Created on Tue Apr  4 17:10:46 2023
 """
 
 import warnings
+import numpy as np
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.periodic_table import Element
 import os.path as op
 import os
+
 from pynter.tools.structure import is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
 from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectComplex
+from .generator import create_interstitials, create_vacancies, create_substitutions
+
 from pymatgen.core.trajectory import Trajectory
 
 """Interstitial generator to be re-implemented using the new pymatgen defects"""
     
 def create_interstitial_structures(structure,elements,supercell_size=None,**kwargs):
     """
-    Create structures with interstitials based on Voronoi with pymatgen. 
+    Create interstitial structures based on Voronoi with pymatgen,
+    staring from a bulk structure (unit cell or supercell).
+    Uses `Interstitial` objects generated with the `generator` module.
 
     Parameters
     ----------
@@ -41,66 +47,65 @@ def create_interstitial_structures(structure,elements,supercell_size=None,**kwar
 
     Returns
     -------
-    interstitial_structures : (dict)
-        Dictionary with element as keys and list of structures as values.
+    structures : (list)
+        List of interstitial structures
     """
-    from pymatgen.analysis.defects.generators import VoronoiInterstitialGenerator
-    bulk_structure = structure.copy()
-    if supercell_size:
-        bulk_structure.make_supercell(supercell_size)
-    generator = VoronoiInterstitialGenerator().generate(bulk_structure,elements)
-    interstitial_structures = {}
-    for inter in generator:
-        el = inter.site.specie.element.symbol
-        if el not in interstitial_structures.keys():
-            interstitial_structures[el] = []
-        interstitial_structures[el].append(inter.defect_structure)
-            
-    return interstitial_structures
+    defects = create_interstitials(
+                                structure=structure,
+                                elements=elements,
+                                supercell_size=supercell_size,
+                                **kwargs)
+    structures = [df.generate_defect_structure() for df in defects]
+    return structures
     
 
-def create_substitution_structures(structure,replace,supercell_size=1):
+def create_substitution_structures(structure,elements_to_replace,supercell_size=None,**kwargs):
     """
-    Create structures with substitutions starting from a bulk structure (unit cell or supercell).
+    Create substitution structures for each non-equivalent site,
+    staring from a bulk structure (unit cell or supercell).
+    Uses `Substitution` objects generated with the `generator` module.
 
     Parameters
     ----------
     structure : Structure
         Bulk structure, both unit cell or supercell can be used as input.
-    replace : (str), optional
+    elements_to_replace : (str)
         Dict with element symbol of specie to be replaced as keys and element 
-        symbol of the species to be replaced with as values ({'old_El':{new_El}}).
-    supercell_size : (int or numpy array), optional
-        Input for the generate_defect_structure function of the old pymatgen Substitution class.
+        symbol of the species to be replaced with as values ({'old_El':'new_El'}).
+    supercell_size : (int or numpy array)
+        Input for the make_supercell function of the Structure class.
+        If None the input structure is not modified. 
+    kwargs : (dict)
+        Kwargs to pass to SpaceGroupAnalyzer class.
+        Args:
+            symprec (float): Tolerance for symmetry finding. Defaults to 0.01,
+            which is fairly strict and works well for properly refined
+            structures with atoms in the proper symmetry coordinates. For
+            structures with slight deviations from their proper atomic
+            positions (e.g., structures relaxed with electronic structure
+            codes), a looser tolerance of 0.1 (the value used in Materials
+            Project) is often needed.
+        angle_tolerance (float): Angle tolerance for symmetry finding. Defaults to 5 degrees.
 
     Returns
     -------
-    sub_structures : (dict)
-        Dictionary with substitution types as keys and structures as values.
+    structures : (list)
+        List of substitution structures
     """
-    from pynter.defects.pmg.pmg_defects_core import Substitution
-    sub_structures={}
-    bulk_structure = structure.copy()
-    
-    for el_to_sub in replace:
-        for el in bulk_structure.composition.elements:
-            s = bulk_structure.copy()
-            for site in s.sites:
-                if el.symbol == el_to_sub:
-                    if site.specie == el:
-                        sub_site = site
-                        sub_el = replace[el.symbol]
-                        defect_site = PeriodicSite(sub_el,sub_site.frac_coords,sub_site.lattice)
-                        structure = Substitution(s,defect_site).generate_defect_structure(supercell_size)
-                        sub_structures[f'{sub_el}-on-{el.symbol}'] = structure
-                        break
-
-    return sub_structures
+    defects = create_substitutions(
+                                structure=structure,
+                                elements_to_replace=elements_to_replace,
+                                supercell_size=supercell_size,
+                                **kwargs)
+    structures = [df.generate_defect_structure() for df in defects]
+    return structures
 
 
-def create_vacancy_structures(structure,elements=None,supercell_size=None):
+def create_vacancy_structures(structure,elements=None,supercell_size=None,**kwargs):
     """
-    Create structures with vacancies starting from a bulk structure (unit cell or supercell).
+    Create Vacancy objects for each non-equivalent site,
+    staring from a bulk structure (unit cell or supercell).
+    Uses `Vacancy` objects generated with the `generator` module.
 
     Parameters
     ----------
@@ -109,33 +114,33 @@ def create_vacancy_structures(structure,elements=None,supercell_size=None):
     elements : (str), optional
         Symbol of the elements for which vacancies are needed.
         If None all of the elements are considered. The default is None.
-    supercell_size : (int or numpy array), optional
+    supercell_size : (int or numpy array)
         Input for the make_supercell function of the Structure class.
-        If None the input structure is not modified. The default is None.
+        If None the input structure is not modified. 
+    kwargs : (dict)
+        Kwargs to pass to SpaceGroupAnalyzer class.
+        Args:
+            symprec (float): Tolerance for symmetry finding. Defaults to 0.01,
+            which is fairly strict and works well for properly refined
+            structures with atoms in the proper symmetry coordinates. For
+            structures with slight deviations from their proper atomic
+            positions (e.g., structures relaxed with electronic structure
+            codes), a looser tolerance of 0.1 (the value used in Materials
+            Project) is often needed.
+        angle_tolerance (float): Angle tolerance for symmetry finding. Defaults to 5 degrees.
 
     Returns
     -------
-    vac_structures : (dict)
-        Dictionary with vacancy types as keys and structures as values.
-
+    structures : (list)
+        List of vacancy structures
     """
-    vac_structures={}
-    bulk_structure = structure.copy()
-    if supercell_size:
-        bulk_structure.make_supercell(supercell_size)
-    if not elements:
-        elements = [el.symbol for el in bulk_structure.composition.elements]
-    
-    for el in bulk_structure.composition.elements:
-        s = bulk_structure.copy()
-        for site in s.sites:
-            if el.symbol in elements:
-                if site.specie == el:
-                    s.remove_sites([bulk_structure.index(site)])
-                    vac_structures[f'{el.symbol}'] = s
-                    break
-
-    return vac_structures
+    defects = create_vacancies(
+                            structure=structure,
+                            elements=elements,
+                            supercell_size=supercell_size,
+                            **kwargs)
+    structures = [df.generate_defect_structure() for df in defects]
+    return structures
 
  
 def create_def_structure_for_visualization(structure_defect,structure_bulk,defects=None,sort_to_bulk=False,tol=1e-03):
@@ -175,14 +180,14 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
         dfs = defects
     else:
         df_found = defect_finder(df,bk,tol=tol)
-        if df_found.defect_type=='DefectComplex':
+        if df_found.type=='DefectComplex':
             dfs = df_found.defects
         else:
             dfs = [df_found]
    
     for d in dfs:
         dsite = d.site
-        dtype = d.defect_type
+        dtype = d.type
         if dtype == 'Vacancy':
             check,i = is_site_in_structure_coords(dsite,bk,tol=tol)
             el = dsite.specie
@@ -200,9 +205,14 @@ def create_def_structure_for_visualization(structure_defect,structure_bulk,defec
     return new_structure        
 
 
-def defect_finder(structure_defect, structure_bulk, tol=1e-3):
+def defect_finder(
+                structure_defect,
+                structure_bulk,
+                tol=1e-3,
+                max_number_of_defects=None,
+                verbose=False):
     """
-    Optimized function to find defects by comparing defect and bulk structures.
+    Find defects by comparing defect and bulk structures.
 
     Parameters
     ----------
@@ -210,8 +220,15 @@ def defect_finder(structure_defect, structure_bulk, tol=1e-3):
         Defect structure.
     structure_bulk : Pymatgen Structure
         Bulk structure.
-    tol : float, optional
+    tol : float
         Tolerance for fractional coordinates comparison (default is 1e-3).
+    max_number_of_defects : (int)
+        Impose a max number of defects to be found. If set, defects
+        are ranked based on the coordinate distance btw defect and bulk sites
+        (descending order), the first max_number_of_defects in the list 
+        are given as the output (as single defect or defect complex).
+    verbose : (bool)
+        Print output.
 
     Returns
     -------
@@ -221,31 +238,56 @@ def defect_finder(structure_defect, structure_bulk, tol=1e-3):
     # Identify missing (vacancies) and additional (interstitials) sites
     matched_indices = set()
     for site in structure_defect:
-        check, index = is_site_in_structure_coords(site,structure_bulk,tol=tol)
-        
+        check, index = is_site_in_structure_coords(site,structure_bulk,tol=tol,return_distance=False)
+
         if check:
             matched_indices.add(index)  # Site exists in bulk, check for substitution
             if site.species != structure_bulk[index].species:
                 defects.append(
-                    Substitution(site,structure_bulk,site_in_bulk=structure_bulk[index])
-                    )
+                    Substitution(specie=site.specie.symbol,
+                                defect_site=site,
+                                bulk_structure=structure_bulk,
+                                site_in_bulk=structure_bulk[index]))
         else:
-            defects.append(Interstitial(site, structure_bulk))
+            defects.append(Interstitial(specie=site.specie.symbol,
+                                        defect_site=site,
+                                        bulk_structure=structure_bulk))
 
     for j, site in enumerate(structure_bulk):
         if j not in matched_indices:
-            defects.append(Vacancy(site, structure_bulk))
+            defects.append(Vacancy(specie=site.specie.symbol,
+                                        defect_site=site,
+                                        bulk_structure=structure_bulk))
 
-    if len(defects) > 1:
-        if len(defects) > 3:
+    if max_number_of_defects:
+        filtered_defects = []
+        defect_distances = []
+        for df in defects:
+            if df.type == 'Vacancy':
+                check, i, d = is_site_in_structure_coords(df.site,structure_defect,tol=tol,return_distance=True)
+                defect_distances.append((df,d))
+            else:
+                check, i, d = is_site_in_structure_coords(df.site,structure_bulk,tol=tol,return_distance=True)
+                defect_distances.append((df,d))
+        sorted_defect_distances = defect_distances.sort(key = lambda x : x[1], reverse=True)
+        filtered_defects = [defect_distances[i][0] for i in range(max_number_of_defects)]
+    else:
+        filtered_defects = defects
+
+    if len(filtered_defects) > 1:
+        if len(filtered_defects) > 3:
             warnings.warn("More than 3 defects found, if not desired try to adjust the tolerance parameter ")
-        return DefectComplex(defects, structure_bulk)
-    elif len(defects) == 1:
-        return defects[0]
+        defect = DefectComplex(filtered_defects, bulk_structure=structure_bulk)
+    elif len(filtered_defects) == 1:
+        defect = filtered_defects[0]
     else:
         warnings.warn("No defect has been found. Try to adjust the tolerance parameter.", UserWarning)
-        return defects
+        defect = None
+    
+    if verbose:
+        print(f'Defect automatically identified for defective structure with composition {structure_defect.composition}: \n {defect}')
 
+    return defect
 
 
 def get_trajectory_for_visualization(structure_defect,structure_bulk,defects=None,tol=1e-03,file=None):

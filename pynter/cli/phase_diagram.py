@@ -12,7 +12,8 @@ from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 from pymatgen.analysis.phase_diagram import PhaseDiagram
 
 from pynter import SETTINGS
-from pynter.phase_diagram.chempots import PDHandler, Reservoirs
+from pynter.defects.chempots.reservoirs import Reservoirs
+from pynter.defects.chempots.phase_diagram import PDHandler
 from pynter.tools.utils import save_object_as_json
 
 

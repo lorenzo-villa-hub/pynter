@@ -17,13 +17,10 @@ from pprint import pprint
 from pynter.vasp.pmg.pmg_electronic_structure_dos import CompleteDos
 
 from pynter import SETTINGS
-from pynter.jobs.datasets import Dataset
-from pynter.jobs.vasp.vasp_jobs import VaspJob
-from pynter.hpc.slurm import JobSettings
 from pynter.defects.entries import DefectEntry
 from pynter.defects.analysis import DefectsAnalysis
-from pynter.defects.corrections import get_kumagai_correction_from_jobs
-from pynter.phase_diagram.chempots import Chempots, Reservoirs
+from pynter.defects.chempots.core import Chempots
+from pynter.defects.chempots.reservoirs import Reservoirs
 from pynter.tools.utils import save_object_as_json, get_object_from_json
 #from pynter.cli import inputs
 from pynter.cli.utils import get_dict_from_line_string, round_floats
@@ -34,9 +31,6 @@ def setup_defects(subparsers):
     
     parser_defects = subparsers.add_parser('defects',help='Import and analyse defect calculations. Use with extreme care.')
     subparsers_defects = parser_defects.add_subparsers()
-
-    # parser_inputs = subparsers_defects.add_parser('inputs',help='Create inputs for VASP DFT calculations')
-    # setup_inputs(parser_inputs)
     
     parser_import = subparsers_defects.add_parser('import',help='Create defect entries from VASP DFT calculations')
     setup_import(parser_import)
@@ -50,67 +44,17 @@ def setup_defects(subparsers):
     return
     
 
-
-def setup_inputs(parser):
-    subparsers = parser.add_subparsers()
-    
-    parser_vasp = subparsers.add_parser('vasp',help='VASP DFT calculations')
-    
-    parser_vasp = inputs.parse_common_args(parser_vasp)
-    parser_vasp = inputs.parse_vasp_args(parser_vasp)
-
-    parser_vasp.add_argument('-auto','--automation',action='store_true',help='Add default automation to job script',required=False,
-                        default=False,dest='automation')    
-
-    parser_vasp.add_argument('-ss','--supercell-size',action='append',help='Size of the supercell (integer or list)',type=int,required=False,
-                        default=None,metavar='',dest='supercell_size')
-
-    parser_vasp.add_argument('-rel','--relaxation-scheme',help='Relaxation scheme to use, choose between "default" (2-step PBE) and "gamma" (4-step PBE) (default: %(default)s)',
-                        required=False,default='default',type=str,metavar='',dest='relaxation_scheme')
-    
-    parser_vasp.add_argument('-sub','--substitutions',help=""""Substituions inputs. Provide elements and charges as '{"<new_el>-on-<old_el>":[q0,q1,q2]}'""",type=str,required=False,
-                        default=None,metavar='',dest='substitutions')
-    
-    parser_vasp.add_argument('-vac','--vacancies',help="""Vacancies inputs. Provide elements and charges as '{"el":[q0,q1,q2]}'""",type=str,required=False,
-                        default=None,metavar='',dest='vacancies')
-    
-    parser_vasp.set_defaults(func=create_vasp_inputs)
-    return
-
-
-def create_vasp_inputs(args):
-    jobs = []
-    schemes = inputs.get_schemes(args)
-    if args.substitutions:
-        elements_to_replace_with_charges = json.loads(args.substitutions)
-        jobs_sub = schemes.substitutions_pbe_relaxation(elements_to_replace_with_charges=elements_to_replace_with_charges,
-                                                    supercell_size=args.supercell_size,automation=args.automation,
-                                                    locpot=True,rel_scheme=args.relaxation_scheme)
-        jobs = jobs + jobs_sub
-    if args.vacancies:
-        elements_with_charges = json.loads(args.vacancies)
-        jobs_vac = schemes.vacancies_pbe_relaxation(elements_with_charges=elements_with_charges,
-                                                    supercell_size=args.supercell_size,automation=args.automation,
-                                                    locpot=True,rel_scheme=args.relaxation_scheme)
-        jobs = jobs + jobs_vac
-
-    ds = Dataset(jobs)
-    ds.write_jobs_input()
-    return
-
-
 def setup_import(parser):
     job_script_filename = SETTINGS['job_script_filename']
     parser.add_argument('-pb','--path-bulk',help='Path to bulk calculation',required=True,type=str,metavar='',dest='path_bulk')
     parser.add_argument('-p','--path',help='Path to defect calculations, can contain wildcards (default: %(default)s)',required=False,type=str,default=os.getcwd(),metavar='',dest='path')
-    
+    parser.add_argument('--common-path',help='Parse only calculations which contain this string in path',required=False,type=str,metavar='',dest='common_path')
+
     parser.add_argument('-e','--exclude',action='append',help='Exclude specific defect types (Vacancy, Substitution, Interstitial, Polaron, DefectComplex)',
                         required=False,default=None,metavar='',dest='exclude')
     parser.add_argument('-c','--corrections',action='store_true',help='Compute Kumagai corrections (default: %(default)s)',required=False,default=False,dest='corrections')
     parser.add_argument('-dt','--dielectric-tensor',help='Dielectric constant or tensor, if tensor write the matrix in a line (a11 a12 a13 a21 a22 a23 a31 a32 a33)',
                         required=False,type=str,default=None,metavar='',dest='dielectric_tensor')    
-    parser.add_argument('-j','--job-script-filename',help='Job script filename (default: %(default)s)',required=False,type=str,default=job_script_filename,metavar='',
-                        dest='job_script_filename')
     parser.add_argument('-t','--tolerance',help='Tolerance in A° for automatic defect finding (default: %(default)s)',required=False,type=float,default=0.01,metavar='',
                         dest='tolerance')
     parser.add_argument('-s','--savejson',action='store_true',help='Save DefectsAnalysis and bulk DOS objects as json (default: %(default)s)',required=False,default=False,dest='savejson')
@@ -119,72 +63,15 @@ def setup_import(parser):
     return
 
 def import_entries(args):
-    job_bulk = VaspJob.from_directory(args.path_bulk)
-    path = args.path
-    script = args.job_script_filename
-    
-    if '*' in path:
-        dirs = glob(os.path.normpath(path))
-        jobs = [VaspJob.from_directory(path=jdir,job_script_filename=script) for jdir in dirs]
-        ds = Dataset(jobs)
-    else:
-        ds = Dataset.from_directory(path,script)
 
-    def get_last_node(job):
-        if len(job.node_points) == 0:
-            return None
-        else:
-            return job.node_points[-1]
-    jobs_to_import = []
-    for group in ds.groups:
-        jobs = ds.select_jobs(groups=[group],is_converged=True)
-        charges = []
-        for j in jobs:
-            if j.charge not in charges:
-                charges.append(j.charge)
-        for q in charges:
-            jobs_same_charge = ds.select_jobs(jobs,charge=q)
-            sorted_jobs_same_charge = ds.sort_jobs(jobs_same_charge,features=get_last_node)
-            job_defect = sorted_jobs_same_charge[-1]
-            if job_defect.formula != job_bulk.formula or job_defect.charge != job_bulk.charge:
-                jobs_to_import.append(job_defect)
-    print('\nCalculations imported from:')    
-    print(ds.jobs_table(jobs_to_import,display=['charge']))
-    
-    entries = []
-    tol = args.tolerance
-    for job_defect in jobs_to_import:
-        corrections = {}
-        if args.corrections:
-            if args.dielectric_tensor:
-                if len(args.dielectric_tensor.split()) > 1:
-                    dielectric_tensor_string = ' '.join(args.dielectric_tensor.split()) # remove extra spaces
-                    dielectric_tensor = np.fromstring(dielectric_tensor_string, dtype=float, sep=' ').reshape((3, 3))
-            else:
-                raise ValueError('Dielectric tensor needs to be provided to perform Kumagai corrections')
-            kumagai_corrections = get_kumagai_correction_from_jobs(job_defect, job_bulk, dielectric_tensor,tol=tol)
-            kumagai_total = sum([v for v in kumagai_corrections.values()])
-            corrections['kumagai'] = kumagai_total
-        data = {'stress':job_defect.stress}
-        entry = DefectEntry.from_jobs(job_defect,job_bulk,corrections=corrections,data=data,multiplicity=None,tol=tol)
-        
-        if entry.defect.defect_type == 'DefectComplex' and len(entry.defect.defects) > 3:
-            warnings.warn('A complex with more than 3 species has been found, something has likely gone wrong in the automatic defect determination. Excluding it for now...')
-        else:    
-            entries.append(entry)
-    
-    band_gap, vbm = job_bulk.energy_gap, job_bulk.vbm
-    da = DefectsAnalysis(entries, vbm, band_gap)
+    da = DefectsAnalysis.from_vasp_directories(
+                                            path_defects=args.path,
+                                            path_bulk=args.path_bulk,
+                                            common_path=args.common_path)  ### to be finished 
     da.filter_entries(inplace=True,exclude=True,types=args.exclude)
     print('\nDefectsAnalysis:')
     print(da.get_dataframe())
-    if args.savejson:
-        da.to_json('defects_analysis_%s.json' %job_bulk.formula.replace(' ',''))
-        job_bulk.get_output_properties(data=['complete_dos'])
-        dos = job_bulk.complete_dos
-        save_object_as_json(dos,'./DOS_%s.json'%job_bulk.formula.replace(' ',''))
-        print('\nDefectsAnalysis object saved as defects_analysis_%s.json' %job_bulk.formula.replace(' ',''))
-        print('DOS object saved as DOS_%s.json' %job_bulk.formula.replace(' ',''))
+
     return
   
 

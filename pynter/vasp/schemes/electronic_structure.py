@@ -105,10 +105,12 @@ class ElectronicStructureSchemes(InputSets):
         
         sn = 2 
         vaspjob = self.pbe_dos(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
+        vaspjob.incar['LCHARGE'] = True
         jobs.append(vaspjob)
 
         sn = 3
         vaspjob = self.pbe_bs(add_to_job_name=scheme_name+'_%i'%sn ,add_to_job_path=stepnames[sn-1])
+        vaspjob.incar['LCHARGE'] = True
         jobs.append(vaspjob)
         
         return jobs
