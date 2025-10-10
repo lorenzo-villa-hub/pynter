@@ -7,7 +7,7 @@ Created on Thu Apr 10 13:57:21 2025
 """
 import os.path as op
 
-from pynter.defects.defects import create_vacancies, create_substitutions
+from pynter.defects.generator import create_vacancies, create_substitutions
 from pynter.defects.structure import defect_finder
 from pynter.vasp.schemes.core import InputSets
 from pynter.vasp.schemes.relaxation import RelaxationSchemes
