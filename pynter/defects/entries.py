@@ -14,8 +14,8 @@ import os
 
 from pymatgen.core.units import kb
 
-from pynter.defects.structure import defect_finder
-from pynter.defects.elasticity import get_relaxation_volume
+from .structure import defect_finder
+from .elasticity import get_relaxation_volume
 from pynter.vasp.utils import get_charge_from_computed_entry
 
 

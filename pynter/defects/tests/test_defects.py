@@ -10,7 +10,7 @@ from pymatgen.core.sites import PeriodicSite
 from pymatgen.core.composition import Composition
 
 
-from pynter.defects.defects import Vacancy, Interstitial, Substitution, Polaron, DefectComplex
+from ..defects import Vacancy, Interstitial, Substitution, Polaron, DefectComplex
 
 from pynter.testing.core import PynterTest
 from pynter.testing.defects import DefectTest

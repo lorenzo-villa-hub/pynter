@@ -5,13 +5,14 @@ import importlib
 import matplotlib.pyplot as plt
 import math
 
-from pynter.tools.structure import is_site_in_structure_coords
-from pynter.defects.structure import defect_finder
 
 from pymatgen.io.vasp.outputs import Outcar, Vasprun
 
 from pymatgen.analysis.defects.corrections.kumagai import _check_import_pydefect 
 from pymatgen.analysis.defects.utils import CorrectionResult, get_zfile
+
+from pynter.tools.structure import is_site_in_structure_coords
+from ..structure import defect_finder
 
 from pathlib import Path
 

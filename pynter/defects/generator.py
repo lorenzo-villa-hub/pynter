@@ -1,7 +1,9 @@
 
 from pymatgen.core.sites import PeriodicSite
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from pynter.defects.defects import Interstitial, Substitution, Vacancy
+
+from .defects import Interstitial, Substitution, Vacancy
+
 from pynter.tools.structure import remove_oxidation_state_from_site
 
 

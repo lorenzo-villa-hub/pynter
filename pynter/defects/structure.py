@@ -8,16 +8,18 @@ Created on Tue Apr  4 17:10:46 2023
 
 import warnings
 import numpy as np
-from pymatgen.core.sites import PeriodicSite
-from pymatgen.core.periodic_table import Element
 import os.path as op
 import os
 
+from pymatgen.core.sites import PeriodicSite
+from pymatgen.core.periodic_table import Element
+from pymatgen.core.trajectory import Trajectory
+
 from pynter.tools.structure import is_site_in_structure_coords, sort_sites_to_ref_coords, write_extxyz_file
-from pynter.defects.defects import Vacancy,Substitution,Interstitial,DefectComplex
+from .defects import Vacancy,Substitution,Interstitial,DefectComplex
 from .generator import create_interstitials, create_vacancies, create_substitutions
 
-from pymatgen.core.trajectory import Trajectory
+
 
 """Interstitial generator to be re-implemented using the new pymatgen defects"""
     

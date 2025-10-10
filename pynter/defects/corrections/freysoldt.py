@@ -1,9 +1,12 @@
 
-from pymatgen.io.vasp.outputs import Locpot
-from pymatgen.analysis.defects.corrections.freysoldt import get_freysoldt_correction, plot_plnr_avg
+
 import os.path as op
 import importlib
-from pynter.defects.structure import defect_finder
+
+from pymatgen.io.vasp.outputs import Locpot
+from pymatgen.analysis.defects.corrections.freysoldt import get_freysoldt_correction, plot_plnr_avg
+
+from ..structure import defect_finder
 
 
 def get_freysoldt_correction_from_locpot(
