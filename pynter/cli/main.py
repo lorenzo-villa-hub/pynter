@@ -13,7 +13,6 @@ import warnings
 from pynter.cli.automations import setup_automation
 from pynter.cli.analysis import setup_analysis
 from pynter.cli.config import setup_config, run_config
-from pynter.cli.defects import setup_defects
 from pynter.cli.hpc import setup_hpc
 from pynter.cli.materials_project import setup_mp_database
 from pynter.cli.plotter import setup_plotter
@@ -44,7 +43,6 @@ def main():
     setup_analysis(subparsers)
     setup_automation(subparsers)  
     setup_config(subparsers)
-    setup_defects(subparsers)
     setup_hpc(subparsers)
     setup_job_script(subparsers)
     setup_mp_database(subparsers)
