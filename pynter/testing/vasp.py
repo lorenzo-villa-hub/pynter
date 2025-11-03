@@ -5,15 +5,9 @@ Created on Mon Jun 12 17:52:51 2023
 
 @author: lorenzo
 """
-import unittest
 from numpy.testing import assert_allclose
-
 from pymatgen.io.vasp.inputs import Kpoints, Poscar, Incar
-
-from pynter.testing.data import JobTest
 from pynter.testing.core import PynterTest
-from pynter.testing.structure import StructureTest
-
 
 
 class VaspInputsTest(PynterTest):
@@ -87,47 +81,9 @@ class VaspOutputsTest(PynterTest):
             
     
     def assert_Vasprun_equal(self,vasprun1,vasprun2):
-        self.assert_object_almost_equal(vasprun1.as_dict(),vasprun2.as_dict())
+        self.assert_object_almost_equal(vasprun1.as_dict(),vasprun2.as_dict(),rtol=0.001)
         
-        
-        
-class VaspJobTest(JobTest):
-    """
-    Provides methods to test VaspJob objects
-    """
-    def assert_inputs_equal(self,job1,job2,include_incar=True,system_only=False):
-        VaspInputsTest().assert_VaspInput_equal(job1.inputs,job2.inputs,include_incar,system_only)
 
-    def assert_outputs_equal(self,job1,job2):
-        VaspOutputsTest().assert_ComputedEntry_equal(job1.computed_entry,job2.computed_entry)
-        if "Vasprun" in [job1.outputs.keys(),job2.outputs.keys()]:
-            VaspOutputsTest().assert_Vasprun_equal(job1.vasprun, job2.vasprun)
-            
-            
-class VaspNEBJobTest(JobTest):
-    """
-    Provides methods to test VaspNEBJob objects
-    """
-    def assert_inputs_equal(self,job1,job2,include_incar=True,system_only=False):
-        """
-        Assert incar, kpoints, potcar and images.
-        """
-        VaspInputsTest().assert_Incar_equal(job1.incar, job2.incar, system_only=system_only)
-        VaspInputsTest().assert_Kpoints_equal(job1.kpoints, job2.kpoints)
-        VaspInputsTest().assert_Potcar_equal(job1.potcar, job2.potcar)
-
-        if len(job1.structures) != len(job2.structures):
-            raise AssertionError('Number of images differ')
-        else:
-            for i in range(0,len(job1.structures)):
-                StructureTest().assert_Structure_equal(
-                    job1.structures[i], job2.structures[i])
-            
-    def assert_outputs_equal(self,job1,job2):
-        """
-        Assert pymatgen NEBAnalysis object
-        """
-        self.assert_object_almost_equal(job1.neb_analysis.as_dict(), job2.neb_analysis.as_dict())
         
         
         

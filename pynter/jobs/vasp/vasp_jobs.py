@@ -1,0 +1,1138 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May 10 14:34:48 2021
+
+@author: villa
+"""
+
+
+import os
+import os.path as op
+import warnings
+import numpy as np
+import json
+from glob import glob
+import re
+
+from monty.json import MontyDecoder, MontyEncoder
+
+import ase.io
+
+from pymatgen.io.vasp.inputs import VaspInput, Poscar, Incar, Kpoints, Potcar
+from pymatgen.io.vasp.outputs import Vasprun, Oszicar
+from pymatgen.core.structure import Structure
+from pymatgen.analysis.transition_state import NEBAnalysis
+
+from pynter.tools.utils import grep
+from pynter.jobs.core import Job
+from pynter.hpc.slurm import JobSettings
+from pynter.vasp.utils import get_convergence_from_outcar
+from pynter import SETTINGS, LOCAL_DIR
+
+
+from pymatgen.io.vasp.inputs import UnknownPotcarWarning
+
+warnings.filterwarnings("ignore", category=UnknownPotcarWarning)
+
+
+def _read_vasprun_with_generic_function(function,path,**kwargs):
+    if op.exists(op.join(path,'vasprun.xml')):
+        try:
+            return function(op.join(path,'vasprun.xml'),**kwargs)
+        except:
+            warnings.warn('Reading of vasprun.xml in "%s" failed'%path)
+            return False
+    else:
+        warnings.warn('"vasprun.xml" file is not present in Job directory')
+        return None
+
+def _read_vasprun(path,**kwargs):
+    if 'parse_dos' not in kwargs.keys():
+        kwargs['parse_dos'] = False  # do NOT parse DOS by default
+    return _read_vasprun_with_generic_function(Vasprun, path, **kwargs)
+
+
+def get_vasp_outputs(path,get_vasprun=True,get_ase_atoms=False,**kwargs):
+    outputs = {}
+    if get_vasprun:
+        vasprun = _read_vasprun(path,**kwargs)
+        if vasprun is not None:
+            outputs['Vasprun'] = vasprun
+    elif os.path.exists(op.join(path,'OUTCAR')):
+        conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(path,'OUTCAR'))
+        outputs['convergence'] = {'electronic':conv_el, 'ionic':conv_ionic}  
+    else:
+        warnings.warn('OUTCAR is not present in Job directory')
+        
+    if get_ase_atoms:
+        read = ase.io.read
+        outputs['Atoms'] = _read_vasprun_with_generic_function(read, path, index=-1) #read only last structure
+        
+    return outputs
+
+
+
+
+class VaspJob(Job):
+ 
+    
+    def as_dict(self,**kwargs):        
+        """
+        Get VaspJob as dictionary. The Vasprun ouput object is not exported.
+        
+        Parameters
+        ----------
+        get_band_structure : (bool), optional
+            Export BandStructure as dict. The default is False.
+            
+        Returns:
+            Json-serializable dict representation of VaspJob.
+        """
+        kwargs = self._parse_kwargs(**kwargs)
+                
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+             "path_relative":self.path_relative,
+             "inputs": self.inputs.as_dict(),             
+             "job_settings": self.job_settings.as_dict(),
+             "job_script_filename":self.job_script_filename,
+             "name":self.name,
+             "hostname":self.hostname,
+             "localdir":self.localdir,
+             "remotedir":self.remotedir}
+        
+        d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
+        if d["outputs"] and "Vasprun" in d["outputs"].keys():
+            del d["outputs"]["Vasprun"] # Vasprun has no from_dict
+
+        d["band_structure"] = json.loads(json.dumps(self.band_structure,cls=MontyEncoder)) if kwargs['get_band_structure'] else None
+        return d
+
+
+    def to_json(self,path,**kwargs):
+        """
+        Save VaspJob object as json string or file
+
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file.  If None a string is exported.
+        get_band_structure : (bool), optional
+            Export BandStructure as dict. The default is False.
+
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+
+        """
+        d = self.as_dict(**kwargs)
+        if path:
+            with open(path,'w') as file:
+                json.dump(d,file)
+            return
+        else:
+            return d.__str__()   
+
+    
+    @staticmethod
+    def from_dict(d):
+        """
+        Construct VaspJob object from python dictionary.
+        
+        Returns
+        -------
+        VaspJob object
+        """
+        #ensure compatibility with old path format
+        if 'path_relative' in d.keys() and d['path_relative']:
+            path = LOCAL_DIR + d['path_relative']
+        elif 'path' in d.keys():
+            path = d['path']
+        inputs = VaspInput.from_dict(d['inputs'])
+        job_settings = JobSettings.from_dict(d['job_settings'])
+        job_script_filename = d['job_script_filename']
+        name = d['name']
+        hostname = d['hostname'] if 'hostname' in d.keys() else None
+        localdir = d['localdir'] if 'localdir' in d.keys() else None
+        remotedir = d['remotedir'] if 'remotedir' in d.keys() else None
+        outputs= MontyDecoder().process_decoded(d['outputs'])
+        
+        vaspjob = VaspJob(path=path,
+                          inputs=inputs,
+                          job_settings=job_settings,
+                          outputs=outputs,
+                          job_script_filename=job_script_filename,
+                          name=name,
+                          hostname=hostname,
+                          localdir=localdir,
+                          remotedir=remotedir)
+        
+        vaspjob._band_structure = MontyDecoder().process_decoded(d['band_structure']) if d['band_structure'] else None
+        if outputs and 'ComputedStructureEntry' in outputs.keys():
+            for k,v in vaspjob.computed_entry.data.items():
+                if k not in vaspjob._default_data_computed_entry:
+                    setattr(vaspjob,k,v)
+        
+        return vaspjob
+        
+    
+    @staticmethod
+    def from_directory(path=None,
+                       job_script_filename=None,
+                       load_outputs=True,
+                       get_vasprun=True,
+                       get_ase_atoms=False,
+                       hostname=None,
+                       localdir=None,
+                       remotedir=None,
+                       **kwargs):
+        """
+        Builds VaspJob object from data stored in a directory. Input files are read using Pymatgen VaspInput class.
+        Output files are read usign Pymatgen Vasprun class.
+        Job settings are read from the job script file.
+
+        Parameters
+        ----------
+        path : (str)
+            Path were job data is stored. If None the current wdir is used. The default is None.
+        job_script_filename : (str), optional
+            Filename of job script. The default is set in the config file.
+        load_outputs : (bool)
+            Load job outputs. The default is True.
+        kwargs : (dict)
+            Arguments to pass to Vasprun parser.
+        Returns
+        -------
+        VaspJob object.
+        
+        """
+        path = path if path else os.getcwd()
+        inputs = VaspInput.from_directory(path)
+        outputs = {}
+        if load_outputs:
+            outputs = get_vasp_outputs(path,
+                                       get_vasprun=get_vasprun,
+                                       get_ase_atoms=get_ase_atoms,
+                                       **kwargs)             
+                
+        job_script_filename = job_script_filename if job_script_filename else JobSettings()['filename']
+        job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
+        
+        return VaspJob(path=path,
+                       inputs=inputs,
+                       job_settings=job_settings,
+                       outputs=outputs,
+                       job_script_filename=job_script_filename,
+                       hostname=hostname,
+                       localdir=localdir,
+                       remotedir=remotedir)
+
+
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build VaspJob object from json file or string.
+
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+
+        Returns
+        -------
+        VaspJob object.
+
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.loads(path_or_string)
+        return VaspJob.from_dict(d)
+        
+
+    @property
+    def incar(self):
+        return self.inputs['INCAR']
+    
+    @property
+    def kpoints(self):
+        return self.inputs['KPOINTS']
+    
+    @property
+    def poscar(self):
+        return self.inputs['POSCAR']
+    
+    @property
+    def potcar(self):
+        return self.inputs['POTCAR']
+
+    @property
+    def vasprun(self):
+        if 'Vasprun' in self.outputs.keys():
+            return self.outputs['Vasprun']
+        else:
+            if not op.exists(op.join(self.path,'vasprun.xml')):
+                warnings.warn('"vasprun.xml" file is not present in Job directory')
+            return None
+
+    @property
+    def computed_entry(self):
+        if 'ComputedStructureEntry' in self.outputs.keys():
+            return self.outputs['ComputedStructureEntry']
+        else:
+            return None
+        
+
+    @property
+    def band_structure(self):
+        if hasattr(self, '_band_structure'):
+            return self._band_structure
+        else:
+            return None
+
+    
+    @property
+    def charge(self):
+        """
+        Charge of the system calculated as the difference between the value of "NELECT"
+        in the INCAR and the number of electrons in POTCAR. If "NELECT" is not present 
+        charge is set to 0.
+        """
+        charge = 0
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            neutral = sum([ val[el.symbol]*coeff 
+                           for el,coeff in self.initial_structure.composition.items()])
+            charge = neutral - nelect
+        if not isinstance(charge,int):
+            charge = np.around(charge,decimals=1)
+        return charge
+
+
+    @property
+    def complete_dos(self):
+        if 'complete_dos' in self.computed_entry.data.keys():
+            return self.computed_entry.data['complete_dos']
+        elif self.vasprun:
+            return self.vasprun.complete_dos
+        else:
+            raise ValueError('CompleteDos not present in ComputedStructureEntry data or Vasprun')
+            
+
+    @property
+    def energy_gap(self):
+        """Energy gap read from vasprun.xml with Pymatgen"""
+        band_gap = None
+        if self.computed_entry and 'eigenvalue_band_properties' in self.computed_entry.data.keys():
+            band_gap = self.computed_entry.data['eigenvalue_band_properties'][0]
+        return band_gap
+ 
+    @property
+    def cbm(self):
+        """"Conduction band minimum"""
+        if self.computed_entry and 'eigenvalue_band_properties' in self.computed_entry.data.keys():
+            return self.computed_entry.data['eigenvalue_band_properties'][1]  
+
+    @property
+    def vbm(self):
+        """"valence band maximum"""
+        if self.computed_entry and 'eigenvalue_band_properties' in self.computed_entry.data.keys():
+            return self.computed_entry.data['eigenvalue_band_properties'][2]    
+
+    @property
+    def final_energy(self):
+        """Final total energy of the calculation read from vasprun.xml with Pymatgen"""
+        if self.computed_entry and 'final_energy' in self.computed_entry.data.keys():
+            final_energy = self.computed_entry.data['final_energy']            
+            return final_energy
+    
+    @property
+    def final_energy_per_atom(self):
+        if self.final_energy:
+            return self.final_energy/len(self.final_structure)
+    
+    
+    @property
+    def final_structure(self):
+        """Final structure read from "vasprun.xml" with Pymatgen"""
+        final_structure = None
+        if self.computed_entry:
+            if self.computed_entry.data['structures']:
+                final_structure = self.computed_entry.data['structures'][-1]            
+        return final_structure 
+    
+            
+    @property
+    def formula(self):
+        """Complete formula from initial structure (read with Pymatgen)"""
+        if self.initial_structure:
+            return self.initial_structure.composition.formula
+        else:
+            return None
+
+    
+    @property
+    def hubbards(self):
+        """
+        Generate dictionary with U paramenters from LDAUU tag in INCAR file
+
+        Returns
+        -------
+        U_dict : (dict)
+            Dictionary with Elements as keys and U parameters as values.
+        """
+        U_dict = {}
+        incar = self.incar
+        if 'LDAUU' in incar.keys():
+            ldauu = incar['LDAUU']
+            elements = self.initial_structure.composition.elements
+            if isinstance(ldauu,str):
+                ldauu = ldauu.split()
+            for i in range(0,len(ldauu)):
+                U_dict[elements[i]] = int(ldauu[i])
+        else:
+            print('No LDAUU tag present in INCAR in Job "%s"' %self.name)            
+        return U_dict
+        
+    @property
+    def initial_structure(self):
+        """Initial structure read from poscar"""
+        if self.poscar:
+            poscar = self.poscar
+            return poscar.structure            
+        else:
+            warnings.warn('inputs["POSCAR"] is not defined')
+            return None
+    
+    
+    @property
+    def is_converged(self):
+        """
+        Returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        return self.is_converged_electronic and self.is_converged_ionic
+            
+    @property
+    def is_converged_electronic(self):
+        """
+        Returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        if self.outputs is not None and 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['electronic']
+        else:
+            return None
+
+    @property
+    def is_converged_ionic(self):
+        """
+        Returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        if self.outputs is not None and 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['ionic']
+        else:
+            return None
+
+
+    @property
+    def is_hybrid(self):
+        """Returns True when "LHFCALC" is present and equal to True in incar""" 
+        is_hybrid = False
+        incar = self.incar
+        if 'LHFCALC' in incar.keys():
+            if incar['LHFCALC'] is True:
+                is_hybrid = True
+        
+        return is_hybrid
+
+    @property
+    def is_hubbard(self):
+        """Returns True if "LDAUU" tag is present in incar"""
+        is_hubbard = False
+        incar = self.incar
+        if 'LDAUU' in incar.keys():
+            is_hubbard = True
+        
+        return is_hubbard
+
+
+    @property
+    def nelectrons(self):
+        """
+        Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
+        Else the sum of valence electrons from POTCAR is returned.
+        """
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+        else:
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+        return nelect    
+    
+    
+    @property
+    def stress(self):
+        """Residual stress of last ionic step"""
+        if 'ionic_steps' in self.computed_entry.data.keys():
+            return self.computed_entry.data['ionic_steps'][-1]['stress']
+        else:
+            print('Ionic steps data not present in ComputedStructureEntry')
+            return None
+
+
+
+    def delete_output_files(self,safety=True):
+        """
+        Delete files that aren't input files (INCAR,KPOINTS,POSCAR,POTCAR,job script)
+        """
+        if safety:
+            inp = input('Are you sure you want to delete outputs of Job %s ?: (y/n)' %self.name)
+            if inp in ('y','Y'):
+                delete = True
+            else:
+                delete = False
+        else:
+            delete= True
+            
+        if delete:                
+            files = [f for f in os.listdir(self.path) if os.path.isfile(os.path.join(self.path, f))]
+            for f in files:
+                if f not in ['INCAR','KPOINTS','POSCAR','POTCAR',self.job_script_filename]:
+                    os.remove(os.path.join(self.path,f))
+                    print('Deleted file %s'%os.path.join(self.path,f))   
+        return
+                    
+
+    def get_inputs(self,sync=False):
+        """
+        Read VaspInput from directory
+        """
+        if sync:
+            self.sync_from_hpc()
+        inputs = VaspInput.from_directory(self.path)
+        self.inputs = inputs
+        return
+    
+    
+    def get_outputs(self,sync=False,
+                    get_vasprun=True,
+                    get_ase_atoms=False,
+                    get_output_properties=True,
+                    **kwargs):
+        """
+        Get outputs dictionary from the data stored in the job directory. "vasprun.xml" is 
+        read with Pymatgen
+
+        Parameters
+        ----------
+        sync : (float), optional
+            Sync data from hpc. The default is False.
+        get_output_properties : (float), optional
+            Parse output properties from Vasprun. The default is True.
+        **kwargs : (dict)
+            Arguments for the Vasprun class in pymatgen.
+        """
+        if sync:
+            self.sync_from_hpc()
+        outputs = get_vasp_outputs(self.path,
+                                       get_vasprun=get_vasprun,
+                                       get_ase_atoms=get_ase_atoms,
+                                       **kwargs)   
+
+        self.outputs = outputs
+        if get_output_properties:
+            self.get_output_properties()
+        return
+
+    
+    def get_output_properties(self,**kwargs):
+        """
+        Parse outputs properties from VaspJob.outputs.
+
+        Parameters
+        ----------
+        get_band_structure : (bool or dict), optional
+            Get BandStructure object from vasprun. The default is False. If is a dict the BS is 
+            read and the kwargs in the dict are used in the pymatgen function.
+        data : (list), optional
+            List of attributes of Vasprun to parse in ComputedStructureEntry.
+            the attributes parsed by default are 'final_energy','structures','eigenvalue_band_properties',
+            'parameters','actual_kpoints','ionic_steps'.
+        extra_data : (list), optional
+            List of attributes of Vasprun to add to the default parsed in ComputedStructureEntry.
+        """
+        if 'convergence' not in self.outputs.keys():
+            is_converged_electronic, is_converged_ionic = self._get_convergence()
+            self.outputs.update(
+                {'convergence':{
+                'electronic':is_converged_electronic,
+                'ionic':is_converged_ionic}}
+                )            
+        
+        self._default_data_computed_entry = SETTINGS['vasp']['computed_entry_default'] # default imports from Vasprun
+        kwargs = self._parse_kwargs(**kwargs)  
+        if self.vasprun:
+            data = kwargs['data'] if kwargs['data'] else self._default_data_computed_entry
+            if kwargs['extra_data']:
+                for attr in kwargs['extra_data']:
+                    data.append(attr)
+            self.outputs['ComputedStructureEntry'] = self.vasprun.get_computed_entry(data=data)
+        
+        if kwargs['get_band_structure']:
+            if type(kwargs['get_band_structure']) == dict:
+                self._band_structure = self._get_band_structure(**kwargs['get_band_structure'])
+            else:
+                self._band_structure = self._get_band_structure()
+        else:
+            None
+        
+        return
+
+    
+    def write_input(self):
+        """Write "inputs" dictionary to files. The VaspInput class from Pymatgen is used."""
+        self.job_settings.write_bash_file(path=self.path,filename=self.job_settings['filename'])
+        self.inputs.write_input(output_dir=self.path,make_dir_if_not_present=True)
+        return
+       
+
+
+    def _get_band_structure(self,**kwargs):
+        """Get BandStructure objects from Vasprun"""
+        if self.vasprun:
+            if not kwargs or 'kpoints_filename' not in kwargs.keys():
+                kwargs['kpoints_filename'] = op.join(self.path,'KPOINTS')
+            return self.vasprun.get_band_structure(**kwargs)
+        else:
+            return None
+            
+
+    def _get_convergence(self):
+        """
+        Check electronic and ionic convergence. Returns "True" if the calculation is converged,
+        "False" if reading failed, and "None" if is not present in the outputs dictionary, 
+        for electronic and ionic convergence. 
+        Reads Vasprun attributes if Vasprun object is present in outputs, otherwise reads from OUTCAR.  
+        
+        """
+        conv_el, conv_ionic = None, None
+        if self.outputs:
+            # get convergence from vasprun
+            if 'Vasprun' in self.outputs.keys():
+                conv_el, conv_ionic = False, False
+                if self.vasprun:
+                    vasprun = self.vasprun
+                    conv_el, conv_ionic = False, False
+                    if vasprun:
+                        conv_el = vasprun.converged_electronic
+                        conv_ionic = vasprun.converged_ionic
+            # get convergence from OUTCAR
+            elif os.path.exists(op.join(self.path,'OUTCAR')):
+                conv_el, conv_ionic = get_convergence_from_outcar(file=op.join(self.path,'OUTCAR'))
+        return conv_el, conv_ionic
+
+
+    def _parse_kwargs(self,**kwargs):
+        kwargs['data'] = kwargs['data'] if 'data' in kwargs.keys() else None
+        kwargs['extra_data'] = kwargs['extra_data'] if 'extra_data' in kwargs.keys() else None
+        kwargs['get_band_structure'] = kwargs['get_band_structure'] if 'get_band_structure' in kwargs.keys() else False 
+        return kwargs
+
+
+
+class VaspNEBJob(Job):
+    
+    
+    def as_dict(self):
+        
+        d = {"@module": self.__class__.__module__,
+             "@class": self.__class__.__name__,
+            # "path": self.path, # old path version in dict 
+             "path_relative":self.path_relative,           
+             "job_settings": self.job_settings.as_dict(),
+             "job_script_filename":self.job_script_filename,
+             "name":self.name,
+             "hostname":self.hostname,
+             "localdir":self.localdir,
+             "remotedir":self.remotedir}
+        
+        inputs_as_dict = {}
+        inputs_as_dict['structures'] = [s.as_dict() for s in self.structures]
+        inputs_as_dict['INCAR'] = self.incar.as_dict()
+        inputs_as_dict['KPOINTS'] = self.kpoints.as_dict()
+        inputs_as_dict['POTCAR'] = self.potcar.as_dict()
+        
+        d["inputs"] = inputs_as_dict
+        d["outputs"] = json.loads(json.dumps(self.outputs,cls=MontyEncoder))
+        
+        return d
+    
+
+    def to_json(self,path):
+        """
+        Save VaspNEBJob object as json string or file
+        Parameters
+        ----------
+        path : (str), optional
+            Path to the destination file.  If None a string is exported.
+            
+        Returns
+        -------
+        d : (str)
+            If path is not set a string is returned.
+        """
+        d = self.as_dict()
+        if path:
+            with open(path,'w') as file:
+                json.dump(d,file)
+            return
+        else:
+            return d.__str__() 
+
+    
+    @staticmethod
+    def from_dict(d):
+
+        #ensure compatibility with old path format
+        if 'path_relative' in d.keys() and d['path_relative']:
+            path = LOCAL_DIR + d['path_relative']
+        elif 'path' in d.keys():
+            path = d['path']
+        inputs = {}
+        inputs["structures"] = [Structure.from_dict(s) for s in d['inputs']['structures']]
+        inputs["INCAR"] = Incar.from_dict(d['inputs']['INCAR'])
+        inputs["KPOINTS"] = Kpoints.from_dict(d['inputs']['KPOINTS'])
+        inputs["POTCAR"] = Potcar.from_dict(d['inputs']['POTCAR'])
+        job_settings = JobSettings.from_dict(d['job_settings'])
+        job_script_filename = d['job_script_filename']
+        name = d['name']
+        hostname = d['hostname'] if 'hostname' in d.keys() else None
+        localdir = d['localdir'] if 'localdir' in d.keys() else None
+        remotedir = d['remotedir'] if 'remotedir' in d.keys() else None
+        outputs= MontyDecoder().process_decoded(d['outputs'])
+        
+        vaspNEBjob =  VaspNEBJob(path=path,
+                       inputs=inputs,
+                       job_settings=job_settings,
+                       outputs=outputs,
+                       job_script_filename=job_script_filename,
+                       name=name,
+                       hostname=hostname,
+                       localdir=localdir,
+                       remotedir=remotedir)
+                
+        return vaspNEBjob
+    
+    
+    @staticmethod
+    def from_directory(path=None,
+                       job_script_filename=None,
+                       load_outputs=True,
+                       hostname=None,
+                       localdir=None,
+                       remotedir=None):
+        """
+        Builds VaspNEBjob object from data stored in a directory. Inputs dict is constructed
+        by reading with Pymatgen INCAR, KPOINTS and POTCAR and creating a series of Structure 
+        objects read from POSCARs in the images folders. 
+        Inputs is thus a dict with "structures", "INCAR","KPOINTS","POTCAR" as keys.
+        Output files are read usign Pymatgen NEBAnalysis and Vasprun classes.
+        Job settings are read from the job script file.
+
+        Parameters
+        ----------
+        path : (str)
+            Path were job data is stored. If None the current wdir is used. The default is None.
+        job_script_filename : (str), optional
+            Filename of job script. The default is set in the config file.
+        load_outputs : (bool)
+            Load job outputs. The default is True.
+
+        Returns
+        -------
+        VaspNEBJob object.
+        
+        """                
+        inputs = {}
+        structures = []
+        path = path if path else os.getcwd()
+        path = op.abspath(path)
+        dirs = [d[0] for d in os.walk(path)]
+        for d in dirs:
+            image_name = op.relpath(d,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                image_path = d
+                structure = Poscar.from_file(op.join(image_path,'POSCAR')).structure
+                structures.append(structure)
+
+        inputs['structures'] = structures           
+        inputs['INCAR'] = Incar.from_file(op.join(path,'INCAR'))
+        inputs['KPOINTS'] = Kpoints.from_file(op.join(path,'KPOINTS'))
+        inputs['POTCAR'] = Potcar.from_file(op.join(path,'POTCAR'))
+        
+        outputs = {}
+        if load_outputs:
+            try:
+                outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
+            except:
+                warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
+                outputs['NEBAnalysis'] = None
+        
+        job_script_filename = job_script_filename if job_script_filename else SETTINGS['job_script_filename']
+        job_settings = JobSettings.from_bash_file(path,filename=job_script_filename)
+        
+        return VaspNEBJob(path=path,
+                          inputs=inputs,
+                          job_settings=job_settings,
+                          outputs=outputs,
+                          job_script_filename=job_script_filename,
+                          hostname=hostname,
+                          localdir=localdir,
+                          remotedir=remotedir)
+
+
+    @staticmethod
+    def from_json(path_or_string):
+        """
+        Build VaspJob object from json file or string.
+        Parameters
+        ----------
+        path_or_string : (str)
+            If an existing path to a file is given the object is constructed reading the json file.
+            Otherwise it will be read as a string.
+        Returns
+        -------
+        VaspJob object.
+        """
+        if op.isfile(path_or_string):
+            with open(path_or_string) as file:
+                d = json.load(file)
+        else:
+            d = json.loads(path_or_string)
+        return VaspNEBJob.from_dict(d)
+
+ 
+    def delete_outputs(self,safety=True):
+        """
+        Delete files that aren't input files (INCAR,KPOINTS,POSCAR,POTCAR)
+        """
+        if safety:
+            inp = input('Are you sure you want to delete outputs of Job %s ?: (y/n)' %self.name)
+            if inp in ('y','Y'):
+                delete = True
+            else:
+                delete = False
+        else:
+            delete= True
+            
+        if delete:
+            dirs = self.image_dirs
+            dirs.append(self.path)
+            for d in dirs:                
+                files = [f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f))]
+                for f in files:
+                    if f not in ['INCAR','KPOINTS','POSCAR','POTCAR',self.job_script_filename]:
+                        os.remove(os.path.join(d,f))
+                        print('Deleted file %s'%os.path.join(d,f))   
+        return
+
+    
+    @property
+    def images(self):
+        return len(self.inputs['structures'])-2
+    
+    @property
+    def image_dirs(self):
+        """
+        Directories of images for NEB calculations. Directories are selected if all characters in the
+        directory name are digits.
+        """
+        dirs = []
+        path = self.path
+        path = op.abspath(path)
+        for d in os.walk(path):
+            directory = d[0]
+            image_name = op.relpath(directory,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                dirs.append(directory)
+        dirs.sort()
+        return dirs
+    
+    @property
+    def structures(self):
+        return self.inputs['structures']
+
+    @property
+    def incar(self):
+        return self.inputs['INCAR']
+    
+    @property
+    def kpoints(self):
+        return self.inputs['KPOINTS']
+    
+    @property
+    def potcar(self):
+        return self.inputs['POTCAR']
+
+
+    @property
+    def charge(self):
+        """
+        Charge of the system calculated as the difference between the value of "NELECT"
+        in the INCAR and the number of electrons in POTCAR. If "NELECT" is not present 
+        charge is set to 0.
+        """
+        charge = 0
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            neutral = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+            charge = neutral - nelect
+        if not isinstance(charge,int):
+            charge = np.around(charge,decimals=1)
+        return charge
+
+
+    @property
+    def final_structures(self):
+        """
+        Final structures, taken from CONTCAR for all points aside from end-points (as done by NEBAnalysis).
+        """
+        return self.neb_analysis.structures
+
+
+    @property
+    def formula(self):
+        """Complete formula from initial structure (read with Pymatgen)"""
+        if self.initial_structure:
+            return self.initial_structure.composition.formula
+        else:
+            return None
+
+        
+    @property
+    def initial_structure(self):
+        """Initial structure read from first element of ""structures" attribute. """
+        return self.structures[0]
+
+    
+    @property
+    def is_converged(self):
+        """
+        Returns "True" if the calculation is converged,
+        or the ionic step limit has been reached reading from the OSZICAR file.
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        is_converged = self.is_required_accuracy_reached
+        if not is_converged:
+            if self.is_step_limit_reached:
+                is_converged = True
+        return is_converged
+
+
+
+    @property
+    def is_required_accuracy_reached(self):
+        """
+        True if "reached required accuracy - stopping structural energy minimisation" 
+        is found in most recent out.* file. 
+        False if file exists but no line is found.
+        None if no out.* file exists.
+        """
+        if 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['required_accuracy_reached']
+    
+    
+    @property
+    def is_step_limit_reached(self):
+        """
+        Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
+        is equal to the step limit in INCAR file (NSW tag)
+        """
+        if 'convergence' in self.outputs.keys():
+            return self.outputs['convergence']['step_limit_reached']
+
+
+    @property
+    def neb_analysis(self):
+        """
+        Pymatgen NEBAnalysis object read from self.outputs.
+        """
+        return self.outputs['NEBAnalysis']
+
+
+    @property
+    def nelectrons(self):
+        """
+        Number of electrons in the system. If 'NELECT' tag is in INCAR that value is returned.
+        Else the sum of valence electrons from POTCAR is returned.
+        """
+        if 'NELECT' in self.incar.keys():
+            nelect = self.incar['NELECT']
+        else:
+            val = {}
+            for p in self.potcar:
+                val[p.element] = p.nelectrons
+            nelect = sum([ val[el.symbol]*self.initial_structure.composition[el] 
+                           for el in self.initial_structure.composition])
+        return nelect
+
+
+    def get_inputs(self,sync=False):
+        """
+        Read inputs from Job directory
+        """
+        if sync:
+            self.sync_from_hpc()
+        inputs = {}
+        structures = []
+        path = op.abspath(self.path)
+        dirs = [d[0] for d in os.walk(path)]
+        for d in dirs:
+            image_name = op.relpath(d,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                image_path = d
+                structure = Poscar.from_file(op.join(image_path,'POSCAR')).structure
+                structures.append(structure)
+
+        inputs['structures'] = structures           
+        inputs['INCAR'] = Incar.from_file(op.join(path,'INCAR'))
+        inputs['KPOINTS'] = Kpoints.from_file(op.join(path,'KPOINTS'))
+        inputs['POTCAR'] = Potcar.from_file(op.join(path,'POTCAR'))
+        
+        self.inputs = inputs
+        return
+
+
+    def get_outputs(self,sync=False,get_output_properties=True):
+        """
+        Read outputs from Job directory
+        """
+        if sync:
+            self.sync_from_hpc()
+        outputs = {}
+        path = self.path  
+        try:
+            outputs['NEBAnalysis'] = NEBAnalysis.from_dir(path)
+        except:
+            warnings.warn('NEB output reading with NEBAnalysis in "%s" failed'%path)
+            outputs['NEBAnalysis'] = None
+            
+        self.outputs = outputs
+        if get_output_properties:
+            self.get_output_properties()
+        return
+    
+
+    def get_output_properties(self):
+        """
+        Parse outputs properties from VaspNEBJob.outputs.
+        """
+        if 'convergence' not in self.outputs.keys():
+            self.outputs['convergence'] = {}
+        self.outputs['convergence']['required_accuracy_reached'] = self._get_ionic_relaxation_from_outfile()
+        self.outputs['convergence']['step_limit_reached'] = self._get_step_limit_reached() 
+
+        return
+
+    
+    def write_input(self,write_structures=True):
+        """
+        Write input files in all image directories
+        """
+        path = op.abspath(self.path)
+        
+        #self.job_settings['nodes'] = self.images               
+        incar = self.inputs['INCAR']
+        kpoints = self.inputs['KPOINTS']
+        potcar = self.inputs['POTCAR']
+        job_settings = self.job_settings
+
+        if write_structures:
+            self.write_structures()
+        
+        incar.write_file(op.join(path,'INCAR'))
+        kpoints.write_file(op.join(path,'KPOINTS'))
+        potcar.write_file(op.join(path,'POTCAR'))
+        job_settings.write_bash_file(path=path,filename=job_settings['filename'])
+        
+        return
+
+    
+    def write_structures(self):
+        """
+        Writes POSCAR files in image directories
+        """
+        path = self.path
+        structures = self.inputs['structures']
+        for s in structures:
+            index = structures.index(s)
+            image_path = op.join(path,str(index).zfill(2)) #folders will be named 00,01,..,XX
+            if not op.exists(image_path):
+                os.makedirs(image_path)
+            Poscar(s).write_file(op.join(image_path,'POSCAR'))
+        return
+
+
+    def _get_output_related_attribute(self,attr):
+        """Checks if attribute has been defined and gives value, if not defined returns None."""
+        attr = '_' + attr
+        if hasattr(self, attr):
+            return getattr(self, attr)
+        else:
+            return None
+
+
+    def _get_ionic_relaxation_from_outfile(self):
+        """
+        Useful for NEB because Pymatgen fails to read vasprun file for NEB calculations.
+        This function reads the outfile with highest number in the dir and checks for the 
+        string: "reached required accuracy - stopping structural energy minimisation". 
+        """
+        reached_accuracy = None
+        outfiles = glob(os.path.join(self.path,'out*'))
+        if outfiles:
+            outfiles.sort()
+            outfile = outfiles[-1] #taking more recent out file ("out.jobid" with bigger job id)
+            lines = grep('reached required accuracy - stopping structural energy minimisation',outfile)
+            if lines:
+                print('"reached required accuracy - stopping structural energy minimisation" found in %s' %outfile)
+                reached_accuracy = True
+            else:
+                reached_accuracy = False
+        
+        return reached_accuracy
+        
+        
+    def _get_step_limit_reached(self):
+        """
+        Reads number of ionic steps from the OSZICAR file with Pymatgen and returns True if 
+        is equal to the step limit in INCAR file (NSW tag). If OSZICAR is not present returns None.
+        """
+        limit_reached = True
+        image_dirs = self.image_dirs
+        for d in image_dirs:
+            if d != image_dirs[0] and d != image_dirs[-1]:
+                if not os.path.isfile(os.path.join(d,'OSZICAR')): # check if OSZICAR files are present 
+                    limit_reached = None
+                else:                
+                    n_steps = len(Oszicar(os.path.join(d,'OSZICAR')).ionic_steps)
+                    nsw = Incar.from_file(op.join(self.path,'INCAR'))['NSW'] # check NSW from INCAR in parent directory
+                    if nsw != n_steps:
+                        limit_reached = False
+        return limit_reached    

@@ -24,14 +24,23 @@ def get_vasp_defaults_from_default_file():
     with open(os.path.join(path,filename),'r') as ymlfile:
         return yaml.load(ymlfile,Loader=yaml.FullLoader)
 
+def get_lammps_defaults_from_default_file():
+    """
+    Get initial lammps settings from ./lammps/lammps_default.yml
+    """
+    from pynter import lammps
+    path = os.path.abspath(lammps.__file__).strip(os.path.basename(lammps.__file__))
+    filename = 'lammps_default.yml'
+    with open(os.path.join(path,filename),'r') as ymlfile:
+        return yaml.load(ymlfile,Loader=yaml.FullLoader)
 
 SETTINGS = get_config_from_default_file()
 SETTINGS['vasp'] = get_vasp_defaults_from_default_file()
-
+SETTINGS['lammps'] = get_lammps_defaults_from_default_file()
 
 def get_cfgfile():
     homedir = os.getenv("HOME")
-    cfgfile = os.path.join(homedir,'.pynter','config.yml')
+    cfgfile = os.path.join(homedir,'.pynter','config_v2.yml')
     return cfgfile
 
 cfgfile = get_cfgfile()
@@ -85,6 +94,35 @@ def load_vasp_default(cfgfile=cfgfile):
         warnings.warn('%s does not exist. Run "pynter configure" in the terminal to create it. Using default settings for now'%cfgfile)
         return  
 
+def get_lammps_cfgfile():
+    homedir = os.getenv("HOME")
+    cfgfile = os.path.join(homedir,'.pynter','lammps.yml')
+    return cfgfile
+
+
+cfgfile = get_lammps_cfgfile()
+def load_lammps_default(cfgfile=cfgfile):
+    """
+    Load dictionary with LAMMPS configuration from yaml cofiguration file. The default is in ~/.pynter/lammps.yml.
+
+    Parameters
+    ----------
+    cfgfile : (str), optional
+        Path to configuration file. The default is ~/.pynter/lammps.yml.
+
+    Returns
+    -------
+    (dict)
+        Configuration dictionary.
+    """
+    if os.path.exists(cfgfile):
+        with open(cfgfile,"r") as ymlfile:
+            return yaml.load(ymlfile,Loader=yaml.FullLoader) # add Loader to not get warning
+    else:
+        warnings.warn('%s does not exist. Run "pynter configure" in the terminal to create it. Using default settings for now'%cfgfile)
+        return  
+
+
 # Overwrite initial settings
 config = load_config()
 if config:
@@ -94,9 +132,16 @@ vasp_defaults = load_vasp_default()
 if vasp_defaults:
     SETTINGS['vasp'].update(vasp_defaults)
 
+lammps_defaults = load_lammps_default()
+if lammps_defaults:
+    SETTINGS['lammps'].update(lammps_defaults)
 
 
-def run_local(cmd,printout=True,dry_run=False,**kwargs):
+def run_command(
+                cmd,
+                printout=True,
+                dry_run=False,
+                **kwargs):
     """
     Run a command locally with subprocess package.
 
@@ -122,8 +167,7 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
         return cmd, ''
     if printout:
         print("Run command: %s" %cmd)
-    command = cmd.split()
-    proc = subprocess.run(command, capture_output=True, shell=False, text=True,**kwargs)
+    proc = subprocess.run(cmd, capture_output=True, shell=True, text=True,**kwargs)
     stdout = proc.stdout
     stderr = proc.stderr
     if printout:
@@ -132,7 +176,11 @@ def run_local(cmd,printout=True,dry_run=False,**kwargs):
             print(stderr)
     return stdout, stderr
     
+
+LOCAL_DIR = SETTINGS['HPC']['localdir']
+REMOTE_DIR = SETTINGS['HPC']['remotedir']
     
-from .data.datasets import Dataset
+from .jobs.datasets import Dataset
+
 
 

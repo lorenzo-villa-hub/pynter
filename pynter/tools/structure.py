@@ -121,6 +121,113 @@ def get_displacement_vectors(structures):
     return structures[0].lattice.get_cartesian_coords(disp)
 
 
+def get_furthest_neighbors(structure, target_site, species):
+    """
+    Get the indexes of atomic sites that are furthest away from the target site
+    and maximally spaced apart from each other, considering periodic boundary conditions.
+
+    Parameters:
+    - structure: pymatgen Structure object
+    - target_site: a pymatgen PeriodicSite or index of the target site in the structure
+    - species: list of species to find (ordered as given)
+
+    Returns:
+    - List of indices corresponding to the furthest sites of the given species
+    """
+    if isinstance(target_site, int):
+        target_site = structure[target_site]
+
+    selected_indices = []
+    
+    for specie in species:
+        max_score = -1
+        best_index = None
+
+        for i, site in enumerate(structure):
+            if site.species_string != specie or i in selected_indices:
+                continue
+            
+            # Distance from target
+            distance_to_target = structure.get_distance(structure.index(target_site),i)
+
+            # Compute minimum distance to already selected sites
+            if selected_indices:
+                distances_to_selected = [structure.get_distance(j,i) for j in selected_indices]
+                min_distance_to_selected = min(distances_to_selected)
+            else:
+                min_distance_to_selected = distance_to_target
+
+            # Define score: prioritize sites far from target and far from other selections
+            score = distance_to_target + min_distance_to_selected
+
+            if score > max_score:
+                max_score = score
+                best_index = i
+        
+        if best_index is not None:
+            selected_indices.append(best_index)
+
+    return selected_indices
+
+def get_WarrenCowley_order_parameter(
+                        structure,
+                        A_symbols,
+                        X_symbols,
+                        neighbors_cutoff):
+    """
+    Compute Warren Cowley order parameter to describe mixing tendencies in alloys
+
+    The WC order parameter is computed as:
+                alpha_{A-X} = 1 - < P_{A-X} > / C_X
+    where:
+    - <P_{A-X}> is the avg probability of finding X near A, computed as:
+        <P_{A-X}> = n_X / n_total , n = number of nighbors of A
+        C_X = concentration of X in structure
+    
+    Parameters
+    ----------
+    structure:
+        Pymatgen Structure
+    A_symbols: (list)
+        List of element symbols to consider for A-site
+    X_symbols: (list)
+        List of element symbols to consider for X-site
+    neighbors_cutoff: (float)
+        Distance cutoff for neighbors counting
+
+    Returns
+    -------
+    alpha: (float)
+        Warren-Cowley order parameter
+    """
+    total_P_AX = 0
+    n_A_sites = 0
+    n_X_sites = 0
+    for site in structure:
+        if site.specie.symbol in A_symbols:
+            n_A_sites += 1
+            neighbors_list = structure.get_neighbors(site,r=neighbors_cutoff)
+            n_X_neighbors = 0
+            n_total_neighbors = 0
+            for neighbor in neighbors_list:
+                if neighbor.specie.symbol in X_symbols:
+                    n_X_neighbors += 1
+                    n_total_neighbors += 1
+                elif neighbor.specie.symbol in A_symbols:
+                    n_total_neighbors += 1
+            total_P_AX += n_X_neighbors / n_total_neighbors
+        elif site.specie.symbol in X_symbols:
+            n_X_sites += 1
+
+    if n_A_sites == 0 or n_X_sites == 0:
+        raise ValueError("No A or X sites found to compute order parameter.")
+
+    C_X = n_X_sites / (n_A_sites + n_X_sites)
+    avg_P_AX = total_P_AX / n_A_sites
+    alpha = 1 - avg_P_AX / C_X 
+    return alpha
+
+
 def is_site_in_structure(site,structure,tol=1e-03):
     """
     Check if Site is part of the Structure list. This function is needed because 
@@ -153,7 +260,7 @@ def is_site_in_structure(site,structure,tol=1e-03):
     return is_site_in_structure,index
 
 
-def is_site_in_structure_coords(site, structure, tol=1e-3):
+def is_site_in_structure_coords(site, structure, tol=1e-3, return_distance=False):
     """
     Check if a site's coordinates are present in a structure, using periodic boundary conditions.
 
@@ -166,6 +273,8 @@ def is_site_in_structure_coords(site, structure, tol=1e-3):
     tol : (float), optional
         Tolerance for site comparison, normalized with respect to lattice size. 
         Default is 1e-03.
+    return_distance : (bool)
+        Return distance btw site coords and closest site in reference structure 
 
     Returns
     -------
@@ -173,6 +282,9 @@ def is_site_in_structure_coords(site, structure, tol=1e-3):
         Whether the site exists in the structure within tolerance.
     index : (int or None)
         Index of matching site in structure if found, otherwise None.
+    distance : (float)
+        Returned if return_distance is set to True. 
+        distance btw site coords and closest site in reference structure.
     """
     # Normalize tolerance with lattice vector size
     l = site.lattice
@@ -185,10 +297,17 @@ def is_site_in_structure_coords(site, structure, tol=1e-3):
     # Query the KDTree for nearest neighbor
     dist, index = kdtree_structure.query(site.frac_coords, distance_upper_bound=tol)
 
-    if dist < tol:
-        return True, index
+    if return_distance:
+        is_site = [None,None,dist]
     else:
-        return False, None
+        is_site = [None,None]
+
+    if dist < tol:
+        is_site[0], is_site[1] = True, index
+    else:
+        is_site[0], is_site[1] = False, None
+    
+    return is_site
 
 
 def rattle_atoms(structure,stdev=0.05,seed=None):

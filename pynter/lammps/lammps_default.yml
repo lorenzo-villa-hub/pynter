@@ -1,0 +1,13 @@
+input_filename: input.in
+data_filename: structure.data
+log_filename: log.lammps
+job_settings_default:
+  lammps_exe: ''
+  modules: null
+  lines_before_srun: null
+  lines_after_srun: null
+  lammps_sbatch:
+    time: '01:00:00'
+    ntasks: 1
+input_string_default: null
+

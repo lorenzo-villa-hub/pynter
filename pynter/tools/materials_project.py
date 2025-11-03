@@ -1,20 +1,12 @@
 #!/usr/bin/env python
 
-from pymatgen.ext.matproj import MPRester
-
-from pynter import  get_cfgfile
-from pynter import SETTINGS
-
-try:
-    API_KEY = SETTINGS['API_KEY']
-except:
-    cfgfile = get_cfgfile()
-    raise KeyError('"API_KEY" needs to be present in the %s file' %cfgfile)
+#from pymatgen.ext.matproj import MPRester
+from mp_api.client import MPRester
 
 
-class MPDatabase:
+class  MPDatabase:
     
-    def __init__(self,mp_id=None):
+    def __init__(self,mp_id=None,API_KEY=None):
         """
         Class to retrieve data from Materials Project database
 
@@ -25,42 +17,19 @@ class MPDatabase:
         """
         
         self.mp_id = mp_id if mp_id else None
-        self.api_key = API_KEY
+        self.API_KEY = API_KEY
     
     @property
     def mp_rester(self):
-        return MPRester(API_KEY)
+        return MPRester(self.API_KEY)
         
         
-    def get_data(self,data_type='vasp'):    
-        """
-        Flexible method to get any data using the Materials Project REST
-        interface. Generally used by other methods for more specific queries.
-
-        Format of REST return is *always* a list of dict (regardless of the
-        number of pieces of data returned. The general format is as follows:
-
-        [{"material_id": material_id, "property_name" : value}, ...]
-
-        This is generally a call to
-        https://www.materialsproject.org/rest/v2/materials/vasp/<prop>.
-        See https://github.com/materialsproject/mapidoc for details.
-
-        Parameters
-        ----------
-            data_type (str): Type of data to return. Currently can either be
-                "vasp" or "exp".
-        Returns:
-            List of dictionaries with available MP data
-        """
-        with MPRester(API_KEY) as mpr:
-            data = mpr.get_data(self.mp_id,data_type=data_type) 
-        
-        return data
-
-
-    def get_entries(self,chemsys_formula_id_criteria,compatible_only=True,inc_structure='initial',
-                    property_data=None,conventional_unit_cell=False,sort_by_e_above_hull=True):
+    def get_entries(self,
+                    chemsys_formula_mpids,
+                    compatible_only=True,
+                    property_data=None,
+                    conventional_unit_cell=False,
+                    sort_by_e_above_hull=True):
         """
         Get a list of ComputedEntries or ComputedStructureEntries corresponding
         to a chemical system, formula, or materials_id or full criteria.
@@ -76,31 +45,29 @@ class MPDatabase:
                 which performs adjustments to allow mixing of GGA and GGA+U
                 calculations for more accurate phase diagrams and reaction
                 energies.
-            inc_structure (str): If None, entries returned are
-                ComputedEntries. If inc_structure="initial",
-                ComputedStructureEntries with initial structures are returned.
-                Otherwise, ComputedStructureEntries with final structures
-                are returned.
             property_data (list): Specify additional properties to include in
                 entry.data. If None, no data. Should be a subset of
                 supported_properties.
             conventional_unit_cell (bool): Whether to get the standard
-                conventional unit cell
-            sort_by_e_above_hull (bool): Whether to sort the list of entries by
-                e_above_hull (will query e_above_hull as a property_data if True).
+                conventional unit cell.
 
         Returns:
             List of ComputedEntry or ComputedStructureEntry objects.
         """
-        with MPRester(API_KEY) as mpr:
-            entries = mpr.get_entries(chemsys_formula_id_criteria,compatible_only,inc_structure,
-                                   property_data,conventional_unit_cell,sort_by_e_above_hull)
+        with MPRester(self.API_KEY) as mpr:
+            entries = mpr.get_entries(
+                                chemsys_formula_mpids=chemsys_formula_mpids,
+                                compatible_only=compatible_only,
+                                property_data=property_data,
+                                conventional_unit_cell=conventional_unit_cell)
         return entries
     
     
-    def get_entries_from_compositions(self,compositions,lowest_e_above_hull=False,compatible_only=True,
-                                      inc_structure='initial',property_data=None,
-                                      conventional_unit_cell=False):
+    def get_entries_from_compositions(self,
+                                    compositions,
+                                    compatible_only=True,
+                                    property_data=None,
+                                    conventional_unit_cell=False):
         """
         Get a dictionary with compositions (strings) as keys and a list of ComputedEntries 
         or ComputedStructureEntries as values.
@@ -116,36 +83,29 @@ class MPDatabase:
                 which performs adjustments to allow mixing of GGA and GGA+U
                 calculations for more accurate phase diagrams and reaction
                 energies.
-            inc_structure (str):
-                If None, entries returned are
-                ComputedEntries. If inc_structure="initial",
-                ComputedStructureEntries with initial structures are returned.
-                Otherwise, ComputedStructureEntries with final structures
-                are returned.
             property_data (list):
                 Specify additional properties to include in
                 entry.data. If None, no data. Should be a subset of
                 supported_properties.
             conventional_unit_cell (bool):
                 Whether to get the standard conventional unit cell
-            sort_by_e_above_hull (bool): Whether to sort the list of entries by
-                e_above_hull (will query e_above_hull as a property_data if True).
 
         Returns:
             List of ComputedEntry or ComputedStructureEntry objects.
         """
         entries_dict = {}
         for comp in compositions:
-            entries = self.get_entries(comp,compatible_only,inc_structure,property_data,
-                                                  conventional_unit_cell,sort_by_e_above_hull=True)
-            if lowest_e_above_hull:
-                entries_dict[comp] = entries[0] # sorted by e_above_hull
-            else:
-                entries_dict[comp] = entries
+            entries = self.get_entries(
+                                    chemsys_formula_mpids=comp,
+                                    compatible_only=compatible_only,
+                                    property_data=property_data,
+                                    conventional_unit_cell=conventional_unit_cell)
+            entries_dict[comp] = entries
+        
         return entries_dict
     
 
-    def get_structure(self,final=False,conventional_unit_cell=False):
+    def get_structure(self,final=True,conventional_unit_cell=False):
         """
         Get a Structure corresponding to a material_id.
 
@@ -161,8 +121,8 @@ class MPDatabase:
         Returns:
             Structure object.
         """
-        with MPRester(API_KEY) as mpr:
-            structure = mpr.get_structure_by_material_id(self.mp_id,final=final,conventional_unit_cell=conventional_unit_cell).get_sorted_structure()
+        with MPRester(self.API_KEY) as mpr:
+            structure = mpr.get_structure_by_material_id(self.mp_id,final=final,conventional_unit_cell=conventional_unit_cell)
         return structure
 
     

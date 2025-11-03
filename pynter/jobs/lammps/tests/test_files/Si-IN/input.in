@@ -1,0 +1,32 @@
+# Simple Silicon Simulation with Stillinger-Weber Potential
+
+units metal # units of fs, A°, eV, etc
+dimension 3
+boundary p p p
+atom_style atomic
+
+read_data Si.data
+
+# Define interaction potential
+pair_style sw
+pair_coeff * * Si.sw Si
+
+# Define MD settings
+velocity all create 300.0 12345 mom yes rot yes dist gaussian
+
+# Define fixes
+fix 1 all nvt temp 300.0 300.0 0.1
+
+# Simulation settings
+timestep 0.001
+thermo 100
+
+dump myDump all atom 100 dumpfile.lammpstrj
+
+run 5000
+
+
+
+
+# End
+

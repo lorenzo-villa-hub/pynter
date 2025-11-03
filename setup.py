@@ -12,14 +12,17 @@ with open("README.md") as file:
 
 setup(
     name='pynter-defects',
-    version='1.3.14',
+    version='2.0.0',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations, provides features for point-defect calculations',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=find_namespace_packages(exclude=["pynter.*.tests", "pynter.*.*.tests"]),
+    packages=find_namespace_packages(exclude=["pynter.*.tests",
+    					      "pynter.*.*.tests",
+    					      "pynter.*.*.*.tests"]),
     install_requires=[
         'ase',
+        'paramiko',
         'pymatgen>=2023.3.23',
         'pymatgen-analysis-defects>=2023.3.25',
         'pymatgen-db',
@@ -28,8 +31,9 @@ setup(
     ],
     package_data={
         "pynter":["*.yml"],
-        "pynter.vasp":["*.yml"],
-        "pynter.slurm":["*.txt"]
+        "pynter.hpc":["*.txt"],
+        "pynter.lammps":["*.yml"],
+        "pynter.vasp":["*.yml"]
         },
     extra_requires={'test':'pytest'},
     entry_points={
