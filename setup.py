@@ -14,7 +14,7 @@ setup(
     name='pynter2',
     version='2.0.0',
     author='Lorenzo Villa',
-    description='Tools for atomistic calculations, provides features for point-defect calculations',
+    description='Python library for flexible workflows for atomistic calculations. Provides a `ssh` interface for high performance computing (HPC).',
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_namespace_packages(exclude=["pynter.*.tests",
