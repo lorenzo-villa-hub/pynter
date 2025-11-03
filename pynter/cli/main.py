@@ -46,7 +46,6 @@ def main():
     setup_hpc(subparsers)
     setup_job_script(subparsers)
     setup_mp_database(subparsers)
-    setup_phase_diagram(subparsers)
     setup_plotter(subparsers)
     
     args = parser.parse_args()
