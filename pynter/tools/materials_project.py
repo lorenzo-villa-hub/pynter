@@ -28,8 +28,7 @@ class  MPDatabase:
                     chemsys_formula_mpids,
                     compatible_only=True,
                     property_data=None,
-                    conventional_unit_cell=False,
-                    sort_by_e_above_hull=True):
+                    conventional_unit_cell=False):
         """
         Get a list of ComputedEntries or ComputedStructureEntries corresponding
         to a chemical system, formula, or materials_id or full criteria.
