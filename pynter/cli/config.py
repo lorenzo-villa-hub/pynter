@@ -65,10 +65,6 @@ def run_config(file_to_configure=None,info=False):
         
         job_script_filename = input('Job script filename (default job.sh): ')
         
-        API_KEY = input('\nMaterials Project API_KEY (default None):')
-        API_KEY = API_KEY if API_KEY else None
-        
- 
         job_script_filename = job_script_filename if job_script_filename else 'job.sh'
         
         config = get_config_from_default_file()
@@ -76,7 +72,6 @@ def run_config(file_to_configure=None,info=False):
                           {'hostname': hostname,
                           'localdir': localdir,
                           'remotedir': remotedir}})
-        config.update({'API_KEY':API_KEY})
         
         config['job_script_filename'] = job_script_filename
         config['sbatch']['account'] = project_id
