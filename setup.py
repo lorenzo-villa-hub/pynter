@@ -11,7 +11,7 @@ with open("README.md") as file:
     long_description = file.read()
 
 setup(
-    name='pynter-defects',
+    name='pynter2',
     version='2.0.0',
     author='Lorenzo Villa',
     description='Tools for atomistic calculations, provides features for point-defect calculations',
@@ -24,8 +24,6 @@ setup(
         'ase',
         'paramiko',
         'pymatgen>=2023.3.23',
-        'pymatgen-analysis-defects>=2023.3.25',
-        'pymatgen-db',
         'PyYAML',
         'schedule'        
     ],
