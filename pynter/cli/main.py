@@ -17,7 +17,6 @@ from pynter.cli.hpc import setup_hpc
 from pynter.cli.materials_project import setup_mp_database
 from pynter.cli.plotter import setup_plotter
 from pynter.cli.slurm import setup_job_script
-from pynter.cli.phase_diagram import setup_phase_diagram
 
 
 def main():
