@@ -5,6 +5,7 @@ Created on Sat Mar 29 17:58:14 2025
 
 @author: lorenzo
 """
+import os
 import os.path as op
 from shutil import copyfile
 
@@ -113,10 +114,10 @@ class VaspAutomation:
         ionic_limit_reached : (bool)
         """
         limit_el_steps_reached, limit_ionic_steps_reached = False, False
-        if is_limit_electronic_steps_reached:
+        if is_limit_electronic_steps_reached(job):
             limit_el_steps_reached = True
             self.status.append('Maximum limit of electronic steps has been reached')
-        if self.limit_ionic_steps_reached():
+        if is_limit_ionic_steps_reached(job):
             limit_ionic_steps_reached = True
             self.status.append('Maximum limit of ionic steps has been reached')         
         return limit_el_steps_reached, limit_ionic_steps_reached        
@@ -186,34 +187,79 @@ class VaspAutomation:
             
             
 class VaspNEBAutomation(VaspAutomation):
-    
-    def copy_images_files_from_job1_to_job2(self,job1,job2,filenames=['CHGCAR','CONTCAR','WAVECAR']):
-        """
-        Copy VASP files from directory of Job1 to directory of Job2
 
-        Parameters
-        ----------
-        job1 : (VaspJob)
-            VaspJob object.
-        job2 : (VaspJob)
-            VaspJob object.
-        filenames : (list)
-            List of VASP file names to copy. If "CONTCAR" is present, it will be copied 
-            as "POSCAR" for Job2.
+    def check_convergence(self,job):
         """
-        path2 = job2.path
-        for image_path in job1.image_dirs:
-            image_name = op.path.basename(image_path)
+        Same logic as `is_converged` attribute in VaspNEBJob, but returns messages.
+        Returns "True" if the calculation is converged,
+        or the ionic step limit has been reached reading from the OSZICAR file.
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        is_converged = job.is_required_accuracy_reached
+        if not is_converged:
+            self.status.append('Rerquired accuracy NOT reached')
+            if job.is_step_limit_reached:
+                is_converged = True
+                self.status.append('Ionic steps limit ("NSW") reached')
+        else:
+            self.status.append('Required accuracy reached')
+        if is_converged:
+            self.status.append('Convergence or step limit reached')
+        else:
+            self.status.append('Convergence or step limit NOT reached')
+        return is_converged
+    
+
+    def copy_images_files(self,source_path,dest_path,filenames=['CHGCAR','CONTCAR','WAVECAR']):
+        """
+        Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders
+        """
+        for image_path in self.find_NEB_dirs(path=source_path):
+            image_name = op.basename(image_path)
             for file in filenames:
                 if file == 'CONTCAR':
                     source = op.join(image_path,'CONTCAR')
-                    dest = op.join(path2,image_name,'POSCAR')    
+                    dest = op.join(dest_path,image_name,'POSCAR')    
                     copyfile(source,dest)
                 else:
                     source = op.join(image_path,file)
-                    dest = op.join(path2,image_name,file)
+                    dest = op.join(dest_path,image_name,file)
                     copyfile(source,dest)                
                 self.status.append(f'{op.relpath(source)} copied in {op.relpath(dest)}')
-        
+        return
+
+
+    def find_NEB_dirs(self,path=None):
+        """
+        Find directories of images for NEB calculations. Directories are selected if all characters in the
+        directory name are digits.
+        """
+        dirs = []
+        path = path if path else self.path
+        path = op.abspath(path)
+        for d in os.walk(path):
+            directory = d[0]
+            image_name = op.relpath(directory,start=path)
+            if all(c.isdigit() for c in list(image_name)): #check if folder is image (all characters in folder rel path need to be numbers)
+                dirs.append(directory)
+        dirs.sort()
+        return dirs
+
+
+    def is_preconvergence(self):
+        """
+        Check if current main folder contains images folders with preconvergence calculations.
+        criteria for selection of preconvergence calculation is the presence of the INCAR file
+        in the image folder.
+        """
+        is_preconvergence = False
+        image_dirs = self.find_NEB_dirs()
+        for d in image_dirs:
+            files = [w[2] for w in os.walk(d)][0]
+            if 'INCAR' in files:
+                is_preconvergence = True
+            elif is_preconvergence:
+                print('Warning: Inconsistencies in images directories: INCAR file is present but not in all directories')
+        return is_preconvergence
         
         

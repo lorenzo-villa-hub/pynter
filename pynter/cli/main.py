@@ -38,7 +38,6 @@ def main():
     if config_exists is False and config_vasp_exists is False:
         warnings.warn('configuration files do not exist, run "pynter configure" in the terminal to create them')
 
-
     setup_analysis(subparsers)
     setup_automation(subparsers)  
     setup_config(subparsers)
