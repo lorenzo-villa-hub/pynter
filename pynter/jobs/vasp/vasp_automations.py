@@ -187,7 +187,29 @@ class VaspAutomation:
             
             
 class VaspNEBAutomation(VaspAutomation):
+
+    def check_convergence(self,job):
+        """
+        Same logic as `is_converged` attribute in VaspNEBJob, but returns messages.
+        Returns "True" if the calculation is converged,
+        or the ionic step limit has been reached reading from the OSZICAR file.
+        "False" if reading failed, and "None" if is not present in the outputs dictionary.
+        """
+        is_converged = job.is_required_accuracy_reached
+        if not is_converged:
+            self.status.append('Rerquired accuracy NOT reached')
+            if job.is_step_limit_reached:
+                is_converged = True
+                self.status.append('Ionic steps limit ("NSW") reached')
+        else:
+            self.status.append('Required accuracy reached')
+        if is_converged:
+            self.status.append('Convergence or step limit reached')
+        else:
+            self.status.append('Convergence or step limit NOT reached')
+        return is_converged
     
+
     def copy_images_files(self,source_path,dest_path,filenames=['CHGCAR','CONTCAR','WAVECAR']):
         """
         Copy CHGCAR,WAVECAR and CONTCAR in POSCAR of respective images in next step folders
