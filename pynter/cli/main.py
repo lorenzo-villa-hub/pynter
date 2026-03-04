@@ -15,6 +15,7 @@ from pynter.cli.analysis import setup_analysis
 from pynter.cli.config import setup_config, run_config
 from pynter.cli.hpc import setup_hpc
 from pynter.cli.materials_project import setup_mp_database
+from pynter.cli.parse import setup_parse
 from pynter.cli.plotter import setup_plotter
 from pynter.cli.slurm import setup_job_script
 
@@ -44,6 +45,7 @@ def main():
     setup_hpc(subparsers)
     setup_job_script(subparsers)
     setup_mp_database(subparsers)
+    setup_parse(subparsers)
     setup_plotter(subparsers)
     
     args = parser.parse_args()
