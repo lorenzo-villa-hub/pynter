@@ -12,7 +12,7 @@ with open("README.md") as file:
 
 setup(
     name='pynter2',
-    version='2.0.1',
+    version='2.0.2',
     author='Lorenzo Villa',
     description='Python library for flexible workflows for atomistic calculations. Provides a `ssh` interface for high performance computing (HPC).',
     long_description=long_description,
