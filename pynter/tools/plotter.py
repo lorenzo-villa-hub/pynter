@@ -50,15 +50,15 @@ def plot_NEB(
     neb = neb_analysis
     scale = 1 / neb.r[-1] if normalize_rxn_coordinate else 1
     xs = np.arange(0, np.max(neb.r), 0.01)
-    ys = neb.spline(xs) * 1000
+    ys = neb.spline(xs)
     relative_energies = neb.energies - neb.energies[0]
-    ax.plot(neb.r * scale, relative_energies * 1000, "ro", xs * scale, ys, "k-", linewidth=linewidth, markersize=markersize)
+    ax.plot(neb.r * scale, relative_energies, "ro", xs * scale, ys, "k-", linewidth=linewidth, markersize=markersize)
 
     ax.set_xlabel("Reaction Coordinate")
     ax.set_ylabel("Energy (meV)")
     ax.set_ylim((np.min(ys) - 10, np.max(ys) * 1.02 + 20))
 
-    ax.set_title(f"$\\Delta E = $ {np.max(ys) - np.min(ys):.0f} meV")
+    ax.set_title(f"$\\Delta E = $ {np.max(ys) - np.min(ys):.0f} eV")
 
     return ax  
 
