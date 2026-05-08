@@ -56,9 +56,9 @@ def plot_NEB(
 
     ax.set_xlabel("Reaction Coordinate")
     ax.set_ylabel("Energy (meV)")
-    ax.set_ylim((np.min(ys) - 10, np.max(ys) * 1.02 + 20))
+    ax.set_ylim((np.min(ys) - 0.01, np.max(ys) * 1.02 + 0.02))
 
-    ax.set_title(f"$\\Delta E = $ {np.max(ys) - np.min(ys):.0f} eV")
+    ax.set_title(f"$\\Delta E = $ {np.max(ys) - np.min(ys):.3f} eV")
 
     return ax  
 
