@@ -24,7 +24,7 @@ then
     cp CONTCAR POSCAR
 fi
 
-srun /home/test/code
+mpirun -np ${SLURM_NTASKS} /home/test/code
 
 pynter analysis vasprun --convergence > convergence.txt
 if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then

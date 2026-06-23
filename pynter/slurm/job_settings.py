@@ -167,12 +167,14 @@ class JobSettings(dict,MSONable):
                         mod_line = mod_line.split(' ')[0] #remove space at the end
                         modules.append(mod_line)        
 
-        string = 'srun '
-        line = grep_list(string,lines)
-        if line:
-            line = line[-1]
-            if list(line)[0] != '#':
-                path_exe = line.replace(string,'')
+        path_exe = None
+        for string in ['mpirun -np ${SLURM_NTASKS} ', 'srun ']:
+            line = grep_list(string,lines)
+            if line:
+                line = line[-1]
+                if list(line)[0] != '#':
+                    path_exe = line.replace(string,'')
+                    break
         
         string = "if  grep -q 'Electronic convergence: True' convergence.txt  = true  && grep -q 'Ionic convergence: True' convergence.txt  = true; then"
         line = grep_list(string,lines)
@@ -220,7 +222,7 @@ class JobSettings(dict,MSONable):
             f.append('fi\n')
         
         f.append('\n')
-        f.append('srun %s\n' %self.path_exe)
+        f.append('mpirun -np ${SLURM_NTASKS} %s\n' %self.path_exe)
 
         automation_written = False
         if self.array_size:
